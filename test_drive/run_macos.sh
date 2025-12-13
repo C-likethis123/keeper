@@ -9,3 +9,4 @@ echo "Version: $(clang --version | head -1)"
 
 flutter run -d macos "$@"
 
+
