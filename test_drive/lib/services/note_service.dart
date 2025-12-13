@@ -92,12 +92,14 @@ class NoteService {
     String? newTitle,
     String? newContent,
     bool? isPinned,
+    bool? isDeleted,
   }) async {
     final updatedNote = Note(
       id: note.id,
       title: newTitle ?? note.title,
       content: newContent ?? note.content,
       isPinned: isPinned ?? note.isPinned,
+      isDeleted: isDeleted ?? note.isDeleted,
       lastUpdated: DateTime.now(),
       filePath: note.filePath,
       sourceFolder: note.sourceFolder,

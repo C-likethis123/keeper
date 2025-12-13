@@ -7,12 +7,18 @@ class NotesSection extends StatelessWidget {
   final String title;
   final IconData? icon;
   final List<Note> notes;
+  final void Function(Note note)? onNoteTap;
+  final void Function(Note note)? onPinToggle;
+  final void Function(Note note)? onDelete;
 
   const NotesSection({
     super.key,
     required this.title,
     required this.notes,
     this.icon,
+    this.onNoteTap,
+    this.onPinToggle,
+    this.onDelete,
   });
 
   @override
@@ -46,9 +52,13 @@ class NotesSection extends StatelessWidget {
             ],
           ),
         ),
-        NotesGrid(notes: notes),
+        NotesGrid(
+          notes: notes,
+          onNoteTap: onNoteTap,
+          onPinToggle: onPinToggle,
+          onDelete: onDelete,
+        ),
       ],
     );
   }
 }
-

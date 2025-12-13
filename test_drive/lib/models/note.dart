@@ -3,6 +3,7 @@ class Note {
   final String title;
   final String content;
   final bool isPinned;
+  final bool isDeleted;
   final DateTime lastUpdated;
   final String? filePath;
   final String? sourceFolder;
@@ -13,20 +14,22 @@ class Note {
     required this.content,
     required this.lastUpdated,
     this.isPinned = false,
+    this.isDeleted = false,
     this.filePath,
     this.sourceFolder,
   });
 
   /// Create a Note from a markdown file content with YAML frontmatter
-  /// 
+  ///
   /// Expected format:
   /// ```
   /// ---
   /// title: Note Title
   /// pinned: true
+  /// deleted: false
   /// date: 2025-12-13T10:30:00
   /// ---
-  /// 
+  ///
   /// Note content here...
   /// ```
   factory Note.fromMarkdown(
@@ -39,6 +42,7 @@ class Note {
     String title = fileName.replaceAll('.md', '');
     String content = markdown;
     bool isPinned = false;
+    bool isDeleted = false;
 
     // Check for YAML frontmatter
     if (markdown.startsWith('---')) {
@@ -62,6 +66,9 @@ class Note {
               case 'pinned':
                 isPinned = value.toLowerCase() == 'true';
                 break;
+              case 'deleted':
+                isDeleted = value.toLowerCase() == 'true';
+                break;
             }
           }
         }
@@ -73,6 +80,7 @@ class Note {
       title: title,
       content: content,
       isPinned: isPinned,
+      isDeleted: isDeleted,
       lastUpdated: lastUpdated,
       filePath: filePath,
       sourceFolder: sourceFolder,
@@ -80,13 +88,12 @@ class Note {
   }
 
   /// Convert this Note to markdown format with YAML frontmatter
-  /// I might not need this. Logseq does not parse YAML properties well.
-  /// But I need a way to store whether a post is pinned, so I'll keep this for now.
   String toMarkdown() {
     final buffer = StringBuffer();
     buffer.writeln('---');
     buffer.writeln('title: $title');
     buffer.writeln('pinned: $isPinned');
+    buffer.writeln('deleted: $isDeleted');
     buffer.writeln('date: ${lastUpdated.toIso8601String()}');
     buffer.writeln('---');
     buffer.writeln();
@@ -100,6 +107,7 @@ class Note {
     String? title,
     String? content,
     bool? isPinned,
+    bool? isDeleted,
     DateTime? lastUpdated,
     String? filePath,
     String? sourceFolder,
@@ -109,6 +117,7 @@ class Note {
       title: title ?? this.title,
       content: content ?? this.content,
       isPinned: isPinned ?? this.isPinned,
+      isDeleted: isDeleted ?? this.isDeleted,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       filePath: filePath ?? this.filePath,
       sourceFolder: sourceFolder ?? this.sourceFolder,

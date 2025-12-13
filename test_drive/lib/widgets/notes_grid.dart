@@ -5,8 +5,17 @@ import 'note_card.dart';
 
 class NotesGrid extends StatelessWidget {
   final List<Note> notes;
+  final void Function(Note note)? onNoteTap;
+  final void Function(Note note)? onPinToggle;
+  final void Function(Note note)? onDelete;
 
-  const NotesGrid({super.key, required this.notes});
+  const NotesGrid({
+    super.key,
+    required this.notes,
+    this.onNoteTap,
+    this.onPinToggle,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -30,10 +39,16 @@ class NotesGrid extends StatelessWidget {
             childAspectRatio: 1.4,
           ),
           itemCount: notes.length,
-          itemBuilder: (context, index) => NoteCard(note: notes[index]),
+          itemBuilder: (context, index) {
+            return NoteCard(
+              note: notes[index],
+              onTap: onNoteTap,
+              onPinToggle: onPinToggle,
+              onDelete: onDelete,
+            );
+          },
         );
       },
     );
   }
 }
-

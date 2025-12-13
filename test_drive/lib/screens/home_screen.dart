@@ -160,16 +160,81 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     }
   }
 
+  /// Notes that are not deleted
+  List<Note> get _visibleNotes => _notes.where((n) => !n.isDeleted).toList();
+
   List<Note> get _pinnedNotes {
-    final pinned = _notes.where((n) => n.isPinned).toList();
+    final pinned = _visibleNotes.where((n) => n.isPinned).toList();
     pinned.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
     return pinned;
   }
 
   List<Note> get _otherNotes {
-    final others = _notes.where((n) => !n.isPinned).toList();
+    final others = _visibleNotes.where((n) => !n.isPinned).toList();
     others.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
     return others;
+  }
+
+  Future<void> _togglePin(Note note) async {
+    try {
+      final updated = await _noteService.updateNote(note, isPinned: !note.isPinned);
+      setState(() {
+        final index = _notes.indexWhere((n) => n.id == note.id);
+        if (index != -1) {
+          _notes[index] = updated;
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update note: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteNote(Note note) async {
+    try {
+      final updated = await _noteService.updateNote(note, isDeleted: true);
+      setState(() {
+        final index = _notes.indexWhere((n) => n.id == note.id);
+        if (index != -1) {
+          _notes[index] = updated;
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted "${note.title}"'),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () async {
+                final restored = await _noteService.updateNote(updated, isDeleted: false);
+                setState(() {
+                  final idx = _notes.indexWhere((n) => n.id == note.id);
+                  if (idx != -1) {
+                    _notes[idx] = restored;
+                  }
+                });
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete note: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _navigateToSettings() async {
@@ -249,7 +314,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
       );
     }
 
-    if (_notes.isEmpty) {
+    if (_visibleNotes.isEmpty) {
       return _buildEmptyState();
     }
 
@@ -269,6 +334,8 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
             title: section.title,
             icon: section.icon,
             notes: section.notes,
+            onPinToggle: _togglePin,
+            onDelete: _deleteNote,
           );
         },
         itemCount: sections.length,

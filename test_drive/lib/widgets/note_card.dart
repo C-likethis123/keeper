@@ -5,8 +5,17 @@ import '../utils/date_utils.dart';
 
 class NoteCard extends StatelessWidget {
   final Note note;
+  final Function(Note note)? onTap;
+  final Function(Note note)? onPinToggle;
+  final Function(Note note)? onDelete;
 
-  const NoteCard({super.key, required this.note});
+  const NoteCard({
+    super.key,
+    required this.note,
+    this.onTap,
+    this.onPinToggle,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,14 +31,14 @@ class NoteCard extends StatelessWidget {
         ),
       ),
       child: InkWell(
-        onTap: () {},
+        onTap: onTap != null ? () => onTap!(note) : null,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title row with optional pin icon
+              // Title row with pin icon
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -44,17 +53,23 @@ class NoteCard extends StatelessWidget {
                     ),
                   ),
                   if (note.isPinned)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: Icon(
+                    IconButton(
+                      onPressed: () => onPinToggle?.call(note),
+                      icon: Icon(
                         Icons.push_pin,
-                        size: 16,
-                        color: colorScheme.onSurfaceVariant,
+                        size: 24,
+                        color: colorScheme.primary,
+                      ),
+                      tooltip: 'Unpin',
+                      iconSize: 24,
+                      constraints: const BoxConstraints(
+                        minWidth: 40,
+                        minHeight: 40,
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               // Content preview
               Expanded(
                 child: Text(
@@ -66,13 +81,49 @@ class NoteCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(height: 6),
-              // Date
-              Text(
-                formatRelativeDate(note.lastUpdated),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+              const SizedBox(height: 8),
+              // Bottom row: date and actions
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      formatRelativeDate(note.lastUpdated),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          ),
                     ),
+                  ),
+                  // Action buttons
+                  if (!note.isPinned)
+                    IconButton(
+                      onPressed: () => onPinToggle?.call(note),
+                      icon: Icon(
+                        Icons.push_pin_outlined,
+                        size: 24,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      tooltip: 'Pin',
+                      iconSize: 24,
+                      constraints: const BoxConstraints(
+                        minWidth: 40,
+                        minHeight: 40,
+                      ),
+                    ),
+                  IconButton(
+                    onPressed: () => onDelete?.call(note),
+                    icon: Icon(
+                      Icons.delete_outline,
+                      size: 24,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    tooltip: 'Delete',
+                    iconSize: 24,
+                    constraints: const BoxConstraints(
+                      minWidth: 40,
+                      minHeight: 40,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -81,4 +132,3 @@ class NoteCard extends StatelessWidget {
     );
   }
 }
-
