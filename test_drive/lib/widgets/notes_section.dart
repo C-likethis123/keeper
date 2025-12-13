@@ -1,0 +1,54 @@
+import 'package:flutter/material.dart';
+
+import '../models/note.dart';
+import 'notes_grid.dart';
+
+class NotesSection extends StatelessWidget {
+  final String title;
+  final IconData? icon;
+  final List<Note> notes;
+
+  const NotesSection({
+    super.key,
+    required this.title,
+    required this.notes,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (notes.isEmpty) return const SizedBox.shrink();
+
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Row(
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 16,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                title,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        NotesGrid(notes: notes),
+      ],
+    );
+  }
+}
+

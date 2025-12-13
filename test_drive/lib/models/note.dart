@@ -34,11 +34,11 @@ class Note {
     required String filePath,
     required String sourceFolder,
     required String fileName,
+    required DateTime lastUpdated,
   }) {
     String title = fileName.replaceAll('.md', '');
     String content = markdown;
     bool isPinned = false;
-    DateTime lastUpdated = DateTime.now();
 
     // Check for YAML frontmatter
     if (markdown.startsWith('---')) {
@@ -51,8 +51,9 @@ class Note {
         for (final line in frontmatter.split('\n')) {
           final colonIndex = line.indexOf(':');
           if (colonIndex != -1) {
-            final key = line.substring(0, colonIndex).trim().toLowerCase();
-            final value = line.substring(colonIndex + 1).trim();
+            final keyValuePair = line.split(':');
+            final key = keyValuePair[0].trim().toLowerCase();
+            final value = keyValuePair[1].trim();
 
             switch (key) {
               case 'title':
@@ -60,13 +61,6 @@ class Note {
                 break;
               case 'pinned':
                 isPinned = value.toLowerCase() == 'true';
-                break;
-              case 'date':
-                try {
-                  lastUpdated = DateTime.parse(value);
-                } catch (_) {
-                  // Keep default if parsing fails
-                }
                 break;
             }
           }
@@ -86,6 +80,8 @@ class Note {
   }
 
   /// Convert this Note to markdown format with YAML frontmatter
+  /// I might not need this. Logseq does not parse YAML properties well.
+  /// But I need a way to store whether a post is pinned, so I'll keep this for now.
   String toMarkdown() {
     final buffer = StringBuffer();
     buffer.writeln('---');

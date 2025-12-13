@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../screens/settings_screen.dart';
-
 class AppDrawer extends StatelessWidget {
-  final VoidCallback? onSettingsChanged;
+  final VoidCallback? onSettingsTap;
 
-  const AppDrawer({super.key, this.onSettingsChanged});
+  const AppDrawer({super.key, this.onSettingsTap});
 
   @override
   Widget build(BuildContext context) {
@@ -77,14 +75,7 @@ class AppDrawer extends StatelessWidget {
                   label: 'Settings',
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SettingsScreen(
-                          onSettingsChanged: onSettingsChanged,
-                        ),
-                      ),
-                    );
+                    onSettingsTap?.call();
                   },
                 ),
               ],
@@ -137,4 +128,3 @@ class _DrawerItem extends StatelessWidget {
     );
   }
 }
-
