@@ -5,10 +5,10 @@ import '../services/note_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/app_text_field.dart';
-import '../widgets/create_note_dialog.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loader.dart';
 import '../widgets/notes_section.dart';
+import 'note_editor_screen.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -123,41 +123,31 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     final folder = _settings.getFolder();
     if (folder == null) return;
 
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (context) => const CreateNoteDialog(),
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NoteEditorScreen(folderPath: folder),
+      ),
     );
+    // Reload notes when returning from editor
+    await _loadNotes();
+  }
 
-    if (result != null && mounted) {
-      try {
-        final note = await _noteService.createNote(
+  Future<void> _editNote(Note note) async {
+    final folder = _settings.getFolder();
+    if (folder == null) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NoteEditorScreen(
           folderPath: folder,
-          title: result['title'] ?? 'Untitled',
-          content: result['content'] ?? '',
-          isPinned: result['isPinned'] ?? false,
-        );
-        setState(() {
-          _notes.insert(0, note);
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Created note: ${note.title}'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to create note: $e'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    }
+          existingNote: note,
+        ),
+      ),
+    );
+    // Reload notes when returning from editor
+    await _loadNotes();
   }
 
   /// Notes that are not deleted
@@ -334,6 +324,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
             title: section.title,
             icon: section.icon,
             notes: section.notes,
+            onNoteTap: _editNote,
             onPinToggle: _togglePin,
             onDelete: _deleteNote,
           );
