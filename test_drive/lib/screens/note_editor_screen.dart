@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../models/note.dart';
 import '../services/note_service.dart';
-import '../widgets/note_content_field.dart';
 import '../widgets/note_title_field.dart';
 import '../widgets/save_indicator.dart';
+import '../widgets/hybrid_editor/hybrid_editor.dart';
 
 class NoteEditorScreen extends StatefulWidget {
   final String folderPath;
@@ -173,9 +173,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               ),
               const Divider(),
               Expanded(
-                child: NoteContentField(
-                  initialValue: _content,
+                child: HybridEditor(
+                  initialContent: _content,
                   onChanged: _onContentChanged,
+                  autofocus: !isNewNote,
                 ),
               ),
             ],
