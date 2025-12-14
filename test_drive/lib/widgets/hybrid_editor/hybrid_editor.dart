@@ -4,7 +4,7 @@ import 'blocks/blocks.dart';
 import 'input/input.dart';
 
 /// A hybrid markdown/code editor widget
-/// 
+///
 /// Features:
 /// - Block-based editing with markdown support
 /// - Inline markdown formatting (bold, italic, code, links)
@@ -41,6 +41,8 @@ class _HybridEditorState extends State<HybridEditor> {
   late EditorTextInputManager _inputManager;
   late KeyHandler _keyHandler;
   late BlockRegistry _registry;
+  int _lastBlockCount =
+      0; // Tracks the structure of the document so we know if it changed
 
   @override
   void initState() {
@@ -55,6 +57,7 @@ class _HybridEditorState extends State<HybridEditor> {
       document: Document.fromMarkdown(widget.initialContent),
     );
     _editorState.addListener(_onEditorStateChanged);
+    _lastBlockCount = _editorState.document.length;
 
     // Initialize input manager
     _inputManager = EditorTextInputManager(
@@ -96,7 +99,11 @@ class _HybridEditorState extends State<HybridEditor> {
   void _onEditorStateChanged() {
     _inputManager.syncWithDocument();
     widget.onChanged?.call(_editorState.toMarkdown());
-    setState(() {});
+    final currentBlockCount = _editorState.document.length;
+    if (currentBlockCount != _lastBlockCount) {
+      _lastBlockCount = currentBlockCount;
+      setState(() {});
+    }
   }
 
   void _onBlockFocus(int index) {
@@ -105,7 +112,10 @@ class _HybridEditorState extends State<HybridEditor> {
 
   void _onBlockContentChanged(int index, String newContent) {
     final block = _editorState.document[index];
-    
+    print(
+      "[HybridEditor._onBlockContentChanged] Block $index content changed: $newContent",
+    );
+
     // Check for block type conversion (only for paragraphs)
     if (block.type == BlockType.paragraph) {
       final detection = _registry.detectBlockType(newContent);
@@ -113,13 +123,18 @@ class _HybridEditorState extends State<HybridEditor> {
         // Update controller text FIRST (before state change triggers rebuild)
         final controller = _inputManager.getController(index);
         controller.text = detection.remainingContent;
+
+        // TODO: do I need to care about the selection here?
+        // where is the focus note here?
+        // actually i think the missing selection is the problem it probably determines the cusor.
         controller.selection = TextSelection.collapsed(
           offset: detection.remainingContent.length,
         );
-        
+
         // Then update block type (this triggers rebuild)
         _editorState.updateBlockType(index, detection.type);
-        
+        _editorState.updateBlockContent(index, detection.remainingContent);
+
         // Restore focus after rebuild
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _inputManager.focusBlock(index);
@@ -129,20 +144,22 @@ class _HybridEditorState extends State<HybridEditor> {
 
       // Check for code block trigger
       if (newContent.startsWith('```')) {
-        final language = newContent.length > 3 ? newContent.substring(3).trim() : null;
-        
+        final language = newContent.length > 3
+            ? newContent.substring(3).trim()
+            : null;
+
         // Clear content FIRST
         final controller = _inputManager.getController(index);
         controller.text = '';
         controller.selection = const TextSelection.collapsed(offset: 0);
-        
+
         // Then update block type
         _editorState.updateBlockType(
           index,
           BlockType.codeBlock,
           language: language?.isNotEmpty == true ? language : null,
         );
-        
+
         // Restore focus after rebuild
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _inputManager.focusBlock(index);
@@ -150,7 +167,6 @@ class _HybridEditorState extends State<HybridEditor> {
         return;
       }
     }
-
     _editorState.updateBlockContent(index, newContent);
   }
 
@@ -158,7 +174,7 @@ class _HybridEditorState extends State<HybridEditor> {
     final controller = _inputManager.getController(index);
     final cursorPos = controller.selection.baseOffset;
     _editorState.splitBlock(index, cursorPos);
-    
+
     // Focus the new block
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _inputManager.focusBlock(index + 1);
@@ -169,7 +185,8 @@ class _HybridEditorState extends State<HybridEditor> {
     final block = _editorState.document[index];
 
     // If it's a non-paragraph block, convert to paragraph
-    if (block.type != BlockType.paragraph && block.type != BlockType.codeBlock) {
+    if (block.type != BlockType.paragraph &&
+        block.type != BlockType.codeBlock) {
       _editorState.updateBlockType(index, BlockType.paragraph);
       return;
     }
@@ -232,6 +249,10 @@ class _HybridEditorState extends State<HybridEditor> {
 
   @override
   Widget build(BuildContext context) {
+    print(
+      '[HybridEditor.build] Building... blocks: ${_editorState.document.length}',
+    );
+
     return Focus(
       onKeyEvent: _handleKeyEvent,
       child: ListView.builder(
@@ -246,7 +267,7 @@ class _HybridEditorState extends State<HybridEditor> {
   int? _calculateListItemNumber(int index) {
     final block = _editorState.document[index];
     if (block.type != BlockType.numberedList) return null;
-    
+
     // Count consecutive numbered lists before this one
     int number = 1;
     for (int i = index - 1; i >= 0; i--) {
@@ -291,4 +312,3 @@ class _HybridEditorState extends State<HybridEditor> {
     );
   }
 }
-
