@@ -130,7 +130,7 @@ class BlockNode {
     _ => null,
   };
 
-  BlockType get blockType => this.type;
+  BlockType get blockType => type;
 
   /// Whether this block is a code block
   bool get isCodeBlock => type == BlockType.codeBlock;

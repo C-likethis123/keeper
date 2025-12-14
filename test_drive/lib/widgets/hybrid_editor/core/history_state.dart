@@ -1,7 +1,4 @@
-import 'package:flutter/foundation.dart';
-import 'block_node.dart';
 import 'document.dart';
-import 'selection.dart';
 import 'transaction.dart';
 
 /// Configuration for the history system
