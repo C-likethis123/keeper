@@ -2,11 +2,15 @@ import 'dart:io';
 import 'dart:math';
 
 import '../models/note.dart';
+import '../models/note_metadata.dart';
 
 class NoteService {
-  /// Load all notes from the configured folders
-  Future<List<Note>> loadNotesFromFolders(List<String> folderPaths) async {
-    final List<Note> notes = [];
+  // Cache for full notes that have been loaded
+  final Map<String, Note> _noteCache = {};
+  
+  /// Scan folders and return only metadata (fast)
+  Future<List<NoteMetadata>> scanNotesMetadata(List<String> folderPaths) async {
+    final List<NoteMetadata> metadata = [];
 
     for (final folderPath in folderPaths) {
       final directory = Directory(folderPath);
@@ -14,30 +18,75 @@ class NoteService {
         continue;
       }
 
-      await for (final entity in directory.list()) {
-        if (entity is Directory) {
-          notes.addAll(await loadNotesFromFolders([entity.path]));
-        }
+      await for (final entity in directory.list(
+        recursive: true,
+        followLinks: false,
+      )) {
         if (entity is File && entity.path.endsWith('.md')) {
           try {
-            final note = await _loadNoteFromFile(entity, folderPath);
-            if (note != null) {
-              notes.add(note);
-            }
+            final fileName = Uri.decodeComponent(entity.uri.pathSegments.last);
+            final lastModified = await entity.lastModified();
+            
+            metadata.add(NoteMetadata(
+              filePath: entity.path,
+              fileName: fileName,
+              lastModified: lastModified,
+              sourceFolder: folderPath,
+            ));
           } catch (e) {
-            // Skip files that can't be read
+            // Skip files that can't be accessed
             continue;
           }
         }
       }
     }
+    
+    return metadata;
+  }
+
+  /// Load full notes for a specific page
+  Future<List<Note>> loadNotesForPage(
+    List<NoteMetadata> allMetadata,
+    int page,
+    int pageSize,
+  ) async {
+    final startIndex = page * pageSize;
+    final endIndex = min(startIndex + pageSize, allMetadata.length);
+    
+    if (startIndex >= allMetadata.length) {
+      return [];
+    }
+
+    final pageMetadata = allMetadata.sublist(startIndex, endIndex);
+    final List<Note> notes = [];
+
+    for (final meta in pageMetadata) {
+      // Check cache first
+      if (_noteCache.containsKey(meta.filePath)) {
+        notes.add(_noteCache[meta.filePath]!);
+        continue;
+      }
+
+      // Load from file
+      try {
+        final file = File(meta.filePath);
+        final note = await _loadNoteFromFile(file, meta.sourceFolder);
+        if (note != null) {
+          _noteCache[meta.filePath] = note;
+          notes.add(note);
+        }
+      } catch (e) {
+        // Skip files that can't be read
+        continue;
+      }
+    }
+
     return notes;
   }
 
   /// Load a single note from a markdown file
   Future<Note?> _loadNoteFromFile(File file, String sourceFolder) async {
     final content = await file.readAsString();
-    // Decode URL-encoded filename (e.g., %3A -> :, %20 -> space)
     final fileName = Uri.decodeComponent(file.uri.pathSegments.last);
     final filePath = file.path;
     final lastUpdated = await file.lastModified();
@@ -52,7 +101,6 @@ class NoteService {
   }
 
   /// Save a note (create if new, update if existing)
-  /// If the title changes, deletes the old file and creates a new one
   Future<Note> saveNote({
     required String folderPath,
     required String title,
@@ -63,17 +111,13 @@ class NoteService {
     final now = DateTime.now();
     final id = note?.id ?? now.millisecondsSinceEpoch.toString();
 
-    // 1. Sanitize the title to create a valid filename
     final fileName = _sanitizeFileName(title);
     final desiredPath = '$folderPath/$fileName.md';
 
-    // 2. Ensure unique filename by adding counter if needed
     String finalPath = desiredPath;
     var counter = 1;
     var file = File(finalPath);
 
-    // Skip the existing note's own file when checking for conflicts
-    // Compare canonical paths to handle path variations
     final existingCanonicalPath = note?.filePath != null
         ? File(note!.filePath!).absolute.path
         : null;
@@ -81,27 +125,25 @@ class NoteService {
     while (await file.exists()) {
       final currentCanonicalPath = file.absolute.path;
 
-      // If this is the same file as the existing note, we can use it
       if (existingCanonicalPath != null &&
           currentCanonicalPath == existingCanonicalPath) {
         break;
       }
 
-      // Otherwise, try a different filename
       finalPath = '$folderPath/${fileName}_$counter.md';
       file = File(finalPath);
       counter++;
     }
 
-    // 3. If updating and the file path has changed, delete the old file
     if (note != null && note.filePath != null && note.filePath != finalPath) {
       final oldFile = File(note.filePath!);
       if (await oldFile.exists()) {
         await oldFile.delete();
+        // Remove from cache
+        _noteCache.remove(note.filePath);
       }
     }
 
-    // Create or update the note
     final savedNote = Note(
       id: id,
       title: title,
@@ -112,9 +154,11 @@ class NoteService {
       sourceFolder: folderPath,
     );
 
-    // Write to file
     file = File(finalPath);
     await file.writeAsString(savedNote.toMarkdown());
+
+    // Update cache
+    _noteCache[finalPath] = savedNote;
 
     return savedNote;
   }
@@ -128,16 +172,20 @@ class NoteService {
     final file = File(note.filePath!);
     if (await file.exists()) {
       await file.delete();
+      // Remove from cache
+      _noteCache.remove(note.filePath);
       return true;
     }
     return false;
   }
 
-  /// Sanitize a title to be used as a filename.
-  /// URL-encodes special characters that may cause issues on some file systems.
+  /// Clear the note cache
+  void clearCache() {
+    _noteCache.clear();
+  }
+
+  /// Sanitize a title to be used as a filename
   String _sanitizeFileName(String title) {
-    // Characters that are problematic across file systems (Windows especially)
-    // < > " / \ | ? * : are not allowed on Windows
     const problematicChars = '<>"/\\|?*:';
     var sanitized = title;
     for (final char in problematicChars.split('')) {

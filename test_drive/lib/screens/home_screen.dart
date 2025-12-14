@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/note.dart';
+import '../models/note_metadata.dart';
 import '../services/note_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/app_drawer.dart';
@@ -50,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// Main home screen content
+/// Main home screen content with infinite scroll
 class _HomeScreenContent extends StatefulWidget {
   final SettingsService settingsService;
 
@@ -63,42 +64,105 @@ class _HomeScreenContent extends StatefulWidget {
 class _HomeScreenContentState extends State<_HomeScreenContent> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final NoteService _noteService = NoteService();
+  final ScrollController _scrollController = ScrollController();
 
-  List<Note> _notes = [];
-  bool _isLoading = true;
+  List<NoteMetadata> _allMetadata = [];
+  List<Note> _loadedNotes = [];
+  bool _isLoadingMetadata = true;
+  bool _isLoadingMore = false;
   String? _errorMessage;
+
+  static const int _pageSize = 20;
+  int _currentPage = 0;
 
   SettingsService get _settings => widget.settingsService;
 
   @override
   void initState() {
     super.initState();
-    _loadNotes();
+    _loadNotesMetadata();
+    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _loadNotes() async {
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// Scroll listener for infinite loading
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      // Load more when 200px from bottom
+      _loadNextPage();
+    }
+  }
+
+  /// Step 1: Scan all files to get metadata (fast)
+  Future<void> _loadNotesMetadata() async {
     setState(() {
-      _isLoading = true;
+      _isLoadingMetadata = true;
       _errorMessage = null;
+      _currentPage = 0;
+      _loadedNotes = [];
     });
 
     try {
       final folder = _settings.getFolder();
-      final List<Note> notes;
+      final List<NoteMetadata> metadata;
       if (folder != null) {
-        notes = await _noteService.loadNotesFromFolders([folder]);
+        metadata = await _noteService.scanNotesMetadata([folder]);
+        // Sort by last modified (newest first)
+        metadata.sort((a, b) => b.lastModified.compareTo(a.lastModified));
       } else {
-        notes = [];
+        metadata = [];
       }
 
       setState(() {
-        _notes = notes;
-        _isLoading = false;
+        _allMetadata = metadata;
+        _isLoadingMetadata = false;
+      });
+
+      // Load first page
+      await _loadNextPage();
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to scan notes: $e';
+        _isLoadingMetadata = false;
+      });
+    }
+  }
+
+  /// Step 2: Load next batch of notes
+  Future<void> _loadNextPage() async {
+    // Prevent multiple simultaneous loads
+    if (_isLoadingMore || _isLoadingMetadata) return;
+
+    // Check if we've loaded everything
+    if (_loadedNotes.length >= _allMetadata.length) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final notes = await _noteService.loadNotesForPage(
+        _allMetadata,
+        _currentPage,
+        _pageSize,
+      );
+
+      setState(() {
+        _loadedNotes.addAll(notes);
+        _currentPage++;
+        _isLoadingMore = false;
       });
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to load notes: $e';
-        _isLoading = false;
+        _isLoadingMore = false;
       });
     }
   }
@@ -113,8 +177,8 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
         builder: (context) => NoteEditorScreen(folderPath: folder),
       ),
     );
-    // Reload notes when returning from editor
-    await _loadNotes();
+    // Reload metadata when returning from editor
+    await _loadNotesMetadata();
   }
 
   Future<void> _editNote(Note note) async {
@@ -128,18 +192,18 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
             NoteEditorScreen(folderPath: folder, existingNote: note),
       ),
     );
-    // Reload notes when returning from editor
-    await _loadNotes();
+    // If refresh fails, just reload everything
+    await _loadNotesMetadata();
   }
 
   List<Note> get _pinnedNotes {
-    final pinned = _notes.where((n) => n.isPinned).toList();
+    final pinned = _loadedNotes.where((n) => n.isPinned).toList();
     pinned.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
     return pinned;
   }
 
   List<Note> get _otherNotes {
-    final others = _notes.where((n) => !n.isPinned).toList();
+    final others = _loadedNotes.where((n) => !n.isPinned).toList();
     others.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
     return others;
   }
@@ -151,12 +215,14 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
         title: note.title,
         content: note.content,
         isPinned: !note.isPinned,
-        note: note
+        note: note,
       );
+
+      // Update the note in the list
       setState(() {
-        final index = _notes.indexWhere((n) => n.id == note.id);
+        final index = _loadedNotes.indexWhere((n) => n.id == note.id);
         if (index != -1) {
-          _notes[index] = updated;
+          _loadedNotes[index] = updated;
         }
       });
     } catch (e) {
@@ -173,10 +239,13 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
 
   Future<void> _deleteNote(Note note) async {
     try {
-      final updated = await _noteService.deleteNote(note);
-      if (updated) {
-        await _loadNotes();
-      };
+      final success = await _noteService.deleteNote(note);
+      if (success) {
+        setState(() {
+          _loadedNotes.removeWhere((n) => n.id == note.id);
+          _allMetadata.removeWhere((m) => m.filePath == note.filePath);
+        });
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -184,13 +253,15 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(
               label: 'Undo',
-              onPressed: () => _noteService.saveNote(
-                  folderPath: note.sourceFolder!,
-                  title: note.title,
-                  content: note.content,
-                  isPinned: note.isPinned,
-                  note: note,
-                ).then((_) => _loadNotes()),
+              onPressed: () => _noteService
+                  .saveNote(
+                    folderPath: note.sourceFolder!,
+                    title: note.title,
+                    content: note.content,
+                    isPinned: note.isPinned,
+                    note: note,
+                  )
+                  .then((_) => _loadNotesMetadata()),
             ),
           ),
         );
@@ -212,8 +283,9 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
       context,
       MaterialPageRoute(builder: (context) => const SettingsScreen()),
     );
-    // Reload notes when returning from settings (folder may have changed)
-    await _loadNotes();
+    // Reload metadata when returning from settings (folder may have changed)
+    _noteService.clearCache();
+    await _loadNotesMetadata();
   }
 
   @override
@@ -254,32 +326,48 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
   }
 
   Widget _buildBody() {
-    if (_isLoading) {
+    if (_isLoadingMetadata) {
       return const Loader();
     }
 
     if (_errorMessage != null) {
       return ErrorScreen(
         errorMessage: _errorMessage ?? 'Unknown error',
-        onRetry: _loadNotes,
+        onRetry: _loadNotesMetadata,
       );
     }
 
-    if (_notes.isEmpty) {
+    if (_allMetadata.isEmpty) {
       return _buildEmptyState();
     }
 
+    if (_loadedNotes.isEmpty && !_isLoadingMore) {
+      return const Center(child: Text('No notes loaded'));
+    }
+
     final sections = [
-      (title: 'Pinned', icon: Icons.push_pin, notes: _pinnedNotes),
-      (title: 'Others', icon: null, notes: _otherNotes),
+      if (_pinnedNotes.isNotEmpty)
+        (title: 'Pinned', icon: Icons.push_pin, notes: _pinnedNotes),
+      if (_otherNotes.isNotEmpty)
+        (title: 'Others', icon: null, notes: _otherNotes),
     ];
 
     return RefreshIndicator(
-      onRefresh: _loadNotes,
+      onRefresh: _loadNotesMetadata,
       child: ListView.separated(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
         separatorBuilder: (context, index) => const SizedBox(height: 24),
+        itemCount: sections.length + (_isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
+          // Show loading indicator at bottom
+          if (index == sections.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+
           final section = sections[index];
           return NotesSection(
             title: section.title,
@@ -290,7 +378,6 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
             onDelete: _deleteNote,
           );
         },
-        itemCount: sections.length,
       ),
     );
   }
