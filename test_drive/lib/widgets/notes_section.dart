@@ -33,6 +33,7 @@ class NotesSection extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Row(
+            spacing: 8,
             children: [
               if (icon != null) ...[
                 Icon(
@@ -40,7 +41,6 @@ class NotesSection extends StatelessWidget {
                   size: 16,
                   color: colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: 8),
               ],
               Text(
                 title,
