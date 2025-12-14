@@ -51,29 +51,45 @@ class NoteService {
     );
   }
 
-  /// Create a new note in the specified folder
-  Future<Note> createNote({
+  /// Save a note (create if new, update if existing)
+  /// If the title changes, deletes the old file and creates a new one
+  Future<Note> saveNote({
     required String folderPath,
     required String title,
     required String content,
-    bool isPinned = false,
+    required bool isPinned,
+    Note? note,
   }) async {
     final now = DateTime.now();
-    final fileName = _sanitizeFileName(title);
-    final filePath = '$folderPath/$fileName.md';
+    final id = note?.id ?? now.millisecondsSinceEpoch.toString();
 
-    // Ensure unique filename
-    var file = File(filePath);
+    // 1. Sanitize the title to create a valid filename
+    final fileName = _sanitizeFileName(title);
+    final desiredPath = '$folderPath/$fileName.md';
+
+    // 2. Ensure unique filename by adding counter if needed
+    String finalPath = desiredPath;
     var counter = 1;
-    var finalPath = filePath;
-    while (await file.exists()) {
+    var file = File(finalPath);
+
+    // Skip the existing note's own file when checking for conflicts
+    while (await file.exists() && file.path != note?.filePath) {
       finalPath = '$folderPath/${fileName}_$counter.md';
       file = File(finalPath);
       counter++;
     }
 
-    final note = Note(
-      id: now.millisecondsSinceEpoch.toString(),
+    // 3. If updating and the file path has changed, delete the old file
+    if (note != null && note.filePath != null && note.filePath != finalPath) {
+      final oldFile = File(note.filePath!);
+      if (await oldFile.exists()) {
+        await oldFile.delete();
+      }
+    }
+
+    // Create or update the note
+    final savedNote = Note(
+      id: id,
       title: title,
       content: content,
       isPinned: isPinned,
@@ -82,35 +98,11 @@ class NoteService {
       sourceFolder: folderPath,
     );
 
-    await file.writeAsString(note.toMarkdown());
-    return note;
-  }
+    // Write to file
+    file = File(finalPath);
+    await file.writeAsString(savedNote.toMarkdown());
 
-  /// Update an existing note
-  Future<Note> updateNote(
-    Note note, {
-    String? newTitle,
-    String? newContent,
-    bool? isPinned,
-    bool? isDeleted,
-  }) async {
-    final updatedNote = Note(
-      id: note.id,
-      title: newTitle ?? note.title,
-      content: newContent ?? note.content,
-      isPinned: isPinned ?? note.isPinned,
-      isDeleted: isDeleted ?? note.isDeleted,
-      lastUpdated: DateTime.now(),
-      filePath: note.filePath,
-      sourceFolder: note.sourceFolder,
-    );
-
-    if (note.filePath != null) {
-      final file = File(note.filePath!);
-      await file.writeAsString(updatedNote.toMarkdown());
-    }
-
-    return updatedNote;
+    return savedNote;
   }
 
   /// Delete a note

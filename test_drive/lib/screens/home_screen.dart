@@ -134,24 +134,27 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     await _loadNotes();
   }
 
-  /// Notes that are not deleted
-  List<Note> get _visibleNotes => _notes.where((n) => !n.isDeleted).toList();
-
   List<Note> get _pinnedNotes {
-    final pinned = _visibleNotes.where((n) => n.isPinned).toList();
+    final pinned = _notes.where((n) => n.isPinned).toList();
     pinned.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
     return pinned;
   }
 
   List<Note> get _otherNotes {
-    final others = _visibleNotes.where((n) => !n.isPinned).toList();
+    final others = _notes.where((n) => !n.isPinned).toList();
     others.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
     return others;
   }
 
   Future<void> _togglePin(Note note) async {
     try {
-      final updated = await _noteService.updateNote(note, isPinned: !note.isPinned);
+      final updated = await _noteService.saveNote(
+        folderPath: note.sourceFolder!,
+        title: note.title,
+        content: note.content,
+        isPinned: !note.isPinned,
+        note: note
+      );
       setState(() {
         final index = _notes.indexWhere((n) => n.id == note.id);
         if (index != -1) {
@@ -172,13 +175,10 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
 
   Future<void> _deleteNote(Note note) async {
     try {
-      final updated = await _noteService.updateNote(note, isDeleted: true);
-      setState(() {
-        final index = _notes.indexWhere((n) => n.id == note.id);
-        if (index != -1) {
-          _notes[index] = updated;
-        }
-      });
+      final updated = await _noteService.deleteNote(note);
+      if (updated) {
+        await _loadNotes();
+      };
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -186,15 +186,13 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(
               label: 'Undo',
-              onPressed: () async {
-                final restored = await _noteService.updateNote(updated, isDeleted: false);
-                setState(() {
-                  final idx = _notes.indexWhere((n) => n.id == note.id);
-                  if (idx != -1) {
-                    _notes[idx] = restored;
-                  }
-                });
-              },
+              onPressed: () => _noteService.saveNote(
+                  folderPath: note.sourceFolder!,
+                  title: note.title,
+                  content: note.content,
+                  isPinned: note.isPinned,
+                  note: note,
+                ).then((_) => _loadNotes()),
             ),
           ),
         );
@@ -269,7 +267,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
       );
     }
 
-    if (_visibleNotes.isEmpty) {
+    if (_notes.isEmpty) {
       return _buildEmptyState();
     }
 
