@@ -1,6 +1,8 @@
 ---
 alwaysApply: true
 ---
+Pay attention to this codebase's conventions and Flutter Library, reusing components and patterns whereever possible. Follow the SOLID principles when designing new classes and writing new files.
+
 Try not to delete comments or print statements. In Flutter, use cascade operators when you can. If in dart you do print add a [FunctionName] to it, like the actual string for the function name. Try to have a lot of comments, when refactoring or creating code take the chance to add as many comments as you can and is prudent, with multi-line, fancy formatting if necessary for explanations. If you are unsure about names or member variables, feel free to remind me/ask me for full codebase context.
 
 If we are designing a UI, try to use Apple's Human Interface Guidelines, let's make something sleek, sexy, modern, and easy to use if we are doing UI stuff, with nice animations too if we can. Really modern and sexy sleek minimal apple style MacOS style UI design, make it sexy, sleek. Animations, UI. Modern, amazing STEVE JOBS LEVEL lets GO! Always reaffirm to me that we are doing it using Apple Guidelines and how we used them in this design (if we are doing UI).
