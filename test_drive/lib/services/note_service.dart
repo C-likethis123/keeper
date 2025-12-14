@@ -73,7 +73,21 @@ class NoteService {
     var file = File(finalPath);
 
     // Skip the existing note's own file when checking for conflicts
-    while (await file.exists() && file.path != note?.filePath) {
+    // Compare canonical paths to handle path variations
+    final existingCanonicalPath = note?.filePath != null
+        ? File(note!.filePath!).absolute.path
+        : null;
+
+    while (await file.exists()) {
+      final currentCanonicalPath = file.absolute.path;
+
+      // If this is the same file as the existing note, we can use it
+      if (existingCanonicalPath != null &&
+          currentCanonicalPath == existingCanonicalPath) {
+        break;
+      }
+
+      // Otherwise, try a different filename
       finalPath = '$folderPath/${fileName}_$counter.md';
       file = File(finalPath);
       counter++;

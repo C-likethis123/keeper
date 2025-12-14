@@ -26,23 +26,16 @@ class NoteEditorScreen extends StatefulWidget {
 class _NoteEditorScreenState extends State<NoteEditorScreen> {
   late final String _editingSessionId;
   final NoteService _noteService = NoteService();
-  final ValueNotifier<int> _saveTrigger = ValueNotifier(0);
-
-  // TODO: why do I need both timers?
   Timer? _autoSaveTimer;
-  Timer? _debounceTimer;
+  static const _autoSaveDelay = Duration(seconds: 3);
   late final SaveQueue _saveQueue;
   final ValueNotifier<SaveState> _saveState = ValueNotifier(SaveState.idle);
 
   Note? _currentNote;
   bool _isPinned = false;
-  bool _hasUnsavedChanges = false;
 
   late String _title;
   late String _content;
-
-  static const _autoSaveDelay = Duration(seconds: 3);
-  static const _debounceDelay = Duration(milliseconds: 300);
 
   @override
   void initState() {
@@ -51,8 +44,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     _title = widget.existingNote?.title ?? '';
     _content = widget.existingNote?.content ?? '';
     _isPinned = widget.existingNote?.isPinned ?? false;
-    _editingSessionId = widget.existingNote?.id ?? 
-                        DateTime.now().millisecondsSinceEpoch.toString();
+    _editingSessionId =
+        widget.existingNote?.id ??
+        DateTime.now().millisecondsSinceEpoch.toString();
     // Initialize save queue with callbacks
     _saveQueue = SaveQueue(_noteService)
       ..onSaveStart = () {
@@ -60,7 +54,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       }
       ..onSaveComplete = (note) {
         _currentNote = note;
-        _hasUnsavedChanges = false;
         _saveState.value = SaveState.saved;
       }
       ..onSaveError = (error) {
@@ -79,8 +72,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   @override
   void dispose() {
     _autoSaveTimer?.cancel();
-    _debounceTimer?.cancel();
-    _saveTrigger.dispose();
     _saveQueue.dispose();
     _saveState.dispose();
     super.dispose();
@@ -88,23 +79,17 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
   void _onTitleChanged(String value) {
     _title = value;
-    _hasUnsavedChanges = true;
     _scheduleAutoSave();
   }
 
   void _onContentChanged(String value) {
     _content = value;
-    _hasUnsavedChanges = true;
     _scheduleAutoSave();
   }
 
   void _scheduleAutoSave() {
     _autoSaveTimer?.cancel();
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(_debounceDelay, () {
-      // After debounce, schedule the actual save
-      _autoSaveTimer = Timer(_autoSaveDelay, _save);
-    });
+    _autoSaveTimer = Timer(_autoSaveDelay, _save);
   }
 
   Future<void> _save() async {
@@ -130,16 +115,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
   void _togglePin() {
     setState(() => _isPinned = !_isPinned);
-    _hasUnsavedChanges = true;
     _scheduleAutoSave();
   }
 
   Future<bool> _onWillPop() async {
     // Save any pending changes before leaving
-    _debounceTimer?.cancel();
     _autoSaveTimer?.cancel();
-    if (_hasUnsavedChanges &&
-        (_title.trim().isNotEmpty || _content.trim().isNotEmpty)) {
+    if (_title.trim().isNotEmpty || _content.trim().isNotEmpty) {
       await _save();
     }
     await _saveQueue.flush();
