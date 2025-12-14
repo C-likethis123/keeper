@@ -73,32 +73,21 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     final title = _title.trim();
     final content = _content;
 
-    // Don't save if title is empty
-    if (title.isEmpty) return;
+    if (title.isEmpty && content.isEmpty) {
+      return;
+    }
 
     try {
-      if (_currentNote == null) {
-        // Create new note
-        final note = await _noteService.createNote(
-          folderPath: widget.folderPath,
-          title: title,
-          content: content,
-          isPinned: _isPinned,
-        );
-        _currentNote = note;
-      } else {
-        // Update existing note
-        final updated = await _noteService.updateNote(
-          _currentNote!,
-          newTitle: title,
-          newContent: content,
-          isPinned: _isPinned,
-        );
-        _currentNote = updated;
-      }
-
+      final newNote = await _noteService.saveNote(
+        folderPath: widget.folderPath, 
+        title: title.isEmpty ? 'Untitled' : title,
+        content: content, 
+        isPinned: _isPinned, 
+        note: _currentNote);
+      _currentNote = newNote;
       _hasUnsavedChanges = false;
       _saveTrigger.value++;
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
