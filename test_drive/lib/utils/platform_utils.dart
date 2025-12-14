@@ -6,7 +6,6 @@ class PlatformUtils {
 
   /// Get the path separator for the current platform
   static String get pathSeparator {
-    if (kIsWeb) return '/';
     // Windows uses backslash, others use forward slash
     if (defaultTargetPlatform == TargetPlatform.windows) {
       return '\\';
@@ -26,9 +25,6 @@ class PlatformUtils {
         defaultTargetPlatform == TargetPlatform.macOS ||
         defaultTargetPlatform == TargetPlatform.linux;
   }
-
-  /// Check if file system access is supported
-  static bool get supportsFileSystem => !kIsWeb;
 
   /// Extract the last component of a path (folder/file name)
   static String getPathBasename(String path) {
