@@ -1,20 +1,17 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
+import '../save_queue.dart';
 
-/// A widget that shows "Saved" with a checkmark, then auto-hides after a delay.
-/// Listens to a [ValueNotifier] trigger - increments to the trigger value cause the indicator to show.
 class SaveIndicator extends StatefulWidget {
-  /// A notifier that triggers the indicator when its value changes
-  final ValueNotifier<int> trigger;
-
-  /// How long to show the indicator before hiding
-  final Duration displayDuration;
+  final ValueNotifier<SaveState> saveState;
+  final Duration savedDisplayDuration;
+  final Duration errorDisplayDuration;
 
   const SaveIndicator({
     super.key,
-    required this.trigger,
-    this.displayDuration = const Duration(seconds: 2),
+    required this.saveState,
+    this.savedDisplayDuration = const Duration(seconds: 2),
+    this.errorDisplayDuration = const Duration(seconds: 5),
   });
 
   @override
@@ -22,64 +19,94 @@ class SaveIndicator extends StatefulWidget {
 }
 
 class _SaveIndicatorState extends State<SaveIndicator> {
-  bool _isVisible = false;
   Timer? _hideTimer;
 
   @override
   void initState() {
     super.initState();
-    widget.trigger.addListener(_onTrigger);
-  }
-
-  @override
-  void didUpdateWidget(covariant SaveIndicator oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.trigger != oldWidget.trigger) {
-      oldWidget.trigger.removeListener(_onTrigger);
-      widget.trigger.addListener(_onTrigger);
-    }
+    widget.saveState.addListener(_onSaveStateChanged);
   }
 
   @override
   void dispose() {
-    widget.trigger.removeListener(_onTrigger);
     _hideTimer?.cancel();
+    widget.saveState.removeListener(_onSaveStateChanged);
     super.dispose();
   }
 
-  void _onTrigger() {
+  void _onSaveStateChanged() {
+    final newState = widget.saveState.value;
+    
+    // Cancel any existing hide timer
     _hideTimer?.cancel();
-    setState(() => _isVisible = true);
-    _hideTimer = Timer(widget.displayDuration, () {
-      if (mounted) {
-        setState(() => _isVisible = false);
-      }
-    });
+
+    // Force rebuild
+    if (mounted) {
+      setState(() {});
+    }
+
+    // Schedule hide for saved and error states
+    if (newState == SaveState.saved) {
+      _hideTimer = Timer(widget.savedDisplayDuration, () {
+        if (mounted) {
+          widget.saveState.value = SaveState.idle;
+        }
+      });
+    } else if (newState == SaveState.error) {
+      _hideTimer = Timer(widget.errorDisplayDuration, () {
+        if (mounted) {
+          widget.saveState.value = SaveState.idle;
+        }
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_isVisible) {
-      return const SizedBox.shrink();
+    // Read the current state directly from the ValueNotifier
+    final state = widget.saveState.value;
+    
+    switch (state) {
+      case SaveState.idle:
+        return const SizedBox.shrink();
+        
+      case SaveState.saving:
+        return const Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 8,
+          children: [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            Text('Saving...', style: TextStyle(fontSize: 14)),
+          ],
+        );
+        
+      case SaveState.saved:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 4,
+          children: [
+            Icon(Icons.check_circle_outline, 
+                 size: 16, 
+                 color: Colors.green[700]),
+            Text('Saved', 
+                 style: TextStyle(fontSize: 14, color: Colors.green[700])),
+          ],
+        );
+        
+      case SaveState.error:
+        return const Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 4,
+          children: [
+            Icon(Icons.error_outline, size: 16, color: Colors.red),
+            Text('Save failed', 
+                 style: TextStyle(fontSize: 14, color: Colors.red)),
+          ],
+        );
     }
-
-    final colorScheme = Theme.of(context).colorScheme;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          Icons.check,
-          size: 16,
-          color: colorScheme.primary,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'Saved',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: colorScheme.primary,
-              ),
-        ),
-      ],
-    );
   }
 }

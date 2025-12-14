@@ -7,6 +7,7 @@ import '../services/note_service.dart';
 import '../widgets/note_title_field.dart';
 import '../widgets/save_indicator.dart';
 import '../widgets/hybrid_editor/hybrid_editor.dart';
+import '../save_queue.dart';
 
 class NoteEditorScreen extends StatefulWidget {
   final String folderPath;
@@ -23,10 +24,16 @@ class NoteEditorScreen extends StatefulWidget {
 }
 
 class _NoteEditorScreenState extends State<NoteEditorScreen> {
+  late final String _editingSessionId;
   final NoteService _noteService = NoteService();
   final ValueNotifier<int> _saveTrigger = ValueNotifier(0);
 
+  // TODO: why do I need both timers?
   Timer? _autoSaveTimer;
+  Timer? _debounceTimer;
+  late final SaveQueue _saveQueue;
+  final ValueNotifier<SaveState> _saveState = ValueNotifier(SaveState.idle);
+
   Note? _currentNote;
   bool _isPinned = false;
   bool _hasUnsavedChanges = false;
@@ -35,6 +42,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   late String _content;
 
   static const _autoSaveDelay = Duration(seconds: 3);
+  static const _debounceDelay = Duration(milliseconds: 300);
 
   @override
   void initState() {
@@ -43,12 +51,38 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     _title = widget.existingNote?.title ?? '';
     _content = widget.existingNote?.content ?? '';
     _isPinned = widget.existingNote?.isPinned ?? false;
+    _editingSessionId = widget.existingNote?.id ?? 
+                        DateTime.now().millisecondsSinceEpoch.toString();
+    // Initialize save queue with callbacks
+    _saveQueue = SaveQueue(_noteService)
+      ..onSaveStart = () {
+        _saveState.value = SaveState.saving;
+      }
+      ..onSaveComplete = (note) {
+        _currentNote = note;
+        _hasUnsavedChanges = false;
+        _saveState.value = SaveState.saved;
+      }
+      ..onSaveError = (error) {
+        _saveState.value = SaveState.error;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to save: $error'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      };
   }
 
   @override
   void dispose() {
     _autoSaveTimer?.cancel();
+    _debounceTimer?.cancel();
     _saveTrigger.dispose();
+    _saveQueue.dispose();
+    _saveState.dispose();
     super.dispose();
   }
 
@@ -66,7 +100,11 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
   void _scheduleAutoSave() {
     _autoSaveTimer?.cancel();
-    _autoSaveTimer = Timer(_autoSaveDelay, _save);
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(_debounceDelay, () {
+      // After debounce, schedule the actual save
+      _autoSaveTimer = Timer(_autoSaveDelay, _save);
+    });
   }
 
   Future<void> _save() async {
@@ -77,27 +115,17 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       return;
     }
 
-    try {
-      final newNote = await _noteService.saveNote(
-        folderPath: widget.folderPath, 
-        title: title.isEmpty ? 'Untitled' : title,
-        content: content, 
-        isPinned: _isPinned, 
-        note: _currentNote);
-      _currentNote = newNote;
-      _hasUnsavedChanges = false;
-      _saveTrigger.value++;
+    // Create and enqueue the save task
+    final task = SaveTask(
+      folderPath: widget.folderPath,
+      title: title.isEmpty ? 'Untitled' : title,
+      content: content,
+      isPinned: _isPinned,
+      existingNote: _currentNote,
+      sessionId: _editingSessionId,
+    );
 
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save: $e'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
+    _saveQueue.enqueue(task);
   }
 
   void _togglePin() {
@@ -108,10 +136,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
   Future<bool> _onWillPop() async {
     // Save any pending changes before leaving
+    _debounceTimer?.cancel();
     _autoSaveTimer?.cancel();
-    if (_hasUnsavedChanges && _title.trim().isNotEmpty) {
+    if (_hasUnsavedChanges &&
+        (_title.trim().isNotEmpty || _content.trim().isNotEmpty)) {
       await _save();
     }
+    await _saveQueue.flush();
     return true;
   }
 
@@ -121,11 +152,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     final isNewNote = widget.existingNote == null && _currentNote == null;
 
     return PopScope(
-      canPop: true,
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        if (await _onWillPop()) {
-          if (context.mounted) Navigator.pop(context);
+        if (!didPop) {
+          if (await _onWillPop()) {
+            if (context.mounted) Navigator.pop(context);
+          }
         }
       },
       child: Scaffold(
@@ -139,13 +171,15 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               }
             },
           ),
-          title: SaveIndicator(trigger: _saveTrigger),
+          title: SaveIndicator(saveState: _saveState),
           actions: [
             IconButton(
               onPressed: _togglePin,
               icon: Icon(
                 _isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                color: _isPinned ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                color: _isPinned
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant,
               ),
               tooltip: _isPinned ? 'Unpin note' : 'Pin note',
             ),
