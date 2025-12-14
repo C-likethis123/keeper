@@ -124,10 +124,8 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NoteEditorScreen(
-          folderPath: folder,
-          existingNote: note,
-        ),
+        builder: (context) =>
+            NoteEditorScreen(folderPath: folder, existingNote: note),
       ),
     );
     // Reload notes when returning from editor
