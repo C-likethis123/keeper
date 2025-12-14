@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'core/core.dart';
 import 'blocks/blocks.dart';
+import 'input/editor_text_input_manager.dart';
 import 'input/input.dart';
 
 /// A hybrid markdown/code editor widget
@@ -43,6 +45,7 @@ class _HybridEditorState extends State<HybridEditor> {
   late BlockRegistry _registry;
   int _lastBlockCount =
       0; // Tracks the structure of the document so we know if it changed
+  List<BlockType> _lastBlockTypes = [];
 
   @override
   void initState() {
@@ -58,7 +61,9 @@ class _HybridEditorState extends State<HybridEditor> {
     );
     _editorState.addListener(_onEditorStateChanged);
     _lastBlockCount = _editorState.document.length;
-
+    _lastBlockTypes = _editorState.document.blocks
+        .map((b) => b.blockType)
+        .toList();
     // Initialize input manager
     _inputManager = EditorTextInputManager(
       editorState: _editorState,
@@ -100,8 +105,15 @@ class _HybridEditorState extends State<HybridEditor> {
     _inputManager.syncWithDocument();
     widget.onChanged?.call(_editorState.toMarkdown());
     final currentBlockCount = _editorState.document.length;
-    if (currentBlockCount != _lastBlockCount) {
+    final currentBlockTypes = _editorState.document.blocks
+        .map((b) => b.type)
+        .toList();
+    final typesChanged = !listEquals(currentBlockTypes, _lastBlockTypes);
+    final blockCountChanged = currentBlockCount != _lastBlockCount;
+
+    if (blockCountChanged || typesChanged) {
       _lastBlockCount = currentBlockCount;
+      _lastBlockTypes = currentBlockTypes;
       setState(() {});
     }
   }
@@ -112,9 +124,6 @@ class _HybridEditorState extends State<HybridEditor> {
 
   void _onBlockContentChanged(int index, String newContent) {
     final block = _editorState.document[index];
-    print(
-      "[HybridEditor._onBlockContentChanged] Block $index content changed: $newContent",
-    );
 
     // Check for block type conversion (only for paragraphs)
     if (block.type == BlockType.paragraph) {
@@ -249,10 +258,6 @@ class _HybridEditorState extends State<HybridEditor> {
 
   @override
   Widget build(BuildContext context) {
-    print(
-      '[HybridEditor.build] Building... blocks: ${_editorState.document.length}',
-    );
-
     return Focus(
       onKeyEvent: _handleKeyEvent,
       child: ListView.builder(
