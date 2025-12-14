@@ -1,0 +1,21 @@
+---
+alwaysApply: true
+---
+When displaying an error state in the entire screen, use the `ErrorScreen` widget in 'error_screen.dart'.
+
+Basic usage:
+```
+ErrorScreen(errorMessage: error')
+```
+
+If you need to trigger a retry action:
+```
+ErrorScreen(errorMessage: error, onRetry: onRetry)
+```
+
+
+Another way to display error states is through the SnackBar
+TODO: decide if we want to change error handling conventions here.
+SnackBar:
+- perform initial action, set state
+- if mounted vs not mounted action.

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/settings_service.dart';
 import '../utils/platform_utils.dart';
 import '../widgets/folder_picker.dart';
-import '../widgets/loader.dart';
+import 'screen_states/loader.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

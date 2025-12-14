@@ -6,7 +6,8 @@ import '../services/settings_service.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/empty_state.dart';
-import '../widgets/loader.dart';
+import 'screen_states/error_screen.dart';
+import 'screen_states/loader.dart';
 import '../widgets/notes_section.dart';
 import 'note_editor_screen.dart';
 import 'settings_screen.dart';
@@ -37,25 +38,8 @@ class _HomeScreenState extends State<HomeScreen> {
         if (snapshot.hasError) {
           return Scaffold(
             appBar: appBar,
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Failed to initialize: ${snapshot.error}',
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
+            body: ErrorScreen(
+              errorMessage: 'Failed to initialize: ${snapshot.error}',
             ),
           );
         }
@@ -279,28 +263,9 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 48,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 16),
-              FilledButton(onPressed: _loadNotes, child: const Text('Retry')),
-            ],
-          ),
-        ),
+      return ErrorScreen(
+        errorMessage: _errorMessage ?? 'Unknown error',
+        onRetry: _loadNotes,
       );
     }
 
