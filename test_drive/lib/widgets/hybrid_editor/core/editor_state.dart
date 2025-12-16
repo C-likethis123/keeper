@@ -6,13 +6,13 @@ import 'transaction.dart';
 import 'history_state.dart';
 
 /// The central state manager for the editor.
-/// 
+///
 /// EditorState is a ChangeNotifier that holds:
 /// - The current document
 /// - The current selection
 /// - The focused block index
 /// - Undo/redo history
-/// 
+///
 /// All modifications go through transactions to enable undo/redo.
 class EditorState extends ChangeNotifier {
   Document _document;
@@ -25,9 +25,9 @@ class EditorState extends ChangeNotifier {
     Document? document,
     DocumentSelection? selection,
     HistoryConfig historyConfig = const HistoryConfig(),
-  })  : _document = document ?? Document.empty(),
-        _selection = selection ?? const DocumentSelection.start(),
-        _history = History(config: historyConfig);
+  }) : _document = document ?? Document.empty(),
+       _selection = selection ?? const DocumentSelection.start(),
+       _history = History(config: historyConfig);
 
   /// The current document
   Document get document => _document;
@@ -39,7 +39,7 @@ class EditorState extends ChangeNotifier {
   int? get focusedBlockIndex => _focusedBlockIndex;
 
   /// The currently focused block, if any
-  BlockNode? get focusedBlock => 
+  BlockNode? get focusedBlock =>
       _focusedBlockIndex != null ? _document[_focusedBlockIndex!] : null;
 
   /// Whether there are changes to undo
@@ -60,13 +60,16 @@ class EditorState extends ChangeNotifier {
   }
 
   /// Sets the focused block index
-  void setFocusedBlock(int? index) {
+  void setFocusedBlock(int? index, {bool preserveSelection = true}) {
     if (_focusedBlockIndex != index) {
       _focusedBlockIndex = index;
-      if (index != null) {
+      if (index != null && !preserveSelection) {
         // Update selection to be within the focused block
         _selection = DocumentSelection.collapsed(
-          DocumentPosition(blockIndex: index, offset: _document[index].content.length),
+          DocumentPosition(
+            blockIndex: index,
+            offset: _document[index].content.length,
+          ),
         );
       }
       notifyListeners();
@@ -139,9 +142,11 @@ class EditorState extends ChangeNotifier {
     final transaction = TransactionBuilder()
         .updateContent(index, block.content, newContent)
         .withSelectionBefore(_selection)
-        .withSelectionAfter(DocumentSelection.collapsed(
-          DocumentPosition(blockIndex: index, offset: newContent.length),
-        ))
+        .withSelectionAfter(
+          DocumentSelection.collapsed(
+            DocumentPosition(blockIndex: index, offset: newContent.length),
+          ),
+        )
         .withDescription('Update content')
         .build();
 
@@ -161,6 +166,16 @@ class EditorState extends ChangeNotifier {
         .build();
 
     apply(transaction);
+    // CRITICAL: Maintain focus on the block during type change
+    // Don't change selection, just ensure focusedBlockIndex is correct
+    if (_focusedBlockIndex == index) {
+      // This prevents the check, but we need to trigger listener
+      notifyListeners();
+    } else {
+      // If this block should be focused, update it
+      _focusedBlockIndex = index;
+      notifyListeners();
+    }
   }
 
   /// Inserts a new block after the specified index
@@ -168,9 +183,11 @@ class EditorState extends ChangeNotifier {
     final transaction = TransactionBuilder()
         .insertBlock(index + 1, block)
         .withSelectionBefore(_selection)
-        .withSelectionAfter(DocumentSelection.collapsed(
-          DocumentPosition(blockIndex: index + 1, offset: 0),
-        ))
+        .withSelectionAfter(
+          DocumentSelection.collapsed(
+            DocumentPosition(blockIndex: index + 1, offset: 0),
+          ),
+        )
         .withDescription('Insert block')
         .build();
 
@@ -192,12 +209,14 @@ class EditorState extends ChangeNotifier {
     final transaction = TransactionBuilder()
         .deleteBlock(index, block)
         .withSelectionBefore(_selection)
-        .withSelectionAfter(DocumentSelection.collapsed(
-          DocumentPosition(
-            blockIndex: newFocusIndex,
-            offset: newFocusBlock.content.length,
+        .withSelectionAfter(
+          DocumentSelection.collapsed(
+            DocumentPosition(
+              blockIndex: newFocusIndex,
+              offset: newFocusBlock.content.length,
+            ),
           ),
-        ))
+        )
         .withDescription('Delete block')
         .build();
 
@@ -224,9 +243,11 @@ class EditorState extends ChangeNotifier {
         .updateContent(index, block.content, beforeContent)
         .insertBlock(index + 1, newBlock)
         .withSelectionBefore(_selection)
-        .withSelectionAfter(DocumentSelection.collapsed(
-          DocumentPosition(blockIndex: index + 1, offset: 0),
-        ))
+        .withSelectionAfter(
+          DocumentSelection.collapsed(
+            DocumentPosition(blockIndex: index + 1, offset: 0),
+          ),
+        )
         .withDescription('Split block')
         .build();
 
@@ -250,9 +271,11 @@ class EditorState extends ChangeNotifier {
         .updateContent(index - 1, previousBlock.content, mergedContent)
         .deleteBlock(index, currentBlock)
         .withSelectionBefore(_selection)
-        .withSelectionAfter(DocumentSelection.collapsed(
-          DocumentPosition(blockIndex: index - 1, offset: cursorOffset),
-        ))
+        .withSelectionAfter(
+          DocumentSelection.collapsed(
+            DocumentPosition(blockIndex: index - 1, offset: cursorOffset),
+          ),
+        )
         .withDescription('Merge blocks')
         .build();
 
@@ -284,4 +307,3 @@ class EditorState extends ChangeNotifier {
     super.dispose();
   }
 }
-

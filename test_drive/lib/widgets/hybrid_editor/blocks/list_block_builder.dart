@@ -43,10 +43,7 @@ class _ListBlockWidget extends StatefulWidget {
   final BlockConfig config;
   final bool isNumbered;
 
-  const _ListBlockWidget({
-    required this.config,
-    required this.isNumbered,
-  });
+  const _ListBlockWidget({required this.config, required this.isNumbered});
 
   @override
   State<_ListBlockWidget> createState() => _ListBlockWidgetState();
@@ -62,7 +59,15 @@ class _ListBlockWidgetState extends State<_ListBlockWidget> {
   void initState() {
     super.initState();
     config.focusNode.addListener(_onFocusChange);
-    _showFormatted = !config.isFocused;
+    _showFormatted = !config.focusNode.hasFocus;
+
+    if (config.focusNode.hasFocus && _showFormatted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && config.focusNode.hasFocus) {
+          setState(() => _showFormatted = false);
+        }
+      });
+    }
   }
 
   @override
@@ -93,7 +98,8 @@ class _ListBlockWidgetState extends State<_ListBlockWidget> {
 
   Widget _buildBulletOrNumber(BuildContext context) {
     final theme = Theme.of(context);
-    final textStyle = theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
+    final textStyle =
+        theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
 
     if (isNumbered) {
       final number = config.listItemNumber ?? 1;
@@ -101,9 +107,7 @@ class _ListBlockWidgetState extends State<_ListBlockWidget> {
         width: 28,
         child: Text(
           '$number.',
-          style: textStyle.copyWith(
-            color: theme.colorScheme.primary,
-          ),
+          style: textStyle.copyWith(color: theme.colorScheme.primary),
         ),
       );
     } else {
@@ -161,7 +165,8 @@ class _ListBlockWidgetState extends State<_ListBlockWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textStyle = theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
+    final textStyle =
+        theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
 
     return Padding(
       padding: const EdgeInsets.only(left: 8),
@@ -195,7 +200,9 @@ class _ListBlockWidgetState extends State<_ListBlockWidget> {
                       decoration: InputDecoration(
                         hintText: 'List item',
                         hintStyle: textStyle.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.4,
+                          ),
                         ),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(vertical: 4),
