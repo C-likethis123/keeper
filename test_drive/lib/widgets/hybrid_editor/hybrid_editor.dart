@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'blocks/editor_block.dart';
 import 'core/core.dart';
 import 'blocks/blocks.dart';
 import 'input/editor_text_input_manager.dart';
@@ -313,7 +314,7 @@ class _HybridEditorState extends State<HybridEditor> {
 
     return GestureDetector(
       onTap: () => _onBlockFocus(index),
-      child: _registry.build(context, config),
+      child: EditorBlockWidget(config: config),
     );
   }
 }

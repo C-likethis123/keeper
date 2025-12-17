@@ -87,11 +87,7 @@ class EditorState extends ChangeNotifier {
   /// Applies a transaction to the document
   void apply(Transaction transaction) {
     if (transaction.isEmpty) return;
-
-    // Store the inverse for undo
     _history.push(transaction, _document);
-
-    // Apply the transaction
     _document = transaction.apply(_document);
 
     // Update selection if specified
@@ -166,16 +162,16 @@ class EditorState extends ChangeNotifier {
         .build();
 
     apply(transaction);
-    // CRITICAL: Maintain focus on the block during type change
-    // Don't change selection, just ensure focusedBlockIndex is correct
-    if (_focusedBlockIndex == index) {
-      // This prevents the check, but we need to trigger listener
-      notifyListeners();
-    } else {
-      // If this block should be focused, update it
-      _focusedBlockIndex = index;
-      notifyListeners();
-    }
+    // // CRITICAL: Maintain focus on the block during type change
+    // // Don't change selection, just ensure focusedBlockIndex is correct
+    // if (_focusedBlockIndex == index) {
+    //   // This prevents the check, but we need to trigger listener
+    //   notifyListeners();
+    // } else {
+    //   // If this block should be focused, update it
+    //   _focusedBlockIndex = index;
+    //   notifyListeners();
+    // }
   }
 
   /// Inserts a new block after the specified index
