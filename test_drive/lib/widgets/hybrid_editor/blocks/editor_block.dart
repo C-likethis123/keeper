@@ -138,7 +138,6 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final textStyle = _editorStyle(context);
 
     final isCodeBlock = config.block.type == BlockType.codeBlock;

@@ -5,9 +5,15 @@ import '../models/note.dart';
 import '../models/note_metadata.dart';
 
 class NoteService {
+
+  static final NoteService instance = NoteService._internal();
+  NoteService._internal();
+
+  factory NoteService() => instance;
+
   // Cache for full notes that have been loaded
   final Map<String, Note> _noteCache = {};
-  
+
   /// Scan folders and return only metadata (fast)
   Future<List<NoteMetadata>> scanNotesMetadata(List<String> folderPaths) async {
     final List<NoteMetadata> metadata = [];
