@@ -123,38 +123,44 @@ class _HybridEditorState extends State<HybridEditor> {
     _editorState.setFocusedBlock(index);
   }
 
+  // I should run the block detection at several points.
   void _onBlockContentChanged(int index, String newContent) {
-      final detection = _registry.detectBlockType(newContent);
-      if (detection != null) {
-        // Update controller text FIRST (before state change triggers rebuild)
-        final controller = _inputManager.getController(index);
-        controller.text = detection.remainingContent;
-
-        // TODO: do I need to care about the selection here?
-        // where is the focus note here?
-        // actually i think the missing selection is the problem it probably determines the cusor.
-        controller.selection = TextSelection.collapsed(
-          offset: detection.remainingContent.length,
-        );
-
-        // Then update block type
-        _editorState.updateBlockType(index, detection.type, language: detection.language);
-        _editorState.updateBlockContent(index, detection.remainingContent);
-        return;
-
-    }
     _editorState.updateBlockContent(index, newContent);
   }
 
-  void _onEnter(int index) {
-    final controller = _inputManager.getController(index);
-    final cursorPos = controller.selection.baseOffset;
-    _editorState.splitBlock(index, cursorPos);
+  void _onSpace(int index) {
+    final newContent = _editorState.document[index].content;
+    final detection = _registry.detectBlockType(newContent);
+    if (detection != null) {
+      _editorState.updateBlockType(index, detection.type, language: detection.language);
+      _editorState.updateBlockContent(index, detection.remainingContent);
+    } else {
+      _editorState.updateBlockContent(index, '$newContent ');
+    }
+  }
 
-    // Focus the new block
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _inputManager.focusBlock(index + 1);
-    });
+  void _onEnter(int index) {
+    final newContent = _editorState.document[index].content;
+    final detection = _registry.detectBlockType(newContent);
+    if (detection != null) {
+      _editorState.updateBlockType(
+        index,
+        detection.type,
+        language: detection.language,
+      );
+      _editorState.updateBlockContent(index, detection.remainingContent);
+      return;
+    } else {
+      // Maybe I can do something here? If there is block type change, then I'll do that.
+      final controller = _inputManager.getController(index);
+      final cursorPos = controller.selection.baseOffset;
+      _editorState.splitBlock(index, cursorPos);
+
+      // Focus the new block
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _inputManager.focusBlock(index + 1);
+      });
+    }
   }
 
   void _onBackspaceAtStart(int index) {
@@ -270,6 +276,7 @@ class _HybridEditorState extends State<HybridEditor> {
       controller: controller,
       focusNode: focusNode,
       onContentChanged: (content) => _onBlockContentChanged(index, content),
+      onSpace: () => _onSpace(index),
       onEnter: () => _onEnter(index),
       onBackspaceAtStart: () => _onBackspaceAtStart(index),
       onDelete: () => _onDelete(index),

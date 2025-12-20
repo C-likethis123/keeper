@@ -10,7 +10,7 @@ class BulletListBlockBuilder extends BlockBuilder {
   BlockType get type => BlockType.bulletList;
 
   @override
-  RegExp? get triggerPrefix => RegExp(r'^- ');
+  RegExp? get triggerPrefix => RegExp(r'^-');
 
   @override
   String get markdownPrefix => '- ';
@@ -27,7 +27,7 @@ class NumberedListBlockBuilder extends BlockBuilder {
   BlockType get type => BlockType.numberedList;
 
   @override
-  RegExp? get triggerPrefix => RegExp(r'^(\d+)\.\s');
+  RegExp? get triggerPrefix => RegExp(r'^(\d+)\.');
 
   @override
   String get markdownPrefix => '1. ';

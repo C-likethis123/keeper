@@ -10,7 +10,7 @@ class Heading1BlockBuilder extends BlockBuilder {
   BlockType get type => BlockType.heading1;
 
   @override
-  RegExp? get triggerPrefix => RegExp(r'^# ');
+  RegExp? get triggerPrefix => RegExp(r'^#');
 
   @override
   String get markdownPrefix => '# ';
@@ -27,7 +27,7 @@ class Heading2BlockBuilder extends BlockBuilder {
   BlockType get type => BlockType.heading2;
 
   @override
-  RegExp? get triggerPrefix => RegExp(r'^## ');
+  RegExp? get triggerPrefix => RegExp(r'^##');
 
   @override
   String get markdownPrefix => '## ';
@@ -44,7 +44,7 @@ class Heading3BlockBuilder extends BlockBuilder {
   BlockType get type => BlockType.heading3;
 
   @override
-  RegExp? get triggerPrefix => RegExp(r'^### ');
+  RegExp? get triggerPrefix => RegExp(r'^###');
 
   @override
   String get markdownPrefix => '### ';

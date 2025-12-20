@@ -11,6 +11,7 @@ class BlockConfig {
   final FocusNode focusNode;
   final BlockContentCallback onContentChanged;
   final BlockCallback onEnter;
+  final BlockCallback onSpace;
   final BlockCallback onBackspaceAtStart;
   final BlockCallback onDelete;
   final VoidCallback? onFocusNext;
@@ -27,6 +28,7 @@ class BlockConfig {
     required this.focusNode,
     required this.onContentChanged,
     required this.onEnter,
+    required this.onSpace,
     required this.onBackspaceAtStart,
     required this.onDelete,
     this.onFocusNext,
