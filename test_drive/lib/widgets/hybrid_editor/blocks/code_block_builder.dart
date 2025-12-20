@@ -10,7 +10,7 @@ class CodeBlockBuilder extends BlockBuilder {
   BlockType get type => BlockType.codeBlock;
 
   @override
-  RegExp? get triggerPrefix => RegExp(r'^```\w*$');
+  RegExp? get triggerPrefix => RegExp(r'^```([a-z]+)*$');
 
   @override
   String get markdownPrefix => '```';

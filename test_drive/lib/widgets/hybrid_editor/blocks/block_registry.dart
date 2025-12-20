@@ -56,7 +56,6 @@ class BlockRegistry {
   BlockTypeDetection? detectBlockType(String text) {
     for (final builder in _builders.values) {
       final prefix = builder.triggerPrefix;
-      // TODO: fix the type for the languages....
       if (prefix == null) {
         continue;
       }
@@ -66,6 +65,9 @@ class BlockRegistry {
           type: builder.type,
           prefix: matches.group(0)!,
           remainingContent: text.substring(matches.end),
+          language: builder.type == BlockType.codeBlock
+              ? (matches.group(1) ?? 'plaintext')
+              : null,
         );
       }
     }

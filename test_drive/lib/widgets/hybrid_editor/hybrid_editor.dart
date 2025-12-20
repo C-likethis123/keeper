@@ -124,10 +124,6 @@ class _HybridEditorState extends State<HybridEditor> {
   }
 
   void _onBlockContentChanged(int index, String newContent) {
-    final block = _editorState.document[index];
-
-    // Check for block type conversion (only for paragraphs)
-    if (block.type == BlockType.paragraph) {
       final detection = _registry.detectBlockType(newContent);
       if (detection != null) {
         // Update controller text FIRST (before state change triggers rebuild)
@@ -141,41 +137,11 @@ class _HybridEditorState extends State<HybridEditor> {
           offset: detection.remainingContent.length,
         );
 
-        // Then update block type (this triggers rebuild)
-        _editorState.updateBlockType(index, detection.type);
-        _editorState.updateBlockContent(index, detection.remainingContent);
-
-        // Restore focus after rebuild
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _inputManager.focusBlock(index);
-        });
-        return;
-      }
-
-      // Check for code block trigger
-      if (newContent.startsWith('```')) {
-        final language = newContent.length > 3
-            ? newContent.substring(3).trim()
-            : null;
-
-        // Clear content FIRST
-        final controller = _inputManager.getController(index);
-        controller.text = '';
-        controller.selection = const TextSelection.collapsed(offset: 0);
-
         // Then update block type
-        _editorState.updateBlockType(
-          index,
-          BlockType.codeBlock,
-          language: language?.isNotEmpty == true ? language : null,
-        );
-
-        // Restore focus after rebuild
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _inputManager.focusBlock(index);
-        });
+        _editorState.updateBlockType(index, detection.type, language: detection.language);
+        _editorState.updateBlockContent(index, detection.remainingContent);
         return;
-      }
+
     }
     _editorState.updateBlockContent(index, newContent);
   }

@@ -109,6 +109,10 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
       }
     }
 
+    // Regardless, it would hit 'config.onEnter first.
+    // Would it be weird if I treated a code block as an 'inlineMarkdown' block?
+    // Styles for inline markdown only renders when the block is there.
+
     // ENTER → split / new block
     if (event.logicalKey == LogicalKeyboardKey.enter &&
         !HardwareKeyboard.instance.isShiftPressed) {
