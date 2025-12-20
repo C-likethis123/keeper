@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:test_drive/widgets/code_block_widget.dart';
 
 import '../core/core.dart';
 import 'block_config.dart';
@@ -133,6 +134,11 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textStyle = _editorStyle(context);
+
+    final isCodeBlock = config.block.type == BlockType.codeBlock;
+    if (isCodeBlock) {
+      return CodeBlockWidget(config: config);
+    }
 
     final isList =
         config.block.type == BlockType.bulletList ||

@@ -10,7 +10,7 @@ class ParagraphBlockBuilder extends BlockBuilder {
   BlockType get type => BlockType.paragraph;
 
   @override
-  String? get triggerPrefix => null; // Paragraphs are the default
+  RegExp? get triggerPrefix => null; // Paragraphs are the default
 
   @override
   String get markdownPrefix => '';

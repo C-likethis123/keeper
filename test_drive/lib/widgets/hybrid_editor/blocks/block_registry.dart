@@ -3,8 +3,9 @@ import '../core/core.dart';
 import 'block_config.dart';
 import 'block_builder.dart';
 import 'block_type_detection.dart';
+
 /// Registry for block builders
-/// 
+///
 /// The registry maps block types to their builders, allowing for
 /// extensible block type support.
 class BlockRegistry {
@@ -53,26 +54,18 @@ class BlockRegistry {
 
   /// Detects block type from text input (e.g., "# " -> heading1)
   BlockTypeDetection? detectBlockType(String text) {
-    // Special handling for numbered lists (match any number followed by ". ")
-    final numberedListMatch = RegExp(r'^(\d+)\.\s').firstMatch(text);
-    if (numberedListMatch != null) {
-      return BlockTypeDetection(
-        type: BlockType.numberedList,
-        prefix: numberedListMatch.group(0)!,
-        remainingContent: text.substring(numberedListMatch.end),
-      );
-    }
-    
     for (final builder in _builders.values) {
       final prefix = builder.triggerPrefix;
-      // Skip numbered list since we handle it specially above
-      if (builder.type == BlockType.numberedList) continue;
-      
-      if (prefix != null && text.startsWith(prefix)) {
+      // TODO: fix the type for the languages....
+      if (prefix == null) {
+        continue;
+      }
+      final matches = prefix.firstMatch(text);
+      if (matches != null) {
         return BlockTypeDetection(
           type: builder.type,
-          prefix: prefix,
-          remainingContent: text.substring(prefix.length),
+          prefix: matches.group(0)!,
+          remainingContent: text.substring(matches.end),
         );
       }
     }
@@ -82,5 +75,3 @@ class BlockRegistry {
   /// Gets all registered block types
   List<BlockType> get registeredTypes => _builders.keys.toList();
 }
-
-
