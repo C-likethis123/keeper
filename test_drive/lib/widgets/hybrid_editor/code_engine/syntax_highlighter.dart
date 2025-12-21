@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:highlight/highlight.dart' show Node;
 import 'language_registry.dart';
+import 'syntax_theme.dart';
 
 /// Converts highlighted code to Flutter TextSpans
 class SyntaxHighlighter {

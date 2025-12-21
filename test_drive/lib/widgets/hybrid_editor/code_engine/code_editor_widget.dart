@@ -3,9 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'language_registry.dart';
 import 'smart_editing.dart';
+import 'syntax_theme.dart';
 
 /// A full-featured code editor widget
-/// 
+///
 /// Features:
 /// - Syntax highlighting
 /// - Line numbers
@@ -187,7 +188,10 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
             // Line numbers
             if (widget.showLineNumbers)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   border: Border(
                     right: BorderSide(
@@ -203,9 +207,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                     children: List.generate(lineCount, (index) {
                       return Text(
                         '${index + 1}',
-                        style: _codeStyle.copyWith(
-                          color: syntaxTheme.comment,
-                        ),
+                        style: _codeStyle.copyWith(color: syntaxTheme.comment),
                       );
                     }),
                   ),
@@ -228,9 +230,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                       child: EditableText(
                         controller: _controller,
                         focusNode: _focusNode,
-                        style: _codeStyle.copyWith(
-                          color: Colors.transparent,
-                        ),
+                        style: _codeStyle.copyWith(color: Colors.transparent),
                         cursorColor: syntaxTheme.defaultText,
                         backgroundCursorColor: Colors.grey,
                         maxLines: null,
@@ -259,7 +259,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     final cursorPos = _controller.selection.baseOffset;
     if (cursorPos > 0 && cursorPos <= newText.length) {
       final insertedChar = newText[cursorPos - 1];
-      
+
       // Check if we should auto-complete
       if ('{(["\'`'.contains(insertedChar)) {
         final result = _smartEditor.handleCharacterInsert(
@@ -273,7 +273,9 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
             if (!_isDisposed) {
               _controller.value = TextEditingValue(
                 text: result.newText,
-                selection: TextSelection.collapsed(offset: result.newCursorOffset),
+                selection: TextSelection.collapsed(
+                  offset: result.newCursorOffset,
+                ),
               );
             }
           });
@@ -284,44 +286,50 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
   Widget _buildHighlightedCode(SyntaxTheme theme) {
     final code = _controller.text;
-    final result = LanguageRegistry.instance.highlightCode(code, widget.language);
-    
+    final result = LanguageRegistry.instance.highlightCode(
+      code,
+      widget.language,
+    );
+
     if (result == null || result.nodes == null) {
       return Text(code, style: _codeStyle);
     }
 
     final spans = _processNodes(result.nodes!, theme);
-    
     return RichText(
-      text: TextSpan(
-        style: _codeStyle,
-        children: spans,
-      ),
+      text: TextSpan(style: _codeStyle, children: spans),
     );
   }
 
-  List<InlineSpan> _processNodes(List<dynamic> nodes, SyntaxTheme theme) {
-    final spans = <InlineSpan>[];
-    
+  List<TextSpan> _processNodes(
+    List<dynamic> nodes,
+    SyntaxTheme theme, {
+    String? parentClass,
+  }) {
+    final spans = <TextSpan>[];
     for (final node in nodes) {
-      if (node.value != null) {
-        spans.add(TextSpan(
-          text: node.value as String,
-          style: _codeStyle.copyWith(
-            color: theme.getColorForClass(node.className as String?),
+      final effectiveClass = node.className ?? parentClass;
+      final color = theme.getColorForClass(effectiveClass);
+
+      if (node.value != null && (node.value as String).isNotEmpty) {
+        spans.add(
+          TextSpan(
+            text: node.value as String,
+            style: _codeStyle.copyWith(color: color),
           ),
-        ));
-      } else if (node.children != null) {
-        spans.add(TextSpan(
-          children: _processNodes(node.children as List<dynamic>, theme),
-          style: _codeStyle.copyWith(
-            color: theme.getColorForClass(node.className as String?),
+        );
+      }
+
+      if (node.children != null) {
+        spans.addAll(
+          _processNodes(
+            node.children as List<dynamic>,
+            theme,
+            parentClass: effectiveClass,
           ),
-        ));
+        );
       }
     }
-    
     return spans;
   }
 }
-
