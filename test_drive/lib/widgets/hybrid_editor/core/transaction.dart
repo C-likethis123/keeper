@@ -1,186 +1,13 @@
+import 'package:test_drive/widgets/hybrid_editor/core/transactions/modify_block_count_operation.dart';
+import 'package:test_drive/widgets/hybrid_editor/core/transactions/operation.dart';
+import 'package:test_drive/widgets/hybrid_editor/core/transactions/replace_block_operation.dart';
+import 'package:test_drive/widgets/hybrid_editor/core/transactions/update_block_content_operation.dart';
+import 'package:test_drive/widgets/hybrid_editor/core/transactions/update_block_type_operation.dart';
+import 'package:test_drive/widgets/hybrid_editor/core/transactions/update_list_level_operation.dart';
+
 import 'block_node.dart';
 import 'document.dart';
 import 'selection.dart';
-
-/// Types of operations that can be performed on the document
-enum OperationType {
-  insertText,
-  deleteText,
-  insertBlock,
-  deleteBlock,
-  updateBlock,
-  replaceBlocks,
-  setSelection,
-  composite, // Multiple operations grouped together
-}
-
-/// Represents a single atomic operation on the document.
-/// 
-/// Operations are reversible, allowing for undo/redo functionality.
-abstract class Operation {
-  OperationType get type;
-  
-  /// Applies the operation to the document and returns the new document
-  Document apply(Document document);
-  
-  /// Returns the inverse operation for undo
-  Operation inverse(Document document);
-}
-
-/// Operation to update the content of a block
-class UpdateBlockContentOperation implements Operation {
-  final int blockIndex;
-  final String oldContent;
-  final String newContent;
-
-  const UpdateBlockContentOperation({
-    required this.blockIndex,
-    required this.oldContent,
-    required this.newContent,
-  });
-
-  @override
-  OperationType get type => OperationType.updateBlock;
-
-  @override
-  Document apply(Document document) {
-    final block = document[blockIndex];
-    return document.updateBlock(
-      blockIndex,
-      block.copyWith(content: newContent),
-    );
-  }
-
-  @override
-  Operation inverse(Document document) {
-    return UpdateBlockContentOperation(
-      blockIndex: blockIndex,
-      oldContent: newContent,
-      newContent: oldContent,
-    );
-  }
-}
-
-/// Operation to update the type of a block
-class UpdateBlockTypeOperation implements Operation {
-  final int blockIndex;
-  final BlockType oldType;
-  final BlockType newType;
-  final String? oldLanguage;
-  final String? newLanguage;
-
-  const UpdateBlockTypeOperation({
-    required this.blockIndex,
-    required this.oldType,
-    required this.newType,
-    this.oldLanguage,
-    this.newLanguage,
-  });
-
-  @override
-  OperationType get type => OperationType.updateBlock;
-
-  @override
-  Document apply(Document document) {
-    final block = document[blockIndex];
-    return document.updateBlock(
-      blockIndex,
-      block.copyWith(type: newType, language: newLanguage),
-    );
-  }
-
-  @override
-  Operation inverse(Document document) {
-    return UpdateBlockTypeOperation(
-      blockIndex: blockIndex,
-      oldType: newType,
-      newType: oldType,
-      oldLanguage: newLanguage,
-      newLanguage: oldLanguage,
-    );
-  }
-}
-
-/// Operation to insert a new block
-class InsertBlockOperation implements Operation {
-  final int blockIndex;
-  final BlockNode block;
-
-  const InsertBlockOperation({
-    required this.blockIndex,
-    required this.block,
-  });
-
-  @override
-  OperationType get type => OperationType.insertBlock;
-
-  @override
-  Document apply(Document document) {
-    return document.insertBlock(blockIndex, block);
-  }
-
-  @override
-  Operation inverse(Document document) {
-    return DeleteBlockOperation(blockIndex: blockIndex, block: block);
-  }
-}
-
-/// Operation to delete a block
-class DeleteBlockOperation implements Operation {
-  final int blockIndex;
-  final BlockNode block;
-
-  const DeleteBlockOperation({
-    required this.blockIndex,
-    required this.block,
-  });
-
-  @override
-  OperationType get type => OperationType.deleteBlock;
-
-  @override
-  Document apply(Document document) {
-    return document.removeBlock(blockIndex);
-  }
-
-  @override
-  Operation inverse(Document document) {
-    return InsertBlockOperation(blockIndex: blockIndex, block: block);
-  }
-}
-
-/// Operation to replace multiple blocks
-class ReplaceBlocksOperation implements Operation {
-  final int startIndex;
-  final int endIndex;
-  final List<BlockNode> oldBlocks;
-  final List<BlockNode> newBlocks;
-
-  const ReplaceBlocksOperation({
-    required this.startIndex,
-    required this.endIndex,
-    required this.oldBlocks,
-    required this.newBlocks,
-  });
-
-  @override
-  OperationType get type => OperationType.replaceBlocks;
-
-  @override
-  Document apply(Document document) {
-    return document.replaceBlocks(startIndex, endIndex, newBlocks);
-  }
-
-  @override
-  Operation inverse(Document document) {
-    return ReplaceBlocksOperation(
-      startIndex: startIndex,
-      endIndex: startIndex + newBlocks.length,
-      oldBlocks: newBlocks,
-      newBlocks: oldBlocks,
-    );
-  }
-}
 
 /// A transaction groups multiple operations together.
 /// 
@@ -286,6 +113,12 @@ class TransactionBuilder {
       newType: newType,
       newLanguage: language,
     ));
+    return this;
+  }
+
+  /// Adds an operation to update the list level of a block
+  TransactionBuilder updateListLevel(int blockIndex, int oldLevel, int newLevel) {
+    _operations.add(UpdateListLevelOperation(blockIndex: blockIndex, oldLevel: oldLevel, newLevel: newLevel));
     return this;
   }
 
