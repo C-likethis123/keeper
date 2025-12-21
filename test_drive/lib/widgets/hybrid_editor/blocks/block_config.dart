@@ -14,6 +14,7 @@ class BlockConfig {
   final BlockCallback onSpace;
   final BlockCallback onBackspaceAtStart;
   final BlockCallback onDelete;
+  final BlockCallback onTab;
   final VoidCallback? onFocusNext;
   final VoidCallback? onFocusPrevious;
   
@@ -31,6 +32,7 @@ class BlockConfig {
     required this.onSpace,
     required this.onBackspaceAtStart,
     required this.onDelete,
+    required this.onTab,
     this.onFocusNext,
     this.onFocusPrevious,
     this.listItemNumber,

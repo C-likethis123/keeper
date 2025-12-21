@@ -3,7 +3,7 @@ import 'block_node.dart';
 import 'selection.dart';
 
 /// Immutable document representing the entire editor content.
-/// 
+///
 /// The document is a flat list of blocks. All modifications return
 /// a new Document instance, following the immutable pattern.
 @immutable
@@ -11,16 +11,11 @@ class Document {
   final List<BlockNode> blocks;
   final int version;
 
-  const Document._({
-    required this.blocks,
-    this.version = 0,
-  });
+  const Document._({required this.blocks, this.version = 0});
 
   /// Creates an empty document with a single paragraph
   factory Document.empty() {
-    return Document._(
-      blocks: [BlockNode.paragraph()],
-    );
+    return Document._(blocks: [BlockNode.paragraph()]);
   }
 
   /// Creates a document from a list of blocks
@@ -39,30 +34,32 @@ class Document {
 
     final blocks = <BlockNode>[];
     final lines = markdown.split('\n');
-    
+
     int i = 0;
     while (i < lines.length) {
       final line = lines[i];
-      
+
       // Check for code blocks
       if (line.startsWith('```')) {
         final language = line.substring(3).trim();
         final codeLines = <String>[];
         i++;
-        
+
         while (i < lines.length && !lines[i].startsWith('```')) {
           codeLines.add(lines[i]);
           i++;
         }
-        
-        blocks.add(BlockNode.codeBlock(
-          content: codeLines.join('\n'),
-          language: language.isEmpty ? null : language,
-        ));
+
+        blocks.add(
+          BlockNode.codeBlock(
+            content: codeLines.join('\n'),
+            language: language.isEmpty ? null : language,
+          ),
+        );
         i++; // Skip closing ```
         continue;
       }
-      
+
       // Check for headings
       if (line.startsWith('### ')) {
         blocks.add(BlockNode.heading(level: 3, content: line.substring(4)));
@@ -70,18 +67,29 @@ class Document {
         blocks.add(BlockNode.heading(level: 2, content: line.substring(3)));
       } else if (line.startsWith('# ')) {
         blocks.add(BlockNode.heading(level: 1, content: line.substring(2)));
-      }
-      // Check for bullet lists
-      else if (line.startsWith('- ') || line.startsWith('* ')) {
-        blocks.add(BlockNode.list(numbered: false, content: line.substring(2)));
-      }
-      // Check for numbered lists
-      else if (RegExp(r'^\d+\.\s').hasMatch(line)) {
-        final content = line.replaceFirst(RegExp(r'^\d+\.\s'), '');
-        blocks.add(BlockNode.list(numbered: true, content: content));
-      }
-      // Empty lines become empty paragraphs
-      else if (line.isEmpty) {
+      } else if (RegExp(r'^(\s*)([-*]|\d+\.)\s+(.*)$').hasMatch(line)) {
+        final listMatch = RegExp(
+          r'^(\s*)([-*]|\d+\.)\s+(.*)$',
+        ).firstMatch(line);
+        if (listMatch != null) {
+          final leadingSpaces = listMatch.group(1)!.length;
+          final marker = listMatch.group(2)!;
+          final content = listMatch.group(3)!;
+
+          // 2 spaces per indent level, minimum level = 1
+          final listLevel = (leadingSpaces ~/ 2);
+
+          final isNumbered = marker.endsWith('.');
+
+          blocks.add(
+            BlockNode.list(
+              numbered: isNumbered,
+              content: content,
+              listLevel: listLevel,
+            ),
+          );
+        }
+      } else if (line.isEmpty) {
         // Skip consecutive empty lines, but keep one as paragraph separator
         if (blocks.isNotEmpty && blocks.last.content.isNotEmpty) {
           blocks.add(BlockNode.paragraph(content: ''));
@@ -91,7 +99,7 @@ class Document {
       else {
         blocks.add(BlockNode.paragraph(content: line));
       }
-      
+
       i++;
     }
 
@@ -106,10 +114,10 @@ class Document {
   int get length => blocks.length;
 
   /// Whether the document is empty (only has one empty paragraph)
-  bool get isEmpty => 
-    blocks.length == 1 && 
-    blocks.first.type == BlockType.paragraph && 
-    blocks.first.content.isEmpty;
+  bool get isEmpty =>
+      blocks.length == 1 &&
+      blocks.first.type == BlockType.paragraph &&
+      blocks.first.content.isEmpty;
 
   /// Gets a block by index
   BlockNode operator [](int index) => blocks[index];
@@ -158,21 +166,18 @@ class Document {
   Document replaceBlocks(int start, int end, List<BlockNode> newBlocks) {
     assert(start >= 0 && start <= blocks.length, 'Start index out of range');
     assert(end >= start && end <= blocks.length, 'End index out of range');
-    
+
     final result = <BlockNode>[
       ...blocks.sublist(0, start),
       ...newBlocks,
       ...blocks.sublist(end),
     ];
-    
+
     if (result.isEmpty) {
       return Document.empty();
     }
-    
-    return Document._(
-      blocks: List.unmodifiable(result),
-      version: version + 1,
-    );
+
+    return Document._(blocks: List.unmodifiable(result), version: version + 1);
   }
 
   /// Converts the document to markdown
@@ -217,4 +222,3 @@ class Document {
   @override
   String toString() => 'Document(blocks: ${blocks.length}, version: $version)';
 }
-

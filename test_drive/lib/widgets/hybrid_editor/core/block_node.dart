@@ -21,6 +21,7 @@ class BlockNode {
   final BlockType type;
   final String content;
   final String? language; // For code blocks
+  final int listLevel; // For list blocks
   final Map<String, dynamic> attributes;
 
   const BlockNode({
@@ -28,6 +29,7 @@ class BlockNode {
     required this.type,
     required this.content,
     this.language,
+    this.listLevel = 0,
     this.attributes = const {},
   });
 
@@ -63,11 +65,13 @@ class BlockNode {
   factory BlockNode.list({
     required bool numbered,
     String content = '',
+    int listLevel = 0,
   }) {
     return BlockNode(
       id: generateId(),
       type: numbered ? BlockType.numberedList : BlockType.bulletList,
       content: content,
+      listLevel: listLevel,
     );
   }
 
@@ -90,6 +94,7 @@ class BlockNode {
     BlockType? type,
     String? content,
     String? language,
+    int? listLevel,
     Map<String, dynamic>? attributes,
   }) {
     return BlockNode(
@@ -97,12 +102,14 @@ class BlockNode {
       type: type ?? this.type,
       content: content ?? this.content,
       language: language ?? this.language,
+      listLevel: listLevel ?? this.listLevel,
       attributes: attributes ?? this.attributes,
     );
   }
 
   /// Converts the block to its markdown representation
   String toMarkdown() {
+    final listIndentation = '${'  ' * listLevel}';
     switch (type) {
       case BlockType.heading1:
         return '# $content';
@@ -111,9 +118,10 @@ class BlockNode {
       case BlockType.heading3:
         return '### $content';
       case BlockType.bulletList:
-        return '- $content';
+        return '$listIndentation- $content';
+      // TODO: make the list item number part of the node, not part of the config
       case BlockType.numberedList:
-        return '1. $content';
+        return '${listIndentation}1. $content';
       case BlockType.codeBlock:
         final lang = language ?? '';
         return '```$lang\n$content\n```';
@@ -156,12 +164,13 @@ class BlockNode {
           id == other.id &&
           type == other.type &&
           content == other.content &&
+          listLevel == other.listLevel &&
           language == other.language;
 
   @override
-  int get hashCode => Object.hash(id, type, content, language);
+  int get hashCode => Object.hash(id, type, content, listLevel, language);
 
   @override
-  String toString() => 'BlockNode(id: $id, type: $type, content: "${content.length > 20 ? '${content.substring(0, 20)}...' : content}")';
+  String toString() => 'BlockNode(id: $id, type: $type, content: "${content.length > 20 ? '${content.substring(0, 20)}...' : content}", listLevel: $listLevel, language: $language)';
 }
 

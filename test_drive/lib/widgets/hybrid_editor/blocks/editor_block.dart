@@ -64,28 +64,37 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
     final theme = Theme.of(context);
     final style = theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
 
+    final indent = (config.block.listLevel * 16).toDouble();
     if (config.block.type == BlockType.numberedList) {
       final number = config.listItemNumber ?? 1;
-      return SizedBox(
-        width: 28,
-        child: Text(
-          '$number.',
-          style: style.copyWith(color: theme.colorScheme.primary),
+      return Padding(
+        padding: EdgeInsets.only(left: indent),
+        child: SizedBox(
+          width: 28,
+          child: Text(
+            '$number.',
+            style: style.copyWith(color: theme.colorScheme.primary),
+          ),
         ),
       );
     }
 
     if (config.block.type == BlockType.bulletList) {
-      return Container(
-        width: 24,
-        alignment: Alignment.centerLeft,
-        child: Container(
-          width: 6,
-          height: 6,
-          margin: const EdgeInsets.only(left: 4, top: 8),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary,
-            shape: BoxShape.circle,
+      return Padding(
+        padding: EdgeInsets.only(left: indent),
+        child: SizedBox(
+          width: 24,
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Container(
+              margin: const EdgeInsets.only(top: 8),
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+            ),
           ),
         ),
       );
@@ -98,6 +107,11 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
     final selection = config.controller.selection;
+
+    if (event.logicalKey == LogicalKeyboardKey.tab) {
+      config.onTab();
+      return KeyEventResult.handled;
+    }
 
     // BACKSPACE → remove style
     if (event.logicalKey == LogicalKeyboardKey.backspace) {

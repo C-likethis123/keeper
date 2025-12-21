@@ -130,6 +130,18 @@ class EditorState extends ChangeNotifier {
   // Convenience methods for common operations
   // ============================================================
 
+  /// Updates the list level of a block
+  void updateBlockListLevel(int index, int newLevel) {
+    final block = _document[index];
+    if (block.listLevel == newLevel) return;
+
+    final transaction = TransactionBuilder()
+        .updateListLevel(index, block.listLevel, newLevel)
+        .withDescription('Update list level')
+        .build();
+    apply(transaction);
+  }
+
   /// Updates the content of a block
   void updateBlockContent(int index, String newContent) {
     final block = _document[index];
@@ -162,16 +174,6 @@ class EditorState extends ChangeNotifier {
         .build();
 
     apply(transaction);
-    // // CRITICAL: Maintain focus on the block during type change
-    // // Don't change selection, just ensure focusedBlockIndex is correct
-    // if (_focusedBlockIndex == index) {
-    //   // This prevents the check, but we need to trigger listener
-    //   notifyListeners();
-    // } else {
-    //   // If this block should be focused, update it
-    //   _focusedBlockIndex = index;
-    //   notifyListeners();
-    // }
   }
 
   /// Inserts a new block after the specified index
@@ -234,6 +236,7 @@ class EditorState extends ChangeNotifier {
       id: BlockNode.generateId(),
       type: newBlockType,
       content: afterContent,
+      listLevel: block.listLevel,
     );
 
     final transaction = TransactionBuilder()

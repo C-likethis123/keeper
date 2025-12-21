@@ -44,9 +44,6 @@ class _HybridEditorState extends State<HybridEditor> {
   late EditorTextInputManager _inputManager;
   late KeyHandler _keyHandler;
   late BlockRegistry _registry;
-  int _lastBlockCount =
-      0; // Tracks the structure of the document so we know if it changed
-  List<BlockType> _lastBlockTypes = [];
 
   @override
   void initState() {
@@ -61,10 +58,6 @@ class _HybridEditorState extends State<HybridEditor> {
       document: Document.fromMarkdown(widget.initialContent),
     );
     _editorState.addListener(_onEditorStateChanged);
-    _lastBlockCount = _editorState.document.length;
-    _lastBlockTypes = _editorState.document.blocks
-        .map((b) => b.blockType)
-        .toList();
     // Initialize input manager
     _inputManager = EditorTextInputManager(
       editorState: _editorState,
@@ -105,18 +98,7 @@ class _HybridEditorState extends State<HybridEditor> {
   void _onEditorStateChanged() {
     _inputManager.syncWithDocument();
     widget.onChanged?.call(_editorState.toMarkdown());
-    final currentBlockCount = _editorState.document.length;
-    final currentBlockTypes = _editorState.document.blocks
-        .map((b) => b.type)
-        .toList();
-    final typesChanged = !listEquals(currentBlockTypes, _lastBlockTypes);
-    final blockCountChanged = currentBlockCount != _lastBlockCount;
-
-    if (blockCountChanged || typesChanged) {
-      _lastBlockCount = currentBlockCount;
-      _lastBlockTypes = currentBlockTypes;
-      setState(() {});
-    }
+    setState(() {});
   }
 
   void _onBlockFocus(int index) {
@@ -143,6 +125,16 @@ class _HybridEditorState extends State<HybridEditor> {
     }
   }
 
+  void _onTab(int index) {
+    final block = _editorState.document[index];
+    final listItemNumber = _calculateListItemNumber(index);
+    final canChangeToSublist = listItemNumber != null && listItemNumber > 1;
+    // if it's not the first item, make this into a sublist
+    if (block.isListItem && canChangeToSublist) {
+      _editorState.updateBlockListLevel(index, block.listLevel + 1);
+    }
+  }
+
   void _onEnter(int index) {
     final newContent = _editorState.document[index].content;
     final detection = _registry.detectBlockType(newContent);
@@ -153,7 +145,6 @@ class _HybridEditorState extends State<HybridEditor> {
         language: detection.language,
       );
       _editorState.updateBlockContent(index, detection.remainingContent);
-      return;
     } else {
       // Maybe I can do something here? If there is block type change, then I'll do that.
       final controller = _inputManager.getController(index);
@@ -233,6 +224,9 @@ class _HybridEditorState extends State<HybridEditor> {
 
   @override
   Widget build(BuildContext context) {
+    // when it's built initially, it returns a listview builder to build a list view
+    // there is an empty block.
+    print('build: ${_editorState.document.length}, focusedBlockIndex: ${_editorState.focusedBlockIndex}');
     return Focus(
       onKeyEvent: _handleKeyEvent,
       child: ListView.builder(
@@ -247,14 +241,12 @@ class _HybridEditorState extends State<HybridEditor> {
   int? _calculateListItemNumber(int index) {
     final block = _editorState.document[index];
     if (block.type != BlockType.numberedList) return null;
-
+    final listLevel = block.listLevel;
     // Count consecutive numbered lists before this one
     int number = 1;
     for (int i = index - 1; i >= 0; i--) {
-      if (_editorState.document[i].type == BlockType.numberedList) {
+      if (_editorState.document[i].type == BlockType.numberedList && _editorState.document[i].listLevel == listLevel) {
         number++;
-      } else {
-        break;
       }
     }
     return number;
@@ -282,6 +274,7 @@ class _HybridEditorState extends State<HybridEditor> {
       onEnter: () => _onEnter(index),
       onBackspaceAtStart: () => _onBackspaceAtStart(index),
       onDelete: () => _onDelete(index),
+      onTab: () => _onTab(index),
       onFocusNext: () => _onFocusNext(index),
       onFocusPrevious: () => _onFocusPrevious(index),
       listItemNumber: _calculateListItemNumber(index),
