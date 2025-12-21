@@ -132,7 +132,11 @@ class _HybridEditorState extends State<HybridEditor> {
     final newContent = _editorState.document[index].content;
     final detection = _registry.detectBlockType(newContent);
     if (detection != null) {
-      _editorState.updateBlockType(index, detection.type, language: detection.language);
+      _editorState.updateBlockType(
+        index,
+        detection.type,
+        language: detection.language,
+      );
       _editorState.updateBlockContent(index, detection.remainingContent);
     } else {
       _editorState.updateBlockContent(index, '$newContent ');
@@ -197,11 +201,9 @@ class _HybridEditorState extends State<HybridEditor> {
 
   void _onDelete(int index) {
     _editorState.deleteBlock(index);
-    if (index > 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _inputManager.focusBlock(index - 1);
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _inputManager.focusBlock(index > 0 ? index - 1 : 0);
+    });
   }
 
   void _onFocusNext(int index) {

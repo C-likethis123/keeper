@@ -194,6 +194,7 @@ class EditorState extends ChangeNotifier {
   void deleteBlock(int index) {
     if (_document.length <= 1) {
       // Don't delete the last block, just clear it
+      updateBlockType(index, BlockType.paragraph);
       updateBlockContent(index, '');
       return;
     }
