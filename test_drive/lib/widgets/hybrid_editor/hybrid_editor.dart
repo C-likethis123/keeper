@@ -224,9 +224,6 @@ class _HybridEditorState extends State<HybridEditor> {
 
   @override
   Widget build(BuildContext context) {
-    // when it's built initially, it returns a listview builder to build a list view
-    // there is an empty block.
-    print('build: ${_editorState.document.length}, focusedBlockIndex: ${_editorState.focusedBlockIndex}');
     return Focus(
       onKeyEvent: _handleKeyEvent,
       child: ListView.builder(
@@ -252,6 +249,9 @@ class _HybridEditorState extends State<HybridEditor> {
     return number;
   }
 
+// it depends on the node that's being built here.
+// what is the first document that's built, vs the second document that's built?
+// everything is wrapped with a gesture detector.
   Widget _buildBlock(int index) {
     final block = _editorState.document[index];
     final isFocused = _editorState.focusedBlockIndex == index;

@@ -5,6 +5,7 @@ import 'package:test_drive/widgets/code_block_widget.dart';
 import '../core/core.dart';
 import 'block_config.dart';
 import 'inline_markdown_renderer.dart';
+import 'list_marker.dart';
 
 class EditorBlockWidget extends StatefulWidget {
   final BlockConfig config;
@@ -58,49 +59,6 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
       BlockType.heading3 => theme.textTheme.headlineSmall!,
       _ => theme.textTheme.bodyLarge!,
     };
-  }
-
-  Widget _buildListMarker(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
-
-    final indent = (config.block.listLevel * 16).toDouble();
-    if (config.block.type == BlockType.numberedList) {
-      final number = config.listItemNumber ?? 1;
-      return Padding(
-        padding: EdgeInsets.only(left: indent),
-        child: SizedBox(
-          width: 28,
-          child: Text(
-            '$number.',
-            style: style.copyWith(color: theme.colorScheme.primary),
-          ),
-        ),
-      );
-    }
-
-    if (config.block.type == BlockType.bulletList) {
-      return Padding(
-        padding: EdgeInsets.only(left: indent),
-        child: SizedBox(
-          width: 24,
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: Container(
-              margin: const EdgeInsets.only(top: 8),
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return const SizedBox(width: 0);
   }
 
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
@@ -168,7 +126,12 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (isList) _buildListMarker(context),
+          if (isList)
+            ListMarker(
+              type: config.block.type,
+              listLevel: config.block.listLevel,
+              listItemNumber: config.listItemNumber ?? 1,
+            ),
           Expanded(
             child: Stack(
               alignment: Alignment.topLeft,
@@ -181,7 +144,9 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
                     child: GestureDetector(
                       onTap: () {
                         setState(() => _showFormatted = false);
-                        config.focusNode.requestFocus();
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          config.focusNode.requestFocus();
+                        });
                       },
                       child: InlineMarkdownRenderer(
                         text: config.block.content,
