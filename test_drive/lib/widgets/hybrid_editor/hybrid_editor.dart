@@ -134,6 +134,14 @@ class _HybridEditorState extends State<HybridEditor> {
     }
   }
 
+  void _onTabReverse(int index) {
+    final block = _editorState.document[index];
+    final canReverse = block.isListItem && block.listLevel > 0;
+    if (canReverse) {
+      _editorState.updateBlockListLevel(index, block.listLevel - 1);
+    }
+  }
+
   void _onEnter(int index) {
     final newContent = _editorState.document[index].content;
     final detection = _registry.detectBlockType(newContent);
@@ -274,6 +282,7 @@ class _HybridEditorState extends State<HybridEditor> {
       onBackspaceAtStart: () => _onBackspaceAtStart(index),
       onDelete: () => _onDelete(index),
       onTab: () => _onTab(index),
+      onTabReverse: () => _onTabReverse(index),
       onFocusNext: () => _onFocusNext(index),
       onFocusPrevious: () => _onFocusPrevious(index),
       listItemNumber: _calculateListItemNumber(index),

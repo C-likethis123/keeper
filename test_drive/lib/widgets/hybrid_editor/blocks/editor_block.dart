@@ -67,7 +67,11 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
     final selection = config.controller.selection;
 
     if (event.logicalKey == LogicalKeyboardKey.tab) {
-      config.onTab();
+      if (HardwareKeyboard.instance.isShiftPressed) {
+        config.onTabReverse();
+      } else {
+        config.onTab();
+      }
       return KeyEventResult.handled;
     }
 
