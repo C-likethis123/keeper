@@ -249,16 +249,21 @@ class _HybridEditorState extends State<HybridEditor> {
     // Count consecutive numbered lists before this one
     int number = 1;
     for (int i = index - 1; i >= 0; i--) {
-      if (_editorState.document[i].type == BlockType.numberedList && _editorState.document[i].listLevel == listLevel) {
+      if (_editorState.document[i].type != BlockType.numberedList ||
+          _editorState.document[i].listLevel < listLevel) {
+        break;
+      }
+      if (_editorState.document[i].type == BlockType.numberedList &&
+          _editorState.document[i].listLevel == listLevel) {
         number++;
       }
     }
     return number;
   }
 
-// it depends on the node that's being built here.
-// what is the first document that's built, vs the second document that's built?
-// everything is wrapped with a gesture detector.
+  // it depends on the node that's being built here.
+  // what is the first document that's built, vs the second document that's built?
+  // everything is wrapped with a gesture detector.
   Widget _buildBlock(int index) {
     final block = _editorState.document[index];
     final isFocused = _editorState.focusedBlockIndex == index;
