@@ -1,8 +1,7 @@
+import 'package:flutter/material.dart';
 
-import 'dart:ui';
-
-/// Theme for syntax highlighting
-class SyntaxTheme {
+@immutable
+class SyntaxTheme extends ThemeExtension<SyntaxTheme> {
   final Color background;
   final Color defaultText;
   final Color keyword;
@@ -10,7 +9,7 @@ class SyntaxTheme {
   final Color number;
   final Color comment;
   final Color function;
-  final Color type;
+  final Color typeOfVariable;
   final Color variable;
   final Color operator;
   final Color punctuation;
@@ -25,7 +24,7 @@ class SyntaxTheme {
     required this.number,
     required this.comment,
     required this.function,
-    required this.type,
+    required this.typeOfVariable,
     required this.variable,
     required this.operator,
     required this.punctuation,
@@ -33,41 +32,63 @@ class SyntaxTheme {
     required this.tag,
   });
 
-  /// Dark theme inspired by VS Code Dark+
-  static const SyntaxTheme dark = SyntaxTheme(
-    background: Color(0xFF1E1E1E),
-    defaultText: Color(0xFFD4D4D4),
-    keyword: Color(0xFF569CD6),
-    string: Color(0xFFCE9178),
-    number: Color(0xFFB5CEA8),
-    comment: Color(0xFF6A9955),
-    function: Color(0xFFDCDCAA),
-    type: Color(0xFF4EC9B0),
-    variable: Color(0xFF9CDCFE),
-    operator: Color(0xFFD4D4D4),
-    punctuation: Color(0xFFD4D4D4),
-    attribute: Color(0xFF9CDCFE),
-    tag: Color(0xFF569CD6),
-  );
+  @override
+  SyntaxTheme copyWith({
+    Color? background,
+    Color? defaultText,
+    Color? keyword,
+    Color? string,
+    Color? number,
+    Color? comment,
+    Color? function,
+    Color? typeOfVariable,
+    Color? variable,
+    Color? operator,
+    Color? punctuation,
+    Color? attribute,
+    Color? tag,
+  }) {
+    return SyntaxTheme(
+      background: background ?? this.background,
+      defaultText: defaultText ?? this.defaultText,
+      keyword: keyword ?? this.keyword,
+      string: string ?? this.string,
+      number: number ?? this.number,
+      comment: comment ?? this.comment,
+      function: function ?? this.function,
+      typeOfVariable: typeOfVariable ?? this.typeOfVariable,
+      variable: variable ?? this.variable,
+      operator: operator ?? this.operator,
+      punctuation: punctuation ?? this.punctuation,
+      attribute: attribute ?? this.attribute,
+      tag: tag ?? this.tag,
+    );
+  }
 
-  /// Light theme
-  static const SyntaxTheme light = SyntaxTheme(
-    background: Color(0xFFFFFFFF),
-    defaultText: Color(0xFF000000),
-    keyword: Color(0xFF0000FF),
-    string: Color(0xFFA31515),
-    number: Color(0xFF098658),
-    comment: Color(0xFF008000),
-    function: Color(0xFF795E26),
-    type: Color(0xFF267F99),
-    variable: Color(0xFF001080),
-    operator: Color(0xFF000000),
-    punctuation: Color(0xFF000000),
-    attribute: Color(0xFFFF0000),
-    tag: Color(0xFF800000),
-  );
+  @override
+  SyntaxTheme lerp(
+    ThemeExtension<SyntaxTheme>? other,
+    double t,
+  ) {
+    if (other is! SyntaxTheme) return this;
 
-  /// Gets color for a highlight.js class
+    return SyntaxTheme(
+      background: Color.lerp(background, other.background, t)!,
+      defaultText: Color.lerp(defaultText, other.defaultText, t)!,
+      keyword: Color.lerp(keyword, other.keyword, t)!,
+      string: Color.lerp(string, other.string, t)!,
+      number: Color.lerp(number, other.number, t)!,
+      comment: Color.lerp(comment, other.comment, t)!,
+      function: Color.lerp(function, other.function, t)!,
+      typeOfVariable: Color.lerp(typeOfVariable, other.typeOfVariable, t)!,
+      variable: Color.lerp(variable, other.variable, t)!,
+      operator: Color.lerp(operator, other.operator, t)!,
+      punctuation: Color.lerp(punctuation, other.punctuation, t)!,
+      attribute: Color.lerp(attribute, other.attribute, t)!,
+      tag: Color.lerp(tag, other.tag, t)!,
+    );
+  }
+
   Color getColorForClass(String? className) {
     if (className == null) return defaultText;
 
@@ -76,8 +97,10 @@ class SyntaxTheme {
     if (className.contains('number')) return number;
     if (className.contains('comment')) return comment;
     if (className.contains('function')) return function;
-    if (className.contains('type') || className.contains('class')) return type;
-    if (className.contains('variable') || className.contains('params')) return variable;
+    if (className.contains('type') || className.contains('class')) return typeOfVariable;
+    if (className.contains('variable') || className.contains('params')) {
+      return variable;
+    }
     if (className.contains('operator')) return operator;
     if (className.contains('punctuation')) return punctuation;
     if (className.contains('attr')) return attribute;
@@ -89,5 +112,20 @@ class SyntaxTheme {
 
     return defaultText;
   }
-}
 
+  static const SyntaxTheme theme = SyntaxTheme(
+    background: Color(0xFF1E1E1E),
+    defaultText: Color(0xFFD4D4D4),
+    keyword: Color(0xFF569CD6),
+    string: Color(0xFFCE9178),
+    number: Color(0xFFB5CEA8),
+    comment: Color(0xFF6A9955),
+    function: Color(0xFFDCDCAA),
+    typeOfVariable: Color(0xFF4EC9B0),
+    variable: Color(0xFF9CDCFE),
+    operator: Color(0xFFD4D4D4),
+    punctuation: Color(0xFFD4D4D4),
+    attribute: Color(0xFF9CDCFE),
+    tag: Color(0xFF569CD6),
+  );
+}

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'language_registry.dart';
-import 'smart_editing.dart';
-import 'syntax_theme.dart';
+import 'package:test_drive/widgets/code_editor_theme.dart';
+import '../hybrid_editor/code_engine/language_registry.dart';
+import '../hybrid_editor/code_engine/smart_editing.dart';
+import '../hybrid_editor/code_engine/syntax_theme.dart';
 
 /// A full-featured code editor widget
 ///
@@ -45,7 +46,6 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
   late ScrollController _scrollController;
   late ScrollController _lineNumberScrollController;
   late SmartEditingHandler _smartEditor;
-  late TextStyle _codeStyle;
 
   bool _isDisposed = false;
 
@@ -59,13 +59,6 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
     final langConfig = LanguageRegistry.instance.getLanguage(widget.language);
     _smartEditor = SmartEditingHandler(languageConfig: langConfig);
-
-    // Create a consistent code style used by both layers
-    _codeStyle = GoogleFonts.firaCode(
-      fontSize: widget.fontSize,
-      height: 1.5,
-      color: SyntaxTheme.dark.defaultText,
-    );
 
     _controller.addListener(_onTextChanged);
     _scrollController.addListener(_syncScroll);
@@ -174,12 +167,18 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
   @override
   Widget build(BuildContext context) {
-    const syntaxTheme = SyntaxTheme.dark;
+    final syntaxTheme = Theme.of(context).extension<SyntaxTheme>()!;
+    final codeTheme = Theme.of(context).extension<CodeEditorTheme>()!;
+    final codeStyle = GoogleFonts.firaCode(
+      fontSize: widget.fontSize,
+      height: 1.5,
+      color: syntaxTheme.defaultText,
+    );
     final lineCount = '\n'.allMatches(_controller.text).length + 1;
 
     return Container(
       constraints: const BoxConstraints(minHeight: 60),
-      color: const Color(0xFF1E1E1E), // VS Code dark background
+      color: codeTheme.background, // VS Code dark background
       child: Focus(
         onKeyEvent: _handleKeyEvent,
         child: Row(
@@ -207,7 +206,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                     children: List.generate(lineCount, (index) {
                       return Text(
                         '${index + 1}',
-                        style: _codeStyle.copyWith(color: syntaxTheme.comment),
+                        style: codeStyle.copyWith(color: syntaxTheme.comment),
                       );
                     }),
                   ),
@@ -230,7 +229,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                       child: EditableText(
                         controller: _controller,
                         focusNode: _focusNode,
-                        style: _codeStyle.copyWith(color: Colors.transparent),
+                        style: codeStyle.copyWith(color: Colors.transparent),
                         cursorColor: syntaxTheme.defaultText,
                         backgroundCursorColor: Colors.grey,
                         maxLines: null,
@@ -290,14 +289,19 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       code,
       widget.language,
     );
+    final codeStyle = GoogleFonts.firaCode(
+      fontSize: widget.fontSize,
+      height: 1.5,
+      color: theme.defaultText,
+    );
 
     if (result == null || result.nodes == null) {
-      return Text(code, style: _codeStyle);
+      return Text(code, style: codeStyle);
     }
 
     final spans = _processNodes(result.nodes!, theme);
     return RichText(
-      text: TextSpan(style: _codeStyle, children: spans),
+      text: TextSpan(style: codeStyle, children: spans),
     );
   }
 
@@ -307,15 +311,21 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     String? parentClass,
   }) {
     final spans = <TextSpan>[];
+    final codeStyle = GoogleFonts.firaCode(
+      fontSize: widget.fontSize,
+      height: 1.5,
+      color: theme.defaultText,
+    );
     for (final node in nodes) {
       final effectiveClass = node.className ?? parentClass;
-      final color = theme.getColorForClass(effectiveClass);
+      final color =
+          theme.getColorForClass(effectiveClass);
 
       if (node.value != null && (node.value as String).isNotEmpty) {
         spans.add(
           TextSpan(
             text: node.value as String,
-            style: _codeStyle.copyWith(color: color),
+            style: codeStyle.copyWith(color: color),
           ),
         );
       }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:test_drive/widgets/code_block_widget.dart';
+import 'package:test_drive/widgets/code_block_widget/code_block_widget.dart';
 
 import '../core/core.dart';
 import 'block_config.dart';

@@ -17,7 +17,7 @@ class SyntaxHighlighter {
     this.fontSize = 14.0,
     this.lineHeight = 1.5,
   })  : registry = registry ?? LanguageRegistry.instance,
-        theme = theme ?? SyntaxTheme.dark;
+        theme = theme ?? SyntaxTheme.theme;
 
   /// Gets the base text style for code
   TextStyle get baseStyle => GoogleFonts.firaCode(
