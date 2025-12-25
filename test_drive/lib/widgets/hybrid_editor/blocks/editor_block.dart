@@ -137,44 +137,39 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
               alignment: Alignment.topLeft,
               children: [
                 // Formatted view
-                IgnorePointer(
-                  ignoring: !_showFormatted,
-                  child: Opacity(
-                    opacity: _showFormatted ? 1 : 0,
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() => _showFormatted = false);
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          config.focusNode.requestFocus();
-                        });
-                      },
-                      child: InlineMarkdownRenderer(
-                        text: config.block.content,
-                        style: textStyle,
-                      ),
+                // shows this at first. but the gesture detector does not work and ontap does not work.
+                if (_showFormatted)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => _showFormatted = false);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        config.focusNode.requestFocus();
+                      });
+                    },
+                    child: InlineMarkdownRenderer(
+                      text: config.block.content,
+                      style: textStyle,
                     ),
                   ),
-                ),
-
                 // Editable TextField with key handling
-                IgnorePointer(
-                  ignoring: _showFormatted,
-                  child: Opacity(
-                    opacity: _showFormatted ? 0 : 1,
-                    child: Focus(
-                      onKeyEvent: _onKeyEvent,
-                      child: TextField(
-                        controller: config.controller,
-                        focusNode: config.focusNode,
-                        maxLines: null,
-                        style: textStyle,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          isDense: true,
-                        ),
-                        onChanged: config.onContentChanged,
-                      ),
+                Focus(
+                  onKeyEvent: _onKeyEvent,
+                  child: TextField(
+                    controller: config.controller,
+                    focusNode: config.focusNode,
+                    maxLines: null,
+                    onTap: () {
+                      setState(() => _showFormatted = false);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        config.focusNode.requestFocus();
+                      });
+                    },
+                    style: textStyle,
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
                     ),
+                    onChanged: config.onContentChanged,
                   ),
                 ),
               ],
