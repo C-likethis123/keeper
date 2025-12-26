@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'blocks/editor_block.dart';
 import 'core/core.dart';
 import 'blocks/blocks.dart';

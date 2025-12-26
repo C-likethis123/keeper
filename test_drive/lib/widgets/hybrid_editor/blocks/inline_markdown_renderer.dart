@@ -1,23 +1,25 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 
 /// Renders inline markdown formatting (bold, italic, code, links)
 class InlineMarkdownRenderer extends StatelessWidget {
   final String text;
   final TextStyle style;
+  final Function(String url) onTap;
 
   const InlineMarkdownRenderer({
     super.key,
     required this.text,
     required this.style,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final spans = _parseInlineMarkdown(text, style, context);
-    return RichText(
-      text: TextSpan(children: spans),
-    );
+    return RichText(text: TextSpan(children: spans));
   }
 
   List<InlineSpan> _parseInlineMarkdown(
@@ -37,16 +39,47 @@ class InlineMarkdownRenderer extends StatelessWidget {
     }
 
     while (i < text.length) {
+      // Check for links: [text](url)
+      if (text[i] == '[' && !_isEscaped(text, i)) {
+        final closeBracket = text.indexOf(']', i);
+        if (closeBracket != -1 &&
+            closeBracket + 1 < text.length &&
+            text[closeBracket + 1] == '(') {
+          final closeParenIndex = text.indexOf(')', closeBracket + 2);
+          if (closeParenIndex != -1) {
+            flushBuffer();
+            final linkText = text.substring(i + 1, closeBracket);
+            final url = text.substring(closeBracket + 2, closeParenIndex);
+
+            spans.add(
+              TextSpan(
+                text: linkText,
+                style: baseStyle.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  decoration: TextDecoration.underline,
+                ),
+                recognizer: TapGestureRecognizer()
+                  ..onTap = () {
+                    onTap(url);
+                  },
+              ),
+            );
+
+            i = closeParenIndex + 1;
+            continue;
+          }
+        }
+      }
+
       // Check for inline code: `code`
       if (text[i] == '`' && !_isEscaped(text, i)) {
         final endIndex = text.indexOf('`', i + 1);
         if (endIndex != -1) {
           flushBuffer();
           final code = text.substring(i + 1, endIndex);
-          spans.add(TextSpan(
-            text: code,
-            style: _codeStyle(baseStyle, context),
-          ));
+          spans.add(
+            TextSpan(text: code, style: _codeStyle(baseStyle, context)),
+          );
           i = endIndex + 1;
           continue;
         }
@@ -63,13 +96,15 @@ class InlineMarkdownRenderer extends StatelessWidget {
           flushBuffer();
           final boldText = text.substring(i + 2, endIndex);
           // Recursively parse the bold text for nested formatting
-          spans.add(TextSpan(
-            children: _parseInlineMarkdown(
-              boldText,
-              baseStyle.copyWith(fontWeight: FontWeight.bold),
-              context,
+          spans.add(
+            TextSpan(
+              children: _parseInlineMarkdown(
+                boldText,
+                baseStyle.copyWith(fontWeight: FontWeight.bold),
+                context,
+              ),
             ),
-          ));
+          );
           i = endIndex + 2;
           continue;
         }
@@ -84,13 +119,15 @@ class InlineMarkdownRenderer extends StatelessWidget {
           if (endIndex != -1 && endIndex > i + 1) {
             flushBuffer();
             final italicText = text.substring(i + 1, endIndex);
-            spans.add(TextSpan(
-              children: _parseInlineMarkdown(
-                italicText,
-                baseStyle.copyWith(fontStyle: FontStyle.italic),
-                context,
+            spans.add(
+              TextSpan(
+                children: _parseInlineMarkdown(
+                  italicText,
+                  baseStyle.copyWith(fontStyle: FontStyle.italic),
+                  context,
+                ),
               ),
-            ));
+            );
             i = endIndex + 1;
             continue;
           }
@@ -106,12 +143,12 @@ class InlineMarkdownRenderer extends StatelessWidget {
         if (endIndex != -1) {
           flushBuffer();
           final strikeText = text.substring(i + 2, endIndex);
-          spans.add(TextSpan(
-            text: strikeText,
-            style: baseStyle.copyWith(
-              decoration: TextDecoration.lineThrough,
+          spans.add(
+            TextSpan(
+              text: strikeText,
+              style: baseStyle.copyWith(decoration: TextDecoration.lineThrough),
             ),
-          ));
+          );
           i = endIndex + 2;
           continue;
         }
@@ -128,13 +165,15 @@ class InlineMarkdownRenderer extends StatelessWidget {
             flushBuffer();
             final linkText = text.substring(i + 1, closeBracket);
             // final url = text.substring(closeBracket + 2, closeParenIndex);
-            spans.add(TextSpan(
-              text: linkText,
-              style: baseStyle.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                decoration: TextDecoration.underline,
+            spans.add(
+              TextSpan(
+                text: linkText,
+                style: baseStyle.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  decoration: TextDecoration.underline,
+                ),
               ),
-            ));
+            );
             i = closeParenIndex + 1;
             continue;
           }
@@ -179,4 +218,3 @@ class InlineMarkdownRenderer extends StatelessWidget {
     return -1;
   }
 }
-

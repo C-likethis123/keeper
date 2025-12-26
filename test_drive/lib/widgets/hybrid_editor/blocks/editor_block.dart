@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:test_drive/widgets/code_block_widget/code_block_widget.dart';
-
+import 'package:url_launcher/url_launcher.dart';
 import '../core/core.dart';
 import 'block_config.dart';
 import 'inline_markdown_renderer.dart';
@@ -137,46 +137,64 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
               listItemNumber: config.listItemNumber ?? 1,
             ),
           Expanded(
-            child: Stack(
-              alignment: Alignment.topLeft,
-              children: [
-                // Formatted view
-                // shows this at first. but the gesture detector does not work and ontap does not work.
-                if (_showFormatted)
-                  GestureDetector(
-                    onTap: () {
-                      setState(() => _showFormatted = false);
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        config.focusNode.requestFocus();
-                      });
-                    },
-                    child: InlineMarkdownRenderer(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () {
+                setState(() => _showFormatted = false);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  config.focusNode.requestFocus();
+                });
+              },
+              child: Stack(
+                alignment: Alignment.topLeft,
+                children: [
+                  // Formatted markdown view
+                  if (_showFormatted)
+                    InlineMarkdownRenderer(
                       text: config.block.content,
                       style: textStyle,
+                      onTap: (url) {
+                        // Only open link on Cmd/Ctrl + click
+                        final isCmdPressed =
+                            HardwareKeyboard.instance.isMetaPressed;
+                        if (isCmdPressed) {
+                          debugPrint('Open link: $url');
+                          launchUrl(Uri.parse(url));
+                        } else {
+                          print('Request focus');
+                          // Focus editor on normal click
+                          setState(() => _showFormatted = false);
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            config.focusNode.requestFocus();
+                          });
+                        }
+                      },
+                    ),
+
+                  // Editable text (disabled when formatted view is active)
+                  IgnorePointer(
+                    ignoring: _showFormatted,
+                    child: Focus(
+                      onKeyEvent: _onKeyEvent,
+                      child: TextField(
+                        controller: config.controller,
+                        focusNode: config.focusNode,
+                        maxLines: null,
+                        style: textStyle.copyWith(
+                          color: _showFormatted
+                              ? Colors.transparent
+                              : textStyle.color,
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                        onChanged: config.onContentChanged,
+                      ),
                     ),
                   ),
-                // Editable TextField with key handling
-                Focus(
-                  onKeyEvent: _onKeyEvent,
-                  child: TextField(
-                    controller: config.controller,
-                    focusNode: config.focusNode,
-                    maxLines: null,
-                    onTap: () {
-                      setState(() => _showFormatted = false);
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        config.focusNode.requestFocus();
-                      });
-                    },
-                    style: textStyle,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                    ),
-                    onChanged: config.onContentChanged,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
