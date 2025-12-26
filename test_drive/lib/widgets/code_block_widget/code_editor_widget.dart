@@ -19,7 +19,8 @@ class CodeEditorWidget extends StatefulWidget {
   final String language;
   final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
-  final VoidCallback? onEscape;
+  final VoidCallback? onFocusNext;
+  final VoidCallback? onFocusPrevious;
   final bool readOnly;
   final bool showLineNumbers;
   final double fontSize;
@@ -30,7 +31,8 @@ class CodeEditorWidget extends StatefulWidget {
     this.language = 'plaintext',
     this.focusNode,
     this.onChanged,
-    this.onEscape,
+    this.onFocusNext,
+    this.onFocusPrevious,
     this.readOnly = false,
     this.showLineNumbers = true,
     this.fontSize = 14.0,
@@ -117,8 +119,32 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
     // Handle Escape to exit code block
     if (event.logicalKey == LogicalKeyboardKey.escape) {
-      widget.onEscape?.call();
+      widget.onFocusNext?.call();
       return KeyEventResult.handled;
+    }
+
+    // Also escape if the user presses the down arrow key and it's the last block.
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      final lines = _controller.text.split('\n');
+      final cursorOffset = _controller.selection.baseOffset;
+      final currentLineIndex =
+          _controller.text.substring(0, cursorOffset).split('\n').length - 1;
+      final isLastLine = currentLineIndex == lines.length - 1;
+      if (isLastLine) {
+        widget.onFocusNext?.call();
+        return KeyEventResult.handled;
+      }
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      final cursorOffset = _controller.selection.baseOffset;
+      final currentLineIndex =
+          _controller.text.substring(0, cursorOffset).split('\n').length - 1;
+      final isFirstLine = currentLineIndex == 0;
+      if (isFirstLine) {
+        widget.onFocusPrevious?.call();
+        return KeyEventResult.handled;
+      }
     }
 
     // Handle Enter for smart indentation
@@ -318,8 +344,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     );
     for (final node in nodes) {
       final effectiveClass = node.className ?? parentClass;
-      final color =
-          theme.getColorForClass(effectiveClass);
+      final color = theme.getColorForClass(effectiveClass);
 
       if (node.value != null && (node.value as String).isNotEmpty) {
         spans.add(
