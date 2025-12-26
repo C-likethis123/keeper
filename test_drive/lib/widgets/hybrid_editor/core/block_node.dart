@@ -9,6 +9,7 @@ enum BlockType {
   bulletList,
   numberedList,
   codeBlock,
+  mathBlock,
 }
 
 /// Immutable node representing a block of content in the document.
@@ -88,6 +89,16 @@ class BlockNode {
     );
   }
 
+  factory BlockNode.mathBlock({
+    String content = '',
+  }) {
+    return BlockNode(
+      id: generateId(),
+      type: BlockType.mathBlock,
+      content: content,
+    );
+  }
+
   /// Creates a copy of this block with updated fields
   BlockNode copyWith({
     String? id,
@@ -125,6 +136,8 @@ class BlockNode {
       case BlockType.codeBlock:
         final lang = language ?? '';
         return '```$lang\n$content\n```';
+      case BlockType.mathBlock:
+        return '\$\$\n$content\n\$\$';
       case BlockType.paragraph:
         return content;
     }

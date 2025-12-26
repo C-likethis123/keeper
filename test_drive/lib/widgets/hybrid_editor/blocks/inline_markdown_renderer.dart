@@ -1,7 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:test_drive/widgets/hybrid_editor/blocks/inline_math_block.dart';
 
 /// Renders inline markdown formatting (bold, italic, code, links)
 class InlineMarkdownRenderer extends StatelessWidget {
@@ -68,6 +68,26 @@ class InlineMarkdownRenderer extends StatelessWidget {
             i = closeParenIndex + 1;
             continue;
           }
+        }
+      }
+
+      // Inline LaTeX: $...$
+      if (text[i] == r'$' && !_isEscaped(text, i)) {
+        final endIndex = _findUnescapedChar(text, r'$', i + 1);
+        if (endIndex != -1) {
+          flushBuffer();
+
+          final latex = text.substring(i + 1, endIndex);
+
+          spans.add(
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: InlineMath(latex: latex, style: baseStyle),
+            ),
+          );
+
+          i = endIndex + 1;
+          continue;
         }
       }
 

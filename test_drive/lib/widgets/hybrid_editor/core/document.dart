@@ -60,6 +60,21 @@ class Document {
         continue;
       }
 
+      // Check for code blocks
+      if (line.startsWith('\$\$')) {
+        final mathLines = <String>[];
+        i++;
+
+        while (i < lines.length && !lines[i].startsWith('\$\$')) {
+          mathLines.add(lines[i]);
+          i++;
+        }
+
+        blocks.add(BlockNode.mathBlock(content: mathLines.join('\n')));
+        i++; // Skip closing ```
+        continue;
+      }
+
       // Check for headings
       if (line.startsWith('### ')) {
         blocks.add(BlockNode.heading(level: 3, content: line.substring(4)));
@@ -188,7 +203,8 @@ class Document {
       if (i < blocks.length - 1) {
         buffer.write('\n');
         // Add extra newline after code blocks
-        if (blocks[i].isCodeBlock) {
+        if (blocks[i].isCodeBlock ||
+            blocks[i].blockType == BlockType.mathBlock) {
           buffer.write('\n');
         }
       }

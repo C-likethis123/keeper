@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:test_drive/widgets/code_block_widget/code_block_widget.dart';
+import 'package:test_drive/widgets/math_block_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/core.dart';
 import 'block_config.dart';
@@ -120,6 +121,10 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
     if (isCodeBlock) {
       return CodeBlockWidget(config: config);
     }
+    final isMathBlock = config.block.type == BlockType.mathBlock;
+    if (isMathBlock) {
+      return MathBlockWidget(config: config);
+    }
 
     final isList =
         config.block.type == BlockType.bulletList ||
@@ -158,10 +163,8 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
                         final isCmdPressed =
                             HardwareKeyboard.instance.isMetaPressed;
                         if (isCmdPressed) {
-                          debugPrint('Open link: $url');
                           launchUrl(Uri.parse(url));
                         } else {
-                          print('Request focus');
                           // Focus editor on normal click
                           setState(() => _showFormatted = false);
                           WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:test_drive/widgets/hybrid_editor/blocks/math_block_builder.dart';
 import 'blocks/editor_block.dart';
 import 'core/core.dart';
 import 'blocks/blocks.dart';
@@ -84,6 +84,7 @@ class _HybridEditorState extends State<HybridEditor> {
       BulletListBlockBuilder(),
       NumberedListBlockBuilder(),
       CodeBlockBuilder(),
+      MathBlockBuilder(),
     ]);
   }
 
