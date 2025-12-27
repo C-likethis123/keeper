@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:test_drive/widgets/code_editor_theme.dart';
+import 'package:test_drive/themes/code_editor_theme.dart';
+import 'package:test_drive/widgets/hybrid_editor/code_engine/syntax_highlighter.dart';
 import '../hybrid_editor/code_engine/language_registry.dart';
 import '../hybrid_editor/code_engine/smart_editing.dart';
-import '../hybrid_editor/code_engine/syntax_theme.dart';
+import '../../themes/syntax_theme.dart';
 
 /// A full-featured code editor widget
 ///
@@ -195,6 +196,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
   Widget build(BuildContext context) {
     final syntaxTheme = Theme.of(context).extension<SyntaxTheme>()!;
     final codeTheme = Theme.of(context).extension<CodeEditorTheme>()!;
+    final syntaxHighlighter = SyntaxHighlighter(theme: syntaxTheme);
     final codeStyle = GoogleFonts.firaCode(
       fontSize: widget.fontSize,
       height: 1.5,
@@ -212,33 +214,10 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
           children: [
             // Line numbers
             if (widget.showLineNumbers)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  border: Border(
-                    right: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                ),
-                child: SingleChildScrollView(
-                  controller: _lineNumberScrollController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: List.generate(lineCount, (index) {
-                      return Text(
-                        '${index + 1}',
-                        style: codeStyle.copyWith(color: syntaxTheme.comment),
-                      );
-                    }),
-                  ),
-                ),
+              syntaxHighlighter.buildHighlightedLines(
+                lineCount: lineCount,
+                lineNumberScrollController: _lineNumberScrollController,
               ),
-
             // Code editor
             Expanded(
               child: SingleChildScrollView(
@@ -247,8 +226,10 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                 child: Stack(
                   children: [
                     // Highlighted code (background layer) - use Text widget for consistent rendering
-                    _buildHighlightedCode(syntaxTheme),
-
+                    syntaxHighlighter.buildHighlightedCode(
+                      _controller.text,
+                      widget.language,
+                    ),
                     // Invisible text field (input layer) - positioned to exactly overlay
                     SizedBox(
                       width: double.infinity,
@@ -307,64 +288,5 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
         }
       }
     }
-  }
-
-  Widget _buildHighlightedCode(SyntaxTheme theme) {
-    final code = _controller.text;
-    final result = LanguageRegistry.instance.highlightCode(
-      code,
-      widget.language,
-    );
-    final codeStyle = GoogleFonts.firaCode(
-      fontSize: widget.fontSize,
-      height: 1.5,
-      color: theme.defaultText,
-    );
-
-    if (result == null || result.nodes == null) {
-      return Text(code, style: codeStyle);
-    }
-
-    final spans = _processNodes(result.nodes!, theme);
-    return RichText(
-      text: TextSpan(style: codeStyle, children: spans),
-    );
-  }
-
-  List<TextSpan> _processNodes(
-    List<dynamic> nodes,
-    SyntaxTheme theme, {
-    String? parentClass,
-  }) {
-    final spans = <TextSpan>[];
-    final codeStyle = GoogleFonts.firaCode(
-      fontSize: widget.fontSize,
-      height: 1.5,
-      color: theme.defaultText,
-    );
-    for (final node in nodes) {
-      final effectiveClass = node.className ?? parentClass;
-      final color = theme.getColorForClass(effectiveClass);
-
-      if (node.value != null && (node.value as String).isNotEmpty) {
-        spans.add(
-          TextSpan(
-            text: node.value as String,
-            style: codeStyle.copyWith(color: color),
-          ),
-        );
-      }
-
-      if (node.children != null) {
-        spans.addAll(
-          _processNodes(
-            node.children as List<dynamic>,
-            theme,
-            parentClass: effectiveClass,
-          ),
-        );
-      }
-    }
-    return spans;
   }
 }

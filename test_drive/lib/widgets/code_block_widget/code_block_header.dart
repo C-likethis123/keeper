@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:test_drive/widgets/code_editor_theme.dart';
+import 'package:test_drive/themes/code_editor_theme.dart';
 import 'package:test_drive/widgets/hybrid_editor/code_engine/language_registry.dart';
 
 /// This widget is used to display the header of a code block

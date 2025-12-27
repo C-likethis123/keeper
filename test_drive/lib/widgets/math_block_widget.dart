@@ -49,13 +49,13 @@ class MathBlockWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
         color: config.isFocused
-            ? theme.colorScheme.surfaceVariant.withOpacity(0.3)
-            : theme.colorScheme.surfaceVariant.withOpacity(0.1),
+            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: config.isFocused
               ? theme.colorScheme.primary
-              : theme.colorScheme.outline.withOpacity(0.3),
+              : theme.colorScheme.outline.withValues(alpha: 0.3),
           width: 1.2,
         ),
       ),

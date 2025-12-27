@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:test_drive/widgets/code_block_widget/code_block_header.dart';
-import 'package:test_drive/widgets/code_editor_theme.dart';
+import 'package:test_drive/themes/code_editor_theme.dart';
 import '../hybrid_editor/blocks/block_config.dart';
 
 import 'code_editor_widget.dart';

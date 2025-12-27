@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:test_drive/widgets/code_editor_theme.dart';
-import 'package:test_drive/widgets/hybrid_editor/code_engine/syntax_theme.dart';
+import 'package:test_drive/themes/code_editor_theme.dart';
+import 'package:test_drive/themes/syntax_theme.dart';
 
 import 'screens/home_screen.dart';
 

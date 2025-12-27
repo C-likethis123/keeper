@@ -120,7 +120,7 @@ class BlockNode {
 
   /// Converts the block to its markdown representation
   String toMarkdown() {
-    final listIndentation = '${'  ' * listLevel}';
+    final listIndentation = '  ' * listLevel;
     switch (type) {
       case BlockType.heading1:
         return '# $content';
