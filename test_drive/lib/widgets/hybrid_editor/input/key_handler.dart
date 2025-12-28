@@ -2,11 +2,7 @@ import 'package:flutter/services.dart';
 import '../core/core.dart';
 
 /// Result of handling a key event
-enum KeyHandleResult {
-  handled,
-  ignored,
-  passThrough,
-}
+enum KeyHandleResult { handled, ignored, passThrough }
 
 /// A key binding that maps a key combination to an action
 class KeyBinding {
@@ -31,13 +27,13 @@ class KeyBinding {
   /// Checks if this binding matches the given key event
   bool matches(KeyEvent event) {
     if (event.logicalKey != key) return false;
-    
+
     final keyboard = HardwareKeyboard.instance;
     if (ctrl != keyboard.isControlPressed) return false;
     if (shift != keyboard.isShiftPressed) return false;
     if (alt != keyboard.isAltPressed) return false;
     if (meta != keyboard.isMetaPressed) return false;
-    
+
     return true;
   }
 }
@@ -52,69 +48,104 @@ class KeyHandler {
 
   void _registerDefaultBindings() {
     // Undo: Cmd/Ctrl + Z
-    _bindings.add(KeyBinding(
-      key: LogicalKeyboardKey.keyZ,
-      meta: true,
-      description: 'Undo',
-      action: (state) {
-        state.undo();
-        return KeyHandleResult.handled;
-      },
-    ));
+    _bindings.add(
+      KeyBinding(
+        key: LogicalKeyboardKey.keyZ,
+        meta: true,
+        description: 'Undo',
+        action: (state) {
+          state.undo();
+          return KeyHandleResult.handled;
+        },
+      ),
+    );
 
-    _bindings.add(KeyBinding(
-      key: LogicalKeyboardKey.keyZ,
-      ctrl: true,
-      description: 'Undo',
-      action: (state) {
-        state.undo();
-        return KeyHandleResult.handled;
-      },
-    ));
+    _bindings.add(
+      KeyBinding(
+        key: LogicalKeyboardKey.keyZ,
+        ctrl: true,
+        description: 'Undo',
+        action: (state) {
+          state.undo();
+          return KeyHandleResult.handled;
+        },
+      ),
+    );
 
     // Redo: Cmd/Ctrl + Shift + Z
-    _bindings.add(KeyBinding(
-      key: LogicalKeyboardKey.keyZ,
-      meta: true,
-      shift: true,
-      description: 'Redo',
-      action: (state) {
-        state.redo();
-        return KeyHandleResult.handled;
-      },
-    ));
+    _bindings.add(
+      KeyBinding(
+        key: LogicalKeyboardKey.keyZ,
+        meta: true,
+        shift: true,
+        description: 'Redo',
+        action: (state) {
+          state.redo();
+          return KeyHandleResult.handled;
+        },
+      ),
+    );
 
-    _bindings.add(KeyBinding(
-      key: LogicalKeyboardKey.keyZ,
-      ctrl: true,
-      shift: true,
-      description: 'Redo',
-      action: (state) {
-        state.redo();
-        return KeyHandleResult.handled;
-      },
-    ));
+    _bindings.add(
+      KeyBinding(
+        key: LogicalKeyboardKey.keyZ,
+        ctrl: true,
+        shift: true,
+        description: 'Redo',
+        action: (state) {
+          state.redo();
+          return KeyHandleResult.handled;
+        },
+      ),
+    );
 
     // Redo: Cmd/Ctrl + Y (alternative)
-    _bindings.add(KeyBinding(
-      key: LogicalKeyboardKey.keyY,
-      meta: true,
-      description: 'Redo',
-      action: (state) {
-        state.redo();
-        return KeyHandleResult.handled;
-      },
-    ));
+    _bindings.add(
+      KeyBinding(
+        key: LogicalKeyboardKey.keyY,
+        meta: true,
+        description: 'Redo',
+        action: (state) {
+          state.redo();
+          return KeyHandleResult.handled;
+        },
+      ),
+    );
 
-    _bindings.add(KeyBinding(
-      key: LogicalKeyboardKey.keyY,
-      ctrl: true,
-      description: 'Redo',
-      action: (state) {
-        state.redo();
-        return KeyHandleResult.handled;
-      },
-    ));
+    _bindings.add(
+      KeyBinding(
+        key: LogicalKeyboardKey.keyY,
+        ctrl: true,
+        description: 'Redo',
+        action: (state) {
+          state.redo();
+          return KeyHandleResult.handled;
+        },
+      ),
+    );
+
+    _bindings.add(
+      KeyBinding(
+        key: LogicalKeyboardKey.keyA,
+        meta: true,
+        description: 'Select All',
+        action: (state) {
+          state.selectAllBlocks();
+          return KeyHandleResult.handled;
+        },
+      ),
+    );
+
+    _bindings.add(
+      KeyBinding(
+        key: LogicalKeyboardKey.escape,
+        description: 'Clear selection',
+        action: (state) {
+          state.clearBlockSelection();
+          return KeyHandleResult.handled;
+        },
+      ),
+    );
   }
 
   /// Registers a custom key binding
@@ -137,4 +168,3 @@ class KeyHandler {
     return KeyHandleResult.ignored;
   }
 }
-

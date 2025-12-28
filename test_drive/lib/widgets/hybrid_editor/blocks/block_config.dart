@@ -7,6 +7,9 @@ class BlockConfig {
   final int index;
   final BlockNode block;
   final bool isFocused;
+  final bool isBlockSelected;
+  final bool hasBlockSelection;
+  final VoidCallback deleteSelectedBlocks;
   final TextEditingController controller;
   final FocusNode focusNode;
   final BlockContentCallback onContentChanged;
@@ -26,6 +29,9 @@ class BlockConfig {
     required this.index,
     required this.block,
     required this.isFocused,
+    required this.isBlockSelected,
+    required this.hasBlockSelection,
+    required this.deleteSelectedBlocks,
     required this.controller,
     required this.focusNode,
     required this.onContentChanged,

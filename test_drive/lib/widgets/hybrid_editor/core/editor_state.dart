@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:test_drive/widgets/hybrid_editor/core/block_selection.dart';
 import 'block_node.dart';
 import 'document.dart';
 import 'selection.dart';
@@ -17,6 +18,7 @@ import 'history_state.dart';
 class EditorState extends ChangeNotifier {
   Document _document;
   DocumentSelection _selection;
+  BlockSelection? _blockSelection;
   int? _focusedBlockIndex;
   final History _history;
   bool _isComposing = false;
@@ -34,6 +36,8 @@ class EditorState extends ChangeNotifier {
 
   /// The current selection
   DocumentSelection get selection => _selection;
+  BlockSelection? get blockSelection => _blockSelection;
+  bool get hasBlockSelection => _blockSelection != null;
 
   /// The index of the currently focused block
   int? get focusedBlockIndex => _focusedBlockIndex;
@@ -82,6 +86,43 @@ class EditorState extends ChangeNotifier {
       _selection = newSelection;
       notifyListeners();
     }
+  }
+
+  void deleteSelectedBlocks() {
+    if (_blockSelection == null) return;
+    final blocks = _document.blocks;
+    final transaction = TransactionBuilder()
+        .replaceBlocks(_blockSelection!.start, _blockSelection!.end + 1, blocks, [BlockNode.paragraph()])
+        .build();
+    apply(transaction);
+    clearBlockSelection();
+  }
+
+  void clearBlockSelection() {
+    if (_blockSelection != null) {
+      _blockSelection = null;
+      notifyListeners();
+    }
+  }
+
+  void selectBlock(int index) {
+    _blockSelection = BlockSelection(start: index, end: index);
+    _focusedBlockIndex = null;
+    notifyListeners();
+  }
+
+  void selectBlockRange(int start, int end) {
+    _blockSelection = BlockSelection(start: start, end: end).normalized();
+    _focusedBlockIndex = null;
+    notifyListeners();
+  }
+
+  void selectAllBlocks() {
+    if (_document.isEmpty) return;
+
+    _blockSelection = BlockSelection(start: 0, end: _document.length - 1);
+    _focusedBlockIndex = null;
+    notifyListeners();
   }
 
   /// Applies a transaction to the document

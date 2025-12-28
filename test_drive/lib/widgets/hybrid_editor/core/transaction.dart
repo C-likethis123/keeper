@@ -10,7 +10,7 @@ import 'document.dart';
 import 'selection.dart';
 
 /// A transaction groups multiple operations together.
-/// 
+///
 /// Transactions are applied atomically and can be undone as a single unit.
 class Transaction {
   final List<Operation> operations;
@@ -52,12 +52,12 @@ class Transaction {
     // Apply operations and collect inverses in reverse order
     final inverses = <Operation>[];
     Document current = document;
-    
+
     for (final operation in operations) {
       inverses.add(operation.inverse(current));
       current = operation.apply(current);
     }
-    
+
     return Transaction(
       operations: inverses.reversed.toList(),
       selectionBefore: selectionAfter,
@@ -67,7 +67,8 @@ class Transaction {
   }
 
   @override
-  String toString() => 'Transaction(${operations.length} operations, ${description ?? "no description"})';
+  String toString() =>
+      'Transaction(${operations.length} operations, ${description ?? "no description"})';
 }
 
 /// Builder for creating transactions fluently
@@ -96,29 +97,52 @@ class TransactionBuilder {
   }
 
   /// Adds an operation to update block content
-  TransactionBuilder updateContent(int blockIndex, String oldContent, String newContent) {
-    _operations.add(UpdateBlockContentOperation(
-      blockIndex: blockIndex,
-      oldContent: oldContent,
-      newContent: newContent,
-    ));
+  TransactionBuilder updateContent(
+    int blockIndex,
+    String oldContent,
+    String newContent,
+  ) {
+    _operations.add(
+      UpdateBlockContentOperation(
+        blockIndex: blockIndex,
+        oldContent: oldContent,
+        newContent: newContent,
+      ),
+    );
     return this;
   }
 
   /// Adds an operation to update block type
-  TransactionBuilder updateType(int blockIndex, BlockType oldType, BlockType newType, {String? language}) {
-    _operations.add(UpdateBlockTypeOperation(
-      blockIndex: blockIndex,
-      oldType: oldType,
-      newType: newType,
-      newLanguage: language,
-    ));
+  TransactionBuilder updateType(
+    int blockIndex,
+    BlockType oldType,
+    BlockType newType, {
+    String? language,
+  }) {
+    _operations.add(
+      UpdateBlockTypeOperation(
+        blockIndex: blockIndex,
+        oldType: oldType,
+        newType: newType,
+        newLanguage: language,
+      ),
+    );
     return this;
   }
 
   /// Adds an operation to update the list level of a block
-  TransactionBuilder updateListLevel(int blockIndex, int oldLevel, int newLevel) {
-    _operations.add(UpdateListLevelOperation(blockIndex: blockIndex, oldLevel: oldLevel, newLevel: newLevel));
+  TransactionBuilder updateListLevel(
+    int blockIndex,
+    int oldLevel,
+    int newLevel,
+  ) {
+    _operations.add(
+      UpdateListLevelOperation(
+        blockIndex: blockIndex,
+        oldLevel: oldLevel,
+        newLevel: newLevel,
+      ),
+    );
     return this;
   }
 
@@ -141,12 +165,14 @@ class TransactionBuilder {
     List<BlockNode> oldBlocks,
     List<BlockNode> newBlocks,
   ) {
-    _operations.add(ReplaceBlocksOperation(
-      startIndex: start,
-      endIndex: end,
-      oldBlocks: oldBlocks,
-      newBlocks: newBlocks,
-    ));
+    _operations.add(
+      ReplaceBlocksOperation(
+        startIndex: start,
+        endIndex: end,
+        oldBlocks: oldBlocks,
+        newBlocks: newBlocks,
+      ),
+    );
     return this;
   }
 
@@ -160,4 +186,3 @@ class TransactionBuilder {
     );
   }
 }
-

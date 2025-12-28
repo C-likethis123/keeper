@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:test_drive/widgets/code_block_widget/code_block_widget.dart';
-import 'package:test_drive/widgets/math_block_widget.dart';
+import 'package:test_drive/widgets/hybrid_editor/blocks/math_block_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/core.dart';
 import 'block_config.dart';
@@ -77,12 +77,18 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
     }
 
     // BACKSPACE → remove style
+    // onDelete is not used?
     if (event.logicalKey == LogicalKeyboardKey.backspace) {
-      final atStart = selection.isCollapsed && selection.baseOffset == 0;
-
-      if (atStart) {
-        config.onBackspaceAtStart();
+      if (config.hasBlockSelection) {
+        config.deleteSelectedBlocks();
         return KeyEventResult.handled;
+      } else {
+        final atStart = selection.isCollapsed && selection.baseOffset == 0;
+
+        if (atStart) {
+          config.onBackspaceAtStart();
+          return KeyEventResult.handled;
+        }
       }
     }
 
@@ -115,6 +121,17 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
 
   @override
   Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: config.isBlockSelected
+            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
+            : null,
+      ),
+      child: _buildBlock(context),
+    );
+  }
+
+  Widget _buildBlock(BuildContext context) {
     final textStyle = _editorStyle(context);
 
     final isCodeBlock = config.block.type == BlockType.codeBlock;
