@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
-
-import '../models/note.dart';
-import '../models/note_metadata.dart';
-import '../services/note_service.dart';
-import '../services/settings_service.dart';
-import '../widgets/app_drawer.dart';
-import '../widgets/app_text_field.dart';
-import '../widgets/empty_state.dart';
-import 'screen_states/error_screen.dart';
-import 'screen_states/loader.dart';
-import '../widgets/notes_section.dart';
-import 'note_editor_screen.dart';
-import 'settings_screen.dart';
+import 'package:test_drive/models/note.dart';
+import 'package:test_drive/models/note_metadata.dart';
+import 'package:test_drive/screens/note_editor_screen.dart';
+import 'package:test_drive/screens/screen_states/error_screen.dart';
+import 'package:test_drive/screens/screen_states/loader.dart';
+import 'package:test_drive/screens/settings_screen.dart';
+import 'package:test_drive/services/note_service.dart';
+import 'package:test_drive/services/settings_service.dart';
+import 'package:test_drive/widgets/app_drawer.dart';
+import 'package:test_drive/widgets/app_text_field.dart';
+import 'package:test_drive/widgets/empty_state.dart';
+import 'package:test_drive/widgets/notes_section.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,7 +20,13 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final Future<SettingsService> _initFuture = SettingsService.getInstance();
+  late final Future<void> _initFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _initFuture = SettingsService.instance.init();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +34,8 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       title: const Text('Notes'),
     );
-    return FutureBuilder<SettingsService>(
+
+    return FutureBuilder<void>(
       future: _initFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -45,17 +51,14 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
 
-        return _HomeScreenContent(settingsService: snapshot.data!);
+        return const _HomeScreenContent();
       },
     );
   }
 }
 
-/// Main home screen content with infinite scroll
 class _HomeScreenContent extends StatefulWidget {
-  final SettingsService settingsService;
-
-  const _HomeScreenContent({required this.settingsService});
+  const _HomeScreenContent();
 
   @override
   State<_HomeScreenContent> createState() => _HomeScreenContentState();
@@ -75,7 +78,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
   static const int _pageSize = 20;
   int _currentPage = 0;
 
-  SettingsService get _settings => widget.settingsService;
+  SettingsService get _settings => SettingsService.instance;
 
   @override
   void initState() {
@@ -110,7 +113,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     });
 
     try {
-      final folder = _settings.getFolder();
+      final folder = _settings.folder;
       final List<NoteMetadata> metadata;
       if (folder != null) {
         metadata = await _noteService.scanNotesMetadata([folder]);
@@ -168,7 +171,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
   }
 
   Future<void> _createNewNote() async {
-    final folder = _settings.getFolder();
+    final folder = _settings.folder;
     if (folder == null) return;
 
     await Navigator.push(
@@ -182,7 +185,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
   }
 
   Future<void> _editNote(Note note) async {
-    final folder = _settings.getFolder();
+    final folder = _settings.folder;
     if (folder == null) return;
 
     await Navigator.push(
@@ -290,7 +293,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
 
   @override
   Widget build(BuildContext context) {
-    final hasFolder = _settings.hasFolder();
+    final hasFolder = _settings.hasFolder;
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
@@ -383,7 +386,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
   }
 
   Widget _buildEmptyState() {
-    final hasFolder = _settings.hasFolder();
+    final hasFolder = _settings.hasFolder;
 
     return EmptyState(
       icon: hasFolder ? Icons.note_outlined : Icons.folder_open,

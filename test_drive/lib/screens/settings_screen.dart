@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../services/settings_service.dart';
 import '../utils/platform_utils.dart';
 import '../widgets/folder_picker.dart';
-import 'screen_states/loader.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -13,42 +12,36 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  SettingsService? _settingsService;
+  late final SettingsService? _settingsService;
   String? _folder;
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _initSettings();
-  }
-
-  Future<void> _initSettings() async {
-    final service = await SettingsService.getInstance();
-    setState(() {
-      _settingsService = service;
-      _folder = service.getFolder();
-      _isLoading = false;
-    });
+    _settingsService = SettingsService.instance;
+    _folder = _settingsService?.folder;
   }
 
   Future<void> _onFolderChanged(String? newFolder) async {
     if (_settingsService == null) return;
 
     if (newFolder != null) {
-      await _settingsService!.setFolder(newFolder);
+      await _settingsService.setFolder(newFolder);
       setState(() => _folder = newFolder);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Set folder: ${PlatformUtils.getPathBasename(newFolder)}'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      if (!mounted) {
+        return;
       }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Set folder: ${PlatformUtils.getPathBasename(newFolder)}',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } else {
-      await _settingsService!.clearFolder();
+      await _settingsService.clearFolder();
       setState(() => _folder = null);
     }
   }
@@ -62,67 +55,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('Settings'),
         backgroundColor: colorScheme.surface,
       ),
-      body: _isLoading
-          ? const Loader()
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // Folder Section
-                Text(
-                  'Notes Folder',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Select a folder to read and save notes.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 16),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Folder Section
+          Text(
+            'Notes Folder',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Select a folder to read and save notes.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
 
-                // Folder Picker
-                FolderPicker(
-                  folderPath: _folder,
-                  dialogTitle: 'Select Notes Folder',
-                  emptyStateTitle: 'No folder configured',
-                  emptyStateSubtitle: 'Select a folder to start loading notes',
-                  onFolderChanged: _onFolderChanged,
-                ),
+          // Folder Picker
+          FolderPicker(
+            folderPath: _folder,
+            dialogTitle: 'Select Notes Folder',
+            emptyStateTitle: 'No folder configured',
+            emptyStateSubtitle: 'Select a folder to start loading notes',
+            onFolderChanged: _onFolderChanged,
+          ),
 
-                const SizedBox(height: 32),
+          const SizedBox(height: 32),
 
-                // Mobile Platform Notice
-                if (PlatformUtils.isMobile)
-                  Card(
-                    elevation: 0,
-                    color: colorScheme.tertiaryContainer,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: colorScheme.onTertiaryContainer,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'On mobile devices, folder access may be limited to specific locations.',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.onTertiaryContainer,
-                                  ),
-                            ),
-                          ),
-                        ],
+          // Mobile Platform Notice
+          if (PlatformUtils.isMobile)
+            Card(
+              elevation: 0,
+              color: colorScheme.tertiaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: colorScheme.onTertiaryContainer,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'On mobile devices, folder access may be limited to specific locations.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onTertiaryContainer,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                  ],
+                ),
+              ),
             ),
+        ],
+      ),
     );
   }
 }
