@@ -161,20 +161,26 @@ class _HybridEditorState extends State<HybridEditor> {
 
   void _insertWikiLink(String file) {
     final session = _wikiLinkController.session!;
-    final controller = _inputManager.getController(session.blockIndex);
+    final blockIndex = session.blockIndex;
+    final controller = _inputManager.getController(blockIndex);
 
     final text = controller.text;
+    final caret = controller.selection.baseOffset;
+
     final before = text.substring(0, session.startOffset);
-    final after = text.substring(controller.selection.baseOffset);
+    final after = text.substring(caret);
 
     final insert = '[[$file]]';
-    controller.text = before + insert + after;
+    final newText = before + insert + after;
+
+    _editorState.updateBlockContent(blockIndex, newText);
+
     controller.selection = TextSelection.collapsed(
       offset: before.length + insert.length,
     );
 
     _wikiLinkController.end();
-    _endWikiMode();
+    _wikiPortalController.hide();
   }
 
   void _onSpace(int index) {

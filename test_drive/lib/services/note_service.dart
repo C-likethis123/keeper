@@ -113,7 +113,7 @@ class NoteService {
       // Load from file
       try {
         final file = File(meta.filePath);
-        final note = await _loadNoteFromFile(file, meta.sourceFolder);
+        final note = await loadNoteFromFile(file, meta.sourceFolder);
         if (note != null) {
           _noteCache[meta.filePath] = note;
           notes.add(note);
@@ -128,7 +128,7 @@ class NoteService {
   }
 
   /// Load a single note from a markdown file
-  Future<Note?> _loadNoteFromFile(File file, String sourceFolder) async {
+  Future<Note?> loadNoteFromFile(File file, String sourceFolder) async {
     final content = await file.readAsString();
     final fileName = Uri.decodeComponent(file.uri.pathSegments.last);
     final filePath = file.path;
