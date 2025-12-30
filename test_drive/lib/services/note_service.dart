@@ -5,7 +5,6 @@ import '../models/note.dart';
 import '../models/note_metadata.dart';
 
 class NoteService {
-
   static final NoteService instance = NoteService._internal();
   NoteService._internal();
 
@@ -15,39 +14,77 @@ class NoteService {
   final Map<String, Note> _noteCache = {};
 
   /// Scan folders and return only metadata (fast)
-  Future<List<NoteMetadata>> scanNotesMetadata(List<String> folderPaths) async {
+  Future<List<NoteMetadata>> scanNotesMetadata(String folderPath) async {
     final List<NoteMetadata> metadata = [];
 
-    for (final folderPath in folderPaths) {
-      final directory = Directory(folderPath);
-      if (!await directory.exists()) {
-        continue;
-      }
+    final directory = Directory(folderPath);
+    if (!await directory.exists()) {
+      return [];
+    }
 
-      await for (final entity in directory.list(
-        recursive: true,
-        followLinks: false,
-      )) {
-        if (entity is File && entity.path.endsWith('.md')) {
-          try {
-            final fileName = Uri.decodeComponent(entity.uri.pathSegments.last);
-            final lastModified = await entity.lastModified();
-            
-            metadata.add(NoteMetadata(
+    await for (final entity in directory.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      if (entity is File && entity.path.endsWith('.md')) {
+        try {
+          final fileName = Uri.decodeComponent(entity.uri.pathSegments.last);
+          final lastModified = await entity.lastModified();
+
+          metadata.add(
+            NoteMetadata(
               filePath: entity.path,
               fileName: fileName,
               lastModified: lastModified,
               sourceFolder: folderPath,
-            ));
-          } catch (e) {
-            // Skip files that can't be accessed
-            continue;
-          }
+            ),
+          );
+        } catch (e) {
+          // Skip files that can't be accessed
+          continue;
         }
       }
     }
-    
+
     return metadata;
+  }
+
+  Future<List<String>> searchNotesByTitle(
+    String folderPath,
+    String title,
+  ) async {
+    List<String> results = [];
+    final directory = Directory(folderPath);
+    if (!await directory.exists()) {
+      return [];
+    }
+
+    await for (final entity in directory.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      if (entity is File && entity.path.endsWith('.md')) {
+        try {
+          final fileName = Uri.decodeComponent(entity.uri.pathSegments.last);
+          if (fileName.contains(title.toLowerCase())) {
+            results.add(fileName);
+          }
+        } catch (e) {
+          // Skip files that can't be accessed
+          continue;
+        }
+      }
+    }
+    return results;
+  }
+
+  Future<Note?> searchNotes(String title) async {
+    for (final note in _noteCache.values) {
+      if (note.title.contains(title)) {
+        return note;
+      }
+    }
+    return null;
   }
 
   /// Load full notes for a specific page
@@ -58,7 +95,7 @@ class NoteService {
   ) async {
     final startIndex = page * pageSize;
     final endIndex = min(startIndex + pageSize, allMetadata.length);
-    
+
     if (startIndex >= allMetadata.length) {
       return [];
     }

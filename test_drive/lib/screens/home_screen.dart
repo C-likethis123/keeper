@@ -116,7 +116,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
       final folder = _settings.folder;
       final List<NoteMetadata> metadata;
       if (folder != null) {
-        metadata = await _noteService.scanNotesMetadata([folder]);
+        metadata = await _noteService.scanNotesMetadata(folder);
         // Sort by last modified (newest first)
         metadata.sort((a, b) => b.lastModified.compareTo(a.lastModified));
       } else {
