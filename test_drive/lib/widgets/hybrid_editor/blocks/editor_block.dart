@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:test_drive/screens/note_editor_screen.dart';
+import 'package:test_drive/services/note_service.dart';
 import 'package:test_drive/widgets/code_block_widget/code_block_widget.dart';
 import 'package:test_drive/widgets/hybrid_editor/blocks/math_block_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -19,7 +21,7 @@ class EditorBlockWidget extends StatefulWidget {
 
 class _EditorBlockWidgetState extends State<EditorBlockWidget> {
   bool _showFormatted = true;
-
+  final NoteService _noteService = NoteService();
   BlockConfig get config => widget.config;
 
   @override
@@ -175,12 +177,30 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
                     InlineMarkdownRenderer(
                       text: config.block.content,
                       style: textStyle,
-                      onTap: (url) {
+                      onTap: (url) async {
                         // Only open link on Cmd/Ctrl + click
                         final isCmdPressed =
                             HardwareKeyboard.instance.isMetaPressed;
                         if (isCmdPressed) {
-                          launchUrl(Uri.parse(url));
+                          if (url.startsWith('http')) {
+                            // launch external link
+                            launchUrl(Uri.parse(url));
+                          } else {
+                            // search and open note within editor
+                            final note = await _noteService.searchNotes(url);
+                            if (note != null && context.mounted) {
+                              // open note within editor
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => NoteEditorScreen(
+                                    existingNote: note,
+                                    folderPath: note.sourceFolder ?? '',
+                                  ),
+                                ),
+                              );
+                            }
+                          }
                         } else {
                           // Focus editor on normal click
                           setState(() => _showFormatted = false);

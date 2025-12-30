@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:test_drive/services/note_service.dart';
+import 'package:test_drive/services/settings_service.dart';
 import 'package:test_drive/widgets/hybrid_editor/blocks/math_block_builder.dart';
+import 'package:test_drive/widgets/hybrid_editor/wikilinks/wiki_link_controller.dart';
+import 'package:test_drive/widgets/hybrid_editor/wikilinks/wiki_link_dropdown.dart';
 import 'blocks/editor_block.dart';
 import 'core/core.dart';
 import 'blocks/blocks.dart';
@@ -24,15 +29,11 @@ class HybridEditor extends StatefulWidget {
   /// Whether to autofocus on mount
   final bool autofocus;
 
-  /// Placeholder text for empty editor
-  final String placeholder;
-
   const HybridEditor({
     super.key,
     this.initialContent = '',
     this.onChanged,
     this.autofocus = false,
-    this.placeholder = 'Start writing...',
   });
 
   @override
@@ -44,6 +45,11 @@ class _HybridEditorState extends State<HybridEditor> {
   late EditorTextInputManager _inputManager;
   late KeyHandler _keyHandler;
   late BlockRegistry _registry;
+  late final OverlayPortalController _wikiPortalController;
+  late final WikiLinkController _wikiLinkController;
+  late final SettingsService _settingsService = SettingsService.instance;
+
+  final Map<int, LayerLink> _blockLinks = {}; // anchor for each block
 
   @override
   void initState() {
@@ -73,6 +79,9 @@ class _HybridEditorState extends State<HybridEditor> {
         _inputManager.focusBlock(0);
       });
     }
+
+    _wikiPortalController = OverlayPortalController();
+    _wikiLinkController = WikiLinkController();
   }
 
   void _registerBlockBuilders() {
@@ -106,9 +115,66 @@ class _HybridEditorState extends State<HybridEditor> {
     _editorState.setFocusedBlock(index);
   }
 
-  // I should run the block detection at several points.
+  bool _isWikiTrigger(TextEditingController c) {
+    final text = c.text;
+    final cursor = c.selection.baseOffset;
+    if (cursor < 2 || cursor > text.length) return false;
+    return text.substring(cursor - 2, cursor) == '[[';
+  }
+
   void _onBlockContentChanged(int index, String newContent) {
     _editorState.updateBlockContent(index, newContent);
+
+    final controller = _inputManager.getController(index);
+    final caret = controller.selection.baseOffset;
+
+    if (!_wikiLinkController.isActive && _isWikiTrigger(controller)) {
+      _wikiLinkController.start(blockIndex: index, startOffset: caret - 2);
+      _wikiPortalController.show();
+      setState(() {}); // trigger overlay rebuild
+      return;
+    }
+
+    if (_wikiLinkController.isActive &&
+        _wikiLinkController.session!.blockIndex == index) {
+      _wikiLinkController.updateQueryFromText(
+        text: controller.text,
+        caretOffset: caret,
+        search: (query) => NoteService.instance.searchNotesByTitle(
+          _settingsService.folder!,
+          query,
+        ),
+      );
+
+      if (!_wikiLinkController.isActive) {
+        _wikiPortalController.hide();
+        setState(() {});
+      }
+    }
+  }
+
+  void _endWikiMode() {
+    _wikiLinkController.end();
+    _wikiPortalController.hide();
+    setState(() {});
+  }
+
+  void _insertWikiLink(String file) {
+    final session = _wikiLinkController.session!;
+    final controller = _inputManager.getController(session.blockIndex);
+
+    final text = controller.text;
+    final before = text.substring(0, session.startOffset);
+    final after = text.substring(controller.selection.baseOffset);
+
+    final insert = '[[$file]]';
+    controller.text = before + insert + after;
+    controller.selection = TextSelection.collapsed(
+      offset: before.length + insert.length,
+    );
+
+    _wikiLinkController.end();
+    _endWikiMode();
   }
 
   void _onSpace(int index) {
@@ -226,6 +292,25 @@ class _HybridEditorState extends State<HybridEditor> {
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     final result = _keyHandler.handle(event, _editorState);
+    if (_wikiLinkController.isActive) {
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        _wikiLinkController.cancel();
+        _endWikiMode();
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.enter) {
+        _insertWikiLink(_wikiLinkController.selectedResult!);
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+        _wikiLinkController.selectNext();
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+        _wikiLinkController.selectPrevious();
+        return KeyEventResult.handled;
+      }
+    }
     return result == KeyHandleResult.handled
         ? KeyEventResult.handled
         : KeyEventResult.ignored;
@@ -233,12 +318,51 @@ class _HybridEditorState extends State<HybridEditor> {
 
   @override
   Widget build(BuildContext context) {
-    return Focus(
-      onKeyEvent: _handleKeyEvent,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: _editorState.document.length,
-        itemBuilder: (context, index) => _buildBlock(index),
+    return OverlayPortal(
+      controller: _wikiPortalController,
+      overlayChildBuilder: (context) {
+        if (!_wikiLinkController.isActive) return const SizedBox.shrink();
+
+        final blockIndex = _wikiLinkController.session!.blockIndex;
+        final link = _blockLinks[blockIndex];
+
+        if (link == null) return const SizedBox.shrink();
+
+        double blockHeight = _wikiLinkController.results.length * 40.0;
+
+        return CompositedTransformFollower(
+          link: link,
+          showWhenUnlinked: false,
+          offset: Offset(0, 30), // dropdown below caret
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 320,
+                maxHeight: blockHeight,
+              ),
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(6),
+                child: WikiLinkDropdown(
+                  controller: _wikiLinkController,
+                  onSelect: _insertWikiLink,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      child: Focus(
+        onKeyEvent: _handleKeyEvent,
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: _editorState.document.length,
+          itemBuilder: (context, index) {
+            _blockLinks[index] ??= LayerLink(); // ensure link exists
+            return _buildBlock(index);
+          },
+        ),
       ),
     );
   }
@@ -298,9 +422,12 @@ class _HybridEditorState extends State<HybridEditor> {
       listItemNumber: _calculateListItemNumber(index),
     );
 
-    return GestureDetector(
-      onTap: () => _onBlockFocus(index),
-      child: EditorBlockWidget(config: config),
+    return CompositedTransformTarget(
+      link: _blockLinks[index]!,
+      child: GestureDetector(
+        onTap: () => _onBlockFocus(index),
+        child: EditorBlockWidget(config: config),
+      ),
     );
   }
 }

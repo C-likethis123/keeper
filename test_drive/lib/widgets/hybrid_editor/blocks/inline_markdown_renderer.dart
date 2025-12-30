@@ -71,6 +71,29 @@ class InlineMarkdownRenderer extends StatelessWidget {
         }
       }
 
+      // inside _parseInlineMarkdown
+      if (text[i] == '[' && i + 1 < text.length && text[i + 1] == '[') {
+        final closeIndex = text.indexOf(']]', i + 2);
+        if (closeIndex != -1) {
+          flushBuffer();
+          final linkText = text.substring(i + 2, closeIndex);
+          spans.add(
+            TextSpan(
+              text: linkText,
+              style: baseStyle.copyWith(
+                color: Colors.blueAccent, // wiki-link color
+                decoration: TextDecoration.underline,
+              ),
+              recognizer: TapGestureRecognizer()
+                ..onTap = () =>
+                    onTap(linkText), // we’ll handle navigation
+            ),
+          );
+          i = closeIndex + 2;
+          continue;
+        }
+      }
+
       // Inline LaTeX: $...$
       if (text[i] == r'$' && !_isEscaped(text, i)) {
         final endIndex = _findUnescapedChar(text, r'$', i + 1);
