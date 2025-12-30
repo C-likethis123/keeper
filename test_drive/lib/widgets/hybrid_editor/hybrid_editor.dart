@@ -1,7 +1,11 @@
+import 'dart:io';
+import 'package:pasteboard/pasteboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:test_drive/models/paste_payload.dart';
 import 'package:test_drive/services/note_service.dart';
 import 'package:test_drive/services/settings_service.dart';
+import 'package:test_drive/widgets/hybrid_editor/blocks/image_block_builder.dart';
 import 'package:test_drive/widgets/hybrid_editor/blocks/math_block_builder.dart';
 import 'package:test_drive/widgets/hybrid_editor/wikilinks/wiki_link_controller.dart';
 import 'package:test_drive/widgets/hybrid_editor/wikilinks/wiki_link_dropdown.dart';
@@ -94,6 +98,7 @@ class _HybridEditorState extends State<HybridEditor> {
       NumberedListBlockBuilder(),
       CodeBlockBuilder(),
       MathBlockBuilder(),
+      ImageBlockBuilder(),
     ]);
   }
 
@@ -296,6 +301,44 @@ class _HybridEditorState extends State<HybridEditor> {
     }
   }
 
+  Future<String> _saveImage(Uint8List bytes) async {
+    final folder = SettingsService.instance.folder!;
+    final imagesDir = Directory('$folder/.images');
+
+    if (!imagesDir.existsSync()) {
+      imagesDir.createSync(recursive: true);
+    }
+
+    final filename = 'img_${DateTime.now().millisecondsSinceEpoch}.png';
+
+    final file = File('${imagesDir.path}/$filename');
+    await file.writeAsBytes(bytes);
+
+    return file.path;
+  }
+
+  Future<void> _handlePaste(int index) async {
+    final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+
+    // TEXT → normal paste
+    if (clipboardData?.text != null) {
+      final controller = _inputManager.getController(index);
+      _editorState.pasteText(
+        blockIndex: index,
+        controller: controller,
+        payload: PastePayload.text(clipboardData!.text!),
+        saveImage: _saveImage,
+      );
+      return;
+    }
+    // IMAGE → custom path
+    final imageBytes = await Pasteboard.image;
+    if (imageBytes == null) return;
+    final imagePath = await _saveImage(imageBytes);
+
+    _editorState.insertBlockAfter(index, BlockNode.image(path: imagePath));
+  }
+
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     final result = _keyHandler.handle(event, _editorState);
     if (_wikiLinkController.isActive) {
@@ -425,6 +468,7 @@ class _HybridEditorState extends State<HybridEditor> {
       onTabReverse: () => _onTabReverse(index),
       onFocusNext: () => _onFocusNext(index),
       onFocusPrevious: () => _onFocusPrevious(index),
+      onPaste: () => _handlePaste(index),
       listItemNumber: _calculateListItemNumber(index),
     );
 

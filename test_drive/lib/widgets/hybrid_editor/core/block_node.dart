@@ -10,6 +10,7 @@ enum BlockType {
   numberedList,
   codeBlock,
   mathBlock,
+  image,
 }
 
 /// Immutable node representing a block of content in the document.
@@ -99,6 +100,16 @@ class BlockNode {
     );
   }
 
+  factory BlockNode.image({
+    required String path,
+  }) {
+    return BlockNode(
+      id: generateId(),
+      type: BlockType.image,
+      content: path,
+    );
+  }
+
   /// Creates a copy of this block with updated fields
   BlockNode copyWith({
     String? id,
@@ -138,6 +149,8 @@ class BlockNode {
         return '```$lang\n$content\n```';
       case BlockType.mathBlock:
         return '\$\$\n$content\n\$\$';
+      case BlockType.image:
+        return '![]($content)';
       case BlockType.paragraph:
         return content;
     }

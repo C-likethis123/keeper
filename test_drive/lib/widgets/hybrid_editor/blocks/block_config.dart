@@ -21,7 +21,7 @@ class BlockConfig {
   final BlockCallback onTabReverse;
   final VoidCallback? onFocusNext;
   final VoidCallback? onFocusPrevious;
-  
+  final VoidCallback? onPaste;
   /// For numbered lists: the number to display (1, 2, 3, etc.)
   final int? listItemNumber;
 
@@ -41,6 +41,7 @@ class BlockConfig {
     required this.onDelete,
     required this.onTab,
     required this.onTabReverse,
+    required this.onPaste,
     this.onFocusNext,
     this.onFocusPrevious,
     this.listItemNumber,

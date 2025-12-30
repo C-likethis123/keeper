@@ -6,6 +6,7 @@ class InlineMath extends StatelessWidget {
   final TextStyle style;
 
   const InlineMath({
+    super.key,
     required this.latex,
     required this.style,
   });

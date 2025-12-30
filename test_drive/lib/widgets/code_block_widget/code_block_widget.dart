@@ -15,7 +15,7 @@ import 'code_editor_widget.dart';
 class CodeBlockWidget extends StatefulWidget {
   final BlockConfig config;
 
-  const CodeBlockWidget({required this.config});
+  const CodeBlockWidget({super.key, required this.config});
 
   @override
   State<CodeBlockWidget> createState() => CodeBlockWidgetState();

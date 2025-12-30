@@ -75,6 +75,14 @@ class Document {
         continue;
       }
 
+      // check for image
+      if (line.startsWith('![](')) {
+        final imagePath = line.substring(4, line.length - 1);
+        blocks.add(BlockNode.image(path: imagePath));
+        i++; // Skip closing ![](
+        continue;
+      }
+
       // Check for headings
       if (line.startsWith('### ')) {
         blocks.add(BlockNode.heading(level: 3, content: line.substring(4)));

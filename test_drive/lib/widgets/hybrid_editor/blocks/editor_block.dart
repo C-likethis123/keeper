@@ -6,6 +6,7 @@ import 'package:test_drive/screens/note_editor_screen.dart';
 import 'package:test_drive/services/note_service.dart';
 import 'package:test_drive/services/settings_service.dart';
 import 'package:test_drive/widgets/code_block_widget/code_block_widget.dart';
+import 'package:test_drive/widgets/hybrid_editor/blocks/image_block_widget.dart';
 import 'package:test_drive/widgets/hybrid_editor/blocks/math_block_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/core.dart';
@@ -122,6 +123,11 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
       return KeyEventResult.handled;
     }
 
+    if (event.logicalKey == LogicalKeyboardKey.keyV && HardwareKeyboard.instance.isMetaPressed) {
+      config.onPaste?.call();
+      return KeyEventResult.handled;
+    }
+
     return KeyEventResult.ignored;
   }
 
@@ -147,6 +153,10 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
     final isMathBlock = config.block.type == BlockType.mathBlock;
     if (isMathBlock) {
       return MathBlockWidget(config: config);
+    }
+    final isImageBlock = config.block.type == BlockType.image;
+    if (isImageBlock) {
+      return ImageBlockWidget(config: config);
     }
 
     final isList =
@@ -192,7 +202,7 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
                           } else {
                             // search and open note within editor
                             final note = await _noteService.loadNoteFromFile(
-                              File(_settings.folder! + '/' + _noteService.sanitizeFileName(url)),
+                              File('${_settings.folder!}/${_noteService.sanitizeFileName(url)}'),
                               _settings.folder!,
                             );
                             if (note != null && context.mounted) {

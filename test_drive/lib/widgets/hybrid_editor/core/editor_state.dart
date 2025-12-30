@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:test_drive/models/paste_payload.dart';
 import 'package:test_drive/widgets/hybrid_editor/core/block_selection.dart';
 import 'block_node.dart';
 import 'document.dart';
@@ -63,6 +65,34 @@ class EditorState extends ChangeNotifier {
     }
   }
 
+  Future<void> pasteText({
+    required int blockIndex,
+    required TextEditingController controller,
+    required PastePayload payload,
+    required Future<String> Function(Uint8List bytes) saveImage,
+  }) async {
+    final selection = controller.selection;
+    final text = controller.text;
+
+    String insert;
+
+    if (payload.isImage) {
+      final path = await saveImage(payload.imageBytes!);
+      insert = '![]($path)';
+    } else {
+      insert = payload.text ?? '';
+    }
+
+    final newText = text.replaceRange(selection.start, selection.end, insert);
+
+    controller.text = newText;
+    controller.selection = TextSelection.collapsed(
+      offset: selection.start + insert.length,
+    );
+
+    updateBlockContent(blockIndex, newText);
+  }
+
   /// Sets the focused block index
   void setFocusedBlock(int? index, {bool preserveSelection = true}) {
     if (_focusedBlockIndex != index) {
@@ -91,9 +121,12 @@ class EditorState extends ChangeNotifier {
   void deleteSelectedBlocks() {
     if (_blockSelection == null) return;
     final blocks = _document.blocks;
-    final transaction = TransactionBuilder()
-        .replaceBlocks(_blockSelection!.start, _blockSelection!.end + 1, blocks, [BlockNode.paragraph()])
-        .build();
+    final transaction = TransactionBuilder().replaceBlocks(
+      _blockSelection!.start,
+      _blockSelection!.end + 1,
+      blocks,
+      [BlockNode.paragraph()],
+    ).build();
     apply(transaction);
     clearBlockSelection();
   }
