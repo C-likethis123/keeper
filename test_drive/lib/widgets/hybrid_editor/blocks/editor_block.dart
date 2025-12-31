@@ -1,23 +1,19 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:test_drive/screens/note_editor_screen.dart';
-import 'package:test_drive/services/note_service.dart';
-import 'package:test_drive/services/settings_service.dart';
-import 'package:test_drive/widgets/code_block_widget/code_block_widget.dart';
-import 'package:test_drive/widgets/hybrid_editor/blocks/image_block_widget.dart';
-import 'package:test_drive/widgets/hybrid_editor/blocks/math_block_widget.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../core/core.dart';
 import 'block_config.dart';
-import 'inline_markdown_renderer.dart';
-import 'list_marker.dart';
 
 class EditorBlockWidget extends StatefulWidget {
   final BlockConfig config;
+  final Widget formattedView;
+  final Function(bool isFormatted) editableText;
+  final Widget Function(Widget child) blockConfiguration;
 
-  const EditorBlockWidget({super.key, required this.config});
+  const EditorBlockWidget({
+    super.key,
+    required this.config,
+    required this.formattedView,
+    required this.editableText,
+    required this.blockConfiguration,
+  });
 
   @override
   State<EditorBlockWidget> createState() => _EditorBlockWidgetState();
@@ -25,9 +21,7 @@ class EditorBlockWidget extends StatefulWidget {
 
 class _EditorBlockWidgetState extends State<EditorBlockWidget> {
   bool _showFormatted = true;
-  final NoteService _noteService = NoteService();
   BlockConfig get config => widget.config;
-  SettingsService get _settings => SettingsService.instance;
 
   @override
   void initState() {
@@ -58,78 +52,68 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
     });
   }
 
-  TextStyle _editorStyle(BuildContext context) {
-    final theme = Theme.of(context);
+  // KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+  //   if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    return switch (config.block.type) {
-      BlockType.heading1 => theme.textTheme.headlineLarge!,
-      BlockType.heading2 => theme.textTheme.headlineMedium!,
-      BlockType.heading3 => theme.textTheme.headlineSmall!,
-      _ => theme.textTheme.bodyLarge!,
-    };
-  }
+  //   final selection = config.controller.selection;
 
-  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+  //   if (event.logicalKey == LogicalKeyboardKey.tab) {
+  //     if (HardwareKeyboard.instance.isShiftPressed) {
+  //       config.onTabReverse();
+  //     } else {
+  //       config.onTab();
+  //     }
+  //     return KeyEventResult.handled;
+  //   }
 
-    final selection = config.controller.selection;
+  //   // BACKSPACE → remove style
+  //   // onDelete is not used?
+  //   if (event.logicalKey == LogicalKeyboardKey.backspace) {
+  //     if (config.hasBlockSelection) {
+  //       config.deleteSelectedBlocks();
+  //       return KeyEventResult.handled;
+  //     } else {
+  //       final atStart = selection.isCollapsed && selection.baseOffset == 0;
 
-    if (event.logicalKey == LogicalKeyboardKey.tab) {
-      if (HardwareKeyboard.instance.isShiftPressed) {
-        config.onTabReverse();
-      } else {
-        config.onTab();
-      }
-      return KeyEventResult.handled;
-    }
+  //       if (atStart) {
+  //         config.onBackspaceAtStart();
+  //         return KeyEventResult.handled;
+  //       }
+  //     }
+  //   }
 
-    // BACKSPACE → remove style
-    // onDelete is not used?
-    if (event.logicalKey == LogicalKeyboardKey.backspace) {
-      if (config.hasBlockSelection) {
-        config.deleteSelectedBlocks();
-        return KeyEventResult.handled;
-      } else {
-        final atStart = selection.isCollapsed && selection.baseOffset == 0;
+  //   // ENTER → split / new block
+  //   if (event.logicalKey == LogicalKeyboardKey.enter &&
+  //       !HardwareKeyboard.instance.isShiftPressed) {
+  //     config.onEnter();
+  //     return KeyEventResult.handled;
+  //   }
 
-        if (atStart) {
-          config.onBackspaceAtStart();
-          return KeyEventResult.handled;
-        }
-      }
-    }
+  //   // arrows
+  //   if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+  //     config.onFocusPrevious?.call();
+  //     return KeyEventResult.handled;
+  //   }
 
-    // ENTER → split / new block
-    if (event.logicalKey == LogicalKeyboardKey.enter &&
-        !HardwareKeyboard.instance.isShiftPressed) {
-      config.onEnter();
-      return KeyEventResult.handled;
-    }
+  //   if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+  //     config.onFocusNext?.call();
+  //     return KeyEventResult.handled;
+  //   }
 
-    // arrows
-    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-      config.onFocusPrevious?.call();
-      return KeyEventResult.handled;
-    }
+  //   // spaces
+  //   if (event.logicalKey == LogicalKeyboardKey.space) {
+  //     config.onSpace.call();
+  //     return KeyEventResult.handled;
+  //   }
 
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      config.onFocusNext?.call();
-      return KeyEventResult.handled;
-    }
+  //   if (event.logicalKey == LogicalKeyboardKey.keyV &&
+  //       HardwareKeyboard.instance.isMetaPressed) {
+  //     config.onPaste?.call();
+  //     return KeyEventResult.handled;
+  //   }
 
-    // spaces
-    if (event.logicalKey == LogicalKeyboardKey.space) {
-      config.onSpace.call();
-      return KeyEventResult.handled;
-    }
-
-    if (event.logicalKey == LogicalKeyboardKey.keyV && HardwareKeyboard.instance.isMetaPressed) {
-      config.onPaste?.call();
-      return KeyEventResult.handled;
-    }
-
-    return KeyEventResult.ignored;
-  }
+  //   return KeyEventResult.ignored;
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -144,114 +128,20 @@ class _EditorBlockWidgetState extends State<EditorBlockWidget> {
   }
 
   Widget _buildBlock(BuildContext context) {
-    final textStyle = _editorStyle(context);
+    final BlockContainer = widget.blockConfiguration;
 
-    final isCodeBlock = config.block.type == BlockType.codeBlock;
-    if (isCodeBlock) {
-      return CodeBlockWidget(config: config);
-    }
-    final isMathBlock = config.block.type == BlockType.mathBlock;
-    if (isMathBlock) {
-      return MathBlockWidget(config: config);
-    }
-    final isImageBlock = config.block.type == BlockType.image;
-    if (isImageBlock) {
-      return ImageBlockWidget(config: config);
-    }
-
-    final isList =
-        config.block.type == BlockType.bulletList ||
-        config.block.type == BlockType.numberedList;
-
-    return Padding(
-      padding: EdgeInsets.only(left: isList ? 8 : 0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return BlockContainer(
+      Stack(
+        alignment: Alignment.topLeft,
         children: [
-          if (isList)
-            ListMarker(
-              type: config.block.type,
-              listLevel: config.block.listLevel,
-              listItemNumber: config.listItemNumber ?? 1,
-            ),
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTap: () {
-                setState(() => _showFormatted = false);
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  config.focusNode.requestFocus();
-                });
-              },
-              child: Stack(
-                alignment: Alignment.topLeft,
-                children: [
-                  // Formatted markdown view
-                  if (_showFormatted)
-                    InlineMarkdownRenderer(
-                      text: config.block.content,
-                      style: textStyle,
-                      onTap: (url) async {
-                        // Only open link on Cmd/Ctrl + click
-                        final isCmdPressed =
-                            HardwareKeyboard.instance.isMetaPressed;
-                        if (isCmdPressed) {
-                          if (url.startsWith('http')) {
-                            // launch external link
-                            launchUrl(Uri.parse(url));
-                          } else {
-                            // search and open note within editor
-                            final note = await _noteService.loadNoteFromFile(
-                              File('${_settings.folder!}/${_noteService.sanitizeFileName(url)}'),
-                              _settings.folder!,
-                            );
-                            if (note != null && context.mounted) {
-                              // open note within editor
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => NoteEditorScreen(
-                                    existingNote: note,
-                                    folderPath: note.sourceFolder ?? '',
-                                  ),
-                                ),
-                              );
-                            }
-                          }
-                        } else {
-                          // Focus editor on normal click
-                          setState(() => _showFormatted = false);
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            config.focusNode.requestFocus();
-                          });
-                        }
-                      },
-                    ),
-
-                  // Editable text (disabled when formatted view is active)
-                  IgnorePointer(
-                    ignoring: _showFormatted,
-                    child: Focus(
-                      onKeyEvent: _onKeyEvent,
-                      child: TextField(
-                        controller: config.controller,
-                        focusNode: config.focusNode,
-                        maxLines: null,
-                        style: textStyle.copyWith(
-                          color: _showFormatted
-                              ? Colors.transparent
-                              : textStyle.color,
-                        ),
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          isDense: true,
-                        ),
-                        onChanged: config.onContentChanged,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          // Formatted markdown view
+          if (_showFormatted) widget.formattedView,
+          // Editable text (disabled when formatted view is active)
+          // I don't know why this was wrapped in an ignorepointer
+          IgnorePointer(
+            ignoring: false,
+            child: Focus(
+              child: widget.editableText(_showFormatted),
             ),
           ),
         ],

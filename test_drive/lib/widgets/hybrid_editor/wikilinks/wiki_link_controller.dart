@@ -13,6 +13,7 @@ class WikiLinkController extends ChangeNotifier {
   String get query => _query;
   List<String> get results => _results;
   int get selectedIndex => _selectedIndex;
+  bool get shouldShowOverlay => _session != null && _results.isNotEmpty;
 
   bool isActiveFor(int blockIndex) =>
       _session != null && _session!.blockIndex == blockIndex;
@@ -70,6 +71,17 @@ class WikiLinkController extends ChangeNotifier {
   }
 
   void cancel() => end();
+
+  /// Updates the block index when block type changes but session should persist
+  void updateBlockIndex(int newIndex) {
+    if (_session != null) {
+      _session = WikiLinkSession(
+        blockIndex: newIndex,
+        startOffset: _session!.startOffset,
+      );
+      notifyListeners();
+    }
+  }
 
   // --- Navigation ---
   void selectNext() {

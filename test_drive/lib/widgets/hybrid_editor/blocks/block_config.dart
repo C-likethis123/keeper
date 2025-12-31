@@ -22,8 +22,19 @@ class BlockConfig {
   final VoidCallback? onFocusNext;
   final VoidCallback? onFocusPrevious;
   final VoidCallback? onPaste;
+  final Function(String url) onTap;
   /// For numbered lists: the number to display (1, 2, 3, etc.)
   final int? listItemNumber;
+
+  /// Called when block detects a wiki link trigger ([[)
+  /// Reports the start offset of the trigger in the text
+  final void Function(int startOffset)? onWikiTriggerStart;
+
+  /// Called to update wiki query as user types after [[
+  final void Function(String query, int caretOffset)? onWikiQueryUpdate;
+
+  /// Called when wiki session should end (caret moved before [[, typed ]], etc.)
+  final VoidCallback? onWikiTriggerEnd;
 
   const BlockConfig({
     required this.index,
@@ -42,8 +53,12 @@ class BlockConfig {
     required this.onTab,
     required this.onTabReverse,
     required this.onPaste,
+    required this.onTap,
     this.onFocusNext,
     this.onFocusPrevious,
     this.listItemNumber,
+    this.onWikiTriggerStart,
+    this.onWikiQueryUpdate,
+    this.onWikiTriggerEnd,
   });
 }

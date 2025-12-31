@@ -3,12 +3,14 @@ import 'package:pasteboard/pasteboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:test_drive/models/paste_payload.dart';
+import 'package:test_drive/screens/note_editor_screen.dart';
 import 'package:test_drive/services/note_service.dart';
 import 'package:test_drive/services/settings_service.dart';
 import 'package:test_drive/widgets/hybrid_editor/blocks/image_block_builder.dart';
 import 'package:test_drive/widgets/hybrid_editor/blocks/math_block_builder.dart';
 import 'package:test_drive/widgets/hybrid_editor/wikilinks/wiki_link_controller.dart';
-import 'package:test_drive/widgets/hybrid_editor/wikilinks/wiki_link_dropdown.dart';
+import 'package:test_drive/widgets/hybrid_editor/wikilinks/wiki_link_overlay.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'blocks/editor_block.dart';
 import 'core/core.dart';
 import 'blocks/blocks.dart';
@@ -24,13 +26,8 @@ import 'input/input.dart';
 /// - Undo/redo support
 /// - Keyboard shortcuts
 class HybridEditor extends StatefulWidget {
-  /// Initial content as markdown
   final String initialContent;
-
-  /// Called when content changes
   final ValueChanged<String>? onChanged;
-
-  /// Whether to autofocus on mount
   final bool autofocus;
 
   const HybridEditor({
@@ -45,47 +42,52 @@ class HybridEditor extends StatefulWidget {
 }
 
 class _HybridEditorState extends State<HybridEditor> {
-  late EditorState _editorState;
-  late EditorTextInputManager _inputManager;
-  late KeyHandler _keyHandler;
-  late BlockRegistry _registry;
+  late final EditorState _editorState;
+  late final EditorTextInputManager _inputManager;
+  late final KeyHandler _keyHandler;
+  late final BlockRegistry _registry;
+
   late final OverlayPortalController _wikiPortalController;
   late final WikiLinkController _wikiLinkController;
-  late final SettingsService _settingsService = SettingsService.instance;
 
-  final Map<int, LayerLink> _blockLinks = {}; // anchor for each block
+  final Map<int, LayerLink> _blockLinks = {};
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize block registry
     _registry = BlockRegistry.instance;
     _registerBlockBuilders();
 
-    // Initialize editor state
     _editorState = EditorState(
       document: Document.fromMarkdown(widget.initialContent),
-    );
-    _editorState.addListener(_onEditorStateChanged);
-    // Initialize input manager
+    )..addListener(_onEditorStateChanged);
+
     _inputManager = EditorTextInputManager(
       editorState: _editorState,
       registry: _registry,
     );
 
-    // Initialize key handler
     _keyHandler = KeyHandler();
 
-    // Autofocus first block
+    _wikiPortalController = OverlayPortalController();
+    _wikiLinkController = WikiLinkController()
+      ..addListener(_onWikiStateChanged);
+
     if (widget.autofocus) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _inputManager.focusBlock(0);
       });
     }
+  }
 
-    _wikiPortalController = OverlayPortalController();
-    _wikiLinkController = WikiLinkController();
+  @override
+  void dispose() {
+    _wikiLinkController.removeListener(_onWikiStateChanged);
+    _wikiLinkController.dispose();
+    _editorState.dispose();
+    _inputManager.dispose();
+    super.dispose();
   }
 
   void _registerBlockBuilders() {
@@ -102,95 +104,78 @@ class _HybridEditorState extends State<HybridEditor> {
     ]);
   }
 
-  @override
-  void dispose() {
-    _editorState.removeListener(_onEditorStateChanged);
-    _editorState.dispose();
-    _inputManager.dispose();
-    super.dispose();
-  }
-
   void _onEditorStateChanged() {
     _inputManager.syncWithDocument();
     widget.onChanged?.call(_editorState.toMarkdown());
     setState(() {});
   }
 
-  void _onBlockFocus(int index) {
-    _editorState.setFocusedBlock(index);
-  }
-
-  bool _isWikiTrigger(TextEditingController c) {
-    final text = c.text;
-    final cursor = c.selection.baseOffset;
-    if (cursor < 2 || cursor > text.length) return false;
-    return text.substring(cursor - 2, cursor) == '[[';
-  }
-
-  void _onBlockContentChanged(int index, String newContent) {
-    _editorState.updateBlockContent(index, newContent);
-
-    final controller = _inputManager.getController(index);
-    final caret = controller.selection.baseOffset;
-
-    if (!_wikiLinkController.isActive && _isWikiTrigger(controller)) {
-      _wikiLinkController.start(blockIndex: index, startOffset: caret - 2);
-      _wikiPortalController.show();
-      setState(() {}); // trigger overlay rebuild
-      return;
+  // ─────────────────────────────────────────────
+  // 🔑 SINGLE KEY ENTRY POINT
+  // ─────────────────────────────────────────────
+  KeyEventResult _handleKeyEvent(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
     }
 
-    if (_wikiLinkController.isActive &&
-        _wikiLinkController.session!.blockIndex == index) {
-      _wikiLinkController.updateQueryFromText(
-        text: controller.text,
-        caretOffset: caret,
-        search: (query) => NoteService.instance.searchNotesByTitle(
-          _settingsService.folder!,
-          query,
-        ),
-      );
-
-      if (!_wikiLinkController.isActive) {
-        _wikiPortalController.hide();
-        setState(() {});
+    // 1. Wiki overlay gets first priority when active
+    if (_wikiLinkController.shouldShowOverlay) {
+      print('wiki overlay');
+      final result = _handleWikiOverlayKeys(event);
+      if (result == KeyEventResult.handled) {
+        return result;
       }
     }
+
+    // 2. Then existing block → editor → global routing
+    final focusedIndex = _editorState.focusedBlockIndex;
+    if (focusedIndex == null) {
+      if (_editorState.hasBlockSelection) {
+        print('global keys');
+        return _handleGlobalKeys(event);
+      }
+      return KeyEventResult.ignored;
+    }
+    final block = _editorState.document[focusedIndex];
+    final builder = _registry.getBuilder(block.type);
+
+    final config = _buildConfigForIndex(focusedIndex);
+
+    return _routeKeyEvent(builder: builder, config: config, event: event);
   }
 
-  void _endWikiMode() {
-    _wikiLinkController.end();
-    _wikiPortalController.hide();
-    setState(() {});
-  }
+  /// Handles keyboard events for the wiki link overlay
+  KeyEventResult _handleWikiOverlayKeys(KeyEvent event) {
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _wikiLinkController.selectNext();
+      return KeyEventResult.handled;
+    }
 
-  void _insertWikiLink(String file) {
-    final session = _wikiLinkController.session!;
-    final blockIndex = session.blockIndex;
-    final controller = _inputManager.getController(blockIndex);
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      _wikiLinkController.selectPrevious();
+      return KeyEventResult.handled;
+    }
 
-    final text = controller.text;
-    final caret = controller.selection.baseOffset;
+    if (event.logicalKey == LogicalKeyboardKey.enter) {
+      final link = _wikiLinkController.selectedResult;
+      if (link != null) {
+        _onWikiSelect(link);
+      }
+      return KeyEventResult.handled;
+    }
 
-    final before = text.substring(0, session.startOffset);
-    final after = text.substring(caret);
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      _wikiLinkController.cancel();
+      return KeyEventResult.handled;
+    }
 
-    final insert = '[[$file]]';
-    final newText = before + insert + after;
-
-    _editorState.updateBlockContent(blockIndex, newText);
-
-    controller.selection = TextSelection.collapsed(
-      offset: before.length + insert.length,
-    );
-
-    _wikiLinkController.end();
-    _wikiPortalController.hide();
+    return KeyEventResult.ignored;
   }
 
   void _onSpace(int index) {
     final newContent = _editorState.document[index].content;
     final detection = _registry.detectBlockType(newContent);
+    // print('detection: $detection');
     if (detection != null) {
       _editorState.updateBlockType(
         index,
@@ -339,81 +324,35 @@ class _HybridEditorState extends State<HybridEditor> {
     _editorState.insertBlockAfter(index, BlockNode.image(path: imagePath));
   }
 
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    final result = _keyHandler.handle(event, _editorState);
-    if (_wikiLinkController.isActive) {
-      if (event.logicalKey == LogicalKeyboardKey.escape) {
-        _wikiLinkController.cancel();
-        _endWikiMode();
-        return KeyEventResult.handled;
-      }
-      if (event.logicalKey == LogicalKeyboardKey.enter) {
-        _insertWikiLink(_wikiLinkController.selectedResult!);
-        return KeyEventResult.handled;
-      }
-      if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-        _wikiLinkController.selectNext();
-        return KeyEventResult.handled;
-      }
-      if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-        _wikiLinkController.selectPrevious();
-        return KeyEventResult.handled;
-      }
-    }
-    return result == KeyHandleResult.handled
-        ? KeyEventResult.handled
-        : KeyEventResult.ignored;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return OverlayPortal(
-      controller: _wikiPortalController,
-      overlayChildBuilder: (context) {
-        if (!_wikiLinkController.isActive) return const SizedBox.shrink();
-
-        final blockIndex = _wikiLinkController.session!.blockIndex;
-        final link = _blockLinks[blockIndex];
-
-        if (link == null) return const SizedBox.shrink();
-
-        double blockHeight = _wikiLinkController.results.length * 40.0;
-
-        return CompositedTransformFollower(
-          link: link,
-          showWhenUnlinked: false,
-          offset: Offset(0, 30), // dropdown below caret
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: 320,
-                maxHeight: blockHeight,
-              ),
-              child: Material(
-                elevation: 4,
-                borderRadius: BorderRadius.circular(6),
-                child: WikiLinkDropdown(
-                  controller: _wikiLinkController,
-                  onSelect: _insertWikiLink,
-                ),
+  void _onTap(int index, String url) async {
+    final isCmdPressed = HardwareKeyboard.instance.isMetaPressed;
+    if (isCmdPressed) {
+      if (url.startsWith('http')) {
+        launchUrl(Uri.parse(url));
+      } else {
+        final note = await NoteService.instance.loadNoteFromFile(
+          File('${SettingsService.instance.folder!}/$url'),
+          SettingsService.instance.folder!,
+        );
+        if (note != null && context.mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => NoteEditorScreen(
+                existingNote: note,
+                folderPath: note.sourceFolder ?? '',
               ),
             ),
-          ),
-        );
-      },
-      child: Focus(
-        onKeyEvent: _handleKeyEvent,
-        child: ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          itemCount: _editorState.document.length,
-          itemBuilder: (context, index) {
-            _blockLinks[index] ??= LayerLink(); // ensure link exists
-            return _buildBlock(index);
-          },
-        ),
-      ),
-    );
+          );
+        }
+      }
+    } else {
+      // Focus editor on normal click
+      final focusNode = _inputManager.getFocusNode(index);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        focusNode.requestFocus();
+      });
+    }
   }
 
   /// Calculates the list item number for a numbered list at the given index
@@ -436,30 +375,239 @@ class _HybridEditorState extends State<HybridEditor> {
     return number;
   }
 
-  // it depends on the node that's being built here.
-  // what is the first document that's built, vs the second document that's built?
-  // everything is wrapped with a gesture detector.
-  Widget _buildBlock(int index) {
-    final block = _editorState.document[index];
-    final isFocused = _editorState.focusedBlockIndex == index;
-    final controller = _inputManager.getController(index);
-    final focusNode = _inputManager.getFocusNode(index);
+  // ─────────────────────────────────────────────
+  // 📎 Wiki Link Overlay (editor-owned)
+  // ─────────────────────────────────────────────
 
-    // Sync controller text if needed
-    if (controller.text != block.content) {
-      controller.text = block.content;
+  /// Called when wiki controller state changes to show/hide overlay
+  void _onWikiStateChanged() {
+    if (_wikiLinkController.shouldShowOverlay) {
+      if (!_wikiPortalController.isShowing) {
+        _wikiPortalController.show();
+      }
+    } else {
+      if (_wikiPortalController.isShowing) {
+        _wikiPortalController.hide();
+      }
+    }
+    // Rebuild to update overlay position/content
+    setState(() {});
+  }
+
+  /// Called by blocks when they detect [[ trigger
+  void _onWikiTriggerStart(int blockIndex, int startOffset) {
+    // Only start if not already active, or if active for a different block
+    if (!_wikiLinkController.isActiveFor(blockIndex)) {
+      _wikiLinkController.start(
+        blockIndex: blockIndex,
+        startOffset: startOffset,
+      );
+    }
+  }
+
+  /// Called by blocks to update wiki query as user types
+  void _onWikiQueryUpdate(int blockIndex, String text, int caretOffset) {
+    if (!_wikiLinkController.isActive) return;
+
+    // Update block index if it changed (e.g., block type conversion)
+    if (_wikiLinkController.session!.blockIndex != blockIndex) {
+      _wikiLinkController.updateBlockIndex(blockIndex);
     }
 
-    final config = BlockConfig(
+    _wikiLinkController.updateQueryFromText(
+      text: text,
+      caretOffset: caretOffset,
+      search: (query) => NoteService.instance.searchNotesByTitle(
+        SettingsService.instance.folder!,
+        query,
+      ),
+    );
+  }
+
+  /// Called when wiki session should end
+  void _onWikiTriggerEnd() {
+    _wikiLinkController.end();
+  }
+
+  /// Called when user selects a wiki link from overlay
+  void _onWikiSelect(String link) {
+    final session = _wikiLinkController.session;
+    if (session == null) return;
+
+    final blockIndex = session.blockIndex;
+    final controller = _inputManager.getController(blockIndex);
+    final caret = controller.selection.baseOffset;
+    final text = controller.text;
+
+    final newText = text.replaceRange(session.startOffset, caret, '[[$link]]');
+
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(
+        offset: session.startOffset + link.length + 4,
+      ),
+    );
+
+    _wikiLinkController.end();
+    _editorState.updateBlockContent(blockIndex, newText);
+  }
+
+  /// Builds the wiki link overlay widget anchored to the active block
+  Widget _buildWikiOverlay(BuildContext context) {
+    final blockIndex = _wikiLinkController.session?.blockIndex;
+    if (blockIndex == null) return const SizedBox.shrink();
+
+    final link = _blockLinks[blockIndex];
+    if (link == null) return const SizedBox.shrink();
+
+    return CompositedTransformFollower(
+      link: link,
+      targetAnchor: Alignment.bottomLeft,
+      followerAnchor: Alignment.topLeft,
+      child: WikiLinkOverlay(
+        results: _wikiLinkController.results,
+        selectedIndex: _wikiLinkController.selectedIndex,
+        onSelect: _onWikiSelect,
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // 🧭 ROUTER (block → editor → global)
+  // ─────────────────────────────────────────────
+  KeyEventResult _routeKeyEvent({
+    required BlockBuilder builder,
+    required BlockConfig config,
+    required KeyEvent event,
+  }) {
+    final blockResult = builder.canHandleKeyEvent
+        ? builder.handleKeyEvent(config, event)
+        : KeyEventResult.ignored;
+
+    if (blockResult == KeyEventResult.handled) {
+      print('blockResult: handled in block');
+      return KeyEventResult.handled;
+    }
+
+    final editorResult = _handleEditorKeys(config, event);
+    if (editorResult == KeyEventResult.handled) {
+      print('editorResult: handled in editor');
+      return KeyEventResult.handled;
+    }
+
+    final globalResult = _handleGlobalKeys(event);
+    if (globalResult == KeyEventResult.handled) {
+      print('globalResult: handled in global');
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  bool _isAtFirstLine(String text, int cursor) {
+    return !text.substring(0, cursor).contains('\n');
+  }
+
+  bool _isAtLastLine(String text, int cursor) {
+    return !text.substring(cursor).contains('\n');
+  }
+
+  // ─────────────────────────────────────────────
+  // ✏️ Editor-level keys
+  // ─────────────────────────────────────────────
+  KeyEventResult _handleEditorKeys(BlockConfig config, KeyEvent event) {
+    final index = config.index;
+    final controller = config.controller;
+    final text = controller.text;
+    final cursor = controller.selection.baseOffset;
+
+    if (event.logicalKey == LogicalKeyboardKey.enter) {
+      _onEnter(index);
+      return KeyEventResult.handled;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.backspace &&
+        controller.selection.isCollapsed &&
+        controller.selection.baseOffset == 0) {
+      _onBackspaceAtStart(index);
+      return KeyEventResult.handled;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown && _isAtLastLine(text, cursor)) {
+      _onFocusNext(index);
+      return KeyEventResult.handled;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp && _isAtFirstLine(text, cursor)) {
+      _onFocusPrevious(index);
+      return KeyEventResult.handled;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.tab &&
+        HardwareKeyboard.instance.isShiftPressed) {
+      _onTabReverse(index);
+      return KeyEventResult.handled;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.tab) {
+      _onTab(index);
+      return KeyEventResult.handled;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.space) {
+      _onSpace(index);
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  // ─────────────────────────────────────────────
+  // 🌍 Global keys
+  // ─────────────────────────────────────────────
+  KeyEventResult _handleGlobalKeys(KeyEvent event) {
+    final result = _keyHandler.handle(event, _editorState);
+    return result == KeyHandleResult.handled
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
+  }
+
+  // ─────────────────────────────────────────────
+  // 🧱 Block builder
+  // ─────────────────────────────────────────────
+  Widget _buildBlock(int index) {
+    final block = _editorState.document[index];
+    final builder = _registry.getBuilder(block.type);
+
+    _blockLinks[index] ??= LayerLink();
+
+    final config = _buildConfigForIndex(index);
+
+    return CompositedTransformTarget(
+      link: _blockLinks[index]!,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => _editorState.setFocusedBlock(index),
+        child: EditorBlockWidget(
+          config: config,
+          formattedView: builder.build(context, config),
+          editableText: builder.editableText(context, config),
+          blockConfiguration: builder.blockConfiguration(context, config),
+        ),
+      ),
+    );
+  }
+
+  BlockConfig _buildConfigForIndex(int index) {
+    return BlockConfig(
       index: index,
-      block: block,
-      isFocused: isFocused,
+      block: _editorState.document[index],
+      isFocused: _editorState.focusedBlockIndex == index,
       isBlockSelected: _editorState.blockSelection?.contains(index) ?? false,
       hasBlockSelection: _editorState.hasBlockSelection,
-      deleteSelectedBlocks: () => _editorState.deleteSelectedBlocks(),
-      controller: controller,
-      focusNode: focusNode,
-      onContentChanged: (content) => _onBlockContentChanged(index, content),
+      controller: _inputManager.getController(index),
+      focusNode: _inputManager.getFocusNode(index),
+      deleteSelectedBlocks: _editorState.deleteSelectedBlocks,
+      onContentChanged: (c) => _editorState.updateBlockContent(index, c),
       onSpace: () => _onSpace(index),
       onEnter: () => _onEnter(index),
       onBackspaceAtStart: () => _onBackspaceAtStart(index),
@@ -469,14 +617,32 @@ class _HybridEditorState extends State<HybridEditor> {
       onFocusNext: () => _onFocusNext(index),
       onFocusPrevious: () => _onFocusPrevious(index),
       onPaste: () => _handlePaste(index),
+      onTap: (url) => _onTap(index, url),
       listItemNumber: _calculateListItemNumber(index),
+      onWikiTriggerStart: (startOffset) =>
+          _onWikiTriggerStart(index, startOffset),
+      onWikiQueryUpdate: (query, caret) => _onWikiQueryUpdate(
+        index,
+        _inputManager.getController(index).text,
+        caret,
+      ),
+      onWikiTriggerEnd: _onWikiTriggerEnd,
     );
+  }
 
-    return CompositedTransformTarget(
-      link: _blockLinks[index]!,
-      child: GestureDetector(
-        onTap: () => _onBlockFocus(index),
-        child: EditorBlockWidget(config: config),
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      autofocus: true,
+      onKeyEvent: _handleKeyEvent,
+      child: OverlayPortal(
+        controller: _wikiPortalController,
+        overlayChildBuilder: _buildWikiOverlay,
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: _editorState.document.length,
+          itemBuilder: (_, index) => _buildBlock(index),
+        ),
       ),
     );
   }

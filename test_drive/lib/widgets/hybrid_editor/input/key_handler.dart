@@ -146,6 +146,31 @@ class KeyHandler {
         },
       ),
     );
+
+    _bindings.add(
+      KeyBinding(
+        key: LogicalKeyboardKey.backspace,
+        description: 'Backspace',
+        action: (state) {
+          if (state.hasBlockSelection) {
+            state.deleteSelectedBlocks();
+            return KeyHandleResult.handled;
+          }
+          return KeyHandleResult.ignored;
+        },
+      ),
+    );
+
+    _bindings.add(
+      KeyBinding(
+        key: LogicalKeyboardKey.escape,
+        description: 'Escape',
+        action: (state) {
+          state.clearBlockSelection();
+          return KeyHandleResult.handled;
+        },
+      ),
+    );
   }
 
   /// Registers a custom key binding

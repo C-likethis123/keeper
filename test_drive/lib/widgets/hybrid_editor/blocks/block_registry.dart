@@ -29,7 +29,8 @@ class BlockRegistry {
   }
 
   /// Gets the builder for a block type
-  BlockBuilder? getBuilder(BlockType type) => _builders[type];
+  /// TODO: is there a way to indicate that the builders map has all the block types?
+  BlockBuilder getBuilder(BlockType type) => _builders[type]!;
 
   /// Builds a widget for a block
   Widget build(BuildContext context, BlockConfig config) {
