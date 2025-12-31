@@ -130,7 +130,7 @@ class BlockNode {
   }
 
   /// Converts the block to its markdown representation
-  String toMarkdown() {
+  String toMarkdown(int? listNumber) {
     final listIndentation = '  ' * listLevel;
     switch (type) {
       case BlockType.heading1:
@@ -141,9 +141,8 @@ class BlockNode {
         return '### $content';
       case BlockType.bulletList:
         return '$listIndentation- $content';
-      // TODO: make the list item number part of the node, not part of the config
       case BlockType.numberedList:
-        return '${listIndentation}1. $content';
+        return '$listIndentation$listNumber. $content';
       case BlockType.codeBlock:
         final lang = language ?? '';
         return '```$lang\n$content\n```';

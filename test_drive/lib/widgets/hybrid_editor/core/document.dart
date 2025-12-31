@@ -203,11 +203,30 @@ class Document {
     return Document._(blocks: List.unmodifiable(result), version: version + 1);
   }
 
+  int? _calculateListItemNumber(int index) {
+    final block = blocks[index];
+    if (block.type != BlockType.numberedList) return null;
+    final listLevel = block.listLevel;
+    // Count consecutive numbered lists before this one
+    int number = 1;
+    for (int i = index - 1; i >= 0; i--) {
+      if (blocks[i].type != BlockType.numberedList ||
+          blocks[i].listLevel < listLevel) {
+        break;
+      }
+      if (blocks[i].type == BlockType.numberedList &&
+          blocks[i].listLevel == listLevel) {
+        number++;
+      }
+    }
+    return number;
+  }
+
   /// Converts the document to markdown
   String toMarkdown() {
     final buffer = StringBuffer();
     for (int i = 0; i < blocks.length; i++) {
-      buffer.write(blocks[i].toMarkdown());
+      buffer.write(blocks[i].toMarkdown(_calculateListItemNumber(i)));
       if (i < blocks.length - 1) {
         buffer.write('\n');
         // Add extra newline after code blocks
