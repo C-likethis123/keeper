@@ -1,17 +1,28 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import EmptyState from "@/components/EmptyState";
 import { router } from 'expo-router';
 import NoteGrid from "@/components/NoteGrid";
 import { useSettings } from "@/services/settings/useSettings";
 import { MaterialIcons } from "@expo/vector-icons";
+import { NoteService } from "@/services/notes/noteService";
+import { NoteMetadata } from "@/services/notes/types";
 export default function Index() {
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [allMetadata, setAllMetadata] = useState<{ title: string, id: string }[]>([]);
+  const [allMetadata, setAllMetadata] = useState<NoteMetadata[]>([]);
 
   const settings = useSettings();
+
+  useEffect(() => {
+    const fetchNotes = async () => {
+      const notes = await NoteService.instance.scanNotes(settings.folder!);
+      console.log("notes:", notes);
+      setAllMetadata(notes);
+    };
+    fetchNotes();
+  }, []);
 
   if (loadingMetadata) {
     return <ActivityIndicator style={styles.center} />;
