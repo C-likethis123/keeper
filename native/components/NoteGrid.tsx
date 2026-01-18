@@ -1,9 +1,9 @@
 import { View, FlatList, useWindowDimensions } from "react-native";
 import EmptyState from "./EmptyState";
 import NoteCard from "@/components/NoteCard";
-import { NoteMetadata } from "@/services/notes/types";
+import { Note } from "@/services/notes/types";
 
-export default function NoteGrid({ notes }: { notes: NoteMetadata[] }) {
+export default function NoteGrid({ notes }: { notes: Note[] }) {
   const { width } = useWindowDimensions();
 
   if (!notes.length) {
@@ -26,6 +26,7 @@ export default function NoteGrid({ notes }: { notes: NoteMetadata[] }) {
 
   return (
     <FlatList
+      style={{ width: '100%' }}
       data={sortedNotes}
       key={numColumns}
       numColumns={numColumns}

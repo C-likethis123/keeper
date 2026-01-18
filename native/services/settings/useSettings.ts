@@ -2,7 +2,6 @@ import { useSettingsStore } from "@/stores/settings";
 
 export function useSettings() {
   const folder = useSettingsStore((s) => s.folder);
-  console.log("folder:", folder);
   const isHydrated = useSettingsStore((s) => s.isHydrated);
   const hydrate = useSettingsStore((s) => s.hydrate);
   const setFolder = useSettingsStore((s) => s.setFolder);

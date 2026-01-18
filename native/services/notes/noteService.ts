@@ -1,6 +1,7 @@
 import { File, Directory } from "expo-file-system";
-import { Note, NoteMetadata, NoteToSave } from "./types";
+import { Note, NoteToSave } from "./types";
 import { loadFolder } from "../settings/storage";
+import { useNotesMetaStore } from "@/stores/notes/metaStore";
 
 export class NoteService {
   static instance = new NoteService();
@@ -60,8 +61,9 @@ export class NoteService {
     }
   }
 
-  async scanNotes(folderPath: string): Promise<NoteMetadata[]> {
-    const metadata: NoteMetadata[] = [];
+  async scanNotes(folderPath: string): Promise<Note[]> {
+    const pinnedMap = useNotesMetaStore.getState().pinned;
+    const metadata: Note[] = [];
     try {
       const entries = await new Directory(folderPath).list();
 
@@ -70,7 +72,9 @@ export class NoteService {
           metadata.push({
             filePath: file.uri,
             title: file.name,
-            lastModified: file.modificationTime || Date.now(),
+            content: await file.text(),
+            lastUpdated: file.modificationTime || Date.now(),
+            isPinned: pinnedMap[file.uri] || false,
           });
         }
       }

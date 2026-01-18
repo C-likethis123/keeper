@@ -19,7 +19,6 @@ export default function NoteCard({
       onPress={() => onPress?.(note)}
       activeOpacity={0.8}
     >
-      {/* Title row */}
       <View style={styles.titleRow}>
         <Text style={styles.title} numberOfLines={2}>
           {note.title}
@@ -34,12 +33,10 @@ export default function NoteCard({
         )}
       </View>
 
-      {/* Content preview */}
       <Text style={styles.content} numberOfLines={3}>
         {note.content}
       </Text>
 
-      {/* Bottom row */}
       <View style={styles.footer}>
         <Text style={styles.date}>
           {new Date(note.lastUpdated).toLocaleDateString()}

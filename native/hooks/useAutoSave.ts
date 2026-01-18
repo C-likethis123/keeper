@@ -47,9 +47,5 @@ export function useAutoSave({
     };
   }, [filePath, title, content, isPinned, saveNote]);
 
-  useEffect(() => {
-    console.log("status", status);
-  }, [status]);
-
   return { status };
 }

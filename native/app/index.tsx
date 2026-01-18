@@ -6,20 +6,19 @@ import NoteGrid from "@/components/NoteGrid";
 import { useSettings } from "@/services/settings/useSettings";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NoteService } from "@/services/notes/noteService";
-import { NoteMetadata } from "@/services/notes/types";
+import { Note } from "@/services/notes/types";
 export default function Index() {
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [allMetadata, setAllMetadata] = useState<NoteMetadata[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
 
   const settings = useSettings();
 
   useEffect(() => {
     const fetchNotes = async () => {
       const notes = await NoteService.instance.scanNotes(settings.folder!);
-      console.log("notes:", notes);
-      setAllMetadata(notes);
+      setNotes(notes);
     };
     fetchNotes();
   }, []);
@@ -57,7 +56,7 @@ export default function Index() {
         alignItems: "center",
       }}
     >
-      <NoteGrid notes={allMetadata} />
+      <NoteGrid notes={notes} />
       <TouchableOpacity activeOpacity={0.8} style={styles.fab} onPress={() => router.push('/editor')}><MaterialIcons name="add" size={28} color="#fff" /></TouchableOpacity>
     </View>
   );
