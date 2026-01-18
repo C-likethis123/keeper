@@ -3,15 +3,14 @@ import React, { useState } from "react";
 import EmptyState from "@/components/EmptyState";
 import { router } from 'expo-router';
 import NoteGrid from "@/components/NoteGrid";
+import { useSettings } from "@/services/settings/useSettings";
 export default function Index() {
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [allMetadata, setAllMetadata] = useState<{ title: string, id: string }[]>([]);
 
-  const settings = {
-    hasFolder: true,
-  }
+  const settings = useSettings();
 
   if (loadingMetadata) {
     return <ActivityIndicator style={styles.center} />;
