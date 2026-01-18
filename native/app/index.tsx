@@ -4,6 +4,7 @@ import EmptyState from "@/components/EmptyState";
 import { router } from 'expo-router';
 import NoteGrid from "@/components/NoteGrid";
 import { useSettings } from "@/services/settings/useSettings";
+import { MaterialIcons } from "@expo/vector-icons";
 export default function Index() {
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,27 +28,13 @@ export default function Index() {
     );
   }
 
-  if (!allMetadata.length) {
+  if (!settings.hasFolder) {
     return (
       <EmptyState
-        title={
-          settings.hasFolder ? 'No notes found' : 'No folder configured'
-        }
-        subtitle={
-          settings.hasFolder
-            ? 'Create a note to get started'
-            : 'Configure a folder in settings'
-        }
-        actionLabel={
-          !settings.hasFolder
-            ? 'Configure folder'
-            : undefined
-        }
-        onActionPress={
-          !settings.hasFolder
-            ? () => router.push('/settings')
-            : undefined
-        }
+        title={'No folder configured'}
+        subtitle={'Configure a folder in settings'}
+        actionLabel={'Configure folder'}
+        onActionPress={() => router.push('/settings')}
       />
     );
   }
@@ -60,6 +47,7 @@ export default function Index() {
       }}
     >
       <NoteGrid notes={allMetadata} />
+      <TouchableOpacity activeOpacity={0.8} style={styles.fab} onPress={() => router.push('/editor')}><MaterialIcons name="add" size={28} color="#fff" /></TouchableOpacity>
     </View>
   );
 }
@@ -98,11 +86,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
-  },
-
-  fabText: {
-    color: '#fff',
-    fontSize: 28,
-    lineHeight: 28,
   },
 });
