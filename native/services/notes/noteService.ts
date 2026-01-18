@@ -37,6 +37,7 @@ export class NoteService {
       note.filePath
     );
 
+    useNotesMetaStore.getState().togglePin(filePath);
     await new File(filePath).write(note.content);
 
     return {

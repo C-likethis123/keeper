@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   TextInput,
@@ -11,7 +11,6 @@ import {
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNoteStore } from "@/stores/notes/noteService";
-import { useSettings } from "@/services/settings/useSettings";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { Note } from "@/services/notes/types";
 import { SaveIndicator } from "@/components/SaveIndicator";
@@ -23,9 +22,6 @@ export default function NoteEditorScreen() {
 
   const { loadNote } = useNoteStore();
   const [existingNote, setExistingNote] = useState<Note | null>(null);
-  const [title, setTitle] = useState(existingNote?.title || "");
-  const [content, setContent] = useState(existingNote?.content || "");
-  const [isPinned, setIsPinned] = useState(existingNote?.isPinned || false);
   // Load existing note if editing
   useEffect(() => {
     if (filePath) {
@@ -33,13 +29,18 @@ export default function NoteEditorScreen() {
     }
   }, []);
 
-  const togglePin = () => setIsPinned((prev) => !prev);
+  const togglePin = () => {
+    setExistingNote((prev) => {
+      if (!prev) return null;
+      return { ...prev, isPinned: !prev.isPinned };
+    });
+  };
 
   const { status } = useAutoSave({
     filePath: filePath as string,
-    title,
-    content,
-    isPinned,
+    title: existingNote?.title || "",
+    content: existingNote?.content || "",
+    isPinned: existingNote?.isPinned || false,
   });
   return (
     <KeyboardAvoidingView
@@ -62,7 +63,7 @@ export default function NoteEditorScreen() {
               <MaterialIcons
                 name="push-pin"
                 size={24}
-                color={isPinned ? "#2563eb" : "#555"}
+                color={existingNote?.isPinned ? "#2563eb" : "#555"}
               />
             </TouchableOpacity>
           ),
@@ -73,8 +74,11 @@ export default function NoteEditorScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <TextInput
           style={styles.titleInput}
-          value={title}
-          onChangeText={setTitle}
+          value={existingNote?.title || ""}
+          onChangeText={(text) => setExistingNote((prev) => {
+            if (!prev) return null;
+            return { ...prev, title: text };
+          })}
           placeholder="Title"
           autoFocus={!existingNote}
         />
@@ -83,8 +87,11 @@ export default function NoteEditorScreen() {
 
         <TextInput
           style={styles.contentInput}
-          value={content}
-          onChangeText={setContent}
+          value={existingNote?.content || ""}
+          onChangeText={(text) => setExistingNote((prev) => {
+            if (!prev) return null;
+            return { ...prev, content: text };
+          })}
           placeholder="Write your note..."
           multiline
           textAlignVertical="top"
