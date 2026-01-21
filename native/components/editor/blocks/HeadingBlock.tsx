@@ -1,7 +1,8 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { Pressable, TextInput, StyleSheet, TextStyle, View } from 'react-native';
 import { BlockConfig } from './BlockRegistry';
 import { InlineMarkdown } from '../rendering/InlineMarkdown';
+import { useExtendedTheme } from '@/hooks/useExtendedTheme';
 
 interface HeadingBlockProps extends BlockConfig {
   level: 1 | 2 | 3;
@@ -42,33 +43,18 @@ export function HeadingBlock({
   // Use combined focus state
   const isActuallyFocused = isFocused || isFocusedFromState;
 
-  const getHeadingStyle = (): TextStyle => {
+  const theme = useExtendedTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const headingStyle: TextStyle = useMemo(() => {
     switch (level) {
       case 1:
-        return {
-          fontSize: 32,
-          fontWeight: 'bold',
-          lineHeight: 40,
-          color: '#000',
-        };
+        return theme.typography.heading1;
       case 2:
-        return {
-          fontSize: 24,
-          fontWeight: 'bold',
-          lineHeight: 32,
-          color: '#000',
-        };
+        return theme.typography.heading2;
       case 3:
-        return {
-          fontSize: 20,
-          fontWeight: '600',
-          lineHeight: 28,
-          color: '#000',
-        };
+        return theme.typography.heading3;
     }
-  };
-
-  const headingStyle = getHeadingStyle();
+  }, [level, theme.typography]);
 
   return (
     <Pressable
@@ -105,39 +91,42 @@ export function HeadingBlock({
           multiline
           textAlignVertical="top"
           placeholder={`Heading ${level}...`}
-          placeholderTextColor="#999"
+          placeholderTextColor={theme.custom.editor.placeholder}
         />
       )}
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    minHeight: 40,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    position: 'relative',
-  },
-  focused: {
-    backgroundColor: '#f5f5f5',
-  },
-  pressed: {
-    opacity: 0.8,
-  },
-  overlay: {
-    position: 'absolute',
-    top: 12,
-    left: 16,
-    right: 16,
-    pointerEvents: 'none',
-    zIndex: 1,
-  },
-  input: {
-    minHeight: 24,
-  },
-  inputFocused: {
-    color: '#000',
-  },
-});
+// Styles are created dynamically based on theme
+function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+  return StyleSheet.create({
+    container: {
+      minHeight: 40,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      position: 'relative',
+    },
+    focused: {
+      backgroundColor: theme.custom.editor.blockFocused,
+    },
+    pressed: {
+      opacity: 0.8,
+    },
+    overlay: {
+      position: 'absolute',
+      top: 12,
+      left: 16,
+      right: 16,
+      pointerEvents: 'none',
+      zIndex: 1,
+    },
+    input: {
+      minHeight: 24,
+    },
+    inputFocused: {
+      color: theme.colors.text,
+    },
+  });
+}
 

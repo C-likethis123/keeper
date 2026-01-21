@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, TextStyle } from 'react-native';
+import { useExtendedTheme } from '@/hooks/useExtendedTheme';
 
 interface InlineMarkdownProps {
   text: string;
@@ -19,7 +20,8 @@ export function InlineMarkdown({
   style,
   onLinkPress,
 }: InlineMarkdownProps) {
-  const segments = parseInlineMarkdown(text, style || {}, onLinkPress);
+  const theme = useExtendedTheme();
+  const segments = parseInlineMarkdown(text, style || {}, onLinkPress, theme);
 
   return (
     <Text style={style}>
@@ -41,7 +43,8 @@ export function InlineMarkdown({
 function parseInlineMarkdown(
   text: string,
   baseStyle: TextStyle,
-  onLinkPress?: (url: string) => void,
+  onLinkPress: ((url: string) => void) | undefined,
+  theme: ReturnType<typeof useExtendedTheme>,
 ): TextSegment[] {
   const segments: TextSegment[] = [];
   let buffer = '';
@@ -65,7 +68,7 @@ function parseInlineMarkdown(
           text: linkText,
           style: {
             ...baseStyle,
-            color: '#2196F3', // Blue for wiki links
+            color: theme.colors.primary,
             textDecorationLine: 'underline',
           },
           onPress: onLinkPress
@@ -95,7 +98,7 @@ function parseInlineMarkdown(
             text: linkText,
             style: {
               ...baseStyle,
-              color: '#2196F3', // Primary color for links
+              color: theme.colors.primary,
               textDecorationLine: 'underline',
             },
             onPress: () => onLinkPress?.(url),
@@ -117,10 +120,10 @@ function parseInlineMarkdown(
           text: code,
           style: {
             ...baseStyle,
-            fontFamily: 'monospace',
-            fontSize: (baseStyle.fontSize || 16) * 0.9,
-            backgroundColor: '#f5f5f5',
-            color: '#d73a49',
+            fontFamily: theme.custom.editor.inlineCode.fontFamily,
+            fontSize: (baseStyle.fontSize || theme.typography.body.fontSize || 16) * 0.9,
+            backgroundColor: theme.custom.editor.inlineCode.backgroundColor,
+            color: theme.custom.editor.inlineCode.color,
           },
         });
         i = endIndex + 1;
@@ -145,6 +148,7 @@ function parseInlineMarkdown(
           boldText,
           { ...baseStyle, fontWeight: 'bold' },
           onLinkPress,
+          theme,
         );
         segments.push(...nestedSegments);
         i = endIndex + 2;
@@ -166,6 +170,7 @@ function parseInlineMarkdown(
             italicText,
             { ...baseStyle, fontStyle: 'italic' },
             onLinkPress,
+            theme,
           );
           segments.push(...nestedSegments);
           i = endIndex + 1;

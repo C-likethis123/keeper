@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import * as FileSystem from "expo-file-system";
 import EmptyState from "@/components/EmptyState";
 import { getPathBasename } from "@/utils/platform_utils";
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 
 /**
  * Sandbox notes root
@@ -70,6 +71,8 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
   removeButtonLabel = "Remove",
   onFolderChanged,
 }) => {
+  const theme = useExtendedTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [subfolders, setSubfolders] = useState<string[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -151,7 +154,7 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
 
             {/* Root workspace option */}
             <Pressable style={styles.folderItem} onPress={selectRootFolder}>
-              <Text style={{ fontWeight: "600" }}>notes/ (workspace root)</Text>
+              <Text style={{ fontWeight: "600", color: theme.colors.text }}>notes/ (workspace root)</Text>
             </Pressable>
 
             <FlatList
@@ -162,7 +165,7 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
                   style={styles.folderItem}
                   onPress={() => pickFolderByName(item)}
                 >
-                  <Text>{item}</Text>
+                  <Text style={{ color: theme.colors.text }}>{item}</Text>
                 </Pressable>
               )}
             />
@@ -171,7 +174,7 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
               onPress={() => setModalVisible(false)}
               style={styles.modalCancel}
             >
-              <Text>Cancel</Text>
+              <Text style={{ color: theme.colors.text }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -180,57 +183,62 @@ export const FolderPicker: React.FC<FolderPickerProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  card: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#2563eb",
-    marginVertical: 8,
-  },
-  folderName: {
-    fontWeight: "600",
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  folderPath: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginBottom: 12,
-  },
-  actions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
-  outlinedButton: {
-    marginRight: 8,
-  },
-  textButton: {},
-  modalBackground: {
-    flex: 1,
-    backgroundColor: "#00000088",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: "white",
-    width: "80%",
-    maxHeight: "60%",
-    borderRadius: 12,
-    padding: 16,
-  },
-  modalTitle: {
-    fontWeight: "600",
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  folderItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  modalCancel: {
-    marginTop: 12,
-    alignItems: "center",
-  },
-});
+function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+  return StyleSheet.create({
+    card: {
+      padding: 16,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: theme.colors.primary,
+      marginVertical: 8,
+      backgroundColor: theme.colors.card,
+    },
+    folderName: {
+      fontWeight: "600",
+      fontSize: 16,
+      marginBottom: 4,
+      color: theme.colors.text,
+    },
+    folderPath: {
+      fontSize: 12,
+      color: theme.colors.text + '99', // Add opacity
+      marginBottom: 12,
+    },
+    actions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+    },
+    outlinedButton: {
+      marginRight: 8,
+    },
+    textButton: {},
+    modalBackground: {
+      flex: 1,
+      backgroundColor: "#00000088",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContent: {
+      backgroundColor: theme.colors.card,
+      width: "80%",
+      maxHeight: "60%",
+      borderRadius: 12,
+      padding: 16,
+    },
+    modalTitle: {
+      fontWeight: "600",
+      fontSize: 16,
+      marginBottom: 12,
+      color: theme.colors.text,
+    },
+    folderItem: {
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    modalCancel: {
+      marginTop: 12,
+      alignItems: "center",
+    },
+  });
+}

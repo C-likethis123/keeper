@@ -31,10 +31,12 @@ export default function NoteGrid({ notes }: { notes: Note[] }) {
       key={numColumns}
       numColumns={numColumns}
       keyExtractor={(item) => item.filePath}
-      columnWrapperStyle={{ gap: 8 }}
+      columnWrapperStyle={numColumns > 1 ? { gap: 8, marginBottom: 8 } : undefined}
       contentContainerStyle={{ padding: 8 }}
       renderItem={({ item }) => (
-        <NoteCard note={item} />
+        <View style={{ flex: 1 / numColumns }}>
+          <NoteCard note={item} />
+        </View>
       )}
     />
   );

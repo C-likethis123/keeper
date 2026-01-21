@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
 import { BlockNode } from '../core/BlockNode';
+import { useExtendedTheme } from '@/hooks/useExtendedTheme';
 
 interface BlockRendererProps {
   block: BlockNode;
@@ -15,6 +16,9 @@ export function BlockRenderer({
   index,
   isFocused,
 }: BlockRendererProps) {
+  const theme = useExtendedTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <Pressable
       // Note: `pressed` in Pressable style callback refers to touch/mouse press state,
@@ -22,6 +26,7 @@ export function BlockRenderer({
       style={({ pressed }) => [
         styles.block,
         pressed && styles.pressedBlock,
+        isFocused && styles.blockFocused
       ]}
     >
       <Text style={styles.blockContent}>{block.content || ' '}</Text>
@@ -29,21 +34,23 @@ export function BlockRenderer({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useExtendedTheme>) => StyleSheet.create({
   block: {
     paddingVertical: 8,
     paddingHorizontal: 16,
     minHeight: 40,
-  },
-  focusedBlock: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: theme.custom.editor.blockBackground
   },
   pressedBlock: {
     opacity: 0.8,
   },
+  blockFocused: {
+    backgroundColor: theme.custom.editor.blockFocused,
+  },
   blockContent: {
     fontSize: 16,
     lineHeight: 24,
+    color: theme.colors.text,
   },
 });
 

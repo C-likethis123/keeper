@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   TextInput,
@@ -14,11 +14,13 @@ import { useAutoSave } from "@/hooks/useAutoSave";
 import { Note } from "@/services/notes/types";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { HybridEditor } from "@/components/editor";
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 
 export default function NoteEditorScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { filePath } = params;
+  const theme = useExtendedTheme();
 
   const { loadNote } = useNoteStore();
   const [existingNote, setExistingNote] = useState<Note | null>(null);
@@ -55,6 +57,9 @@ export default function NoteEditorScreen() {
     });
   };
 
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -68,7 +73,7 @@ export default function NoteEditorScreen() {
               onPress={() => router.back()}
               style={{ marginLeft: 8, marginRight: 8 }}
             >
-              <MaterialIcons name="arrow-back" size={24} />
+              <MaterialIcons name="arrow-back" size={24} color={theme.colors.text} />
             </TouchableOpacity>
           ),
           headerRight: () => (
@@ -76,7 +81,7 @@ export default function NoteEditorScreen() {
               <MaterialIcons
                 name="push-pin"
                 size={24}
-                color={existingNote?.isPinned ? "#2563eb" : "#555"}
+                color={existingNote?.isPinned ? theme.colors.primary : theme.colors.text + "80"}
               />
             </TouchableOpacity>
           ),
@@ -93,6 +98,7 @@ export default function NoteEditorScreen() {
             return { ...prev, title: text };
           })}
           placeholder="Title"
+          placeholderTextColor={theme.custom.editor.placeholder}
           autoFocus={!existingNote}
         />
 
@@ -108,22 +114,27 @@ export default function NoteEditorScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  titleInput: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
-    paddingVertical: 4,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "#eee",
-    marginVertical: 8,
-  },
-});
+// Styles are created dynamically based on theme
+function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      padding: 16,
+      backgroundColor: theme.colors.background,
+    },
+    titleInput: {
+      fontSize: 20,
+      fontWeight: "600",
+      marginBottom: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      paddingVertical: 4,
+      color: theme.colors.text,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+      marginVertical: 8,
+    },
+  });
+}

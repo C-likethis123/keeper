@@ -1,7 +1,8 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { Pressable, TextInput, StyleSheet, TextStyle, View } from 'react-native';
 import { BlockConfig } from './BlockRegistry';
 import { InlineMarkdown } from '../rendering/InlineMarkdown';
+import { useExtendedTheme } from '@/hooks/useExtendedTheme';
 
 interface ParagraphBlockProps extends BlockConfig {}
 
@@ -39,11 +40,13 @@ export function ParagraphBlock({
   // Use combined focus state
   const isActuallyFocused = isFocused || isFocusedFromState;
 
-  const baseStyle: TextStyle = {
+  const theme = useExtendedTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const baseStyle: TextStyle = useMemo(() => ({
     fontSize: 16,
     lineHeight: 24,
-    color: '#000',
-  };
+    color: theme.colors.text,
+  }), [theme.colors.text]);
 
   return (
     <Pressable
@@ -80,39 +83,43 @@ export function ParagraphBlock({
           multiline
           textAlignVertical="top"
           placeholder="Start typing..."
-          placeholderTextColor="#999"
+          placeholderTextColor={theme.custom.editor.placeholder}
         />
       )}
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    minHeight: 40,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    position: 'relative',
-  },
-  focused: {
-    backgroundColor: '#f5f5f5',
-  },
-  pressed: {
-    opacity: 0.8,
-  },
-  overlay: {
-    position: 'absolute',
-    top: 8,
-    left: 16,
-    right: 16,
-    pointerEvents: 'none',
-    zIndex: 1,
-  },
-  input: {
-    minHeight: 24,
-  },
-  inputFocused: {
-    color: '#000',
-  },
-});
+// Styles are created dynamically based on theme
+// This is a factory function to create styles
+function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+  return StyleSheet.create({
+    container: {
+      minHeight: 40,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      position: 'relative',
+    },
+    focused: {
+      backgroundColor: theme.custom.editor.blockFocused,
+    },
+    pressed: {
+      opacity: 0.8,
+    },
+    overlay: {
+      position: 'absolute',
+      top: 8,
+      left: 16,
+      right: 16,
+      pointerEvents: 'none',
+      zIndex: 1,
+    },
+    input: {
+      minHeight: 24,
+    },
+    inputFocused: {
+      color: theme.colors.text,
+    },
+  });
+}
 

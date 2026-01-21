@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 
 type SaveStatus = "idle" | "saving" | "saved";
 
@@ -20,15 +21,25 @@ const iconNameMap = {
     "idle": "edit",
 } as const
 
-const iconColorMap = {
-    "saving": "#f59e0b",
-    "saved": "#16a34a",
-    "idle": "#6b7280",
-}
-
 export function SaveIndicator({ status }: Props) {
+  const theme = useExtendedTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  
   const iconName = iconNameMap[status];
-  const iconColor = iconColorMap[status];
+  
+  // Use theme-aware colors with better contrast
+  const iconColor = useMemo(() => {
+    switch (status) {
+      case "saving":
+        return theme.dark ? "#fbbf24" : "#f59e0b"; // Lighter amber for dark mode
+      case "saved":
+        return theme.dark ? "#4ade80" : "#16a34a"; // Lighter green for dark mode
+      case "idle":
+        return theme.colors.text + "80"; // Text color with 50% opacity
+      default:
+        return theme.colors.text;
+    }
+  }, [status, theme]);
 
   return (
     <View style={styles.container}>
@@ -42,22 +53,25 @@ export function SaveIndicator({ status }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    maxWidth: 220,
-  },
-  textContainer: {
-    flexShrink: 1,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  subtitle: {
-    fontSize: 11,
-    color: "#6b7280",
-  },
-});
+function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+  return StyleSheet.create({
+    container: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      maxWidth: 220,
+    },
+    textContainer: {
+      flexShrink: 1,
+    },
+    title: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: theme.colors.text, // Use theme text color for better contrast
+    },
+    subtitle: {
+      fontSize: 11,
+      color: theme.colors.text + "80", // Text color with 50% opacity
+    },
+  });
+}
