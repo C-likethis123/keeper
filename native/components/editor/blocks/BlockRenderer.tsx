@@ -1,12 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { Pressable, Text, StyleSheet } from 'react-native';
 import { BlockNode } from '../core/BlockNode';
 
 interface BlockRendererProps {
   block: BlockNode;
   index: number;
   isFocused?: boolean;
-  isSelected?: boolean;
 }
 
 /// Basic block renderer component
@@ -14,19 +13,19 @@ interface BlockRendererProps {
 export function BlockRenderer({
   block,
   index,
-  isFocused = false,
-  isSelected = false,
+  isFocused,
 }: BlockRendererProps) {
   return (
-    <View
-      style={[
+    <Pressable
+      // Note: `pressed` in Pressable style callback refers to touch/mouse press state,
+      // NOT keyboard focus. This is for visual feedback when the user taps/clicks the block.
+      style={({ pressed }) => [
         styles.block,
-        isFocused && styles.focusedBlock,
-        isSelected && styles.selectedBlock,
+        pressed && styles.pressedBlock,
       ]}
     >
       <Text style={styles.blockContent}>{block.content || ' '}</Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -39,8 +38,8 @@ const styles = StyleSheet.create({
   focusedBlock: {
     backgroundColor: '#f0f0f0',
   },
-  selectedBlock: {
-    backgroundColor: '#e0e0ff',
+  pressedBlock: {
+    opacity: 0.8,
   },
   blockContent: {
     fontSize: 16,

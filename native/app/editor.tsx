@@ -3,7 +3,6 @@ import {
   View,
   TextInput,
   StyleSheet,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -14,6 +13,7 @@ import { useNoteStore } from "@/stores/notes/noteService";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { Note } from "@/services/notes/types";
 import { SaveIndicator } from "@/components/SaveIndicator";
+import { HybridEditor } from "@/components/editor";
 
 export default function NoteEditorScreen() {
   const router = useRouter();
@@ -22,12 +22,17 @@ export default function NoteEditorScreen() {
 
   const { loadNote } = useNoteStore();
   const [existingNote, setExistingNote] = useState<Note | null>(null);
+
   // Load existing note if editing
   useEffect(() => {
     if (filePath) {
-      loadNote(filePath as string).then((note) => setExistingNote(note));
+      loadNote(filePath as string).then((note) => {
+        if (note) {
+          setExistingNote(note);
+        }
+      });
     }
-  }, []);
+  }, [filePath, loadNote]);
 
   const togglePin = () => {
     setExistingNote((prev) => {
@@ -42,6 +47,14 @@ export default function NoteEditorScreen() {
     content: existingNote?.content || "",
     isPinned: existingNote?.isPinned || false,
   });
+
+  const handleContentChange = (markdown: string) => {
+    setExistingNote((prev) => {
+      if (!prev) return null;
+      return { ...prev, content: markdown };
+    });
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -71,7 +84,7 @@ export default function NoteEditorScreen() {
         }}
       />
 
-      <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.container}>
         <TextInput
           style={styles.titleInput}
           value={existingNote?.title || ""}
@@ -85,26 +98,20 @@ export default function NoteEditorScreen() {
 
         <View style={styles.divider} />
 
-        <TextInput
-          style={styles.contentInput}
-          value={existingNote?.content || ""}
-          onChangeText={(text) => setExistingNote((prev) => {
-            if (!prev) return null;
-            return { ...prev, content: text };
-          })}
-          placeholder="Write your note..."
-          multiline
-          textAlignVertical="top"
+        <HybridEditor
+          initialContent={existingNote?.content || ""}
+          onChanged={handleContentChange}
+          autofocus={!existingNote}
         />
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     padding: 16,
-    flexGrow: 1,
   },
   titleInput: {
     fontSize: 20,
@@ -118,11 +125,5 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#eee",
     marginVertical: 8,
-  },
-  contentInput: {
-    flex: 1,
-    fontSize: 16,
-    minHeight: 300,
-    padding: 8,
   },
 });
