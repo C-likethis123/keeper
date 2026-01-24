@@ -11,7 +11,7 @@ export interface BlockConfig {
   onBlockTypeChange?: (index: number, newType: BlockType, language?: string) => void;
   onBackspaceAtStart?: () => void;
   onSpace?: () => void;
-  onEnter?: () => void;
+  onEnter?: (cursorOffset: number) => void;
   onFocus?: () => void;
   onBlur?: () => void;
 }

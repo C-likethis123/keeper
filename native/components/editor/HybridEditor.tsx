@@ -143,6 +143,43 @@ export function HybridEditor({
     [editorState],
   );
 
+  const handleEnter = useCallback(
+    (index: number, cursorOffset: number) => {
+      const block = editorState.document.blocks[index];
+
+      // Let code blocks handle newlines internally
+      if (block.type === BlockType.codeBlock) {
+        return;
+      }
+
+      // Optional: final block type detection on Enter (parity with Flutter)
+      const detection = blockRegistry.detectBlockType(block.content);
+      if (detection && block.type !== detection.type) {
+        editorState.updateBlockType(index, detection.type, detection.language);
+        editorState.updateBlockContent(index, detection.remainingContent);
+
+        // Preserve focus on the same block after type change
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            editorState.setFocusedBlock(index, false);
+          }, 50);
+        });
+
+        return;
+      }
+
+      // Default behavior: split the block at the cursor and focus the new block
+      editorState.splitBlock(index, cursorOffset);
+
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          editorState.setFocusedBlock(index + 1, false);
+        }, 50);
+      });
+    },
+    [editorState],
+  );
+
   const handleFocus = useCallback(
     (index: number) => () => {
       editorState.setFocusedBlock(index);
@@ -164,6 +201,7 @@ export function HybridEditor({
         onContentChange: handleContentChange(index),
         onBackspaceAtStart: handleBackspaceAtStart(index),
         onSpace: handleSpace(index),
+        onEnter: (cursorOffset) => handleEnter(index, cursorOffset),
         onFocus: handleFocus(index),
         onBlur: handleBlur,
       };
@@ -177,6 +215,11 @@ export function HybridEditor({
       editorState.document.blocks,
       editorState.focusedBlockIndex,
       handleContentChange,
+      handleBackspaceAtStart,
+      handleSpace,
+      handleFocus,
+      handleBlur,
+      handleEnter,
     ],
   );
 

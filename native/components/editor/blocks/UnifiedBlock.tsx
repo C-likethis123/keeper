@@ -11,6 +11,7 @@ export function UnifiedBlock({
   onContentChange,
   onBackspaceAtStart,
   onSpace,
+  onEnter,
   onFocus,
   onBlur,
   isFocused: isFocusedFromState,
@@ -18,6 +19,7 @@ export function UnifiedBlock({
   const inputRef = useRef<TextInput>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const ignoreNextChangeRef = useRef(false);
 
   const handleFocus = useCallback(() => {
     setIsFocused(true);
@@ -36,7 +38,7 @@ export function UnifiedBlock({
       requestAnimationFrame(() => {
         setTimeout(() => {
           inputRef.current?.focus();
-        }, 50);
+        }, 0);
       });
     }
   }, [isFocusedFromState]);
@@ -48,11 +50,22 @@ export function UnifiedBlock({
     });
   }, []);
 
-  const handleContentChange = useCallback((newText: string) => {
-    // In Flutter's approach, TextInput shows content without prefix
-    // So we just update the content directly
-    onContentChange(newText);
-  }, [onContentChange]);
+  const handleContentChange = useCallback(
+    (newText: string) => {
+      // When we handle Enter to split the block, React Native's TextInput will still
+      // emit an onChangeText with a newline. We want to ignore that one change,
+      // because the actual split is handled via EditorState.splitBlock.
+      if (ignoreNextChangeRef.current) {
+        ignoreNextChangeRef.current = false;
+        return;
+      }
+
+      // In Flutter's approach, TextInput shows content without prefix
+      // So we just update the content directly
+      onContentChange(newText);
+    },
+    [onContentChange],
+  );
 
   const handleKeyPress = useCallback((e: any) => {
     const key = e.nativeEvent.key;
@@ -60,6 +73,17 @@ export function UnifiedBlock({
     // Handle space key - trigger block type detection for paragraph blocks
     if (key === ' ' && block.type === BlockType.paragraph) {
       onSpace?.();
+      return;
+    }
+
+    // Handle Enter key - split non-code blocks at the current cursor position
+    if ((key === 'Enter' || key === 'Return') && selection.start === selection.end) {
+      if (block.type !== BlockType.codeBlock) {
+        // Mark the next onChangeText as ignorable so the stray newline doesn't
+        // get written back into the original block after we split.
+        ignoreNextChangeRef.current = true;
+        onEnter?.(selection.start);
+      }
       return;
     }
     
@@ -72,7 +96,7 @@ export function UnifiedBlock({
       }
       return;
     }
-  }, [onSpace, onBackspaceAtStart, selection, block.type]);
+  }, [onSpace, onEnter, onBackspaceAtStart, selection, block.type]);
 
   const theme = useExtendedTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
