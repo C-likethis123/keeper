@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { useEditorState } from './core/EditorState';
 import { blockRegistry, BlockConfig } from './blocks/BlockRegistry';
@@ -23,17 +23,23 @@ export function HybridEditor({
   autofocus = false,
 }: HybridEditorProps) {
   const editorState = useEditorState();
+  const lastInitialContentRef = useRef<string | undefined>(undefined);
+  const isInitializedRef = useRef(false);
 
-  // Initialize document from markdown when initialContent changes
+  // Initialize document from markdown when initialContent changes (only from outside, not from our own updates)
   useEffect(() => {
-    if (initialContent !== undefined) {
+    // Only reload if initialContent prop actually changed from outside
+    // Don't reload if it's the same as what we last loaded (prevents feedback loop)
+    if (initialContent !== undefined && initialContent !== lastInitialContentRef.current) {
       const currentMarkdown = editorState.toMarkdown();
       // Only reload if content actually changed to avoid unnecessary re-renders
       if (currentMarkdown !== initialContent) {
         editorState.loadMarkdown(initialContent);
+        lastInitialContentRef.current = initialContent;
+        isInitializedRef.current = true;
       }
     }
-  }, [initialContent, editorState]);
+  }, [initialContent]); // Removed editorState from dependencies to prevent feedback loop
 
   // Notify parent of changes
   useEffect(() => {
@@ -62,17 +68,7 @@ export function HybridEditor({
     [editorState],
   );
 
-  const handleFocus = useCallback(
-    (index: number) => () => {
-      editorState.setFocusedBlock(index);
-    },
-    [editorState],
-  );
 
-  const handleBlur = useCallback(() => {
-    // Optionally clear focus on blur
-    // editorState.setFocusedBlock(null);
-  }, []);
 
   const renderBlock = useCallback(
     (block: typeof editorState.document.blocks[0], index: number) => {
@@ -81,8 +77,6 @@ export function HybridEditor({
         index,
         isFocused: editorState.focusedBlockIndex === index,
         onContentChange: handleContentChange(index),
-        onFocus: handleFocus(index),
-        onBlur: handleBlur,
       };
 
       return (
@@ -127,4 +121,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 });
+
+// Enable why-did-you-render tracking for debugging
+HybridEditor.displayName = 'HybridEditor';
+HybridEditor.whyDidYouRender = true;
 

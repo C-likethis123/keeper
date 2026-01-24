@@ -11,37 +11,16 @@ interface HeadingBlockProps extends BlockConfig {
 export function HeadingBlock({
   block,
   index,
-  isFocused: isFocusedFromState,
   onContentChange,
-  onFocus,
-  onBlur,
   level,
 }: HeadingBlockProps) {
   const inputRef = useRef<TextInput>(null);
   const [isFocused, setIsFocused] = useState(false);
 
-  // Sync focus state from EditorState
-  useEffect(() => {
-    if (isFocusedFromState && inputRef.current) {
-      // Use requestAnimationFrame to ensure ref is ready
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
-    }
-  }, [isFocusedFromState]);
+  const handleFocus = useCallback(() => setIsFocused(true), []);
 
-  const handleFocus = useCallback(() => {
-    setIsFocused(true);
-    onFocus();
-  }, [onFocus]);
+  const handleBlur = useCallback(() => setIsFocused(false), []);
 
-  const handleBlur = useCallback(() => {
-    setIsFocused(false);
-    onBlur();
-  }, [onBlur]);
-
-  // Use combined focus state
-  const isActuallyFocused = isFocused || isFocusedFromState;
 
   const theme = useExtendedTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -63,27 +42,20 @@ export function HeadingBlock({
       // onFocus/onBlur events and the `isFocused` state.
       style={({ pressed }) => [
         styles.container,
-        isActuallyFocused && styles.focused,
+        isFocused && styles.focused,
         pressed && styles.pressed,
       ]}
-      onPress={() => {
-        // Call onFocus to update EditorState first, which will cause TextInput to render
-        // Then the useEffect will handle focusing the newly rendered TextInput
-        onFocus();
-      }}
+      onPress={handleFocus}
     >
       {/* Rendered markdown overlay (when not focused) - conditionally render */}
-      {!isActuallyFocused && (
-        <View style={styles.overlay} pointerEvents="none">
-          <InlineMarkdown text={block.content} style={headingStyle} />
-        </View>
-      )}
+      <View style={[styles.overlay, isFocused ? styles.inputHidden : styles.inputFocused]} pointerEvents="none">
+        <InlineMarkdown text={block.content} style={headingStyle} />
+      </View>
 
       {/* Editable text input - only show when focused */}
-      {isActuallyFocused && (
         <TextInput
           ref={inputRef}
-          style={[styles.input, headingStyle, styles.inputFocused]}
+          style={[styles.input, headingStyle, isFocused ? styles.inputFocused : styles.inputHidden]}
           value={block.content}
           onChangeText={onContentChange}
           onFocus={handleFocus}
@@ -93,7 +65,6 @@ export function HeadingBlock({
           placeholder={`Heading ${level}...`}
           placeholderTextColor={theme.custom.editor.placeholder}
         />
-      )}
     </Pressable>
   );
 }
@@ -126,7 +97,15 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
     },
     inputFocused: {
       color: theme.colors.text,
+      visibility: 'visible',
     },
+    inputHidden: {
+      display: 'none',
+    }
   });
 }
+
+// Enable why-did-you-render tracking for debugging
+// HeadingBlock.displayName = 'HeadingBlock';
+// HeadingBlock.whyDidYouRender = true;
 

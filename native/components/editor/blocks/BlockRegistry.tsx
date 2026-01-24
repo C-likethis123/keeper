@@ -9,8 +9,6 @@ export interface BlockConfig {
   index: number;
   isFocused: boolean; // Focus state from EditorState
   onContentChange: (content: string) => void;
-  onFocus: () => void;
-  onBlur: () => void;
 }
 
 export interface BlockBuilder {
