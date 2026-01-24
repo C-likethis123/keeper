@@ -1,14 +1,19 @@
 import React from 'react';
 import { BlockType, BlockNode } from '../core/BlockNode';
 import { BlockRenderer } from './BlockRenderer';
-import { ParagraphBlock } from './ParagraphBlock';
-import { HeadingBlock } from './HeadingBlock';
+import { UnifiedBlock } from './UnifiedBlock';
 
 export interface BlockConfig {
   block: BlockNode;
   index: number;
   isFocused: boolean; // Focus state from EditorState
   onContentChange: (content: string) => void;
+  onBlockTypeChange?: (index: number, newType: BlockType, language?: string) => void;
+  onBackspaceAtStart?: () => void;
+  onSpace?: () => void;
+  onEnter?: () => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export interface BlockBuilder {
@@ -102,25 +107,25 @@ blockRegistry.registerAll([
   {
     type: BlockType.paragraph,
     markdownPrefix: '',
-    build: (config) => <ParagraphBlock {...config} />,
+    build: (config) => <UnifiedBlock {...config} />,
   },
   {
     type: BlockType.heading1,
     triggerPrefix: /^#\s/,
     markdownPrefix: '# ',
-    build: (config) => <HeadingBlock {...config} level={1} />,
+    build: (config) => <UnifiedBlock {...config} />,
   },
   {
     type: BlockType.heading2,
     triggerPrefix: /^##\s/,
     markdownPrefix: '## ',
-    build: (config) => <HeadingBlock {...config} level={2} />,
+    build: (config) => <UnifiedBlock {...config} />,
   },
   {
     type: BlockType.heading3,
     triggerPrefix: /^###\s/,
     markdownPrefix: '### ',
-    build: (config) => <HeadingBlock {...config} level={3} />,
+    build: (config) => <UnifiedBlock {...config} />,
   },
 ]);
 

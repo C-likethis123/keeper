@@ -2,7 +2,7 @@ import React, { useEffect, useCallback, useRef } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { useEditorState } from './core/EditorState';
 import { blockRegistry, BlockConfig } from './blocks/BlockRegistry';
-import { getBlock } from './core/Document';
+import { BlockType } from './core/BlockNode';
 
 export interface HybridEditorProps {
   initialContent?: string;
@@ -68,7 +68,92 @@ export function HybridEditor({
     [editorState],
   );
 
+  const handleBlockTypeChange = useCallback(
+    (index: number, newType: BlockType, language?: string) => {
+      editorState.updateBlockType(index, newType, language);
+    },
+    [editorState],
+  );
 
+  const handleSpace = useCallback(
+    (index: number) => () => {
+      const block = editorState.document.blocks[index];
+      // Get current content and add space (space key was just pressed)
+      const newContent = block.content + ' ';
+      const detection = blockRegistry.detectBlockType(newContent);
+
+      if (detection) {
+        // Convert block type and update content to remove the trigger prefix
+        // The space will be handled by this update, so onChangeText won't add it again
+        editorState.updateBlockType(index, detection.type, detection.language);
+        editorState.updateBlockContent(index, detection.remainingContent);
+        
+        // Preserve focus after block type change - use requestAnimationFrame to ensure
+        // the new component (e.g., HeadingBlock) is mounted before focusing
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            editorState.setFocusedBlock(index, false);
+          }, 50);
+        });
+      } else {
+        // Just add space to content - onChangeText will also fire, but that's okay
+        // as it will just set the same content
+        editorState.updateBlockContent(index, newContent);
+      }
+    },
+    [editorState],
+  );
+
+  const handleBackspaceAtStart = useCallback(
+    (index: number) => () => {
+      const block = editorState.document.blocks[index];
+
+      // If it's a non-paragraph block (except code block), convert to paragraph
+      if (block.type !== BlockType.paragraph && block.type !== BlockType.codeBlock) {
+        editorState.updateBlockType(index, BlockType.paragraph);
+        
+        // Preserve focus after block type change - use requestAnimationFrame to ensure
+        // the new component (e.g., ParagraphBlock) is mounted before focusing
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            editorState.setFocusedBlock(index, false);
+          }, 50);
+        });
+        return;
+      }
+
+      // If it's an empty paragraph, delete and focus previous
+      if (block.content === '' && index > 0) {
+        editorState.deleteBlock(index);
+        // Focus previous block
+        requestAnimationFrame(() => {
+          editorState.setFocusedBlock(index - 1);
+        });
+        return;
+      }
+
+      // Merge with previous block if at start
+      if (index > 0) {
+        editorState.mergeWithPrevious(index);
+        requestAnimationFrame(() => {
+          editorState.setFocusedBlock(index - 1);
+        });
+      }
+    },
+    [editorState],
+  );
+
+  const handleFocus = useCallback(
+    (index: number) => () => {
+      editorState.setFocusedBlock(index);
+    },
+    [editorState],
+  );
+
+  const handleBlur = useCallback(() => {
+    // Optionally clear focus on blur
+    // editorState.setFocusedBlock(null);
+  }, []);
 
   const renderBlock = useCallback(
     (block: typeof editorState.document.blocks[0], index: number) => {
@@ -77,8 +162,11 @@ export function HybridEditor({
         index,
         isFocused: editorState.focusedBlockIndex === index,
         onContentChange: handleContentChange(index),
+        onBackspaceAtStart: handleBackspaceAtStart(index),
+        onSpace: handleSpace(index),
+        onFocus: handleFocus(index),
+        onBlur: handleBlur,
       };
-
       return (
         <View key={block.id} style={styles.blockWrapper}>
           {blockRegistry.build(config)}
@@ -89,8 +177,6 @@ export function HybridEditor({
       editorState.document.blocks,
       editorState.focusedBlockIndex,
       handleContentChange,
-      handleFocus,
-      handleBlur,
     ],
   );
 

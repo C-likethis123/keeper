@@ -10,9 +10,11 @@ export const ParagraphBlock = ({
   block,
   index,
   onContentChange,
+  onSpace,
 }: ParagraphBlockProps) => {
   const inputRef = useRef<TextInput>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
 
   const handleFocus = useCallback(() => setIsFocused(true), []);
 
@@ -21,6 +23,23 @@ export const ParagraphBlock = ({
   const theme = useExtendedTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
+  const handleContentChange = useCallback((newText: string) => {
+    onContentChange(newText);
+  }, [onContentChange]);
+
+  const handleKeyPress = useCallback((e: any) => {
+    const key = e.nativeEvent.key;
+    if (key === ' ') {
+      onSpace?.();
+    }
+  }, [onSpace]);
+
+  const handleSelectionChange = useCallback((e: any) => {
+    setSelection({
+      start: e.nativeEvent.selection.start,
+      end: e.nativeEvent.selection.end,
+    });
+  }, []);
   return (
     <Pressable
       // Note: `pressed` in Pressable style callback refers to touch/mouse press state,
@@ -43,9 +62,11 @@ export const ParagraphBlock = ({
         ref={inputRef}
         style={[styles.input, styles.baseStyle, isFocused ? styles.inputFocused : styles.inputHidden]}
         value={block.content}
-        onChangeText={onContentChange}
+        onChangeText={handleContentChange}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        onKeyPress={handleKeyPress}
+        onSelectionChange={handleSelectionChange}
         multiline
         textAlignVertical="top"
         placeholder="Start typing..."
