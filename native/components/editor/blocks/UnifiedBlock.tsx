@@ -1,13 +1,12 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { Pressable, TextInput, StyleSheet, TextStyle, View } from 'react-native';
-import { BlockConfig, blockRegistry } from './BlockRegistry';
+import { BlockConfig } from './BlockRegistry';
 import { InlineMarkdown } from '../rendering/InlineMarkdown';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
 import { BlockType } from '../core/BlockNode';
 
 export function UnifiedBlock({
   block,
-  index,
   onContentChange,
   onBackspaceAtStart,
   onSpace,
@@ -67,36 +66,47 @@ export function UnifiedBlock({
     [onContentChange],
   );
 
-  const handleKeyPress = useCallback((e: any) => {
-    const key = e.nativeEvent.key;
-    
-    // Handle space key - trigger block type detection for paragraph blocks
-    if (key === ' ' && block.type === BlockType.paragraph) {
-      onSpace?.();
-      return;
-    }
+  const handleKeyPress = useCallback(
+    (e: any) => {
+      const key = e.nativeEvent.key;
 
-    // Handle Enter key - split non-code blocks at the current cursor position
-    if ((key === 'Enter' || key === 'Return') && selection.start === selection.end) {
-      if (block.type !== BlockType.codeBlock) {
-        // Mark the next onChangeText as ignorable so the stray newline doesn't
-        // get written back into the original block after we split.
-        ignoreNextChangeRef.current = true;
-        onEnter?.(selection.start);
+      // Handle space key - trigger block type detection for paragraph blocks
+      if (key === ' ' && block.type === BlockType.paragraph) {
+        onSpace?.();
+        return;
       }
-      return;
-    }
-    
-    // Handle backspace at the start (position 0) - convert heading to paragraph
-    // This matches Flutter's behavior where backspace at start converts heading to paragraph
-    if (key === 'Backspace' && selection.start === 0 && selection.end === 0) {
-      // Only convert if it's a heading block (not paragraph or code block)
-      if (block.type !== BlockType.paragraph && block.type !== BlockType.codeBlock) {
-        onBackspaceAtStart?.();
+
+      // Handle Enter key - split non-code blocks at the current cursor position
+      if ((key === 'Enter' || key === 'Return') && selection.start === selection.end) {
+        if (block.type !== BlockType.codeBlock) {
+          // Mark the next onChangeText as ignorable so the stray newline doesn't
+          // get written back into the original block after we split.
+          ignoreNextChangeRef.current = true;
+          onEnter?.(selection.start);
+        }
+        return;
       }
-      return;
-    }
-  }, [onSpace, onEnter, onBackspaceAtStart, selection, block.type]);
+
+      // Handle backspace at the start (position 0)
+      if (key === 'Backspace' && selection.start === 0 && selection.end === 0) {
+        // Paragraph blocks: if empty, delegate to editor-level handler to delete
+        if (block.type === BlockType.paragraph) {
+          if (block.content === '') {
+            onBackspaceAtStart?.();
+          }
+          // For non-empty paragraphs we currently don't merge; keep behavior as-is.
+          return;
+        }
+
+        // Non-paragraph, non-code blocks (e.g., headings): convert to paragraph
+        if (block.type !== BlockType.codeBlock) {
+          onBackspaceAtStart?.();
+        }
+        return;
+      }
+    },
+    [onSpace, onEnter, onBackspaceAtStart, selection, block.type, block.content],
+  );
 
   const theme = useExtendedTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
