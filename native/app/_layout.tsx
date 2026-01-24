@@ -1,3 +1,8 @@
+// Import WDYR first, before React imports (development only)
+if (__DEV__) {
+  require('../wdyr');
+}
+
 import { useSettingsStore } from "@/stores/settings";
 import { useThemeStore } from "@/stores/themeStore";
 import { Stack } from "expo-router";
