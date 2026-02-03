@@ -10,6 +10,7 @@ import { useEffect, useMemo } from "react";
 import { View, Text, ActivityIndicator, StyleSheet, useColorScheme } from "react-native";
 import { ThemeProvider } from "@react-navigation/native";
 import { createLightTheme, createDarkTheme } from "@/constants/themes";
+import { ToastOverlay } from "@/components/Toast";
 
 export default function RootLayout() {
   const hydrate = useSettingsStore((s) => s.hydrate);
@@ -44,6 +45,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={effectiveTheme}>
       <Stack />
+      <ToastOverlay />
     </ThemeProvider>
   );
 }

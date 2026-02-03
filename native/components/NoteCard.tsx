@@ -8,8 +8,10 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 
 export default function NoteCard({
     note,
+    onDelete,
 }: {
     note: Note;
+    onDelete?: (note: Note) => void;
 }) {
     const router = useRouter();
     const theme = useExtendedTheme();
@@ -20,10 +22,6 @@ export default function NoteCard({
     const onPinToggle = () => {
         note.isPinned = !note.isPinned;
         NoteService.instance.saveNote(note);
-    };
-
-    const onDelete = () => {
-        NoteService.instance.deleteNote(note.filePath);
     };
 
     return (
@@ -61,7 +59,7 @@ export default function NoteCard({
                             <MaterialIcons name="push-pin" size={18} color={theme.colors.text + "80"} />
                         </TouchableOpacity>
                     )}
-                    <TouchableOpacity onPress={onDelete}>
+                    <TouchableOpacity onPress={() => onDelete?.(note)}>
                         <MaterialIcons name="delete-outline" size={18} color={theme.colors.text + "80"} />
                     </TouchableOpacity>
                 </View>

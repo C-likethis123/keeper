@@ -1,5 +1,5 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import EmptyState from "@/components/EmptyState";
 import { router } from 'expo-router';
 import NoteGrid from "@/components/NoteGrid";
@@ -8,12 +8,14 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { NoteService } from "@/services/notes/noteService";
 import { Note } from "@/services/notes/types";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useToastStore } from "@/stores/toastStore";
 export default function Index() {
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [notes, setNotes] = useState<Note[]>([]);
   const theme = useExtendedTheme();
+  const { showToast } = useToastStore();
 
   const settings = useSettings();
 
@@ -22,8 +24,25 @@ export default function Index() {
       const notes = await NoteService.instance.scanNotes(settings.folder!);
       setNotes(notes);
     };
-    fetchNotes();
-  }, []);
+    if (settings.folder) {
+      fetchNotes();
+    }
+  }, [settings.folder]);
+
+  const handleDeleteNote = useCallback(async (note: Note) => {
+    try {
+      const success = await NoteService.instance.deleteNote(note.filePath);
+      if (success) {
+        setNotes((prevNotes) => prevNotes.filter((n) => n.filePath !== note.filePath));
+        showToast(`Deleted "${note.title}"`);
+      } else {
+        showToast('Failed to delete note');
+      }
+    } catch (e) {
+      console.warn('Failed to delete note:', e);
+      showToast('Failed to delete note');
+    }
+  }, [showToast]);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -60,7 +79,7 @@ export default function Index() {
         alignItems: "center",
       }}
     >
-      <NoteGrid notes={notes} />
+      <NoteGrid notes={notes} onDelete={handleDeleteNote} />
       <TouchableOpacity activeOpacity={0.8} style={styles.fab} onPress={() => router.push('/editor')}><MaterialIcons name="add" size={28} color={theme.colors.card} /></TouchableOpacity>
     </View>
   );

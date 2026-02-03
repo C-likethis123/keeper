@@ -3,7 +3,13 @@ import EmptyState from "./EmptyState";
 import NoteCard from "@/components/NoteCard";
 import { Note } from "@/services/notes/types";
 
-export default function NoteGrid({ notes }: { notes: Note[] }) {
+export default function NoteGrid({ 
+  notes, 
+  onDelete 
+}: { 
+  notes: Note[];
+  onDelete?: (note: Note) => void;
+}) {
   const { width } = useWindowDimensions();
 
   if (!notes.length) {
@@ -35,7 +41,7 @@ export default function NoteGrid({ notes }: { notes: Note[] }) {
       contentContainerStyle={{ padding: 8 }}
       renderItem={({ item }) => (
         <View style={{ flex: 1 / numColumns }}>
-          <NoteCard note={item} />
+          <NoteCard note={item} onDelete={onDelete} />
         </View>
       )}
     />
