@@ -13,12 +13,12 @@ import * as FileSystem from "expo-file-system";
 import EmptyState from "@/components/EmptyState";
 import { getPathBasename } from "@/utils/platform_utils";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { NOTES_ROOT } from "@/services/notes/Notes";
 
 /**
  * Sandbox notes root
  * Always ends with /
  */
-const NOTES_ROOT = FileSystem.Paths.cache.uri + "notes/";
 
 async function ensureNotesRoot() {
   try {

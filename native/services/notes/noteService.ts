@@ -2,7 +2,7 @@ import { File, Directory } from "expo-file-system";
 import { Note, NoteToSave } from "./types";
 import { loadFolder } from "../settings/storage";
 import { useNotesMetaStore } from "@/stores/notes/metaStore";
-
+import { NOTES_ROOT } from "./Notes";
 export class NoteService {
   static instance = new NoteService();
 
