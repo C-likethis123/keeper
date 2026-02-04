@@ -14,7 +14,9 @@ import { useAutoSave } from "@/hooks/useAutoSave";
 import { Note } from "@/services/notes/types";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { HybridEditor } from "@/components/editor";
+import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { BlockType } from "@/components/editor/core/BlockNode";
 
 export default function NoteEditorScreen() {
   const router = useRouter();
@@ -24,6 +26,19 @@ export default function NoteEditorScreen() {
 
   const { loadNote } = useNoteStore();
   const [existingNote, setExistingNote] = useState<Note | null>(null);
+  const [focusedBlockInfo, setFocusedBlockInfo] = useState<{
+    blockType: BlockType | null;
+    blockIndex: number | null;
+    listLevel: number;
+    onIndent: () => void;
+    onOutdent: () => void;
+  }>({
+    blockType: null,
+    blockIndex: null,
+    listLevel: 0,
+    onIndent: () => {},
+    onOutdent: () => {},
+  });
 
   // Load existing note if editing
   useEffect(() => {
@@ -102,12 +117,21 @@ export default function NoteEditorScreen() {
           autoFocus={!existingNote}
         />
 
+        <EditorToolbar
+          blockType={focusedBlockInfo.blockType}
+          blockIndex={focusedBlockInfo.blockIndex}
+          listLevel={focusedBlockInfo.listLevel}
+          onIndent={focusedBlockInfo.onIndent}
+          onOutdent={focusedBlockInfo.onOutdent}
+        />
+
         <View style={styles.divider} />
 
         <HybridEditor
           initialContent={existingNote?.content || ""}
           onChanged={handleContentChange}
           autofocus={!existingNote}
+          onFocusedBlockChange={setFocusedBlockInfo}
         />
       </View>
     </KeyboardAvoidingView>

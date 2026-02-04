@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { useEditorState } from './core/EditorState';
 import { blockRegistry, BlockConfig } from './blocks/BlockRegistry';
@@ -8,6 +8,13 @@ export interface HybridEditorProps {
   initialContent?: string;
   onChanged?: (markdown: string) => void;
   autofocus?: boolean;
+  onFocusedBlockChange?: (blockInfo: {
+    blockType: BlockType | null;
+    blockIndex: number | null;
+    listLevel: number;
+    onIndent: () => void;
+    onOutdent: () => void;
+  }) => void;
 }
 
 /// A hybrid markdown/code editor widget
@@ -21,10 +28,12 @@ export function HybridEditor({
   initialContent = '',
   onChanged,
   autofocus = false,
+  onFocusedBlockChange,
 }: HybridEditorProps) {
   const editorState = useEditorState();
   const lastInitialContentRef = useRef<string | undefined>(undefined);
   const isInitializedRef = useRef(false);
+  const ignoreNextContentChangeRef = useRef<number | null>(null);
 
   // Initialize document from markdown when initialContent changes (only from outside, not from our own updates)
   useEffect(() => {
@@ -63,6 +72,10 @@ export function HybridEditor({
 
   const handleContentChange = useCallback(
     (index: number) => (content: string) => {
+      if (ignoreNextContentChangeRef.current === index) {
+        ignoreNextContentChangeRef.current = null;
+        return;
+      }
       editorState.updateBlockContent(index, content);
     },
     [editorState],
@@ -83,21 +96,16 @@ export function HybridEditor({
       const detection = blockRegistry.detectBlockType(newContent);
 
       if (detection) {
-        // Convert block type and update content to remove the trigger prefix
-        // The space will be handled by this update, so onChangeText won't add it again
         editorState.updateBlockType(index, detection.type, detection.language);
         editorState.updateBlockContent(index, detection.remainingContent);
+        ignoreNextContentChangeRef.current = index;
         
-        // Preserve focus after block type change - use requestAnimationFrame to ensure
-        // the new component (e.g., HeadingBlock) is mounted before focusing
         requestAnimationFrame(() => {
           setTimeout(() => {
             editorState.setFocusedBlock(index, false);
           }, 50);
         });
       } else {
-        // Just add space to content - onChangeText will also fire, but that's okay
-        // as it will just set the same content
         editorState.updateBlockContent(index, newContent);
       }
     },
@@ -192,8 +200,86 @@ export function HybridEditor({
     // editorState.setFocusedBlock(null);
   }, []);
 
+  const calculateListItemNumber = useCallback(
+    (index: number): number | undefined => {
+      const block = editorState.document.blocks[index];
+      if (block.type !== BlockType.numberedList) {
+        return undefined;
+      }
+
+      const listLevel = block.listLevel;
+      // Count consecutive numbered lists before this one
+      let number = 1;
+      for (let i = index - 1; i >= 0; i--) {
+        const prevBlock = editorState.document.blocks[i];
+        if (
+          prevBlock.type !== BlockType.numberedList ||
+          prevBlock.listLevel < listLevel
+        ) {
+          break;
+        }
+        if (
+          prevBlock.type === BlockType.numberedList &&
+          prevBlock.listLevel === listLevel
+        ) {
+          number++;
+        }
+      }
+      return number;
+    },
+    [editorState.document.blocks],
+  );
+
+  const handleIndent = useCallback(
+    (index: number) => {
+      const block = editorState.document.blocks[index];
+      if (block.type === BlockType.bulletList || block.type === BlockType.numberedList) {
+        editorState.updateBlockListLevel(index, block.listLevel + 1);
+      }
+    },
+    [editorState],
+  );
+
+  const handleOutdent = useCallback(
+    (index: number) => {
+      const block = editorState.document.blocks[index];
+      if (
+        (block.type === BlockType.bulletList || block.type === BlockType.numberedList) &&
+        block.listLevel > 0
+      ) {
+        editorState.updateBlockListLevel(index, block.listLevel - 1);
+      }
+    },
+    [editorState],
+  );
+
+  useEffect(() => {
+    if (onFocusedBlockChange) {
+      const focusedIndex = editorState.focusedBlockIndex;
+      if (focusedIndex !== null) {
+        const block = editorState.document.blocks[focusedIndex];
+        onFocusedBlockChange({
+          blockType: block.type,
+          blockIndex: focusedIndex,
+          listLevel: block.listLevel,
+          onIndent: () => handleIndent(focusedIndex),
+          onOutdent: () => handleOutdent(focusedIndex),
+        });
+      } else {
+        onFocusedBlockChange({
+          blockType: null,
+          blockIndex: null,
+          listLevel: 0,
+          onIndent: () => {},
+          onOutdent: () => {},
+        });
+      }
+    }
+  }, [editorState.focusedBlockIndex, editorState.document.blocks, onFocusedBlockChange, handleIndent, handleOutdent]);
+
   const renderBlock = useCallback(
     (block: typeof editorState.document.blocks[0], index: number) => {
+      const listItemNumber = calculateListItemNumber(index);
       const config: BlockConfig = {
         block,
         index,
@@ -204,6 +290,7 @@ export function HybridEditor({
         onEnter: (cursorOffset) => handleEnter(index, cursorOffset),
         onFocus: handleFocus(index),
         onBlur: handleBlur,
+        listItemNumber,
       };
       return (
         <View key={block.id} style={styles.blockWrapper}>
@@ -220,25 +307,29 @@ export function HybridEditor({
       handleFocus,
       handleBlur,
       handleEnter,
+      calculateListItemNumber,
     ],
   );
 
   return (
-    <ScrollView
-      style={styles.scrollView}
-      contentContainerStyle={styles.scrollContent}
-      keyboardShouldPersistTaps="handled"
-    >
-      {editorState.document.blocks.map((block, index) =>
-        renderBlock(block, index),
-      )}
-    </ScrollView>
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {editorState.document.blocks.map((block, index) =>
+          renderBlock(block, index),
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
   },
   scrollView: {
     flex: 1,

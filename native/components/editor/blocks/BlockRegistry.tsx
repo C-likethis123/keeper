@@ -2,6 +2,7 @@ import React from 'react';
 import { BlockType, BlockNode } from '../core/BlockNode';
 import { BlockRenderer } from './BlockRenderer';
 import { UnifiedBlock } from './UnifiedBlock';
+import { ListBlock } from './ListBlock';
 
 export interface BlockConfig {
   block: BlockNode;
@@ -14,6 +15,7 @@ export interface BlockConfig {
   onEnter?: (cursorOffset: number) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  listItemNumber?: number; // For numbered list items
 }
 
 export interface BlockBuilder {
@@ -126,6 +128,18 @@ blockRegistry.registerAll([
     triggerPrefix: /^###\s/,
     markdownPrefix: '### ',
     build: (config) => <UnifiedBlock {...config} />,
+  },
+  {
+    type: BlockType.bulletList,
+    triggerPrefix: /^-\s/,
+    markdownPrefix: '- ',
+    build: (config) => <ListBlock {...config} />,
+  },
+  {
+    type: BlockType.numberedList,
+    triggerPrefix: /^(\d+)\.\s/,
+    markdownPrefix: '1. ',
+    build: (config) => <ListBlock {...config} />,
   },
 ]);
 
