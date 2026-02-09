@@ -1,7 +1,6 @@
 import React, {
     useRef,
     useState,
-    useCallback,
     useEffect,
     useMemo,
 } from 'react';
@@ -9,17 +8,24 @@ import {
     View,
     TextInput,
     ScrollView,
-    Text,
     StyleSheet,
-    Pressable,
+    Platform,
+    NativeSyntheticEvent,
+    TextInputKeyPressEventData,
+    TextInputSelectionChangeEventData,
+    TextInputScrollEventData,
+    TextInputChangeEventData,
+    TouchableOpacity,
 } from 'react-native';
 import { BlockConfig } from './BlockRegistry';
-import { useExtendedTheme } from '@/hooks/useExtendedTheme';
 import { CodeBlockHeader } from './CodeBlockHeader';
-import { SyntaxHighlighter } from '../code/SyntaxHighlighter';
+import SyntaxHighlighter, { SyntaxHighlighterSyntaxStyles } from '../code/SyntaxHighlighter';
 import { SmartEditingHandler } from '../code/SmartEditingHandler';
 import { LanguageRegistry } from '../code/LanguageRegistry';
 import * as Clipboard from 'expo-clipboard';
+import * as Indentation from '../code/Indentation';
+import * as Braces from '../code/Braces';
+import { BlockType } from '../core';
 
 export function CodeBlock({
     block,
@@ -33,374 +39,190 @@ export function CodeBlock({
     onBlockTypeChange,
     index,
 }: BlockConfig) {
-    const theme = useExtendedTheme();
     const inputRef = useRef<TextInput>(null);
-    const codeScrollRef = useRef<ScrollView>(null);
-    const lineNumberScrollRef = useRef<ScrollView>(null);
-    const [isFocused, setIsFocused] = useState(false);
-    const [selection, setSelection] = useState({ start: 0, end: 0 });
-    const selectionRef = useRef({ start: 0, end: 0 });
-    const [previousText, setPreviousText] = useState(block.content);
+    const [value, setValue] = useState(block.content);
+    const highlighterRef = useRef<ScrollView>(null);
+    const [selection, setSelection] = useState<{ start: number, end: number }>({ start: 0, end: 0 });
 
     const language = block.language ?? 'plaintext';
-    const langConfig = LanguageRegistry.instance.getLanguage(language);
-    const smartEditor = useMemo(
-        () => new SmartEditingHandler(langConfig),
-        [language, langConfig],
-    );
-
-    const handleFocus = useCallback(() => {
-        setIsFocused(true);
-        onFocus?.();
-    }, [onFocus]);
-
-    const handleBlur = useCallback(() => {
-        setIsFocused(false);
-        onBlur?.();
-    }, [onBlur]);
+    const languageRegistry = LanguageRegistry.instance;
+    const languageConfig = useMemo(() => {
+        return languageRegistry.getLanguage(language);
+    }, [language]);
+    
+    const editingHandler = useMemo(() => {
+        return new SmartEditingHandler(languageConfig);
+    }, [languageConfig]);
 
     useEffect(() => {
+        onContentChange(value);
+    }, [onContentChange, value]);
+
+    const handleScroll = (e: NativeSyntheticEvent<TextInputScrollEventData>) => {
+        const y = e.nativeEvent.contentOffset.y;
+        highlighterRef.current?.scrollTo({ y, animated: false });
+    };
+
+    const handleEnterKey = (val: string): { newText: string; newCursorOffset: number } => {
+        // When Enter is pressed, React Native has already inserted a newline at selection.start - 1
+        // SmartEditingHandler expects to insert the newline itself, so we need to reconstruct
+        // the text before the newline was inserted
+        const newlinePosition = selection.start - 1;
+        const textBeforeNewline = val.substring(0, newlinePosition);
+        const textAfterNewline = val.substring(newlinePosition + 1);
+        const textWithoutNewline = textBeforeNewline + textAfterNewline;
+        const cursorBeforeNewline = newlinePosition;
+        
+        // Use SmartEditingHandler to handle the Enter key
+        // It expects the cursor position before the newline was inserted
+        const result = editingHandler.handleEnter(textWithoutNewline, cursorBeforeNewline);
+        
+        if (result.handled) {
+            // Preserve the special brace pair logic from original implementation
+            // Check if we're between a brace pair and add extra newline/indentation
+            const leftChar = textBeforeNewline[cursorBeforeNewline - 1] || '';
+            const rightChar = textAfterNewline[0] || '';
+            
+            if (Braces.isBracePair(leftChar, rightChar)) {
+                // Calculate the indentation for the closing brace line
+                const preLines = textBeforeNewline.split('\n');
+                const indentSize = Indentation.getSuggestedIndentSize(preLines);
+                const addedIndentionSize = Braces.isRegularBrace(leftChar)
+                    ? Math.max(indentSize - Indentation.INDENT_SIZE, 0)
+                    : indentSize;
+                
+                // Find where the newline was inserted in the result (should be at cursorBeforeNewline)
+                const newlineIndex = result.newText.indexOf('\n', cursorBeforeNewline);
+                if (newlineIndex !== -1) {
+                    // Insert extra newline and indentation after the first newline
+                    const beforeExtra = result.newText.substring(0, newlineIndex + 1);
+                    const afterExtra = result.newText.substring(newlineIndex + 1);
+                    const extraIndentation = '\n' + Indentation.createIndentString(addedIndentionSize);
+                    const finalText = beforeExtra + extraIndentation + afterExtra;
+                    
+                    // Adjust cursor position to account for the extra content
+                    const adjustedCursor = result.newCursorOffset + extraIndentation.length;
+                    return { newText: finalText, newCursorOffset: adjustedCursor };
+                }
+            }
+            
+            return { newText: result.newText, newCursorOffset: result.newCursorOffset };
+        }
+        
+        // Fallback to original behavior if not handled
+        // Reconstruct with the newline that React Native inserted
+        return { newText: val, newCursorOffset: newlinePosition + 1 };
+    };
+
+    const handleBraceInsert = (val: string, key: string): { newText: string; newCursorOffset: number } => {
+        const cursorPosition = selection.start;
+        const result = editingHandler.handleCharacterInsert(key, val, cursorPosition);
+        
+        if (result.handled) {
+            return { newText: result.newText, newCursorOffset: result.newCursorOffset };
+        }
+        
+        // Fallback: insert closing brace manually
+        const closingBrace = Braces.getCloseBrace(key);
+        if (closingBrace) {
+            const newText = val.substring(0, cursorPosition) + key + closingBrace + val.substring(cursorPosition);
+            return { newText, newCursorOffset: cursorPosition + 1 };
+        }
+        
+        return { newText: val, newCursorOffset: cursorPosition };
+    };
+
+    const handleSelectionChange = (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
+        setSelection(e.nativeEvent.selection);
+    };
+    useEffect(() => {
         if (isFocusedFromState && inputRef.current) {
-            requestAnimationFrame(() => {
-                setTimeout(() => {
-                    inputRef.current?.focus();
-                }, 0);
-            });
+            inputRef.current.focus();
         }
     }, [isFocusedFromState]);
 
-    useEffect(() => {
-        if (block.content !== previousText) {
-            setPreviousText(block.content);
-        }
-    }, [block.content]);
-
-    const handleCodeScroll = useCallback((event: any) => {
-        const offsetY = event.nativeEvent.contentOffset.y;
-        if (lineNumberScrollRef.current) {
-            lineNumberScrollRef.current.scrollTo({ y: offsetY, animated: false });
-        }
-    }, []);
-
-    const handleSelectionChange = useCallback((e: any) => {
-        const newSelection = {
-            start: e.nativeEvent.selection.start,
-            end: e.nativeEvent.selection.end,
-        };
-        selectionRef.current = newSelection;
-        setSelection(newSelection);
-    }, []);
-
-    const handleContentChange = useCallback(
-        (newText: string) => {
-            if (newText.length > previousText.length) {
-                const currentSelection = selectionRef.current;
-                if (currentSelection.start === currentSelection.end) {
-                    let cursor = currentSelection.start;
-                    
-                    // Calculate cursor position: if text length increased by 1, cursor moved forward by 1
-                    // This handles the case where onSelectionChange hasn't fired yet
-                    if (newText.length === previousText.length + 1) {
-                        // If cursor was at the end, it's now at the new end
-                        if (cursor === previousText.length) {
-                            cursor = newText.length;
-                        } else {
-                            // Otherwise, cursor moved forward by 1
-                            cursor = cursor + 1;
-                        }
-                    } else {
-                        // For multi-character inserts (paste), try to find the insertion point
-                        // by comparing the texts
-                        let diffStart = 0;
-                        while (diffStart < previousText.length && 
-                               diffStart < newText.length && 
-                               previousText[diffStart] === newText[diffStart]) {
-                            diffStart++;
-                        }
-                        cursor = diffStart + (newText.length - previousText.length);
-                    }
-                    
-                    if (cursor > 0 && cursor <= newText.length) {
-                        const insertedChar = newText[cursor - 1];
-                        if (insertedChar && '{(["\'`'.includes(insertedChar)) {
-                            const textWithoutInsert = newText.substring(0, cursor - 1) + newText.substring(cursor);
-                            const result = smartEditor.handleCharacterInsert(
-                                insertedChar,
-                                textWithoutInsert,
-                                cursor - 1,
-                            );
-                            if (result.handled && result.newText !== newText) {
-                                setPreviousText(result.newText);
-                                
-                                // Update TextInput directly with both text and selection atomically
-                                if (inputRef.current) {
-                                    inputRef.current.setNativeProps({
-                                        text: result.newText,
-                                        selection: {
-                                            start: result.newCursorOffset,
-                                            end: result.newCursorOffset,
-                                        },
-                                    });
-                                    selectionRef.current = { start: result.newCursorOffset, end: result.newCursorOffset };
-                                    setSelection({ start: result.newCursorOffset, end: result.newCursorOffset });
-                                }
-                                
-                                // Update block.content after a microtask to ensure setNativeProps is applied first
-                                Promise.resolve().then(() => {
-                                    onContentChange(result.newText);
-                                });
-                                
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
-
-            setPreviousText(newText);
-            onContentChange(newText);
-        },
-        [onContentChange, previousText, smartEditor],
-    );
-
-    const handleKeyPress = useCallback(
-        (e: any) => {
-            const key = e.nativeEvent.key;
-
-            if (key === 'Escape') {
-                inputRef.current?.blur();
-                return;
-            }
-
-            if ((key === 'Enter' || key === 'Return') && selection.start === selection.end) {
-                const result = smartEditor.handleEnter(block.content, selection.start);
-                if (result.handled) {
-                    onContentChange(result.newText);
-                    setPreviousText(result.newText);
-                    requestAnimationFrame(() => {
-                        if (inputRef.current) {
-                            inputRef.current.setNativeProps({
-                                text: result.newText,
-                                selection: {
-                                    start: result.newCursorOffset,
-                                    end: result.newCursorOffset,
-                                },
-                            });
+    const handleKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+        const key = e.nativeEvent.key;
+        switch (key) {
+            case 'Enter':
+                setTimeout(() => {
+                    setValue((curr) => {
+                        const result = handleEnterKey(curr);
+                        // Update cursor position after state update
+                        setTimeout(() => {
                             setSelection({ start: result.newCursorOffset, end: result.newCursorOffset });
-                        }
+                        }, 0);
+                        return result.newText;
                     });
-                    return;
+                }, 10);
+                break;
+            default:
+                if (Braces.isOpenBrace(key)) {
+                    setTimeout(() => {
+                        setValue((curr) => {
+                            const result = handleBraceInsert(curr, key);
+                            // Update cursor position after state update
+                            setTimeout(() => {
+                                setSelection({ start: result.newCursorOffset, end: result.newCursorOffset });
+                            }, 0);
+                            return result.newText;
+                        });
+                    }, 0);
                 }
-            }
-
-            if (key === 'Tab') {
-                const result = smartEditor.handleTab(block.content, selection.start, false);
-                if (result.handled) {
-                    onContentChange(result.newText);
-                    setPreviousText(result.newText);
-                    requestAnimationFrame(() => {
-                        if (inputRef.current) {
-                            inputRef.current.setNativeProps({
-                                text: result.newText,
-                                selection: {
-                                    start: result.newCursorOffset,
-                                    end: result.newCursorOffset,
-                                },
-                            });
-                            setSelection({ start: result.newCursorOffset, end: result.newCursorOffset });
-                        }
-                    });
-                    return;
-                }
-            }
-
-            if (key === 'Backspace' && selection.start === selection.end) {
-                const result = smartEditor.handleBackspace(block.content, selection.start);
-                if (result.handled) {
-                    onContentChange(result.newText);
-                    setPreviousText(result.newText);
-                    requestAnimationFrame(() => {
-                        if (inputRef.current) {
-                            inputRef.current.setNativeProps({
-                                text: result.newText,
-                                selection: {
-                                    start: result.newCursorOffset,
-                                    end: result.newCursorOffset,
-                                },
-                            });
-                            setSelection({ start: result.newCursorOffset, end: result.newCursorOffset });
-                        }
-                    });
-                    return;
-                }
-            }
-        },
-        [block.content, onContentChange, selection, smartEditor],
-    );
-
-    const handleLanguageChange = useCallback(
-        (newLanguage: string) => {
-            if (onBlockTypeChange) {
-                onBlockTypeChange(index, block.type, newLanguage);
-            }
-        },
-        [onBlockTypeChange, index, block.type],
-    );
-
-    const handleCopy = useCallback(async () => {
-        await Clipboard.setStringAsync(block.content);
-    }, [block.content]);
-
-    const handleDelete = useCallback(() => {
-        if (onDelete) {
-            onDelete();
-        } else {
-            onBackspaceAtStart?.();
+                break;
         }
-    }, [onDelete, onBackspaceAtStart]);
+    };
 
-    const lineCount = block.content.split('\n').length;
-    const maxLineNumberDigits = Math.ceil(Math.log10(Math.max(1, lineCount) + 1));
-    const lineNumberWidth = Math.max(40, maxLineNumberDigits * 8 + 24);
+    const handleCopy = async () => {
+        try {
+            await Clipboard.setStringAsync(value);
+        } catch (error) {
+            // Silently handle clipboard errors - user can try again if needed
+            console.error('Failed to copy to clipboard:', error);
+        }
+    };
 
-    const styles = useMemo(() => createStyles(theme, lineNumberWidth, isFocused), [theme, lineNumberWidth, isFocused]);
+    const fontSize = 16;
+    const padding = 16;
+    const lineNumbersPadding = 1.75 * fontSize;
+    const fontFamily = Platform.OS === 'ios' ? 'Menlo-Regular' : 'monospace';
 
     return (
-        <View style={styles.container}>
-            <CodeBlockHeader
-                selectedLanguage={language}
-                onLanguageChanged={handleLanguageChange}
-                onCopyPressed={handleCopy}
-                onDelete={handleDelete}
-            />
-            <View style={styles.editorContainer}>
-                <ScrollView
-                  ref={lineNumberScrollRef}
-                  style={styles.lineNumbersContainer}
-                  contentContainerStyle={styles.lineNumbersContent}
-                  scrollEnabled={false}
-                  showsVerticalScrollIndicator={false}
-                >
-                    {Array.from({ length: lineCount }, (_, i) => (
-                        <Text key={i} style={styles.lineNumber}>
-                            {i + 1}
-                        </Text>
-                    ))}
-                </ScrollView>
-
-                <ScrollView
-                    ref={codeScrollRef}
-                    style={styles.codeScrollView}
-                    contentContainerStyle={styles.codeScrollContent}
-                    onScroll={handleCodeScroll}
-                    scrollEventThrottle={16}
-                    showsVerticalScrollIndicator
-                >
-                    <View style={styles.codeEditorWrapper}>
-                        <View style={styles.highlightedCode}>
-                            <SyntaxHighlighter code={block.content} language={language} />
-                        </View>
-
-                        <TextInput
-                            ref={inputRef}
-                            style={[
-                                styles.textInput
-                            ]}
-                            onPressIn={handleFocus}
-                            value={block.content}
-                            onChangeText={handleContentChange}
-                            onFocus={handleFocus}
-                            onBlur={handleBlur}
-                            onKeyPress={handleKeyPress}
-                            onSelectionChange={handleSelectionChange}
-                            multiline
-                            textAlignVertical="top"
-                            autoCorrect={false}
-                            autoCapitalize="none"
-                            spellCheck={false}
-                            selectionColor={theme.custom.syntax.defaultText + '40'}
-                            underlineColorAndroid="transparent"
-                            caretHidden={false}
-                        />
-                    </View>
-                </ScrollView>
+        <TouchableOpacity onPress={() => inputRef.current?.focus()}>
+            <CodeBlockHeader selectedLanguage={language} onLanguageChanged={(language) => { onBlockTypeChange?.(index, BlockType.codeBlock, language) }} onCopyPressed={handleCopy} onDelete={onDelete!} />
+            <View>
+                <SyntaxHighlighter language={language} showLineNumbers scrollEnabled={false} ref={highlighterRef}>
+                    {value}
+                </SyntaxHighlighter>
+                <TextInput
+                    ref={inputRef}
+                    style={[styles.input, {
+                        color: '#FFFFFF00',
+                        fontFamily,
+                        fontSize,
+                        paddingTop: padding,
+                        paddingRight: padding,
+                        paddingBottom: padding,
+                        paddingLeft: lineNumbersPadding,
+                    }]}
+                    onScroll={handleScroll}
+                    selection={selection}
+                    onKeyPress={handleKeyPress}
+                    onSelectionChange={handleSelectionChange}
+                    multiline
+                    autoCapitalize='none'
+                    autoCorrect={false}
+                    value={value}
+                    onChangeText={setValue}
+                />
             </View>
-        </View>
+        </TouchableOpacity>
     );
 }
 
-function createStyles(theme: ReturnType<typeof useExtendedTheme>, lineNumberWidth: number, isFocused: boolean) {
-    const borderColor = isFocused 
-        ? theme.custom.codeEditor.border 
-        : theme.colors.border
-    
-    return StyleSheet.create({
-        container: {
-            marginVertical: 8,
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: borderColor,
-            backgroundColor: theme.custom.codeEditor.background,
-            overflow: 'hidden',
-        },
-        codeContainer: {
-            padding: 8,
-        },
-        editorContainer: {
-            flexDirection: 'row',
-            backgroundColor: theme.custom.codeEditor.background,
-        },
-        lineNumbersContainer: {
-            width: lineNumberWidth,
-            flexShrink: 0,
-            flexGrow: 0,
-            borderRightWidth: 1,
-            borderRightColor: borderColor,
-            backgroundColor: theme.custom.codeEditor.background,
-        },
-        lineNumbersContent: {
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            alignSelf: 'flex-start',
-        },
-        lineNumber: {
-            fontSize: 14,
-            lineHeight: 21,
-            color: theme.custom.syntax.comment,
-            fontFamily: 'monospace',
-            textAlign: 'right',
-        },
-        codeScrollView: {
-            flex: 1,
-        },
-        codeScrollContent: {
-            padding: 8,
-        },
-        codeEditorWrapper: {
-            position: 'relative',
-            minHeight: 100,
-        },
-        highlightedCode: {
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 0,
-            padding: 0,
-            margin: 0,
-            pointerEvents: 'none',
-        },
-        textInput: {
-            fontSize: 14,
-            lineHeight: 21,
-            color: 'transparent',
-            fontFamily: 'monospace',
-            zIndex: 1,
-            minHeight: 100,
-            opacity: 0,
-            height: 0,
-        },
-    });
-}
-
+const styles = StyleSheet.create({
+    input: {
+        position: 'absolute',
+        textAlignVertical: 'top',
+    },
+});

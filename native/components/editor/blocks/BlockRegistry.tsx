@@ -3,6 +3,7 @@ import { BlockType, BlockNode } from '../core/BlockNode';
 import { BlockRenderer } from './BlockRenderer';
 import { UnifiedBlock } from './UnifiedBlock';
 import { ListBlock } from './ListBlock';
+import { CodeBlock } from './CodeBlock';
 
 export interface BlockConfig {
   block: BlockNode;
@@ -15,6 +16,7 @@ export interface BlockConfig {
   onEnter?: (cursorOffset: number) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  onDelete?: () => void;
   listItemNumber?: number; // For numbered list items
 }
 
@@ -140,6 +142,12 @@ blockRegistry.registerAll([
     triggerPrefix: /^(\d+)\.\s/,
     markdownPrefix: '1. ',
     build: (config) => <ListBlock {...config} />,
+  },
+  {
+    type: BlockType.codeBlock,
+    triggerPrefix: /^```([a-z]*)$/,
+    markdownPrefix: '```',
+    build: (config) => <CodeBlock {...config} />,
   },
 ]);
 

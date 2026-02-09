@@ -227,7 +227,7 @@ export const useEditorState = create<EditorState>((set, get) => {
     updateBlockType: (index: number, newType: BlockType, language?: string) => {
       const state = get();
       const block = state.document.blocks[index];
-      if (block.type === newType) {
+      if (block.type === newType && block.language === language) {
         return;
       }
 

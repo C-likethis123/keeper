@@ -84,6 +84,21 @@ export function HybridEditor({
   const handleBlockTypeChange = useCallback(
     (index: number, newType: BlockType, language?: string) => {
       editorState.updateBlockType(index, newType, language);
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          editorState.setFocusedBlock(index, false);
+        }, 50);
+      });
+    },
+    [editorState],
+  );
+
+  const handleDelete = useCallback(
+    (index: number) => {
+      editorState.deleteBlock(index);
+      requestAnimationFrame(() => {
+        editorState.setFocusedBlock(index > 0 ? index - 1 : 0);
+      });
     },
     [editorState],
   );
@@ -285,11 +300,17 @@ export function HybridEditor({
         index,
         isFocused: editorState.focusedBlockIndex === index,
         onContentChange: handleContentChange(index),
+        onBlockTypeChange: (blockIndex: number, newType: BlockType, language?: string) => {
+          if (blockIndex === index) {
+            handleBlockTypeChange(index, newType, language);
+          }
+        },
         onBackspaceAtStart: handleBackspaceAtStart(index),
         onSpace: handleSpace(index),
         onEnter: (cursorOffset) => handleEnter(index, cursorOffset),
         onFocus: handleFocus(index),
         onBlur: handleBlur,
+        onDelete: () => handleDelete(index),
         listItemNumber,
       };
       return (
@@ -302,11 +323,13 @@ export function HybridEditor({
       editorState.document.blocks,
       editorState.focusedBlockIndex,
       handleContentChange,
+      handleBlockTypeChange,
       handleBackspaceAtStart,
       handleSpace,
       handleFocus,
       handleBlur,
       handleEnter,
+      handleDelete,
       calculateListItemNumber,
     ],
   );
