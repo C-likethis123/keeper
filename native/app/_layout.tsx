@@ -1,9 +1,11 @@
-// Import WDYR first, before React imports (development only)
+// Import crypto polyfill first, before any AWS SDK imports
+// This is required for AWS SDK v3 to work in React Native/Expo
+import 'react-native-get-random-values';
 
+// Import WDYR first, before React imports (development only)
 require('../wdyr');
 
 
-import { useSettingsStore } from "@/stores/settings";
 import { useThemeStore } from "@/stores/themeStore";
 import { Stack } from "expo-router";
 import { useEffect, useMemo } from "react";
@@ -13,17 +15,14 @@ import { createLightTheme, createDarkTheme } from "@/constants/themes";
 import { ToastOverlay } from "@/components/Toast";
 
 export default function RootLayout() {
-  const hydrate = useSettingsStore((s) => s.hydrate);
-  const hydrated = useSettingsStore((s) => s.isHydrated);
   const themeStoreHydrated = useThemeStore((s) => s.isHydrated);
   const themeMode = useThemeStore((s) => s.themeMode);
   const hydrateThemeStore = useThemeStore((s) => s.hydrate);
   const systemColorScheme = useColorScheme();
 
   useEffect(() => {
-    hydrate();
     hydrateThemeStore();
-  }, []);
+  }, [hydrateThemeStore]);
 
   // Determine which theme to use
   const effectiveTheme = useMemo(() => {
@@ -32,7 +31,7 @@ export default function RootLayout() {
     return shouldUseDark ? createDarkTheme() : createLightTheme();
   }, [themeMode, systemColorScheme]);
 
-  if (!hydrated || !themeStoreHydrated) {
+  if (!themeStoreHydrated) {
     // Splash screen while hydrating
     return (
       <View style={styles.splash}>

@@ -1,7 +1,9 @@
 import { File, Directory } from "expo-file-system";
 import { Note, NoteToSave } from "./types";
-import { loadFolder } from "../settings/storage";
-import { useNotesMetaStore } from "@/stores/notes/metaStore";
+import {
+  NotesIndexService,
+  extractSummary,
+} from "@/services/notes/notesIndex";
 import { NOTES_ROOT } from "./Notes";
 export class NoteService {
   static instance = new NoteService();
@@ -30,22 +32,40 @@ export class NoteService {
   }
 
   async saveNote(note: NoteToSave): Promise<Note> {
-    const folderPath = await loadFolder();
-    const filePath = await this.resolveFilePath(
-      folderPath!,
+    // For new notes, generate a file path. For existing notes, use the provided filePath.
+    const filePath = note.filePath || await this.resolveFilePath(
+      NOTES_ROOT,
       note.title,
-      note.filePath
+      undefined
     );
 
-    useNotesMetaStore.getState().togglePin(filePath);
+    // Persist full markdown content to the filesystem (and ultimately git).
     await new File(filePath).write(note.content);
+
+    const lastUpdated = Date.now();
+    const pinnedState = !!note.isPinned;
+
+    // Get existing note from DynamoDB to preserve createdAt if it exists
+    const existingIndexItem = await NotesIndexService.instance.getNote(filePath);
+    const createdAt = existingIndexItem?.createdAt ?? (note.lastUpdated ?? lastUpdated);
+
+    // Update DynamoDB notes index with summary + metadata.
+    const summary = extractSummary(note.content);
+    await NotesIndexService.instance.upsertNote({
+      noteId: filePath,
+      summary,
+      status: pinnedState ? "PINNED" : "UNPINNED",
+      sortTimestamp: lastUpdated,
+      createdAt,
+      updatedAt: lastUpdated,
+    });
 
     return {
       title: note.title,
       content: note.content,
       filePath,
-      lastUpdated: Date.now(),
-      isPinned: note.isPinned,
+      lastUpdated,
+      isPinned: pinnedState,
     };
   }
 
@@ -55,6 +75,12 @@ export class NoteService {
       if (!info.exists) return false;
 
       await new File(filePath).delete();
+      // Best-effort delete from DynamoDB index; ignore failures so local delete still succeeds.
+      try {
+        await NotesIndexService.instance.deleteNote(filePath);
+      } catch (err) {
+        console.warn("Failed to delete note from index:", err);
+      }
       return true;
     } catch (e) {
       console.warn("Failed to delete note:", e);
@@ -63,19 +89,23 @@ export class NoteService {
   }
 
   async scanNotes(folderPath: string): Promise<Note[]> {
-    const pinnedMap = useNotesMetaStore.getState().pinned;
+    // This method is kept for backward compatibility but is no longer used
+    // since we now fetch notes from DynamoDB index.
+    // If needed, it can fetch pinned state from DynamoDB for each file.
     const metadata: Note[] = [];
     try {
       const entries = await new Directory(folderPath).list();
 
       for (const file of entries) {
         if (file instanceof File && file.extension === ".md") {
+          // Try to get pinned state from DynamoDB index
+          const indexItem = await NotesIndexService.instance.getNote(file.uri);
           metadata.push({
             filePath: file.uri,
             title: file.name,
             content: await file.text(),
             lastUpdated: file.modificationTime || Date.now(),
-            isPinned: pinnedMap[file.uri] || false,
+            isPinned: indexItem?.status === "PINNED" || false,
           });
         }
       }
