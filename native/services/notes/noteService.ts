@@ -5,6 +5,7 @@ import {
   extractSummary,
 } from "@/services/notes/notesIndex";
 import { NOTES_ROOT } from "./Notes";
+import { GitService } from "@/services/git/gitService";
 export class NoteService {
   static instance = new NoteService();
 
@@ -32,14 +33,11 @@ export class NoteService {
   }
 
   async saveNote(note: NoteToSave): Promise<Note> {
-    // For new notes, generate a file path. For existing notes, use the provided filePath.
-    const filePath = note.filePath || await this.resolveFilePath(
-      NOTES_ROOT,
-      note.title,
-      undefined
-    );
+    const isNew = !note.filePath;
+    const filePath =
+      note.filePath ||
+      (await this.resolveFilePath(NOTES_ROOT, note.title, undefined));
 
-    // Persist full markdown content to the filesystem (and ultimately git).
     await new File(filePath).write(note.content);
 
     const lastUpdated = Date.now();
@@ -49,7 +47,6 @@ export class NoteService {
     const existingIndexItem = await NotesIndexService.instance.getNote(filePath);
     const createdAt = existingIndexItem?.createdAt ?? (note.lastUpdated ?? lastUpdated);
 
-    // Update DynamoDB notes index with summary + metadata.
     const summary = extractSummary(note.content);
     await NotesIndexService.instance.upsertNote({
       noteId: filePath,
@@ -59,6 +56,8 @@ export class NoteService {
       createdAt,
       updatedAt: lastUpdated,
     });
+
+    GitService.instance.queueChange(filePath, isNew ? "add" : "modify");
 
     return {
       title: note.title,
@@ -75,12 +74,12 @@ export class NoteService {
       if (!info.exists) return false;
 
       await new File(filePath).delete();
-      // Best-effort delete from DynamoDB index; ignore failures so local delete still succeeds.
       try {
         await NotesIndexService.instance.deleteNote(filePath);
       } catch (err) {
         console.warn("Failed to delete note from index:", err);
       }
+      GitService.instance.queueChange(filePath, "delete");
       return true;
     } catch (e) {
       console.warn("Failed to delete note:", e);

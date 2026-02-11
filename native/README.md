@@ -25,6 +25,14 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+### Git backend configuration
+
+The editor can send file change batches to a backend git service. Configure the backend URL via:
+
+```bash
+EXPO_PUBLIC_GIT_API_URL=https://your-backend.example.com/api
+```
+
 ## Get a fresh project
 
 When you're ready, run:
