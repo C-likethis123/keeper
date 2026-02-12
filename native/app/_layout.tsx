@@ -13,6 +13,7 @@ import { View, Text, ActivityIndicator, StyleSheet, useColorScheme } from "react
 import { ThemeProvider } from "@react-navigation/native";
 import { createLightTheme, createDarkTheme } from "@/constants/themes";
 import { ToastOverlay } from "@/components/Toast";
+import { GitInitializationService } from "@/services/git/gitInitializationService";
 
 export default function RootLayout() {
   const themeStoreHydrated = useThemeStore((s) => s.isHydrated);
@@ -22,6 +23,9 @@ export default function RootLayout() {
 
   useEffect(() => {
     hydrateThemeStore();
+    GitInitializationService.instance.initialize().catch((error) => {
+      console.warn('[App] Git initialization failed:', error);
+    });
   }, [hydrateThemeStore]);
 
   // Determine which theme to use

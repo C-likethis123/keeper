@@ -133,7 +133,7 @@ export function UnifiedBlock({
       case BlockType.heading3:
         return { paddingVertical: 12 };
       default:
-        return { paddingVertical: 8 };
+        return { paddingVertical: 4 };
     }
   }, [block.type]);
 
@@ -144,7 +144,7 @@ export function UnifiedBlock({
       case BlockType.heading3:
         return 12;
       default:
-        return 8;
+        return 4;
     }
   }, [block.type]);
 

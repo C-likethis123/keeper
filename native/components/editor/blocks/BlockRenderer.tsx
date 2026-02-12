@@ -36,7 +36,7 @@ export function BlockRenderer({
 
 const createStyles = (theme: ReturnType<typeof useExtendedTheme>) => StyleSheet.create({
   block: {
-    paddingVertical: 8,
+    paddingVertical: 4,
     paddingHorizontal: 16,
     minHeight: 40,
     backgroundColor: theme.custom.editor.blockBackground

@@ -6,19 +6,80 @@ import {
 } from "@/services/notes/notesIndex";
 import { NOTES_ROOT } from "./Notes";
 import { GitService } from "@/services/git/gitService";
+import { getFile } from "@/services/git/gitApi";
 export class NoteService {
   static instance = new NoteService();
 
-  private constructor() { }
+  private constructor() { 
+    // Ensure NOTES_ROOT exists on initialization
+    this.ensureNotesRoot();
+  }
+
+  private async ensureNotesRoot(): Promise<void> {
+    try {
+      const dir = new Directory(NOTES_ROOT);
+      if (!dir.exists) {
+        dir.create({ intermediates: true });
+      }
+    } catch (e) {
+      console.warn('Failed to ensure notes root:', e);
+    }
+  }
 
   async loadNote(filePath: string): Promise<Note | null> {
     try {
-      const info = await new File(filePath);
-      if (!info.exists || new Directory(filePath).exists) return null;
+      // Check if path is relative (doesn't start with / or file://)
+      const isRelative = !filePath.startsWith('/') && !filePath.startsWith('file://');
+      
+      if (isRelative) {
+        // For relative paths, try local repository first, then fall back to git API
+        const localFilePath = `${NOTES_ROOT}${filePath}`;
+        
+        try {
+          const file = new File(localFilePath);
+          if (file.exists) {
+            const content = await file.text();
+            const fileName = filePath.split("/").pop() || "Untitled";
+            const indexItem = await NotesIndexService.instance.getNote(filePath);
+            const lastUpdated = indexItem?.updatedAt || (file.modificationTime ? file.modificationTime * 1000 : Date.now());
+            
+            return {
+              title: fileName.replace(/\.md$/, ""),
+              content,
+              filePath,
+              lastUpdated,
+            };
+          }
+        } catch (localError) {
+          // File doesn't exist locally, fall back to git API
+        }
+        
+        // Fall back to git API if local file doesn't exist
+        const result = await getFile(filePath);
+        if (!result.success || !result.content) {
+          console.warn("Failed to load note from git:", result.error);
+          return null;
+        }
+        
+        const fileName = filePath.split("/").pop() || "Untitled";
+        const indexItem = await NotesIndexService.instance.getNote(filePath);
+        const lastUpdated = indexItem?.updatedAt || Date.now();
+        
+        return {
+          title: fileName.replace(/\.md$/, ""),
+          content: result.content,
+          filePath,
+          lastUpdated,
+        };
+      }
+      
+      // For absolute paths, use local filesystem
+      const file = new File(filePath);
+      if (!file.exists) return null;
 
-      const content = await new File(filePath).text();
+      const content = await file.text();
       const fileName = filePath.split("/").pop() || "Untitled";
-      const lastUpdated = info.modificationTime || Date.now();
+      const lastUpdated = file.modificationTime ? file.modificationTime * 1000 : Date.now();
 
       return {
         title: fileName.replace(/\.md$/, ""),
@@ -34,22 +95,45 @@ export class NoteService {
 
   async saveNote(note: NoteToSave): Promise<Note> {
     const isNew = !note.filePath;
-    const filePath =
+    let filePath =
       note.filePath ||
       (await this.resolveFilePath(NOTES_ROOT, note.title, undefined));
-
-    await new File(filePath).write(note.content);
+    
+    // Check if path is relative (doesn't start with / or file://)
+    const isRelative = !filePath.startsWith('/') && !filePath.startsWith('file://');
+    
+    // Store original relative path for git operations
+    const relativePath = isRelative ? filePath : undefined;
+    
+    // Convert relative paths to absolute paths for FileSystem operations
+    if (isRelative) {
+      filePath = `${NOTES_ROOT}${filePath}`;
+    }
+    
+    // Ensure directory exists for the absolute path
+    const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+    const dir = new Directory(dirPath);
+    if (!dir.exists) {
+      dir.create({ intermediates: true });
+    }
+    
+    // Save to absolute path
+    const file = new File(filePath);
+    await file.write(note.content);
 
     const lastUpdated = Date.now();
     const pinnedState = !!note.isPinned;
 
+    // Use relative path for index and git operations, absolute path for return
+    const indexPath = relativePath || filePath;
+    
     // Get existing note from DynamoDB to preserve createdAt if it exists
-    const existingIndexItem = await NotesIndexService.instance.getNote(filePath);
+    const existingIndexItem = await NotesIndexService.instance.getNote(indexPath);
     const createdAt = existingIndexItem?.createdAt ?? (note.lastUpdated ?? lastUpdated);
 
     const summary = extractSummary(note.content);
     await NotesIndexService.instance.upsertNote({
-      noteId: filePath,
+      noteId: indexPath,
       summary,
       status: pinnedState ? "PINNED" : "UNPINNED",
       sortTimestamp: lastUpdated,
@@ -57,12 +141,12 @@ export class NoteService {
       updatedAt: lastUpdated,
     });
 
-    GitService.instance.queueChange(filePath, isNew ? "add" : "modify");
+    GitService.instance.queueChange(indexPath, isNew ? "add" : "modify");
 
     return {
       title: note.title,
       content: note.content,
-      filePath,
+      filePath: indexPath, // Return relative path for consistency
       lastUpdated,
       isPinned: pinnedState,
     };
@@ -70,10 +154,10 @@ export class NoteService {
 
   async deleteNote(filePath: string): Promise<boolean> {
     try {
-      const info = await new File(filePath).info();
-      if (!info.exists) return false;
+      const file = new File(filePath);
+      if (!file.exists) return false;
 
-      await new File(filePath).delete();
+      file.delete();
       try {
         await NotesIndexService.instance.deleteNote(filePath);
       } catch (err) {
@@ -93,17 +177,19 @@ export class NoteService {
     // If needed, it can fetch pinned state from DynamoDB for each file.
     const metadata: Note[] = [];
     try {
-      const entries = await new Directory(folderPath).list();
+      const dir = new Directory(folderPath);
+      const entries = dir.list();
 
-      for (const file of entries) {
-        if (file instanceof File && file.extension === ".md") {
+      for (const entry of entries) {
+        if (entry instanceof File && entry.name.endsWith('.md')) {
           // Try to get pinned state from DynamoDB index
-          const indexItem = await NotesIndexService.instance.getNote(file.uri);
+          const indexItem = await NotesIndexService.instance.getNote(entry.uri);
+          const content = await entry.text();
           metadata.push({
-            filePath: file.uri,
-            title: file.name,
-            content: await file.text(),
-            lastUpdated: file.modificationTime || Date.now(),
+            filePath: entry.uri,
+            title: entry.name.replace(/\.md$/, ''),
+            content,
+            lastUpdated: entry.modificationTime ? entry.modificationTime * 1000 : Date.now(),
             isPinned: indexItem?.status === "PINNED" || false,
           });
         }
@@ -134,7 +220,7 @@ export class NoteService {
     let candidate = `${folderPath}/${baseName}.md`;
     let counter = 1;
 
-    while ((await new File(candidate).info()).exists) {
+    while (new File(candidate).exists) {
       candidate = `${folderPath}/${baseName}_${counter}.md`;
       counter++;
     }

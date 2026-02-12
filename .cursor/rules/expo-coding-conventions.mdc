@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+---
+Use the new filesystem API as stated in the docs: https://docs.expo.dev/versions/v54.0.0/sdk/filesystem/
