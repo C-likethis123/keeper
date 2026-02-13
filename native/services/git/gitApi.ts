@@ -1,13 +1,12 @@
+import { Octokit } from '@octokit/rest';
+import { File } from 'expo-file-system';
+import { NOTES_ROOT } from '@/services/notes/Notes';
+
 export type GitChangeOperation = 'add' | 'modify' | 'delete';
 
 export interface GitChange {
   filePath: string;
   operation: GitChangeOperation;
-}
-
-export interface CommitRequest {
-  changes: GitChange[];
-  message?: string;
 }
 
 export interface CommitResponse {
@@ -22,73 +21,6 @@ export interface GetFileResponse {
   error?: string;
 }
 
-const GIT_API_BASE_URL = process.env.EXPO_PUBLIC_GIT_API_URL;
-
-async function request<T>(path: string, init: RequestInit): Promise<T> {
-  if (!GIT_API_BASE_URL) {
-    console.warn(
-      '[GitApi] EXPO_PUBLIC_GIT_API_URL is not set. Skipping git operation for',
-      path,
-    );
-    throw new Error('GIT_API_URL_NOT_CONFIGURED');
-  }
-
-  const url = `${GIT_API_BASE_URL.replace(/\/+$/, '')}${path}`;
-
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init.headers ?? {}),
-    },
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(
-      `[GitApi] Request failed for ${path} with ${response.status}: ${text}`,
-    );
-  }
-
-  return (await response.json()) as T;
-}
-
-export async function commitChanges(
-  changes: GitChange[],
-  message?: string,
-): Promise<CommitResponse> {
-  if (changes.length === 0) {
-    return { success: true };
-  }
-
-  try {
-    const body: CommitRequest = {
-      changes,
-      message,
-    };
-
-    return await request<CommitResponse>('/git/commit', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${process.env.EXPO_PUBLIC_GITHUB_TOKEN}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-      body: JSON.stringify(body),
-    });
-  } catch (error: any) {
-    console.warn('[GitApi] Failed to commit changes:', error?.message ?? error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-import { Octokit } from '@octokit/rest';
-import { File } from 'expo-file-system';
-import { NOTES_ROOT } from '@/services/notes/Notes';
-
 let octokitInstance: Octokit | null = null;
 
 function getOctokit(): Octokit {
@@ -102,6 +34,141 @@ function getOctokit(): Octokit {
     });
   }
   return octokitInstance;
+}
+
+function getGitHubConfig() {
+  const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
+  const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
+
+  if (!owner || !repo) {
+    throw new Error('EXPO_PUBLIC_GITHUB_OWNER and EXPO_PUBLIC_GITHUB_REPO must be set');
+  }
+
+  return { owner, repo };
+}
+
+async function readLocalFileContent(filePath: string): Promise<string | null> {
+  try {
+    const localFilePath = `${NOTES_ROOT}${filePath}`;
+    const file = new File(localFilePath);
+    if (file.exists) {
+      return await file.text();
+    }
+  } catch (error) {
+    // File doesn't exist or can't be read
+    return null;
+  }
+  return null;
+}
+
+async function getFileSha(filePath: string): Promise<string | null> {
+  try {
+    const { owner, repo } = getGitHubConfig();
+    const octokit = getOctokit();
+    const response = await octokit.rest.repos.getContent({
+      owner,
+      repo,
+      path: filePath,
+    });
+
+    if (Array.isArray(response.data)) {
+      return null;
+    }
+
+    if ('sha' in response.data) {
+      return response.data.sha;
+    }
+  } catch (error: any) {
+    if (error?.status === 404) {
+      // File doesn't exist, which is fine for new files
+      return null;
+    }
+    throw error;
+  }
+  return null;
+}
+
+export async function commitChanges(
+  changes: GitChange[],
+  message?: string,
+): Promise<CommitResponse> {
+  if (changes.length === 0) {
+    return { success: true };
+  }
+
+  try {
+    const { owner, repo } = getGitHubConfig();
+    const octokit = getOctokit();
+    const commitMessage = message || `Update ${changes.length} file(s)`;
+
+    let lastCommitHash: string | undefined;
+
+    // Process changes sequentially
+    // Note: Each operation creates a separate commit. To batch into a single commit,
+    // we would need to use the Git Data API which is more complex.
+    for (const change of changes) {
+      const { filePath, operation } = change;
+
+      try {
+        if (operation === 'delete') {
+          const sha = await getFileSha(filePath);
+          if (!sha) {
+            console.warn(`[GitApi] File ${filePath} does not exist, skipping delete`);
+            continue;
+          }
+
+          const response = await octokit.rest.repos.deleteFile({
+            owner,
+            repo,
+            path: filePath,
+            message: commitMessage,
+            sha,
+          });
+
+          lastCommitHash = response.data.commit.sha;
+        } else if (operation === 'add' || operation === 'modify') {
+          const content = await readLocalFileContent(filePath);
+          if (content === null) {
+            console.warn(`[GitApi] Could not read local file ${filePath}, skipping ${operation}`);
+            continue;
+          }
+
+          // Encode content to base64
+          const encodedContent = typeof Buffer !== 'undefined'
+            ? Buffer.from(content, 'utf-8').toString('base64')
+            : btoa(unescape(encodeURIComponent(content)));
+
+          // Get SHA if file exists (for updates)
+          const sha = await getFileSha(filePath);
+
+          const response = await octokit.rest.repos.createOrUpdateFileContents({
+            owner,
+            repo,
+            path: filePath,
+            message: commitMessage,
+            content: encodedContent,
+            ...(sha ? { sha } : {}), // Include SHA only if file exists (for updates)
+          });
+
+          lastCommitHash = response.data.commit.sha;
+        }
+      } catch (error: any) {
+        console.warn(`[GitApi] Failed to ${operation} file ${filePath}:`, error?.message ?? error);
+        // Continue with other changes even if one fails
+      }
+    }
+
+    return {
+      success: true,
+      commitHash: lastCommitHash,
+    };
+  } catch (error: any) {
+    console.warn('[GitApi] Failed to commit changes:', error?.message ?? error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 export async function getFile(filePath: string): Promise<GetFileResponse> {
@@ -123,24 +190,7 @@ export async function getFile(filePath: string): Promise<GetFileResponse> {
       }
     }
 
-    const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
-    const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
-
-    if (!owner || !repo) {
-      return {
-        success: false,
-        error: 'GitHub owner and repo not configured',
-      };
-    }
-
-    const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
-    if (!token) {
-      return {
-        success: false,
-        error: 'GitHub token not configured',
-      };
-    }
-
+    const { owner, repo } = getGitHubConfig();
     const octokit = getOctokit();
     const response = await octokit.rest.repos.getContent({
       owner,
@@ -206,30 +256,3 @@ export async function getFile(filePath: string): Promise<GetFileResponse> {
     };
   }
 }
-
-export interface InitRepositoryResponse {
-  success: boolean;
-  repoPath?: string;
-  error?: string;
-}
-
-export async function initRepository(): Promise<InitRepositoryResponse> {
-  try {
-    const response = await request<InitRepositoryResponse>('/git/init', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${process.env.EXPO_PUBLIC_GITHUB_TOKEN}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    });
-    return response;
-  } catch (error: any) {
-    console.warn('[GitApi] Failed to initialize repository:', error?.message ?? error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
