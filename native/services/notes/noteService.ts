@@ -135,6 +135,7 @@ export class NoteService {
     await NotesIndexService.instance.upsertNote({
       noteId: indexPath,
       summary,
+      title: note.title,
       status: pinnedState ? "PINNED" : "UNPINNED",
       sortTimestamp: lastUpdated,
       createdAt,

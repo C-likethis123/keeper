@@ -26,6 +26,10 @@ export interface NoteIndexItem {
    */
   summary: string;
   /**
+   * The note title, stored separately for efficient display in lists.
+   */
+  title?: string;
+  /**
    * String status used as the partition key in the StatusIndex GSI.
    */
   status: NoteIndexStatus;

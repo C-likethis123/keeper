@@ -1,6 +1,5 @@
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import EmptyState from "@/components/EmptyState";
 import { router } from 'expo-router';
 import NoteGrid from "@/components/NoteGrid";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -8,20 +7,27 @@ import { NoteService } from "@/services/notes/noteService";
 import { Note } from "@/services/notes/types";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useToastStore } from "@/stores/toastStore";
+import ErrorScreen from "@/components/ErrorScreen";
+import Loader from "@/components/Loader";
 import {
   NotesIndexService,
   type NoteIndexItem,
 } from "@/services/notes/notesIndex";
 export default function Index() {
   const [loadingMetadata, setLoadingMetadata] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [notes, setNotes] = useState<Note[]>([]);
   const theme = useExtendedTheme();
   const { showToast } = useToastStore();
 
-  const fetchNotes = useCallback(async () => {
-    setLoadingMetadata(true);
+  const fetchNotes = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoadingMetadata(true);
+    }
     setError(null);
 
     try {
@@ -32,8 +38,11 @@ export default function Index() {
       ]);
 
       const toNote = (item: NoteIndexItem): Note => ({
-        title:
-          item.noteId.split("/").pop()?.replace(/\.md$/, "") ?? "Untitled",
+        // Use title from index if available, otherwise extract from summary or filename
+        title: item.title || 
+          (item.summary.match(/^#{1,3}\s+(.+)$/m)?.[1]?.trim()) ||
+          item.noteId.split("/").pop()?.replace(/\.md$/, "") || 
+          "Untitled",
         // We treat the index summary as the card preview content.
         content: item.summary,
         filePath: item.noteId,
@@ -51,9 +60,17 @@ export default function Index() {
       console.warn("Failed to load notes from index:", e);
       setError("Failed to load notes");
     } finally {
-      setLoadingMetadata(false);
+      if (isRefresh) {
+        setRefreshing(false);
+      } else {
+        setLoadingMetadata(false);
+      }
     }
   }, []);
+
+  const handleRefresh = useCallback(() => {
+    fetchNotes(true);
+  }, [fetchNotes]);
 
   useEffect(() => {
     fetchNotes();
@@ -77,29 +94,26 @@ export default function Index() {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   if (loadingMetadata) {
-    return <ActivityIndicator style={styles.center} />;
+    return <Loader />;
   }
-
 
   if (error) {
     return (
-      <View style={styles.center}>
-        <Text style={{ color: theme.colors.text }}>{error}</Text>
-        <TouchableOpacity onPress={fetchNotes}>
-          <Text style={styles.retry}>Retry</Text>
-        </TouchableOpacity>
-      </View>
+      <ErrorScreen
+        errorMessage={error}
+        onRetry={() => fetchNotes(false)}
+      />
     );
   }
+
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <NoteGrid notes={notes} onDelete={handleDeleteNote} />
+    <View style={styles.container}>
+      <NoteGrid
+        notes={notes}
+        onDelete={handleDeleteNote}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+      />
       <TouchableOpacity activeOpacity={0.8} style={styles.fab} onPress={() => router.push('/editor')}><MaterialIcons name="add" size={28} color={theme.colors.card} /></TouchableOpacity>
     </View>
   );
@@ -113,19 +127,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
       flex: 1,
       backgroundColor: theme.colors.background,
     },
-    center: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 16,
-    },
-
-    retry: {
-      marginTop: 12,
-      color: theme.colors.primary,
-      fontWeight: '600',
-    },
-
     fab: {
       position: 'absolute',
       right: 24,

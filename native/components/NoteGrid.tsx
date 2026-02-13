@@ -1,16 +1,22 @@
-import { View, FlatList, useWindowDimensions } from "react-native";
+import { View, FlatList, useWindowDimensions, RefreshControl } from "react-native";
 import EmptyState from "./EmptyState";
 import NoteCard from "@/components/NoteCard";
 import { Note } from "@/services/notes/types";
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 
 export default function NoteGrid({ 
   notes, 
-  onDelete 
+  onDelete,
+  refreshing = false,
+  onRefresh,
 }: { 
   notes: Note[];
   onDelete?: (note: Note) => void;
+  refreshing?: boolean;
+  onRefresh: () => void;
 }) {
   const { width } = useWindowDimensions();
+  const theme = useExtendedTheme();
 
   if (!notes.length) {
     return (
@@ -32,13 +38,25 @@ export default function NoteGrid({
 
   return (
     <FlatList
-      style={{ width: '100%' }}
+      style={{ flex: 1, width: '100%' }}
       data={sortedNotes}
       key={numColumns}
       numColumns={numColumns}
       keyExtractor={(item) => item.filePath}
       columnWrapperStyle={numColumns > 1 ? { gap: 8, marginBottom: 8 } : undefined}
-      contentContainerStyle={{ padding: 8 }}
+      contentContainerStyle={{ 
+        padding: 8,
+        paddingBottom: 100, // Extra padding to ensure scrollability for pull-to-refresh
+      }}
+      showsVerticalScrollIndicator
+      refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+          />
+      }
       renderItem={({ item }) => (
         <View style={{ flex: 1 / numColumns }}>
           <NoteCard note={item} onDelete={onDelete} />
