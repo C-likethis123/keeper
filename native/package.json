@@ -47,7 +47,8 @@
     "react-syntax-highlighter": "^16.1.0",
     "zustand": "^5.0.10",
     "isomorphic-git": "^1.27.0",
-    "@octokit/rest": "^21.0.2"
+    "@octokit/rest": "^21.0.2",
+    "buffer": "^6.0.3"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",

@@ -2,6 +2,11 @@
 // This is required for AWS SDK v3 to work in React Native/Expo
 import 'react-native-get-random-values';
 
+// Import Buffer polyfill for isomorphic-git
+import { Buffer } from 'buffer';
+global.Buffer = Buffer;
+globalThis.Buffer = Buffer;
+
 // Import WDYR first, before React imports (development only)
 require('../wdyr');
 
@@ -14,6 +19,7 @@ import { ThemeProvider } from "@react-navigation/native";
 import { createLightTheme, createDarkTheme } from "@/constants/themes";
 import { ToastOverlay } from "@/components/Toast";
 import { GitInitializationService } from "@/services/git/gitInitializationService";
+import { deleteGitDirectory } from "@/utils/deleteGitDirectory";
 
 export default function RootLayout() {
   const themeStoreHydrated = useThemeStore((s) => s.isHydrated);
@@ -23,8 +29,17 @@ export default function RootLayout() {
 
   useEffect(() => {
     hydrateThemeStore();
-    GitInitializationService.instance.initialize().catch((error) => {
-      console.warn('[App] Git initialization failed:', error);
+    GitInitializationService.instance.initialize().then((result) => {
+      if (result.success) {
+        console.log('[App] Git initialization succeeded:', {
+          wasCloned: result.wasCloned,
+          branch: result.status?.currentBranch,
+        });
+      } else {
+        console.error('[App] Git initialization failed:', result.error);
+      }
+    }).catch((error) => {
+      console.error('[App] Git initialization error:', error);
     });
   }, [hydrateThemeStore]);
 
