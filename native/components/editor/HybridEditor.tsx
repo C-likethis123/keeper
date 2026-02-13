@@ -131,8 +131,8 @@ export function HybridEditor({
     (index: number) => () => {
       const block = editorState.document.blocks[index];
 
-      // If it's a non-paragraph block (except code block), convert to paragraph
-      if (block.type !== BlockType.paragraph && block.type !== BlockType.codeBlock) {
+      // If it's a non-paragraph block (except code block and math block), convert to paragraph
+      if (![BlockType.paragraph, BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
         editorState.updateBlockType(index, BlockType.paragraph);
         
         // Preserve focus after block type change - use requestAnimationFrame to ensure
@@ -170,8 +170,8 @@ export function HybridEditor({
     (index: number, cursorOffset: number) => {
       const block = editorState.document.blocks[index];
 
-      // Let code blocks handle newlines internally
-      if (block.type === BlockType.codeBlock) {
+      // Let code blocks and math blocks handle newlines internally
+      if ([BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
         return;
       }
 

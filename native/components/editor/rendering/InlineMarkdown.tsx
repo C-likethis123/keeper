@@ -1,6 +1,7 @@
 import React from 'react';
-import { Text, TextStyle } from 'react-native';
+import { Text, TextStyle, View } from 'react-native';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
+
 
 interface InlineMarkdownProps {
   text: string;
@@ -12,9 +13,10 @@ interface TextSegment {
   text: string;
   style?: TextStyle;
   onPress?: () => void;
+  isMath?: boolean; // For inline math rendering
 }
 
-/// Renders inline markdown formatting (bold, italic, code, links, wiki links)
+/// Renders inline markdown formatting (bold, italic, code, links, wiki links, math)
 export function InlineMarkdown({
   text,
   style,
@@ -23,20 +25,62 @@ export function InlineMarkdown({
   const theme = useExtendedTheme();
   const segments = parseInlineMarkdown(text, style || {}, onLinkPress, theme);
 
+  // Group segments into text runs and math segments
+  const elements: React.ReactNode[] = [];
+  let currentTextRun: TextSegment[] = [];
+  
+  segments.forEach((segment, index) => {
+    if (segment.isMath) {
+      // Flush current text run
+      if (currentTextRun.length > 0) {
+        elements.push(
+          <Text key={`text-${index}`} style={style}>
+            {currentTextRun.map((s, i) => (
+              <Text
+                key={i}
+                style={[style, s.style]}
+                onPress={s.onPress}
+              >
+                {s.text}
+              </Text>
+            ))}
+          </Text>
+        );
+        currentTextRun = [];
+      }
+      
+      // Render math segment
+      elements.push(
+        <View key={`math-${index}`} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', height: 20 }}>
+          <Text key={`math-fallback-${index}`} style={{ fontFamily: 'monospace', fontSize: 16 }}>{segment.text}</Text>
+        </View>
+      );
+    } else {
+      currentTextRun.push(segment);
+    }
+  });
+  
+  // Flush remaining text run
+  if (currentTextRun.length > 0) {
+    elements.push(
+      <Text key="text-final" style={style}>
+        {currentTextRun.map((s, i) => (
+          <Text
+            key={i}
+            style={[style, s.style]}
+            onPress={s.onPress}
+          >
+            {s.text}
+          </Text>
+        ))}
+      </Text>
+    );
+  }
+
   return (
-    <Text style={style}>
-      {segments.map((segment, index) => {
-          return (
-            <Text
-              key={index}
-              style={[style, segment.style]}
-              onPress={segment.onPress}
-            >
-              {segment.text}
-            </Text>
-          );
-      })}
-    </Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+      {elements}
+    </View>
   );
 }
 
@@ -105,6 +149,26 @@ function parseInlineMarkdown(
           });
 
           i = closeParenIndex + 1;
+          continue;
+        }
+      }
+    }
+
+    // Check for inline math: $math$
+    // Must check before bold/italic to avoid conflicts with $ in those patterns
+    if (text[i] === '$' && !isEscaped(text, i)) {
+      // Make sure it's not $$ (display math)
+      if (i + 1 < text.length && text[i + 1] !== '$') {
+        const endIndex = findUnescapedChar(text, '$', i + 1);
+        if (endIndex !== -1 && endIndex > i + 1) {
+          flushBuffer();
+          const mathContent = text.substring(i + 1, endIndex);
+          segments.push({
+            text: mathContent,
+            style: baseStyle,
+            isMath: true,
+          });
+          i = endIndex + 1;
           continue;
         }
       }

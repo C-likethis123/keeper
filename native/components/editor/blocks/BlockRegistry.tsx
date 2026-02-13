@@ -4,6 +4,7 @@ import { BlockRenderer } from './BlockRenderer';
 import { UnifiedBlock } from './UnifiedBlock';
 import { ListBlock } from './ListBlock';
 import { CodeBlock } from './CodeBlock';
+import { MathBlock } from './MathBlock';
 
 export interface BlockConfig {
   block: BlockNode;
@@ -148,6 +149,12 @@ blockRegistry.registerAll([
     triggerPrefix: /^```([a-z]*)$/,
     markdownPrefix: '```',
     build: (config) => <CodeBlock {...config} />,
+  },
+  {
+    type: BlockType.mathBlock,
+    triggerPrefix: /^\$\$/,
+    markdownPrefix: '$$',
+    build: (config) => <MathBlock {...config} />,
   },
 ]);
 
