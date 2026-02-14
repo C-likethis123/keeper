@@ -37,17 +37,17 @@ export function HybridEditor({
   const lastInitialContentRef = useRef<string | undefined>(undefined);
   const isInitializedRef = useRef(false);
   const ignoreNextContentChangeRef = useRef<number | null>(null);
-  
+
   // Wiki link management via hook
   const wikiLinks = useWikiLinks();
-  
+
   // Overlay positioning
   const overlayPosition = useOverlayPosition({
     strategy: 'center',
     zIndex: 1000,
     elevation: 10,
   });
-  
+
   // Track if a selection is in progress to prevent blur from ending session
   const wikiLinkSelectionInProgressRef = useRef(false);
 
@@ -98,6 +98,79 @@ export function HybridEditor({
     [editorState],
   );
 
+  /**
+   * Handles block type detection and conversion
+   *
+   * Detects if the given content matches a block type trigger pattern (e.g., "# " for heading1).
+   * If a detection is found and the block type would change, updates the block type and content.
+   *
+   * @param index - The index of the block to check
+   * @param content - The content text to check for block type triggers
+   * @param options - Optional configuration:
+   *   - `ignoreContentChange`: If true, sets ignoreNextContentChangeRef to prevent feedback loop
+   *   - `preserveFocus`: If true, preserves focus on the same block after conversion (default: true)
+   *   - `focusDelay`: Delay in milliseconds for focus management (default: 50)
+   *   - `onlyIfTypeChanges`: If true, only converts if the detected type differs from current type (default: false)
+   * @returns `true` if detection occurred and block was converted, `false` otherwise
+   *
+   * @example
+   * ```tsx
+   * // On space key - detect and convert, ignore content change
+   * if (handleBlockTypeDetection(index, content + ' ', { ignoreContentChange: true })) {
+   *   return; // Conversion happened
+   * }
+   * // Otherwise update content normally
+   * ```
+   */
+  const handleBlockTypeDetection = useCallback(
+    (
+      index: number,
+      content: string,
+      options?: {
+        ignoreContentChange?: boolean;
+        preserveFocus?: boolean;
+        focusDelay?: number;
+        onlyIfTypeChanges?: boolean;
+      }
+    ): boolean => {
+      const block = editorState.document.blocks[index];
+      const detection = blockRegistry.detectBlockType(content);
+
+      if (!detection) {
+        return false;
+      }
+
+      // If onlyIfTypeChanges is true, check if type would actually change
+      if (options?.onlyIfTypeChanges && block.type === detection.type) {
+        return false;
+      }
+
+      // Update block type and content
+      editorState.updateBlockType(index, detection.type, detection.language);
+      editorState.updateBlockContent(index, detection.remainingContent);
+
+      // Set ignore flag if requested to prevent feedback loop
+      if (options?.ignoreContentChange) {
+        ignoreNextContentChangeRef.current = index;
+      }
+
+      // Handle focus management
+      const preserveFocus = options?.preserveFocus !== false; // Default to true
+      const focusDelay = options?.focusDelay ?? 50;
+
+      if (preserveFocus) {
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            editorState.setFocusedBlock(index, false);
+          }, focusDelay);
+        });
+      }
+
+      return true;
+    },
+    [editorState],
+  );
+
   const handleBlockTypeChange = useCallback(
     (index: number, newType: BlockType, language?: string) => {
       editorState.updateBlockType(index, newType, language);
@@ -125,23 +198,12 @@ export function HybridEditor({
       const block = editorState.document.blocks[index];
       // Get current content and add space (space key was just pressed)
       const newContent = block.content + ' ';
-      const detection = blockRegistry.detectBlockType(newContent);
 
-      if (detection) {
-        editorState.updateBlockType(index, detection.type, detection.language);
-        editorState.updateBlockContent(index, detection.remainingContent);
-        ignoreNextContentChangeRef.current = index;
-        
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            editorState.setFocusedBlock(index, false);
-          }, 50);
-        });
-      } else {
+      if (!handleBlockTypeDetection(index, newContent, { ignoreContentChange: true })) {
         editorState.updateBlockContent(index, newContent);
       }
     },
-    [editorState],
+    [editorState, handleBlockTypeDetection],
   );
 
   const handleBackspaceAtStart = useCallback(
@@ -151,7 +213,7 @@ export function HybridEditor({
       // If it's a non-paragraph block (except code block and math block), convert to paragraph
       if (![BlockType.paragraph, BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
         editorState.updateBlockType(index, BlockType.paragraph);
-        
+
         // Preserve focus after block type change - use requestAnimationFrame to ensure
         // the new component (e.g., ParagraphBlock) is mounted before focusing
         requestAnimationFrame(() => {
@@ -202,33 +264,20 @@ export function HybridEditor({
       }
 
       // Optional: final block type detection on Enter (parity with Flutter)
-      const detection = blockRegistry.detectBlockType(block.content);
-      if (detection && block.type !== detection.type) {
-        editorState.updateBlockType(index, detection.type, detection.language);
-        editorState.updateBlockContent(index, detection.remainingContent);
-
-        // Preserve focus on the same block after type change
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            editorState.setFocusedBlock(index, false);
-          }, 50);
-        });
-
-        return;
+      // Only convert if type would actually change
+      if (handleBlockTypeDetection(index, block.content, { onlyIfTypeChanges: true })) {
+        return; // Conversion happened, don't split
       }
 
       // Default behavior: split the block at the cursor and focus the new block
       // Set ignore flag before splitting to prevent TextInput from updating old block
       ignoreNextContentChangeRef.current = index;
-      
+
       // Blur current block first to prevent it from processing the Enter key
       editorState.setFocusedBlock(null);
-      
-      // Split the block
+
       editorState.splitBlock(index, cursorOffset);
 
-      // Focus the new block after split
-      // Use requestAnimationFrame to ensure the new block is rendered before focusing
       requestAnimationFrame(() => {
         setTimeout(() => {
           editorState.setFocusedBlock(index + 1, false);
