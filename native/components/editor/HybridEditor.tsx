@@ -6,6 +6,7 @@ import { BlockType } from './core/BlockNode';
 import { WikiLinkOverlay } from './wikilinks/WikiLinkOverlay';
 import { useWikiLinks } from './wikilinks/useWikiLinks';
 import { useOverlayPosition } from '@/hooks/useOverlayPosition';
+import { useFocusBlock } from '@/hooks/useFocusBlock';
 
 export interface HybridEditorProps {
   initialContent?: string;
@@ -48,6 +49,9 @@ export function HybridEditor({
     elevation: 10,
   });
 
+  // Focus management
+  const { focusBlock, blurBlock } = useFocusBlock();
+
   // Track if a selection is in progress to prevent blur from ending session
   const wikiLinkSelectionInProgressRef = useRef(false);
 
@@ -74,17 +78,11 @@ export function HybridEditor({
     }
   }, [editorState.document, onChanged, editorState]);
 
-  // Auto-focus first block - use requestAnimationFrame to ensure refs are ready
   useEffect(() => {
     if (autofocus && editorState.document.blocks.length > 0) {
-      // Use requestAnimationFrame to ensure TextInput refs are mounted
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          editorState.setFocusedBlock(0, false);
-        }, 100);
-      });
+      focusBlock(0, { delay: 100 });
     }
-  }, [autofocus, editorState]);
+  }, [autofocus, editorState, focusBlock]);
 
 
   const handleContentChange = useCallback(
@@ -98,30 +96,6 @@ export function HybridEditor({
     [editorState],
   );
 
-  /**
-   * Handles block type detection and conversion
-   *
-   * Detects if the given content matches a block type trigger pattern (e.g., "# " for heading1).
-   * If a detection is found and the block type would change, updates the block type and content.
-   *
-   * @param index - The index of the block to check
-   * @param content - The content text to check for block type triggers
-   * @param options - Optional configuration:
-   *   - `ignoreContentChange`: If true, sets ignoreNextContentChangeRef to prevent feedback loop
-   *   - `preserveFocus`: If true, preserves focus on the same block after conversion (default: true)
-   *   - `focusDelay`: Delay in milliseconds for focus management (default: 50)
-   *   - `onlyIfTypeChanges`: If true, only converts if the detected type differs from current type (default: false)
-   * @returns `true` if detection occurred and block was converted, `false` otherwise
-   *
-   * @example
-   * ```tsx
-   * // On space key - detect and convert, ignore content change
-   * if (handleBlockTypeDetection(index, content + ' ', { ignoreContentChange: true })) {
-   *   return; // Conversion happened
-   * }
-   * // Otherwise update content normally
-   * ```
-   */
   const handleBlockTypeDetection = useCallback(
     (
       index: number,
@@ -159,38 +133,28 @@ export function HybridEditor({
       const focusDelay = options?.focusDelay ?? 50;
 
       if (preserveFocus) {
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            editorState.setFocusedBlock(index, false);
-          }, focusDelay);
-        });
+        focusBlock(index, { delay: focusDelay });
       }
 
       return true;
     },
-    [editorState],
+    [editorState, focusBlock],
   );
 
   const handleBlockTypeChange = useCallback(
     (index: number, newType: BlockType, language?: string) => {
       editorState.updateBlockType(index, newType, language);
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          editorState.setFocusedBlock(index, false);
-        }, 50);
-      });
+      focusBlock(index);
     },
-    [editorState],
+    [editorState, focusBlock],
   );
 
   const handleDelete = useCallback(
     (index: number) => {
       editorState.deleteBlock(index);
-      requestAnimationFrame(() => {
-        editorState.setFocusedBlock(index > 0 ? index - 1 : 0);
-      });
+      focusBlock(index > 0 ? index - 1 : 0, { delay: 0, useAnimationFrame: false });
     },
-    [editorState],
+    [editorState, focusBlock],
   );
 
   const handleSpace = useCallback(
@@ -213,33 +177,21 @@ export function HybridEditor({
       // If it's a non-paragraph block (except code block and math block), convert to paragraph
       if (![BlockType.paragraph, BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
         editorState.updateBlockType(index, BlockType.paragraph);
-
-        // Preserve focus after block type change - use requestAnimationFrame to ensure
-        // the new component (e.g., ParagraphBlock) is mounted before focusing
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            editorState.setFocusedBlock(index, false);
-          }, 50);
-        });
+        focusBlock(index);
         return;
       }
 
       // If it's an empty paragraph, delete and focus previous
       if (block.content === '' && index > 0) {
         editorState.deleteBlock(index);
-        // Focus previous block
-        requestAnimationFrame(() => {
-          editorState.setFocusedBlock(index - 1);
-        });
+        focusBlock(index - 1, { delay: 0, useAnimationFrame: false });
         return;
       }
 
       // Merge with previous block if at start
       if (index > 0) {
         editorState.mergeWithPrevious(index);
-        requestAnimationFrame(() => {
-          editorState.setFocusedBlock(index - 1);
-        });
+        focusBlock(index - 1, { delay: 0, useAnimationFrame: false });
       }
     },
     [editorState],
@@ -274,24 +226,20 @@ export function HybridEditor({
       ignoreNextContentChangeRef.current = index;
 
       // Blur current block first to prevent it from processing the Enter key
-      editorState.setFocusedBlock(null);
+      blurBlock();
 
       editorState.splitBlock(index, cursorOffset);
 
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          editorState.setFocusedBlock(index + 1, false);
-        }, 100);
-      });
+      focusBlock(index + 1, { delay: 100 });
     },
-    [editorState, wikiLinks],
+    [editorState, wikiLinks, handleBlockTypeDetection, focusBlock, blurBlock],
   );
 
   const handleFocus = useCallback(
     (index: number) => () => {
-      editorState.setFocusedBlock(index);
+      focusBlock(index, { delay: 0, useAnimationFrame: false });
     },
-    [editorState],
+    [focusBlock],
   );
 
   const handleBlur = useCallback(() => {

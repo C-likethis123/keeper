@@ -18,6 +18,7 @@ import {
 import { BlockConfig } from './BlockRegistry';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
 import { useEditorState } from '../core/EditorState';
+import { useFocusBlock } from '@/hooks/useFocusBlock';
 import { MathView } from './MathView';
 
 export function MathBlock({
@@ -34,6 +35,7 @@ export function MathBlock({
     const [selection, setSelection] = useState<{ start: number, end: number }>({ start: 0, end: 0 });
     const [renderError, setRenderError] = useState<string | null>(null);
     const editorState = useEditorState();
+    const { focusBlock } = useFocusBlock();
     const theme = useExtendedTheme();
 
     // Sync value with block content when it changes externally
@@ -66,7 +68,7 @@ export function MathBlock({
             const currentLineIndex = textBeforeCursor.split('\n').length - 1;
 
             if (currentLineIndex === 0 && index > 0) {
-                editorState.setFocusedBlock(index - 1, false);
+                focusBlock(index - 1, { delay: 0, useAnimationFrame: false });
                 return;
             }
         }
@@ -80,7 +82,7 @@ export function MathBlock({
             if (currentLineIndex === lines.length - 1) {
                 const document = editorState.document;
                 if (index < document.blocks.length - 1) {
-                    editorState.setFocusedBlock(index + 1, false);
+                    focusBlock(index + 1, { delay: 0, useAnimationFrame: false });
                     return;
                 }
             }
