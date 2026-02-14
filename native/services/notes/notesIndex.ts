@@ -184,6 +184,49 @@ export class NotesIndexService {
       cursor: result.LastEvaluatedKey as Record<string, unknown> | undefined,
     };
   }
+
+  /**
+   * Search notes by title. Fetches notes from both PINNED and UNPINNED statuses
+   * and filters by title containing the query (case-insensitive).
+   * Returns note titles (without .md extension) that match the query.
+   */
+  async searchNotesByTitle(query: string, limit = 20): Promise<string[]> {
+    if (!query || query.trim().length === 0) {
+      return [];
+    }
+
+    const queryLower = query.toLowerCase().trim();
+    const results: string[] = [];
+
+    try {
+      // Fetch from both PINNED and UNPINNED statuses
+      const [pinnedResult, unpinnedResult] = await Promise.all([
+        this.listByStatus("PINNED", 100), // Fetch more to have better search results
+        this.listByStatus("UNPINNED", 100),
+      ]);
+
+      const allItems = [...pinnedResult.items, ...unpinnedResult.items];
+
+      // Filter by title (case-insensitive) and extract title
+      for (const item of allItems) {
+        if (results.length >= limit) break;
+
+        // Use title from index if available, otherwise extract from noteId
+        const title = item.title || item.noteId.split("/").pop()?.replace(/\.md$/, "") || "";
+        
+        if (title.toLowerCase().includes(queryLower)) {
+          // Avoid duplicates
+          if (!results.includes(title)) {
+            results.push(title);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to search notes by title:", error);
+    }
+
+    return results;
+  }
 }
 
 /**

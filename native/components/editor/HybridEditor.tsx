@@ -1,8 +1,11 @@
-import React, { useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { useEditorState } from './core/EditorState';
 import { blockRegistry, BlockConfig } from './blocks/BlockRegistry';
 import { BlockType } from './core/BlockNode';
+import { WikiLinkOverlay } from './wikilinks/WikiLinkOverlay';
+import { useWikiLinks } from './wikilinks/useWikiLinks';
+import { useOverlayPosition } from '@/hooks/useOverlayPosition';
 
 export interface HybridEditorProps {
   initialContent?: string;
@@ -34,6 +37,19 @@ export function HybridEditor({
   const lastInitialContentRef = useRef<string | undefined>(undefined);
   const isInitializedRef = useRef(false);
   const ignoreNextContentChangeRef = useRef<number | null>(null);
+  
+  // Wiki link management via hook
+  const wikiLinks = useWikiLinks();
+  
+  // Overlay positioning
+  const overlayPosition = useOverlayPosition({
+    strategy: 'center',
+    zIndex: 1000,
+    elevation: 10,
+  });
+  
+  // Track if a selection is in progress to prevent blur from ending session
+  const wikiLinkSelectionInProgressRef = useRef(false);
 
   // Initialize document from markdown when initialContent changes (only from outside, not from our own updates)
   useEffect(() => {
@@ -69,6 +85,7 @@ export function HybridEditor({
       });
     }
   }, [autofocus, editorState]);
+
 
   const handleContentChange = useCallback(
     (index: number) => (content: string) => {
@@ -170,6 +187,15 @@ export function HybridEditor({
     (index: number, cursorOffset: number) => {
       const block = editorState.document.blocks[index];
 
+      // Handle wiki link selection if active
+      if (wikiLinks.isActiveFor(index)) {
+        const selected = wikiLinks.getSelectedResult();
+        if (selected) {
+          wikiLinks.handleSelect(selected, index, editorState.updateBlockContent);
+          return;
+        }
+      }
+
       // Let code blocks and math blocks handle newlines internally
       if ([BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
         return;
@@ -192,15 +218,24 @@ export function HybridEditor({
       }
 
       // Default behavior: split the block at the cursor and focus the new block
+      // Set ignore flag before splitting to prevent TextInput from updating old block
+      ignoreNextContentChangeRef.current = index;
+      
+      // Blur current block first to prevent it from processing the Enter key
+      editorState.setFocusedBlock(null);
+      
+      // Split the block
       editorState.splitBlock(index, cursorOffset);
 
+      // Focus the new block after split
+      // Use requestAnimationFrame to ensure the new block is rendered before focusing
       requestAnimationFrame(() => {
         setTimeout(() => {
           editorState.setFocusedBlock(index + 1, false);
-        }, 50);
+        }, 100);
       });
     },
-    [editorState],
+    [editorState, wikiLinks],
   );
 
   const handleFocus = useCallback(
@@ -213,7 +248,20 @@ export function HybridEditor({
   const handleBlur = useCallback(() => {
     // Optionally clear focus on blur
     // editorState.setFocusedBlock(null);
-  }, []);
+    // End wiki link session on blur, but with a small delay to allow overlay selection
+    setTimeout(() => {
+      // Don't end if a selection is in progress or already completed
+      if (wikiLinkSelectionInProgressRef.current) {
+        wikiLinkSelectionInProgressRef.current = false;
+        return;
+      }
+      // Only end if still active (might have been selected already)
+      // With centered overlay, we still check if overlay is visible to avoid ending during selection
+      if (wikiLinks.isActive && !wikiLinks.shouldShowOverlay) {
+        wikiLinks.handleTriggerEnd();
+      }
+    }, 200); // Delay to allow overlay onPress to fire first
+  }, [wikiLinks]);
 
   const calculateListItemNumber = useCallback(
     (index: number): number | undefined => {
@@ -312,6 +360,9 @@ export function HybridEditor({
         onBlur: handleBlur,
         onDelete: () => handleDelete(index),
         listItemNumber,
+        onWikiLinkTriggerStart: (startOffset) => wikiLinks.handleTriggerStart(index, startOffset),
+        onWikiLinkQueryUpdate: (query, caretOffset) => wikiLinks.handleQueryUpdate(index, query, caretOffset),
+        onWikiLinkTriggerEnd: wikiLinks.handleTriggerEnd,
       };
       return (
         <View key={block.id} style={styles.blockWrapper}>
@@ -334,6 +385,8 @@ export function HybridEditor({
     ],
   );
 
+  const showWikiLinkOverlay = wikiLinks.shouldShowOverlay;
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -341,10 +394,31 @@ export function HybridEditor({
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {editorState.document.blocks.map((block, index) =>
-          renderBlock(block, index),
-        )}
+        {editorState.document.blocks.map((block, index) => {
+          const blockElement = renderBlock(block, index);
+          return (
+            <View key={block.id} style={styles.blockWrapper}>
+              {blockElement}
+            </View>
+          );
+        })}
       </ScrollView>
+      {/* Render overlay outside ScrollView to prevent touch conflicts */}
+      {showWikiLinkOverlay && wikiLinks.session && (
+        <View style={overlayPosition.wrapperStyle} {...overlayPosition.wrapperProps}>
+          <View style={overlayPosition.containerStyle} {...overlayPosition.containerProps}>
+            <WikiLinkOverlay
+              results={wikiLinks.results}
+              selectedIndex={wikiLinks.selectedIndex}
+              isLoading={wikiLinks.isLoading}
+              onSelect={(title) => {
+                wikiLinkSelectionInProgressRef.current = true;
+                wikiLinks.handleSelect(title, wikiLinks.session!.blockIndex, editorState.updateBlockContent);
+              }}
+            />
+          </View>
+        </View>
+      )}
     </View>
   );
 }

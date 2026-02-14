@@ -19,6 +19,10 @@ export interface BlockConfig {
   onBlur?: () => void;
   onDelete?: () => void;
   listItemNumber?: number; // For numbered list items
+  // Wiki link callbacks
+  onWikiLinkTriggerStart?: (startOffset: number) => void;
+  onWikiLinkQueryUpdate?: (query: string, caretOffset: number) => void;
+  onWikiLinkTriggerEnd?: () => void;
 }
 
 export interface BlockBuilder {

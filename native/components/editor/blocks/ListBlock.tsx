@@ -5,6 +5,7 @@ import { InlineMarkdown } from '../rendering/InlineMarkdown';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
 import { BlockType } from '../core/BlockNode';
 import { ListMarker } from './ListMarker';
+import { WikiLinkTrigger } from '../wikilinks/WikiLinkTrigger';
 
 export function ListBlock({
   block,
@@ -16,11 +17,31 @@ export function ListBlock({
   onBlur,
   isFocused: isFocusedFromState,
   listItemNumber,
+  onWikiLinkTriggerStart,
+  onWikiLinkQueryUpdate,
+  onWikiLinkTriggerEnd,
 }: BlockConfig) {
   const inputRef = useRef<TextInput>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const ignoreNextChangeRef = useRef(false);
+  const lastBlockContentRef = useRef(block.content);
+  
+  // Sync TextInput when block content changes externally (e.g., from wiki link selection)
+  useEffect(() => {
+    if (block.content !== lastBlockContentRef.current && inputRef.current) {
+      // Block content changed externally - update TextInput
+      lastBlockContentRef.current = block.content;
+      // Force update by setting native props
+      if (inputRef.current) {
+        inputRef.current.setNativeProps({ text: block.content });
+        // Also update selection to end of new content
+        inputRef.current.setNativeProps({ 
+          selection: { start: block.content.length, end: block.content.length }
+        });
+      }
+    }
+  }, [block.content]);
 
   const handleFocus = useCallback(() => {
     setIsFocused(true);
@@ -29,8 +50,12 @@ export function ListBlock({
 
   const handleBlur = useCallback(() => {
     setIsFocused(false);
+    // End wiki link session on blur, but with a delay to allow overlay selection
+    setTimeout(() => {
+      onWikiLinkTriggerEnd?.();
+    }, 150);
     onBlur?.();
-  }, [onBlur]);
+  }, [onBlur, onWikiLinkTriggerEnd]);
 
   useEffect(() => {
     if (isFocusedFromState && inputRef.current) {
@@ -43,21 +68,54 @@ export function ListBlock({
   }, [isFocusedFromState]);
 
   const handleSelectionChange = useCallback((e: any) => {
-    setSelection({
+    const newSelection = {
       start: e.nativeEvent.selection.start,
       end: e.nativeEvent.selection.end,
-    });
-  }, []);
+    };
+    setSelection(newSelection);
+
+    // Detect wiki link triggers when focused
+    if (isFocused && newSelection.start === newSelection.end) {
+      const caret = newSelection.start;
+      const start = WikiLinkTrigger.findStart(block.content, caret);
+
+      if (start !== null) {
+        onWikiLinkTriggerStart?.(start);
+        const query = block.content.substring(start + 2, caret);
+        onWikiLinkQueryUpdate?.(query, caret);
+      } else {
+        onWikiLinkTriggerEnd?.();
+      }
+    }
+  }, [isFocused, block.content, onWikiLinkTriggerStart, onWikiLinkQueryUpdate, onWikiLinkTriggerEnd]);
 
   const handleContentChange = useCallback(
     (newText: string) => {
+      // Update ref to track current content
+      lastBlockContentRef.current = newText;
       if (ignoreNextChangeRef.current) {
         ignoreNextChangeRef.current = false;
         return;
       }
       onContentChange(newText);
+
+      // Detect wiki link triggers after content change
+      requestAnimationFrame(() => {
+        if (isFocused && inputRef.current) {
+          const caret = selection.start;
+          const start = WikiLinkTrigger.findStart(newText, caret);
+
+          if (start !== null) {
+            onWikiLinkTriggerStart?.(start);
+            const query = newText.substring(start + 2, caret);
+            onWikiLinkQueryUpdate?.(query, caret);
+          } else {
+            onWikiLinkTriggerEnd?.();
+          }
+        }
+      });
     },
-    [onContentChange],
+    [onContentChange, isFocused, selection.start, onWikiLinkTriggerStart, onWikiLinkQueryUpdate, onWikiLinkTriggerEnd],
   );
 
   const handleKeyPress = useCallback(
@@ -124,7 +182,6 @@ export function ListBlock({
             onKeyPress={handleKeyPress}
             onSelectionChange={handleSelectionChange}
             multiline
-            textAlignVertical="center"
             placeholder="List item..."
             placeholderTextColor={theme.custom.editor.placeholder}
           />
