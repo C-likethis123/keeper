@@ -13,10 +13,12 @@ import {
   NotesIndexService,
   type NoteIndexItem,
 } from "@/services/notes/notesIndex";
+import { SearchBar } from "@/components/SearchBar";
 export default function Index() {
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [notes, setNotes] = useState<Note[]>([]);
   const theme = useExtendedTheme();
@@ -91,6 +93,16 @@ export default function Index() {
     }
   }, [showToast]);
 
+  const filteredNotes = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return notes;
+    }
+    const query = searchQuery.toLowerCase().trim();
+    return notes.filter((note) =>
+      note.title.toLowerCase().includes(query)
+    );
+  }, [notes, searchQuery]);
+
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   if (loadingMetadata) {
@@ -108,8 +120,9 @@ export default function Index() {
 
   return (
     <View style={styles.container}>
+      <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <NoteGrid
-        notes={notes}
+        notes={filteredNotes}
         onDelete={handleDeleteNote}
         refreshing={refreshing}
         onRefresh={handleRefresh}
