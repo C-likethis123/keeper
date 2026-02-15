@@ -1,5 +1,4 @@
 import { File, Directory } from 'expo-file-system';
-
 const MODE_FILE = 0o644;
 
 function errWithCode(message: string, code: string): Error {

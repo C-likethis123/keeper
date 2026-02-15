@@ -13,3 +13,9 @@
 ## Phase 3: Search
 - real time filtering does not filter what's not retrieved from the initial page, it should be a backend call.
 - it's also complicated because if I have something in the local repository, I should retrieve those. 
+
+- fix themes: it's currently very weird.
+
+- on web: keyboard shortcuts
+
+- fix focus issues!

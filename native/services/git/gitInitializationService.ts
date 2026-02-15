@@ -58,8 +58,10 @@ export class GitInitializationService {
                 console.log(`[GitInitializationService] Validation reason: ${repoValidation.reason}`);
             }
 
+            const force = true;
+
             // If repository is invalid, clean it up before cloning
-            if (!repoValidation.isValid) {
+            if (!repoValidation.isValid || force) {
                 if (repoValidation.exists) {
                     console.log('[GitInitializationService] Invalid repository detected, cleaning up before fresh clone...');
                     await fs.promises.rmdir(NOTES_ROOT);
@@ -77,93 +79,92 @@ export class GitInitializationService {
                     };
                 }
 
-                console.log('[GitInitializationService] Clone completed, verifying repository was created...');
-                // After cloning, verify the repository was actually created
-                // Wait a moment for file system operations to complete
-                await new Promise(resolve => setTimeout(resolve, 100));
 
-                const verifyRepoValidation = await this.validateRepository();
-                if (!verifyRepoValidation.isValid) {
-                    const error = 'Repository clone appeared to succeed but repository is invalid';
-                    console.error(`[GitInitializationService] ${error}`);
-                    return {
-                        success: false,
-                        wasCloned: false,
-                        error,
-                    };
-                }
-                console.log('[GitInitializationService] Repository verified successfully after clone');
+                // const verifyRepoValidation = await this.validateRepository();
+                // if (!verifyRepoValidation.isValid) {
+                //     const error = 'Repository clone appeared to succeed but repository is invalid';
+                //     console.error(`[GitInitializationService] ${error}`);
+                //     return {
+                //         success: false,
+                //         wasCloned: false,
+                //         error,
+                //     };
+                // }
+                // console.log('[GitInitializationService] Repository verified successfully after clone');
             } else {
                 console.log('[GitInitializationService] Valid repository already exists, skipping clone');
             }
 
-            console.log('[GitInitializationService] Checking repository status...');
-            const status = await this.checkRepositoryStatus();
+            // console.log('[GitInitializationService] Checking repository status...');
+            // const status = await this.checkRepositoryStatus();
 
             // If repository is behind, sync with remote
             // But only if we successfully checked remote status (not if it failed due to auth)
-            if (status.isBehind && !status.hasUncommitted) {
-                console.log('[GitInitializationService] Repository is behind remote, syncing...');
-                const syncResult = await this.syncWithRemote();
-                if (syncResult.success) {
-                    console.log('[GitInitializationService] Successfully synced with remote');
-                    // Re-check status after sync
-                    const updatedStatus = await this.checkRepositoryStatus();
-                    status.isBehind = updatedStatus.isBehind;
-                    status.isAhead = updatedStatus.isAhead;
-                    status.lastCommit = updatedStatus.lastCommit;
-                } else {
-                    console.warn('[GitInitializationService] Failed to sync with remote:', syncResult.error);
-                    if (syncResult.error?.includes('401') || syncResult.error?.includes('403')) {
-                        console.warn('[GitInitializationService] Sync failed due to authentication error');
-                        console.warn('[GitInitializationService] Please update your GitHub token with "repo" scope');
-                    }
-                }
-            } else if (status.isBehind && status.hasUncommitted) {
-                console.warn('[GitInitializationService] Repository is behind but has uncommitted changes - skipping sync');
-            } else if (!status.isBehind && !status.isAhead) {
-                // If status shows not behind/not ahead, but we had errors checking remote,
-                // we might not have accurate information
-                console.log('[GitInitializationService] Repository status check completed');
-            }
+            // if (status.isBehind && !status.hasUncommitted) {
+            //     console.log('[GitInitializationService] Repository is behind remote, syncing...');
+            //     const syncResult = await this.syncWithRemote();
+            //     if (syncResult.success) {
+            //         console.log('[GitInitializationService] Successfully synced with remote');
+            //         // Re-check status after sync
+            //         const updatedStatus = await this.checkRepositoryStatus();
+            //         status.isBehind = updatedStatus.isBehind;
+            //         status.isAhead = updatedStatus.isAhead;
+            //         status.lastCommit = updatedStatus.lastCommit;
+            //     } else {
+            //         console.warn('[GitInitializationService] Failed to sync with remote:', syncResult.error);
+            //         if (syncResult.error?.includes('401') || syncResult.error?.includes('403')) {
+            //             console.warn('[GitInitializationService] Sync failed due to authentication error');
+            //             console.warn('[GitInitializationService] Please update your GitHub token with "repo" scope');
+            //         }
+            //     }
+            // } else if (status.isBehind && status.hasUncommitted) {
+            //     console.warn('[GitInitializationService] Repository is behind but has uncommitted changes - skipping sync');
+            // } else if (!status.isBehind && !status.isAhead) {
+            //     // If status shows not behind/not ahead, but we had errors checking remote,
+            //     // we might not have accurate information
+            //     console.log('[GitInitializationService] Repository status check completed');
+            // }
 
-            const result = {
+            // const result = {
+            //     success: true,
+            //     wasCloned: !repoValidation.isValid,
+            //     status,
+            // };
+
+            // console.log('[GitInitializationService] Initialization completed successfully:');
+            // console.log(`  - Was cloned: ${result.wasCloned ? 'YES' : 'NO'}`);
+            // console.log(`  - Current branch: ${status.currentBranch}`);
+            // console.log(`  - Has uncommitted: ${status.hasUncommitted}`);
+            // console.log(`  - Is behind: ${status.isBehind}`);
+            // console.log(`  - Is ahead: ${status.isAhead}`);
+
+            // return result;
+
+            return {
                 success: true,
-                wasCloned: !repoValidation.isValid,
-                status,
+                wasCloned: true,
             };
-
-            console.log('[GitInitializationService] Initialization completed successfully:');
-            console.log(`  - Was cloned: ${result.wasCloned ? 'YES' : 'NO'}`);
-            console.log(`  - Current branch: ${status.currentBranch}`);
-            console.log(`  - Has uncommitted: ${status.hasUncommitted}`);
-            console.log(`  - Is behind: ${status.isBehind}`);
-            console.log(`  - Is ahead: ${status.isAhead}`);
-
-            return result;
         } catch (error) {
-            console.error('[GitInitializationService] Initialization error:', error);
+            // console.error('[GitInitializationService] Initialization error:', error);
 
-            let errorMessage = 'Unknown error during initialization';
-            if (error instanceof Error) {
-                errorMessage = error.message;
+            // let errorMessage = 'Unknown error during initialization';
+            // if (error instanceof Error) {
+            //     errorMessage = error.message;
 
-                if (error.message.includes('network') || error.message.includes('fetch')) {
-                    errorMessage = 'Network error: Check your internet connection';
-                } else if (error.message.includes('permission') || error.message.includes('401') || error.message.includes('403')) {
-                    errorMessage = 'Authentication error: Check your GitHub token permissions';
-                } else if (error.message.includes('ENOENT') || error.message.includes('not found')) {
-                    errorMessage = 'File system error: Check app permissions';
-                }
-            }
+            //     if (error.message.includes('network') || error.message.includes('fetch')) {
+            //         errorMessage = 'Network error: Check your internet connection';
+            //     } else if (error.message.includes('permission') || error.message.includes('401') || error.message.includes('403')) {
+            //         errorMessage = 'Authentication error: Check your GitHub token permissions';
+            //     } else if (error.message.includes('ENOENT') || error.message.includes('not found')) {
+            //         errorMessage = 'File system error: Check app permissions';
+            //     }
+            // }
 
             return {
                 success: false,
                 wasCloned: false,
-                error: errorMessage,
+                error: error instanceof Error ? error.message : String(error),
             };
-        } finally {
-            this.isInitializing = false;
         }
     }
 
@@ -229,7 +230,7 @@ export class GitInitializationService {
 
     private async cloneRepository(): Promise<boolean> {
         try {
-            const { token, owner } = this.config;
+            const { token, owner, repo } = this.config;
 
             // Use clean URL without token - isomorphic-git will handle auth via token parameter
             const url = `https://github.com/${owner}/${repo}.git`;
@@ -246,7 +247,7 @@ export class GitInitializationService {
                 http,
                 depth: 1,
                 singleBranch: true,
-                noCheckout: true, // Don't checkout during clone to avoid CommitNotFetchedError
+                noCheckout: true,
                 onProgress: (progress) => {
                     // Log progress for debugging
                     if (progress.phase === 'receiving' || progress.phase === 'resolving' || progress.phase === 'checking out') {
@@ -262,37 +263,14 @@ export class GitInitializationService {
 
             // Now checkout the branch manually after clone completes
             try {
-                // First, try to determine the default branch (usually 'main' or 'master')
-                let branchToCheckout = 'main';
-                try {
-                    const remoteBranches = await git.listBranches({
-                        fs: fs,
-                        dir: NOTES_ROOT,
-                        remote: 'origin',
-                    });
-
-                    // Prefer 'main', fallback to 'master', or use first available
-                    if (remoteBranches.includes('origin/main')) {
-                        branchToCheckout = 'main';
-                    } else if (remoteBranches.includes('origin/master')) {
-                        branchToCheckout = 'master';
-                    } else if (remoteBranches.length > 0) {
-                        // Use first remote branch, removing 'origin/' prefix
-                        branchToCheckout = remoteBranches[0].replace('origin/', '');
-                    }
-                    console.log(`[GitInitializationService] Checking out branch: ${branchToCheckout}`);
-                } catch (branchError) {
-                    console.warn('[GitInitializationService] Could not list branches, defaulting to main:', branchError);
-                }
-
                 // Checkout the branch
                 await git.checkout({
                     fs: fs,
                     dir: NOTES_ROOT,
-                    ref: branchToCheckout,
+                    ref: 'main',
                 });
 
-                console.log(`[GitInitializationService] Successfully checked out branch: ${branchToCheckout}`);
+                console.log(`[GitInitializationService] Successfully checked out branch: main`);
             } catch (checkoutError) {
                 console.error('[GitInitializationService] Error during checkout:', checkoutError);
                 // If checkout fails, try to continue - repository might still be usable

@@ -115,8 +115,27 @@ export function useWikiLinks(): UseWikiLinksReturn {
 
     searchInProgressRef.current = true;
     try {
-      const searchResults = await NotesIndexService.instance.searchNotesByTitle(raw, 20);
-      setResults(searchResults);
+      const result = await NotesIndexService.instance.listAllNotes(
+        20,
+        undefined,
+        raw.length > 0 ? raw : undefined
+      );
+      
+      const titles: string[] = [];
+      const seenTitles = new Set<string>();
+      
+      for (const item of result.items) {
+        if (titles.length >= 20) break;
+        
+        const title = item.title || item.noteId.split("/").pop()?.replace(/\.md$/, "") || "";
+        
+        if (title && !seenTitles.has(title)) {
+          seenTitles.add(title);
+          titles.push(title);
+        }
+      }
+      
+      setResults(titles);
       setSelectedIndex(0);
     } catch (error) {
       console.warn('Failed to search notes:', error);
