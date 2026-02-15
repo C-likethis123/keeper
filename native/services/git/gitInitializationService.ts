@@ -3,6 +3,7 @@ import { Directory, File } from 'expo-file-system';
 import { createExpoFileSystemAdapter } from './expoFileSystemAdapter';
 import { NOTES_ROOT } from '@/services/notes/Notes';
 import { deleteGitDirectory } from '@/utils/deleteGitDirectory';
+import { createGitHttpClient } from './gitHttpClient';
 // Ensure Buffer is available for isomorphic-git
 import { Buffer } from 'buffer';
 if (typeof global.Buffer === 'undefined') {
@@ -133,6 +134,33 @@ export class GitInitializationService {
             console.log('[GitInitializationService] Checking repository status...');
             const status = await this.checkRepositoryStatus();
 
+            // If repository is behind, sync with remote
+            // But only if we successfully checked remote status (not if it failed due to auth)
+            if (status.isBehind && !status.hasUncommitted) {
+                console.log('[GitInitializationService] Repository is behind remote, syncing...');
+                const syncResult = await this.syncWithRemote();
+                if (syncResult.success) {
+                    console.log('[GitInitializationService] Successfully synced with remote');
+                    // Re-check status after sync
+                    const updatedStatus = await this.checkRepositoryStatus();
+                    status.isBehind = updatedStatus.isBehind;
+                    status.isAhead = updatedStatus.isAhead;
+                    status.lastCommit = updatedStatus.lastCommit;
+                } else {
+                    console.warn('[GitInitializationService] Failed to sync with remote:', syncResult.error);
+                    if (syncResult.error?.includes('401') || syncResult.error?.includes('403')) {
+                        console.warn('[GitInitializationService] Sync failed due to authentication error');
+                        console.warn('[GitInitializationService] Please update your GitHub token with "repo" scope');
+                    }
+                }
+            } else if (status.isBehind && status.hasUncommitted) {
+                console.warn('[GitInitializationService] Repository is behind but has uncommitted changes - skipping sync');
+            } else if (!status.isBehind && !status.isAhead) {
+                // If status shows not behind/not ahead, but we had errors checking remote,
+                // we might not have accurate information
+                console.log('[GitInitializationService] Repository status check completed');
+            }
+
             const result = {
                 success: true,
                 wasCloned: !repoValidation.isValid,
@@ -247,10 +275,8 @@ export class GitInitializationService {
                 throw new Error('GitHub token not configured');
             }
 
-            // For git clone over HTTPS with GitHub, use token in URL
-            // GitHub accepts: https://<token>@github.com/owner/repo.git
-            // Or: https://x-access-token:<token>@github.com/owner/repo.git
-            const url = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
+            // Use clean URL without token - isomorphic-git will handle auth via token parameter
+            const url = `https://github.com/${owner}/${repo}.git`;
 
             console.log('[GitInitializationService] Starting clone...');
             
@@ -260,104 +286,8 @@ export class GitInitializationService {
                 fs: this.fs,
                 dir: NOTES_ROOT,
                 url,
-                http: {
-                    async request({ url: requestUrl, method, headers, body: requestBody }) {
-                        try {
-                            const response = await fetch(requestUrl, {
-                                method,
-                                headers: {
-                                    ...headers,
-                                    // Remove any existing Authorization header to use URL-based auth
-                                },
-                                body: requestBody ? (requestBody as unknown as BodyInit) : undefined,
-                            });
-
-                            if (!response.ok) {
-                                const errorText = await response.text().catch(() => '');
-                                console.warn(`[GitInitializationService] HTTP ${response.status} error:`, errorText);
-
-                                if (response.status === 401 || response.status === 403) {
-                                    throw new Error(`Authentication failed: Invalid or expired GitHub token (HTTP ${response.status}). Check token permissions and ensure it has 'repo' scope.`);
-                                } else if (response.status === 404) {
-                                    throw new Error(`Repository not found: ${owner}/${repo}`);
-                                } else {
-                                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                                }
-                            }
-
-                            // Create an async iterator for the response body
-                            // isomorphic-git's StreamReader expects an iterable body
-                            // CRITICAL: bodyIterator must NEVER be undefined
-                            const responseBody = response.body;
-                            let bodyIterator: AsyncIterableIterator<Uint8Array>;
-
-                            if (responseBody && typeof (responseBody as any).getReader === 'function') {
-                                // Response has a ReadableStream - create iterator from stream
-                                try {
-                                    const reader = (responseBody as ReadableStream<Uint8Array>).getReader();
-                                    bodyIterator = (async function* () {
-                                        try {
-                                            while (true) {
-                                                const { done, value } = await reader.read();
-                                                if (done) break;
-                                                // Ensure value is converted to Uint8Array
-                                                yield value instanceof Uint8Array ? value : new Uint8Array(value);
-                                            }
-                                        } finally {
-                                            reader.releaseLock();
-                                        }
-                                    })();
-                                } catch (streamError) {
-                                    // If stream reading fails, fall back to arrayBuffer
-                                    console.warn('[GitInitializationService] Stream read failed, falling back to arrayBuffer:', streamError);
-                                    const arrayBuffer = await response.arrayBuffer();
-                                    const uint8Array = new Uint8Array(arrayBuffer);
-                                    bodyIterator = (async function* () {
-                                        yield uint8Array;
-                                    })();
-                                }
-                            } else {
-                                // React Native fetch might not have ReadableStream or response.body is null/undefined
-                                // Fallback: read as arrayBuffer and create iterator from that
-                                const arrayBuffer = await response.arrayBuffer();
-                                const uint8Array = new Uint8Array(arrayBuffer);
-                                bodyIterator = (async function* () {
-                                    yield uint8Array;
-                                })();
-                            }
-
-                            // Final safety check: ensure bodyIterator is defined
-                            if (!bodyIterator) {
-                                // Last resort: create empty iterator
-                                bodyIterator = (async function* () {
-                                    // Empty iterator
-                                })();
-                            }
-
-                            return {
-                                ok: response.ok,
-                                status: response.status,
-                                statusCode: response.status,
-                                statusText: response.statusText,
-                                statusMessage: response.statusText,
-                                url: response.url,
-                                headers: Object.fromEntries(response.headers.entries()),
-                                body: bodyIterator,
-                                async text() {
-                                    return await response.text();
-                                },
-                                async arrayBuffer() {
-                                    return await response.arrayBuffer();
-                                },
-                            };
-                        } catch (fetchError) {
-                            if (fetchError instanceof TypeError && fetchError.message.includes('fetch')) {
-                                throw new Error('Network error: Unable to connect to GitHub. Check your internet connection');
-                            }
-                            throw fetchError;
-                        }
-                    },
-                },
+                onAuth: () => ({ username: token, password: '' }),
+                http: createGitHttpClient(owner, repo),
                 depth: 1,
                 singleBranch: true,
                 noCheckout: true, // Don't checkout during clone to avoid CommitNotFetchedError
@@ -533,42 +463,164 @@ export class GitInitializationService {
                 console.warn('[GitInitializationService] Could not list branches:', branchError);
             }
 
-            // Try to get status matrix - this requires a valid repository
-            let hasUncommitted = false;
+            // Check if HEAD points to a valid commit before trying status operations
+            let headCommitExists = false;
+            let headCommitSha: string | undefined;
             try {
-                const statusMatrix = await git.statusMatrix({
+                const headSha = await git.resolveRef({
                     fs: this.fs,
                     dir: NOTES_ROOT,
+                    ref: 'HEAD',
                 });
+                headCommitSha = headSha;
+                
+                // Try to read the commit to verify it exists
+                try {
+                    await git.readCommit({
+                        fs: this.fs,
+                        dir: NOTES_ROOT,
+                        oid: headSha,
+                    });
+                    headCommitExists = true;
+                } catch (readError) {
+                    console.warn(`[GitInitializationService] HEAD points to commit ${headSha.substring(0, 7)} but commit not found locally`);
+                    headCommitExists = false;
+                }
+            } catch (headResolveError) {
+                console.warn('[GitInitializationService] Could not resolve HEAD:', headResolveError);
+            }
 
-                hasUncommitted = statusMatrix.some(
-                    ([, headStatus, workdirStatus, stageStatus]) => {
-                        return headStatus !== workdirStatus || headStatus !== stageStatus;
-                    },
-                );
-            } catch (statusError) {
-                // If status check fails, assume no uncommitted changes
-                console.warn('[GitInitializationService] Could not get status matrix:', statusError);
+            // If HEAD commit doesn't exist, try to fetch it from remote
+            if (!headCommitExists && headCommitSha) {
+                console.log('[GitInitializationService] Attempting to fetch missing commit from remote...');
+                const fetchResult = await this.fetchMissingCommit(headCommitSha);
+                if (fetchResult) {
+                    console.log('[GitInitializationService] Successfully fetched missing commit');
+                    // Wait a bit longer for file system operations
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // Re-check if commit exists now - try multiple times with delays
+                    let commitFound = false;
+                    for (let attempt = 0; attempt < 3; attempt++) {
+                        try {
+                            await git.readCommit({
+                                fs: this.fs,
+                                dir: NOTES_ROOT,
+                                oid: headCommitSha,
+                            });
+                            headCommitExists = true;
+                            commitFound = true;
+                            console.log(`[GitInitializationService] Commit found after ${attempt + 1} attempt(s)`);
+                            break;
+                        } catch (recheckError) {
+                            if (attempt < 2) {
+                                // Wait before retrying
+                                await new Promise(resolve => setTimeout(resolve, 300));
+                            }
+                        }
+                    }
+                    
+                    if (!commitFound) {
+                        console.warn('[GitInitializationService] Commit still not found after fetch attempt - attempting recovery');
+                        // Try to recover by checking out remote branch
+                        await this.recoverFromMissingCommit(currentBranch);
+                        
+                        // After recovery, try one more time to see if commit exists
+                        try {
+                            await git.readCommit({
+                                fs: this.fs,
+                                dir: NOTES_ROOT,
+                                oid: headCommitSha,
+                            });
+                            headCommitExists = true;
+                            console.log('[GitInitializationService] Commit found after recovery');
+                        } catch (finalError) {
+                            console.warn('[GitInitializationService] Commit still not accessible after recovery');
+                        }
+                    }
+                } else {
+                    // Fetch failed (likely auth error), try to recover by checking out remote branch
+                    console.log('[GitInitializationService] Fetch failed, attempting to recover by checking out remote branch...');
+                    await this.recoverFromMissingCommit(currentBranch);
+                }
+            }
+
+            // Try to get status matrix - this requires a valid repository
+            let hasUncommitted = false;
+            if (headCommitExists) {
+                try {
+                    const statusMatrix = await git.statusMatrix({
+                        fs: this.fs,
+                        dir: NOTES_ROOT,
+                    });
+
+                    hasUncommitted = statusMatrix.some(
+                        ([, headStatus, workdirStatus, stageStatus]) => {
+                            return headStatus !== workdirStatus || headStatus !== stageStatus;
+                        },
+                    );
+                } catch (statusError) {
+                    const errorMsg = statusError instanceof Error ? statusError.message : String(statusError);
+                    console.warn('[GitInitializationService] Could not get status matrix:', statusError);
+                }
+            } else {
+                console.warn('[GitInitializationService] Skipping status matrix check - HEAD commit not found');
             }
 
             // Try to get last commit
-            try {
-                const log = await git.log({
-                    fs: this.fs,
-                    dir: NOTES_ROOT,
-                    depth: 1,
-                });
-                lastCommit = log.length > 0 ? log[0].oid : undefined;
-            } catch (logError) {
-                console.warn('[GitInitializationService] Could not get commit log:', logError);
+            if (headCommitExists) {
+                try {
+                    const log = await git.log({
+                        fs: this.fs,
+                        dir: NOTES_ROOT,
+                        depth: 1,
+                    });
+                    lastCommit = log.length > 0 ? log[0].oid : undefined;
+                } catch (logError) {
+                    const errorMsg = logError instanceof Error ? logError.message : String(logError);
+                    console.warn('[GitInitializationService] Could not get commit log:', logError);
+                }
+            } else {
+                // If HEAD commit doesn't exist, try to get commit from remote branch
+                try {
+                    const remoteBranches = await git.listBranches({
+                        fs: this.fs,
+                        dir: NOTES_ROOT,
+                        remote: 'origin',
+                    });
+                    const remoteBranch = remoteBranches.find(b => b === 'origin/main' || b === 'origin/master');
+                    if (remoteBranch) {
+                        const remoteLog = await git.log({
+                            fs: this.fs,
+                            dir: NOTES_ROOT,
+                            ref: remoteBranch,
+                            depth: 1,
+                        });
+                        if (remoteLog.length > 0) {
+                            lastCommit = remoteLog[0].oid;
+                            console.log(`[GitInitializationService] Using remote branch commit: ${lastCommit.substring(0, 7)}`);
+                        }
+                    }
+                } catch (remoteLogError) {
+                    console.warn('[GitInitializationService] Could not get remote branch commit:', remoteLogError);
+                }
             }
 
-            // Try to get remote status (this might also fail if repository isn't fully initialized)
+            // Try to get remote status (this might also fail if repository isn't fully initialized or auth fails)
             let remoteStatus = { isBehind: false, isAhead: false };
+            let remoteStatusError: Error | null = null;
             try {
                 remoteStatus = await this.fetchRemoteStatus();
             } catch (remoteError) {
+                remoteStatusError = remoteError instanceof Error ? remoteError : new Error(String(remoteError));
                 console.warn('[GitInitializationService] Could not get remote status:', remoteError);
+                
+                // If it's an auth error, we can't sync, but we should note it
+                const errorMsg = remoteStatusError.message;
+                if (errorMsg.includes('401') || errorMsg.includes('403')) {
+                    console.warn('[GitInitializationService] WARNING: Cannot check remote status due to authentication error');
+                    console.warn('[GitInitializationService] Repository may be behind, but cannot verify or sync without valid token');
+                }
             }
 
             return {
@@ -613,83 +665,8 @@ export class GitInitializationService {
             await git.fetch({
                 fs: this.fs,
                 dir: NOTES_ROOT,
-                http: {
-                    async request({ url: requestUrl, method, headers, body: requestBody }) {
-                        const response = await fetch(requestUrl, {
-                            method,
-                            headers: {
-                                ...headers,
-                                Authorization: `Bearer ${token}`,
-                            },
-                            body: requestBody ? (requestBody as unknown as BodyInit) : undefined,
-                        });
-
-                        // Create an async iterator for the response body
-                        // CRITICAL: bodyIterator must NEVER be undefined
-                        const responseBody = response.body;
-                        let bodyIterator: AsyncIterableIterator<Uint8Array>;
-
-                        if (responseBody && typeof (responseBody as any).getReader === 'function') {
-                            // Response has a ReadableStream - create iterator from stream
-                            try {
-                                const reader = (responseBody as ReadableStream<Uint8Array>).getReader();
-                                bodyIterator = (async function* () {
-                                    try {
-                                        while (true) {
-                                            const { done, value } = await reader.read();
-                                            if (done) break;
-                                            // Ensure value is converted to Uint8Array
-                                            yield value instanceof Uint8Array ? value : new Uint8Array(value);
-                                        }
-                                    } finally {
-                                        reader.releaseLock();
-                                    }
-                                })();
-                            } catch (streamError) {
-                                // If stream reading fails, fall back to arrayBuffer
-                                console.warn('[GitInitializationService] Stream read failed, falling back to arrayBuffer:', streamError);
-                                const arrayBuffer = await response.arrayBuffer();
-                                const uint8Array = new Uint8Array(arrayBuffer);
-                                bodyIterator = (async function* () {
-                                    yield uint8Array;
-                                })();
-                            }
-                        } else {
-                            // React Native fetch might not have ReadableStream or response.body is null/undefined
-                            // Fallback: read as arrayBuffer and create iterator from that
-                            const arrayBuffer = await response.arrayBuffer();
-                            const uint8Array = new Uint8Array(arrayBuffer);
-                            bodyIterator = (async function* () {
-                                yield uint8Array;
-                            })();
-                        }
-
-                        // Final safety check: ensure bodyIterator is defined
-                        if (!bodyIterator) {
-                            // Last resort: create empty iterator
-                            bodyIterator = (async function* () {
-                                // Empty iterator
-                            })();
-                        }
-
-                        return {
-                            ok: response.ok,
-                            status: response.status,
-                            statusCode: response.status,
-                            statusText: response.statusText,
-                            statusMessage: response.statusText,
-                            url: response.url,
-                            headers: Object.fromEntries(response.headers.entries()),
-                            body: bodyIterator,
-                            async text() {
-                                return await response.text();
-                            },
-                            async arrayBuffer() {
-                                return await response.arrayBuffer();
-                            },
-                        };
-                    },
-                },
+                onAuth: () => ({ username: token, password: '' }),
+                http: createGitHttpClient(owner, repo),
                 remote: 'origin',
             });
 
@@ -742,31 +719,442 @@ export class GitInitializationService {
             let isAhead = false;
 
             try {
-                // Check if remote commit is reachable from local (local is behind)
-                const localHistory = await git.log({
+                // Use findMergeBase to find the common ancestor
+                // First, resolve the refs to commit OIDs
+                const localOid = await git.resolveRef({
                     fs: this.fs,
                     dir: NOTES_ROOT,
                     ref: currentBranch,
                 });
-                isBehind = !localHistory.some((commit) => commit.oid === remoteCommit);
-
-                // Check if local commit is reachable from remote (local is ahead)
-                const remoteHistory = await git.log({
+                const remoteOid = await git.resolveRef({
                     fs: this.fs,
                     dir: NOTES_ROOT,
                     ref: remoteBranch,
                 });
-                isAhead = !remoteHistory.some((commit) => commit.oid === localCommit);
+                
+                const mergeBases = await git.findMergeBase({
+                    fs: this.fs,
+                    dir: NOTES_ROOT,
+                    oids: [localOid, remoteOid],
+                });
+
+                if (!mergeBases || mergeBases.length === 0) {
+                    // No common ancestor - branches are unrelated
+                    throw new Error('No common ancestor found');
+                }
+
+                // Use the first merge base (most recent common ancestor)
+                const mergeBase = mergeBases[0];
+
+                if (mergeBase === localCommit && mergeBase !== remoteCommit) {
+                    // Local is at the common ancestor, remote has moved ahead
+                    isBehind = true;
+                } else if (mergeBase === remoteCommit && mergeBase !== localCommit) {
+                    // Remote is at the common ancestor, local has moved ahead
+                    isAhead = true;
+                } else if (mergeBase !== localCommit && mergeBase !== remoteCommit) {
+                    // Diverged - both have moved
+                    // Count commits from merge base to each branch
+                    const localHistory = await git.log({
+                        fs: this.fs,
+                        dir: NOTES_ROOT,
+                        ref: currentBranch,
+                    });
+                    const remoteHistory = await git.log({
+                        fs: this.fs,
+                        dir: NOTES_ROOT,
+                        ref: remoteBranch,
+                    });
+                    
+                    // Find index of merge base in each history
+                    const localBaseIndex = localHistory.findIndex(c => c.oid === mergeBase);
+                    const remoteBaseIndex = remoteHistory.findIndex(c => c.oid === mergeBase);
+                    
+                    // If merge base is found, count commits since then
+                    // If not found, assume we're behind (remote has commits we don't have)
+                    if (localBaseIndex === -1 && remoteBaseIndex >= 0) {
+                        isBehind = true;
+                    } else if (remoteBaseIndex === -1 && localBaseIndex >= 0) {
+                        isAhead = true;
+                    } else if (localBaseIndex >= 0 && remoteBaseIndex >= 0) {
+                        // Both found - compare distances
+                        if (remoteBaseIndex < localBaseIndex) {
+                            isBehind = true;
+                        }
+                        if (localBaseIndex < remoteBaseIndex) {
+                            isAhead = true;
+                        }
+                    }
+                }
             } catch (error) {
-                // If we can't determine, assume they're in sync
-                console.warn('[GitInitializationService] Could not determine branch sync status:', error);
-                return { isBehind: false, isAhead: false };
+                // Fallback: Check if remote commit is in local history
+                try {
+                    const localHistory = await git.log({
+                        fs: this.fs,
+                        dir: NOTES_ROOT,
+                        ref: currentBranch,
+                    });
+                    isBehind = !localHistory.some((commit) => commit.oid === remoteCommit);
+
+                    const remoteHistory = await git.log({
+                        fs: this.fs,
+                        dir: NOTES_ROOT,
+                        ref: remoteBranch,
+                    });
+                    isAhead = !remoteHistory.some((commit) => commit.oid === localCommit);
+                } catch (fallbackError) {
+                    console.warn('[GitInitializationService] Could not determine branch sync status:', fallbackError);
+                    return { isBehind: false, isAhead: false };
+                }
             }
 
             return { isBehind, isAhead };
         } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
             console.warn('[GitInitializationService] Remote status check error:', error);
+            
+            // Log more details about 401 errors
+            if (errorMsg.includes('401') || errorMsg.includes('403')) {
+                console.warn('[GitInitializationService] Authentication error - check GitHub token permissions');
+                console.warn('[GitInitializationService] Token needs "repo" scope for private repositories');
+                console.warn('[GitInitializationService] Cannot determine if repository is behind without remote access');
+            }
+            
+            // If we can't check remote status, we can't know if we're behind
+            // Return false to avoid false positives, but log that we couldn't check
             return { isBehind: false, isAhead: false };
+        }
+    }
+
+    /**
+     * Attempts to fetch a specific missing commit from the remote repository.
+     * Returns true if successful, false otherwise.
+     */
+    private async fetchMissingCommit(commitSha: string): Promise<boolean> {
+        try {
+            const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
+            const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
+            const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
+
+            if (!owner || !repo || !token) {
+                console.warn('[GitInitializationService] Cannot fetch commit - GitHub configuration missing');
+                return false;
+            }
+
+            // Fetch from remote - this should bring in the missing commit
+            // Fetch all branches and tags to ensure we get the commit
+            await git.fetch({
+                fs: this.fs,
+                dir: NOTES_ROOT,
+                onAuth: () => ({ username: token, password: '' }),
+                http: createGitHttpClient(owner, repo),
+                remote: 'origin',
+                singleBranch: false, // Fetch all branches to get the commit
+                tags: true, // Also fetch tags
+            });
+
+            // Wait a moment for file system operations to complete
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            return true;
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            console.warn(`[GitInitializationService] Failed to fetch missing commit ${commitSha.substring(0, 7)}:`, errorMsg);
+            
+            if (errorMsg.includes('401') || errorMsg.includes('403')) {
+                console.warn('[GitInitializationService] Authentication failed - cannot fetch missing commit');
+                console.warn('[GitInitializationService] Please check your GitHub token has "repo" scope');
+            }
+            
+            return false;
+        }
+    }
+
+    /**
+     * Syncs the local repository with the remote by pulling the latest changes.
+     * Uses fast-forward merge if possible, otherwise attempts a merge.
+     */
+    private async syncWithRemote(): Promise<{ success: boolean; error?: string }> {
+        try {
+            const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
+            const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
+            const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
+
+            if (!owner || !repo || !token) {
+                return { success: false, error: 'GitHub configuration missing' };
+            }
+
+            // First, fetch the latest changes
+            console.log('[GitInitializationService] Fetching latest changes from remote...');
+            await git.fetch({
+                fs: this.fs,
+                dir: NOTES_ROOT,
+                onAuth: () => ({ username: token, password: '' }),
+                http: createGitHttpClient(owner, repo),
+                remote: 'origin',
+            });
+
+            // Get current branch
+            const branches = await git.listBranches({
+                fs: this.fs,
+                dir: NOTES_ROOT,
+            });
+            const currentBranch = branches.find((b) => !b.startsWith('origin/')) || 'main';
+            const remoteBranch = `origin/${currentBranch}`;
+
+            console.log(`[GitInitializationService] Attempting to merge from ${remoteBranch}...`);
+            
+            // Try to merge with fast-forward only first (safest, no merge commit needed)
+            try {
+                await git.merge({
+                    fs: this.fs,
+                    dir: NOTES_ROOT,
+                    ours: currentBranch,
+                    theirs: remoteBranch,
+                    fastForwardOnly: true,
+                });
+                console.log('[GitInitializationService] Fast-forward merge successful');
+                return { success: true };
+            } catch (fastForwardError) {
+                // If fast-forward fails, try a regular merge
+                console.log('[GitInitializationService] Fast-forward not possible, attempting regular merge...');
+                try {
+                    await git.merge({
+                        fs: this.fs,
+                        dir: NOTES_ROOT,
+                        ours: currentBranch,
+                        theirs: remoteBranch,
+                        author: {
+                            name: 'Git Sync',
+                            email: 'sync@keeper.app',
+                        },
+                        message: 'Merge remote changes',
+                    });
+                    console.log('[GitInitializationService] Merge successful');
+                    return { success: true };
+                } catch (mergeError) {
+                    const errorMsg = mergeError instanceof Error ? mergeError.message : String(mergeError);
+                    console.error('[GitInitializationService] Merge failed:', errorMsg);
+                    return { success: false, error: errorMsg };
+                }
+            }
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            console.error('[GitInitializationService] Sync failed:', errorMsg);
+            return { success: false, error: errorMsg };
+        }
+    }
+
+    /**
+     * Attempts to recover from a missing HEAD commit by checking out the remote branch.
+     * This is a fallback when we can't fetch the missing commit (e.g., due to auth errors).
+     */
+    private async recoverFromMissingCommit(currentBranch: string): Promise<void> {
+        try {
+            // First, try to fetch remote branches if they're not available
+            const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
+            const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
+            const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
+
+            if (owner && repo && token) {
+                try {
+                    console.log('[GitInitializationService] Fetching remote branches for recovery...');
+                    await git.fetch({
+                        fs: this.fs,
+                        dir: NOTES_ROOT,
+                        onAuth: () => ({ username: token, password: '' }),
+                        http: createGitHttpClient(owner, repo),
+                        remote: 'origin',
+                        singleBranch: false,
+                    });
+                    // Wait for file system to sync
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                } catch (fetchError) {
+                    console.warn('[GitInitializationService] Could not fetch remote branches for recovery:', fetchError);
+                }
+            }
+
+            // Now try to list remote branches
+            let remoteBranches: string[] = [];
+            try {
+                remoteBranches = await git.listBranches({
+                    fs: this.fs,
+                    dir: NOTES_ROOT,
+                    remote: 'origin',
+                });
+                console.log(`[GitInitializationService] Found ${remoteBranches.length} remote branches: ${remoteBranches.join(', ')}`);
+            } catch (listError) {
+                console.warn('[GitInitializationService] Could not list remote branches:', listError);
+            }
+            
+            // Try to find a suitable remote branch to checkout
+            // Handle both "origin/main" and "main" formats
+            // Filter out "HEAD" as it's not a real branch
+            const validBranches = remoteBranches.filter(b => b !== 'HEAD' && b !== 'origin/HEAD');
+            console.log(`[GitInitializationService] Filtered branches (excluding HEAD): ${validBranches.join(', ')}`);
+            
+            let remoteBranch: string | undefined = validBranches.find(b => 
+                b === `origin/${currentBranch}` || 
+                b === 'origin/main' || 
+                b === 'origin/master'
+            );
+            
+            // If not found with prefix, try without prefix
+            if (!remoteBranch) {
+                remoteBranch = validBranches.find(b => 
+                    b === currentBranch || 
+                    b === 'main' || 
+                    b === 'master'
+                );
+            }
+            
+            console.log(`[GitInitializationService] Selected remote branch for recovery: ${remoteBranch || 'none'}`);
+            
+            if (remoteBranch) {
+                console.log(`[GitInitializationService] Attempting to checkout ${remoteBranch} to recover...`);
+                
+                // Determine the branch name (with or without origin/ prefix)
+                const branchName = remoteBranch.startsWith('origin/') 
+                    ? remoteBranch.replace('origin/', '') 
+                    : remoteBranch;
+                
+                // Try multiple strategies
+                let checkoutSuccess = false;
+                
+                // Strategy 1: Checkout the remote branch directly (if it has origin/ prefix)
+                if (remoteBranch.startsWith('origin/')) {
+                    try {
+                        await git.checkout({
+                            fs: this.fs,
+                            dir: NOTES_ROOT,
+                            ref: remoteBranch,
+                        });
+                        console.log(`[GitInitializationService] Successfully checked out ${remoteBranch} directly`);
+                        checkoutSuccess = true;
+                    } catch (checkoutError) {
+                        console.warn(`[GitInitializationService] Direct checkout failed:`, checkoutError);
+                    }
+                }
+                
+                // Strategy 2: Create/checkout local branch tracking remote
+                if (!checkoutSuccess) {
+                    try {
+                        await git.checkout({
+                            fs: this.fs,
+                            dir: NOTES_ROOT,
+                            ref: branchName,
+                            track: true,
+                        });
+                        console.log(`[GitInitializationService] Successfully created local branch ${branchName} tracking remote`);
+                        checkoutSuccess = true;
+                    } catch (trackError) {
+                        console.warn(`[GitInitializationService] Tracking branch checkout failed:`, trackError);
+                    }
+                }
+                
+                // Strategy 3: Just checkout the branch name (might work if it exists)
+                if (!checkoutSuccess) {
+                    try {
+                        await git.checkout({
+                            fs: this.fs,
+                            dir: NOTES_ROOT,
+                            ref: branchName,
+                        });
+                        console.log(`[GitInitializationService] Successfully checked out ${branchName}`);
+                        checkoutSuccess = true;
+                    } catch (simpleCheckoutError) {
+                        console.warn(`[GitInitializationService] Simple checkout failed:`, simpleCheckoutError);
+                    }
+                }
+                
+                // Strategy 4: Try to update HEAD to point to origin/main explicitly
+                if (!checkoutSuccess) {
+                    try {
+                        // Try to resolve the remote branch reference
+                        // Handle both "origin/main" and "main" formats
+                        let remoteRef: string;
+                        if (remoteBranch.startsWith('origin/')) {
+                            remoteRef = remoteBranch;
+                        } else {
+                            // Try both formats
+                            remoteRef = `origin/${remoteBranch}`;
+                        }
+                        
+                        let remoteOid: string;
+                        // Try resolving in order: the branch as-is, then with origin/ prefix, then without
+                        try {
+                            remoteOid = await git.resolveRef({
+                                fs: this.fs,
+                                dir: NOTES_ROOT,
+                                ref: remoteBranch,
+                            });
+                        } catch (resolveError1) {
+                            try {
+                                remoteOid = await git.resolveRef({
+                                    fs: this.fs,
+                                    dir: NOTES_ROOT,
+                                    ref: remoteRef,
+                                });
+                            } catch (resolveError2) {
+                                // Last try: if remoteBranch is "main", try "refs/remotes/origin/main"
+                                remoteOid = await git.resolveRef({
+                                    fs: this.fs,
+                                    dir: NOTES_ROOT,
+                                    ref: `refs/remotes/origin/${branchName}`,
+                                });
+                            }
+                        }
+                        
+                        // Update HEAD to point to this commit
+                        await git.writeRef({
+                            fs: this.fs,
+                            dir: NOTES_ROOT,
+                            ref: 'HEAD',
+                            value: remoteOid,
+                        });
+                        console.log(`[GitInitializationService] Successfully updated HEAD to ${remoteOid.substring(0, 7)}`);
+                        checkoutSuccess = true;
+                    } catch (writeRefError) {
+                        console.warn(`[GitInitializationService] Failed to update HEAD:`, writeRefError);
+                    }
+                }
+                
+                if (checkoutSuccess) {
+                    // Wait for file system to sync
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+            } else {
+                console.warn(`[GitInitializationService] No suitable remote branch found. Available branches: ${remoteBranches.join(', ') || 'none'}`);
+                
+                // Last resort: try to checkout 'main' or resolve origin/main
+                const branchesToTry = ['main', 'origin/main', 'master', 'origin/master'];
+                for (const branchToTry of branchesToTry) {
+                    try {
+                        console.log(`[GitInitializationService] Attempting to resolve ${branchToTry} as last resort...`);
+                        const branchOid = await git.resolveRef({
+                            fs: this.fs,
+                            dir: NOTES_ROOT,
+                            ref: branchToTry,
+                        });
+                        
+                        // Update HEAD to point to this commit
+                        await git.writeRef({
+                            fs: this.fs,
+                            dir: NOTES_ROOT,
+                            ref: 'HEAD',
+                            value: branchOid,
+                        });
+                        console.log(`[GitInitializationService] Successfully updated HEAD to ${branchOid.substring(0, 7)} from ${branchToTry})`);
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                        break;
+                    } catch (resolveError) {
+                        // Try next branch
+                        continue;
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('[GitInitializationService] Recovery attempt failed:', error);
         }
     }
 }
