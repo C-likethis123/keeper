@@ -11,15 +11,14 @@ globalThis.Buffer = Buffer;
 require('../wdyr');
 
 
+import { ToastOverlay } from "@/components/Toast";
+import { createDarkTheme, createLightTheme } from "@/constants/themes";
+import { GitInitializationService } from "@/services/git/gitInitializationService";
 import { useThemeStore } from "@/stores/themeStore";
+import { ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { useEffect, useMemo } from "react";
-import { View, Text, ActivityIndicator, StyleSheet, useColorScheme } from "react-native";
-import { ThemeProvider } from "@react-navigation/native";
-import { createLightTheme, createDarkTheme } from "@/constants/themes";
-import { ToastOverlay } from "@/components/Toast";
-import { GitInitializationService } from "@/services/git/gitInitializationService";
-import { ensureNotesDirectoryWritable } from "@/services/filesystem/storagePermission";
+import { ActivityIndicator, StyleSheet, Text, useColorScheme, View } from "react-native";
 
 export default function RootLayout() {
   const themeStoreHydrated = useThemeStore((s) => s.isHydrated);
@@ -30,10 +29,6 @@ export default function RootLayout() {
   useEffect(() => {
     hydrateThemeStore();
     (async () => {
-      const writable = await ensureNotesDirectoryWritable();
-      if (!writable.ok) {
-        return;
-      }
       try {
         const result = await GitInitializationService.instance.initialize();
         if (result.success) {
