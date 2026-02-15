@@ -108,9 +108,7 @@ function createDynamoDocumentClient(): DynamoDBDocumentClient {
 
 const TABLE_NAME = process.env.EXPO_PUBLIC_NOTES_INDEX_TABLE;
 const STATUS_INDEX_NAME =
-  process.env.EXPO_PUBLIC_NOTES_STATUS_INDEX ?? "StatusIndex";
-const ALL_NOTES_INDEX_NAME =
-  process.env.EXPO_PUBLIC_NOTES_ALL_NOTES_INDEX ?? "AllNotesIndex";
+  process.env.EXPO_PUBLIC_NOTES_STATUS_INDEX;
 
 if (!TABLE_NAME) {
   // Fail fast so misconfiguration is obvious during development.
@@ -135,7 +133,7 @@ export function createSortKey(isPinned: boolean, updatedAt: number): string {
 export class NotesIndexService {
   static instance = new NotesIndexService();
 
-  private constructor() {}
+  private constructor() { }
 
   async getNote(noteId: string): Promise<NoteIndexItem | null> {
     const result = await docClient.send(
@@ -157,7 +155,7 @@ export class NotesIndexService {
   async upsertNote(item: NoteIndexItem): Promise<void> {
     const isPinned = item.status === "PINNED";
     const compositeSortKey = createSortKey(isPinned, item.updatedAt);
-    
+
     const itemWithNewSchema: NoteIndexItem = {
       ...item,
       allNotesPartition: "NOTES",
@@ -216,98 +214,54 @@ export class NotesIndexService {
   }
 
   /**
-   * Fetch all notes for a given status by automatically paginating through all results.
-   * Useful for fetching all pinned notes where we want the complete list.
-   */
-  async listAllByStatus(
-    status: NoteIndexStatus,
-    batchSize = 100
-  ): Promise<NoteIndexItem[]> {
-    const allItems: NoteIndexItem[] = [];
-    let cursor: Record<string, unknown> | undefined = undefined;
-
-    do {
-      const result = await this.listByStatus(status, batchSize, cursor);
-      allItems.push(...result.items);
-      cursor = result.cursor;
-    } while (cursor);
-
-    return allItems;
-  }
-
-  /**
    * List all notes (pinned and unpinned) using the new AllNotesIndex GSI.
    * Results are sorted with pinned notes first, then by updatedAt descending.
    * Supports pagination via the cursor parameter.
+   * If query is provided, filters notes by title containing the query string (case-sensitive).
    */
   async listAllNotes(
     limit = 20,
-    cursor?: Record<string, unknown>
+    cursor?: Record<string, unknown>,
+    query?: string
   ): Promise<ListNotesResult> {
-    const result = await docClient.send(
-      new QueryCommand({
+    try {
+      const expressionAttributeNames: Record<string, string> = {
+        "#pk": "allNotesPartition",
+      };
+      const expressionAttributeValues: Record<string, unknown> = {
+        ":pk": "NOTES",
+      };
+
+      let filterExpression: string | undefined;
+      if (query && query.trim().length > 0) {
+        expressionAttributeNames["#title"] = "title";
+        expressionAttributeValues[":query"] = query.trim();
+        filterExpression = "contains(#title, :query)";
+      }
+
+      const queryParams = {
         TableName: TABLE_NAME,
-        IndexName: ALL_NOTES_INDEX_NAME,
+        IndexName: STATUS_INDEX_NAME,
         KeyConditionExpression: "#pk = :pk",
-        ExpressionAttributeNames: {
-          "#pk": "allNotesPartition",
-        },
-        ExpressionAttributeValues: {
-          ":pk": "NOTES",
-        },
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
+        FilterExpression: filterExpression,
         Limit: limit,
         ScanIndexForward: false,
         ExclusiveStartKey: cursor,
-      })
-    );
+      };
 
-    return {
-      items: (result.Items as NoteIndexItem[]) ?? [],
-      cursor: result.LastEvaluatedKey as Record<string, unknown> | undefined,
-    };
-  }
-
-  /**
-   * Search notes by title. Fetches notes from both PINNED and UNPINNED statuses
-   * and filters by title containing the query (case-insensitive).
-   * Returns note titles (without .md extension) that match the query.
-   */
-  async searchNotesByTitle(query: string, limit = 20): Promise<string[]> {
-    if (!query || query.trim().length === 0) {
-      return [];
-    }
-
-    const queryLower = query.toLowerCase().trim();
-    const results: string[] = [];
-
-    try {
-      // Fetch from both PINNED and UNPINNED statuses
-      const [pinnedResult, unpinnedResult] = await Promise.all([
-        this.listByStatus("PINNED", 100), // Fetch more to have better search results
-        this.listByStatus("UNPINNED", 100),
-      ]);
-
-      const allItems = [...pinnedResult.items, ...unpinnedResult.items];
-
-      // Filter by title (case-insensitive) and extract title
-      for (const item of allItems) {
-        if (results.length >= limit) break;
-
-        // Use title from index if available, otherwise extract from noteId
-        const title = item.title || item.noteId.split("/").pop()?.replace(/\.md$/, "") || "";
-        
-        if (title.toLowerCase().includes(queryLower)) {
-          // Avoid duplicates
-          if (!results.includes(title)) {
-            results.push(title);
-          }
-        }
-      }
+      const result = await docClient.send(
+        new QueryCommand(queryParams)
+      );
+      return {
+        items: (result.Items as NoteIndexItem[]) ?? [],
+        cursor: result.LastEvaluatedKey as Record<string, unknown> | undefined,
+      };
     } catch (error) {
-      console.warn("Failed to search notes by title:", error);
+      console.warn("Failed to list all notes:", error);
+      throw error;
     }
-
-    return results;
   }
 }
 
