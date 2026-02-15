@@ -56,11 +56,11 @@ export default function NoteCard({
                 <View style={styles.actions}>
                     {!note.isPinned && (
                         <TouchableOpacity onPress={onPinToggle}>
-                            <MaterialIcons name="push-pin" size={18} color={theme.colors.text + "80"} />
+                            <MaterialIcons name="push-pin" size={18} color={theme.colors.textMuted} />
                         </TouchableOpacity>
                     )}
                     <TouchableOpacity onPress={() => onDelete?.(note)}>
-                        <MaterialIcons name="delete-outline" size={18} color={theme.colors.text + "80"} />
+                        <MaterialIcons name="delete-outline" size={18} color={theme.colors.textMuted} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -91,7 +91,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
     },
     content: {
         marginTop: 6,
-        color: theme.colors.text + "80", // Text color with 50% opacity
+        color: theme.colors.textMuted,
         flexGrow: 1,
     },
     footer: {
@@ -102,7 +102,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
     date: {
         flex: 1,
         fontSize: 12,
-        color: theme.colors.text + "60", // Text color with 37.5% opacity
+        color: theme.colors.textFaded,
     },
     actions: {
         flexDirection: "row",

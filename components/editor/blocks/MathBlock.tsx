@@ -226,7 +226,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
             alignItems: 'center',
         },
         errorText: {
-            color: theme.colors.notification || '#ff0000',
+            color: theme.colors.error,
             fontSize: 12,
             marginBottom: 8,
         },

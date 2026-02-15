@@ -1,6 +1,14 @@
 import { Theme } from '@react-navigation/native';
 import { TextStyle } from 'react-native';
 
+export type ExtendedThemeColors = Theme['colors'] & {
+  error: string;
+  textMuted: string;
+  textFaded: string;
+  textDisabled: string;
+  primaryPressed: string;
+};
+
 export interface SyntaxTheme {
   background: string;
   defaultText: string;
@@ -33,7 +41,8 @@ export interface Typography {
   body: TextStyle;
 }
 
-export interface ExtendedTheme extends Theme {
+export interface ExtendedTheme extends Omit<Theme, 'colors'> {
+  colors: ExtendedThemeColors;
   typography: Typography;
   custom: {
     syntax: SyntaxTheme;

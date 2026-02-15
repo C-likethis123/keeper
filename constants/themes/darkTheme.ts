@@ -1,11 +1,21 @@
 import { DarkTheme as NavigationDarkTheme } from '@react-navigation/native';
+import { withOpacity } from '@/utils/color';
 import { ExtendedTheme } from './types';
 import { darkSyntaxTheme } from './syntaxTheme';
 import { darkCodeEditorTheme } from './codeEditorTheme';
 
 export function createDarkTheme(): ExtendedTheme {
+  const { colors } = NavigationDarkTheme;
   return {
     ...NavigationDarkTheme,
+    colors: {
+      ...colors,
+      error: '#f87171',
+      textMuted: withOpacity(colors.text, 0.5),
+      textFaded: withOpacity(colors.text, 0.375),
+      textDisabled: withOpacity(colors.text, 0.25),
+      primaryPressed: withOpacity(colors.primary, 0.8),
+    },
     typography: {
       heading1: {
         fontSize: 32,

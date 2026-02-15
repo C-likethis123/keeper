@@ -19,11 +19,7 @@ import { ThemeProvider } from "@react-navigation/native";
 import { createLightTheme, createDarkTheme } from "@/constants/themes";
 import { ToastOverlay } from "@/components/Toast";
 import { GitInitializationService } from "@/services/git/gitInitializationService";
-import {
-  ensureNotesDirectoryWritable,
-  showStoragePermissionAlertAndOpenSettings,
-  isPermissionLikeError,
-} from "@/services/filesystem/storagePermission";
+import { ensureNotesDirectoryWritable } from "@/services/filesystem/storagePermission";
 
 export default function RootLayout() {
   const themeStoreHydrated = useThemeStore((s) => s.isHydrated);
@@ -36,7 +32,6 @@ export default function RootLayout() {
     (async () => {
       const writable = await ensureNotesDirectoryWritable();
       if (!writable.ok) {
-        showStoragePermissionAlertAndOpenSettings();
         return;
       }
       try {
@@ -48,16 +43,9 @@ export default function RootLayout() {
           });
         } else {
           console.error('[App] Git initialization failed:', result.error);
-          if (result.error && isPermissionLikeError(result.error)) {
-            showStoragePermissionAlertAndOpenSettings();
-          }
         }
       } catch (error) {
         console.error('[App] Git initialization error:', error);
-        const message = error instanceof Error ? error.message : String(error);
-        if (isPermissionLikeError(message)) {
-          showStoragePermissionAlertAndOpenSettings();
-        }
       }
     })();
   }, [hydrateThemeStore]);

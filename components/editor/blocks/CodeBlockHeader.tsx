@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
+import { withOpacity } from '@/utils/color';
 import { LanguageRegistry } from '../code/LanguageRegistry';
 
 interface CodeBlockHeaderProps {
@@ -29,8 +30,9 @@ export function CodeBlockHeader({
 
   const headerTextColor = '#fff';
   const headerBgColor = theme.custom.codeEditor?.background || '#1e1e1e';
+  const headerSelectedBg = withOpacity(headerBgColor, 0.5);
 
-  const styles = useMemo(() => createStyles(theme, headerBgColor, headerTextColor), [theme, headerBgColor, headerTextColor]);
+  const styles = useMemo(() => createStyles(theme, headerBgColor, headerSelectedBg, headerTextColor), [theme, headerBgColor, headerSelectedBg, headerTextColor]);
 
   return (
     <View style={styles.container}>
@@ -89,6 +91,7 @@ export function CodeBlockHeader({
 function createStyles(
   theme: ReturnType<typeof useExtendedTheme>,
   headerBgColor: string,
+  headerSelectedBg: string,
   headerTextColor: string,
 ) {
   return StyleSheet.create({
@@ -132,7 +135,7 @@ function createStyles(
       paddingVertical: 8,
     },
     languageOptionSelected: {
-      backgroundColor: headerBgColor + '80',
+      backgroundColor: headerSelectedBg,
     },
     languageOptionText: {
       color: headerTextColor,

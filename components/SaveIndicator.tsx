@@ -35,7 +35,7 @@ export function SaveIndicator({ status }: Props) {
       case "saved":
         return theme.dark ? "#4ade80" : "#16a34a"; // Lighter green for dark mode
       case "idle":
-        return theme.colors.text + "80"; // Text color with 50% opacity
+        return theme.colors.textMuted;
       default:
         return theme.colors.text;
     }
@@ -71,7 +71,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
     },
     subtitle: {
       fontSize: 11,
-      color: theme.colors.text + "80", // Text color with 50% opacity
+      color: theme.colors.textMuted,
     },
   });
 }

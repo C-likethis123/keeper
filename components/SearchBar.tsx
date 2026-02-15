@@ -12,13 +12,13 @@ export function SearchBar({ searchQuery, setSearchQuery }: { searchQuery: string
                 <MaterialIcons
                     name="search"
                     size={20}
-                    color={theme.colors.text + "80"}
+                    color={theme.colors.textMuted}
                     style={styles.searchIcon}
                 />
                 <TextInput
                     style={styles.searchInput}
                     placeholder="Search"
-                    placeholderTextColor={theme.colors.text + "60"}
+                    placeholderTextColor={theme.colors.textFaded}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     autoCapitalize="none"
@@ -32,7 +32,7 @@ export function SearchBar({ searchQuery, setSearchQuery }: { searchQuery: string
                         <MaterialIcons
                             name="close"
                             size={18}
-                            color={theme.colors.text + "80"}
+                            color={theme.colors.textMuted}
                         />
                     </TouchableOpacity>
                 )}

@@ -1,11 +1,21 @@
 import { DefaultTheme as NavigationLightTheme } from '@react-navigation/native';
+import { withOpacity } from '@/utils/color';
 import { ExtendedTheme } from './types';
 import { lightSyntaxTheme } from './syntaxTheme';
 import { lightCodeEditorTheme } from './codeEditorTheme';
 
 export function createLightTheme(): ExtendedTheme {
+  const { colors } = NavigationLightTheme;
   return {
     ...NavigationLightTheme,
+    colors: {
+      ...colors,
+      error: '#ef4444',
+      textMuted: withOpacity(colors.text, 0.5),
+      textFaded: withOpacity(colors.text, 0.375),
+      textDisabled: withOpacity(colors.text, 0.25),
+      primaryPressed: withOpacity(colors.primary, 0.8),
+    },
     typography: {
       heading1: {
         fontSize: 32,

@@ -47,7 +47,7 @@ export function EditorToolbar({
         <MaterialIcons
           name="format-indent-decrease"
           size={24}
-          color={canOutdent ? theme.colors.text : theme.colors.text + '40'}
+          color={canOutdent ? theme.colors.text : theme.colors.textDisabled}
         />
       </TouchableOpacity>
       <TouchableOpacity

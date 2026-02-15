@@ -101,7 +101,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
       backgroundColor: theme.colors.primary,
     },
     itemPressed: {
-      backgroundColor: theme.colors.primary + 'CC', // 80% opacity when pressed
+      backgroundColor: theme.colors.primaryPressed,
       opacity: 0.9,
     },
     itemText: {

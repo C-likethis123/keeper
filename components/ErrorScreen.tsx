@@ -21,7 +21,7 @@ export default function ErrorScreen({
         <MaterialIcons
           name="error-outline"
           size={48}
-          color={theme.colors.error || "#ef4444"}
+          color={theme.colors.error}
         />
         <Text style={styles.errorMessage}>{errorMessage}</Text>
         {onRetry && (
@@ -66,7 +66,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
       backgroundColor: theme.colors.primary,
     },
     retryButtonText: {
-      color: theme.colors.card || "#ffffff",
+      color: theme.colors.card,
       fontWeight: "600",
       fontSize: 15,
     },

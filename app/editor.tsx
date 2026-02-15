@@ -96,7 +96,7 @@ export default function NoteEditorScreen() {
               <MaterialIcons
                 name="push-pin"
                 size={24}
-                color={existingNote?.isPinned ? theme.colors.primary : theme.colors.text + "80"}
+                color={existingNote?.isPinned ? theme.colors.primary : theme.colors.textMuted}
               />
             </TouchableOpacity>
           ),
