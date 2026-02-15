@@ -1,11 +1,11 @@
-import * as git from 'isomorphic-git';
+import { NOTES_ROOT } from '@/services/notes/Notes';
 import { Directory, File } from 'expo-file-system';
+import * as git from 'isomorphic-git';
+import http from 'isomorphic-git/http/web';
 import { createExpoFileSystemAdapter } from './expoFileSystemAdapter';
+import './patch-FileReader';
 
 const fs = createExpoFileSystemAdapter();
-import { NOTES_ROOT } from '@/services/notes/Notes';
-import http from 'isomorphic-git/http/web';
-import './patch-FileReader';
 
 export interface GitHubConfig {
     owner: string;
@@ -58,13 +58,15 @@ export class GitInitializationService {
                 console.log(`[GitInitializationService] Validation reason: ${repoValidation.reason}`);
             }
 
-            const force = true;
-
             // If repository is invalid, clean it up before cloning
-            if (!repoValidation.isValid || force) {
+            if (!repoValidation.isValid) {
                 if (repoValidation.exists) {
-                    console.log('[GitInitializationService] Invalid repository detected, cleaning up before fresh clone...');
-                    await fs.promises.rmdir(NOTES_ROOT);
+                    console.log('[GitInitializationService] Invalid repository detected, please clear your cache manually and try again');
+                    return {
+                        success: false,
+                        wasCloned: true,
+                        error: 'Invalid repository detected, please clear your cache manually and try again',
+                    }
                 }
 
                 console.log('[GitInitializationService] Starting fresh clone...');
@@ -77,6 +79,16 @@ export class GitInitializationService {
                         wasCloned: false,
                         error,
                     };
+                }
+                return {
+                    success: true,
+                    wasCloned: true,
+                    status: {
+                        hasUncommitted: false,
+                        isBehind: false,
+                        isAhead: false,
+                        currentBranch: 'main',
+                    },
                 }
 
 
@@ -145,21 +157,6 @@ export class GitInitializationService {
                 wasCloned: true,
             };
         } catch (error) {
-            // console.error('[GitInitializationService] Initialization error:', error);
-
-            // let errorMessage = 'Unknown error during initialization';
-            // if (error instanceof Error) {
-            //     errorMessage = error.message;
-
-            //     if (error.message.includes('network') || error.message.includes('fetch')) {
-            //         errorMessage = 'Network error: Check your internet connection';
-            //     } else if (error.message.includes('permission') || error.message.includes('401') || error.message.includes('403')) {
-            //         errorMessage = 'Authentication error: Check your GitHub token permissions';
-            //     } else if (error.message.includes('ENOENT') || error.message.includes('not found')) {
-            //         errorMessage = 'File system error: Check app permissions';
-            //     }
-            // }
-
             return {
                 success: false,
                 wasCloned: false,
@@ -244,30 +241,26 @@ export class GitInitializationService {
                 dir: NOTES_ROOT,
                 url,
                 onAuth: () => ({ username: owner, password: token }),
+                onPostCheckout: () => {
+                    console.log('[GitInitializationService] Checkout completed');
+                },
                 http,
                 depth: 1,
                 singleBranch: true,
                 noCheckout: true,
-                onProgress: (progress) => {
-                    // Log progress for debugging
-                    if (progress.phase === 'receiving' || progress.phase === 'resolving' || progress.phase === 'checking out') {
-                        console.log(`[GitInitializationService] Clone progress: ${progress.phase} - ${progress.total ? `${progress.loaded}/${progress.total}` : progress.loaded}`);
-                    }
-                },
             });
-
-            console.log('[GitInitializationService] Clone completed, checking out branch...');
-
-            // Wait a moment for file system operations to complete
-            await new Promise(resolve => setTimeout(resolve, 200));
 
             // Now checkout the branch manually after clone completes
             try {
+                console.log('[GitInitializationService] Clone completed, checking out branch...');
                 // Checkout the branch
                 await git.checkout({
                     fs: fs,
                     dir: NOTES_ROOT,
                     ref: 'main',
+                    onProgress: (progress) => {
+                        console.log('[GitInitializationService] Checkout progress:', progress);
+                    },
                 });
 
                 console.log(`[GitInitializationService] Successfully checked out branch: main`);

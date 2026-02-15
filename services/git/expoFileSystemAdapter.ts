@@ -1,6 +1,13 @@
 import { File, Directory } from 'expo-file-system';
 const MODE_FILE = 0o644;
 
+function normalizePath(path: string): string {
+    let pathPart = path.replace(/^file:\/\/?\/?/, '') || '/';
+    if (!pathPart.startsWith('/')) pathPart = '/' + pathPart;
+    const decoded = pathPart.includes('%') ? decodeURI(pathPart) : pathPart;
+    return 'file://' + encodeURI(decoded);
+}
+
 function errWithCode(message: string, code: string): Error {
     const e = new Error(message);
     (e as Error & { code: string }).code = code;
@@ -11,7 +18,8 @@ export function createExpoFileSystemAdapter() {
     return {
         promises: {
             async readFile(filePath: string, options?: { encoding?: BufferEncoding }): Promise<Uint8Array | string> {
-                const file = new File(filePath);
+                const path = normalizePath(filePath);
+                const file = new File(path);
                 if (!file.exists) throw errWithCode(`File not found: ${filePath}`, 'ENOENT');
 
                 if (options?.encoding === 'utf8' || options?.encoding === 'utf-8') {
@@ -21,43 +29,47 @@ export function createExpoFileSystemAdapter() {
             },
 
             async writeFile(filePath: string, data: Uint8Array | string, options?: { encoding?: BufferEncoding }): Promise<void> {
-                const content = typeof data === 'string' ? data : new TextDecoder('utf-8').decode(data);
-                const normalizedPath = filePath.startsWith('file://') ? filePath.slice(7) : filePath;
-                const lastSlash = normalizedPath.lastIndexOf('/');
+                const path = normalizePath(filePath);
+                const lastSlash = path.lastIndexOf('/');
                 if (lastSlash > 0) {
-                    const parentDir = new Directory(normalizedPath.slice(0, lastSlash));
+                    const parentDir = new Directory(path.slice(0, lastSlash));
                     if (!parentDir.exists) {
                         await Promise.resolve(parentDir.create({ intermediates: true }));
                     }
                 }
-                const file = new File(filePath);
+                const file = new File(path);
                 if (!file.exists) await Promise.resolve(file.create());
+                const content: string | Uint8Array = typeof data === 'string' ? data : data instanceof Uint8Array ? data : new Uint8Array((data as ArrayBufferView).buffer, (data as ArrayBufferView).byteOffset, (data as ArrayBufferView).byteLength);
                 await Promise.resolve(file.write(content));
             },
 
             async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
-                const dir = new Directory(dirPath);
+                const path = normalizePath(dirPath);
+                const dir = new Directory(path);
                 if (dir.exists) throw errWithCode(`Directory exists: ${dirPath}`, 'EEXIST');
                 await Promise.resolve(dir.create({ intermediates: options?.recursive ?? false }));
             },
 
             async rmdir(dirPath: string): Promise<void> {
-                const dir = new Directory(dirPath);
+                const path = normalizePath(dirPath);
+                const dir = new Directory(path);
                 if (!dir.exists) throw errWithCode(`Directory not found: ${dirPath}`, 'ENOENT');
                 await Promise.resolve(dir.delete());
             },
 
             async readdir(dirPath: string): Promise<string[]> {
-                const dir = new Directory(dirPath);
-                const file = new File(dirPath);
+                const path = normalizePath(dirPath);
+                const dir = new Directory(path);
+                const file = new File(path);
                 if (file.exists) throw errWithCode(`Not a directory: ${dirPath}`, 'ENOTDIR');
                 if (!dir.exists) throw errWithCode(`Directory not found: ${dirPath}`, 'ENOENT');
                 return dir.list().map((entry) => entry.name);
             },
 
             async stat(filePath: string) {
-                const file = new File(filePath);
-                const dir = new Directory(filePath);
+                const path = normalizePath(filePath);
+                const file = new File(path);
+                const dir = new Directory(path);
                 if (!file.exists && !dir.exists) throw errWithCode(`File not found: ${filePath}`, 'ENOENT');
 
                 const isFile = file.exists;
@@ -85,20 +97,24 @@ export function createExpoFileSystemAdapter() {
             },
 
             async rename(oldPath: string, newPath: string): Promise<void> {
-                const source = new File(oldPath);
+                const src = normalizePath(oldPath);
+                const dest = normalizePath(newPath);
+                const source = new File(src);
                 if (!source.exists) throw errWithCode(`File not found: ${oldPath}`, 'ENOENT');
-                source.move(new File(newPath));
+                source.move(new File(dest));
             },
 
             async unlink(filePath: string): Promise<void> {
-                const file = new File(filePath);
+                const path = normalizePath(filePath);
+                const file = new File(path);
                 if (!file.exists) throw errWithCode(`File not found: ${filePath}`, 'ENOENT');
                 await Promise.resolve(file.delete());
             },
 
             async rm(filePath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
-                const file = new File(filePath);
-                const dir = new Directory(filePath);
+                const path = normalizePath(filePath);
+                const file = new File(path);
+                const dir = new Directory(path);
                 if (dir.exists) {
                     if (options?.recursive) {
                         await Promise.resolve(dir.delete());
