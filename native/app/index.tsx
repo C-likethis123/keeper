@@ -14,6 +14,17 @@ import {
   type NoteIndexItem,
 } from "@/services/notes/notesIndex";
 import { SearchBar } from "@/components/SearchBar";
+const toNote = (item: NoteIndexItem): Note => ({
+  title: item.title ||
+    (item.summary.match(/^#{1,3}\s+(.+)$/m)?.[1]?.trim()) ||
+    item.noteId.split("/").pop()?.replace(/\.md$/, "") ||
+    "Untitled",
+  content: item.summary,
+  filePath: item.noteId,
+  lastUpdated: item.updatedAt,
+  isPinned: item.status === "PINNED",
+});
+const PAGE_SIZE = 20;
 export default function Index() {
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -21,6 +32,9 @@ export default function Index() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [notes, setNotes] = useState<Note[]>([]);
+  const [cursor, setCursor] = useState<Record<string, unknown> | undefined>(undefined);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const theme = useExtendedTheme();
   const { showToast } = useToastStore();
 
@@ -33,31 +47,10 @@ export default function Index() {
     setError(null);
 
     try {
-      // Fetch pinned and unpinned notes from DynamoDB index.
-      const [pinnedResult, unpinnedResult] = await Promise.all([
-        NotesIndexService.instance.listByStatus("PINNED", 50),
-        NotesIndexService.instance.listByStatus("UNPINNED", 50),
-      ]);
-
-      const toNote = (item: NoteIndexItem): Note => ({
-        // Use title from index if available, otherwise extract from summary or filename
-        title: item.title || 
-          (item.summary.match(/^#{1,3}\s+(.+)$/m)?.[1]?.trim()) ||
-          item.noteId.split("/").pop()?.replace(/\.md$/, "") || 
-          "Untitled",
-        // We treat the index summary as the card preview content.
-        content: item.summary,
-        filePath: item.noteId,
-        lastUpdated: item.updatedAt,
-        isPinned: item.status === "PINNED",
-      });
-
-      const combinedNotes: Note[] = [
-        ...pinnedResult.items.map(toNote),
-        ...unpinnedResult.items.map(toNote),
-      ];
-
-      setNotes(combinedNotes);
+      const result = await NotesIndexService.instance.listAllNotes(PAGE_SIZE);
+      setNotes(result.items.map(toNote));
+      setCursor(result.cursor);
+      setHasMore(!!result.cursor);
     } catch (e) {
       console.warn("Failed to load notes from index:", e);
       setError("Failed to load notes");
@@ -72,7 +65,34 @@ export default function Index() {
 
   const handleRefresh = useCallback(() => {
     fetchNotes(true);
+    setCursor(undefined);
+    setHasMore(true);
   }, [fetchNotes]);
+
+  const loadMoreNotes = useCallback(async () => {
+    if (!hasMore || isLoadingMore || searchQuery.trim()) {
+      return;
+    }
+
+    setIsLoadingMore(true);
+    try {
+      const result = await NotesIndexService.instance.listAllNotes(
+        PAGE_SIZE,
+        cursor
+      );
+
+      setNotes((prev) => [
+        ...prev,
+        ...result.items.map(toNote),
+      ]);
+      setCursor(result.cursor);
+      setHasMore(!!result.cursor);
+    } catch (e) {
+      console.warn("Failed to load more notes:", e);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [hasMore, isLoadingMore, searchQuery, cursor, toNote]);
 
   useEffect(() => {
     fetchNotes();
@@ -82,7 +102,7 @@ export default function Index() {
     try {
       const success = await NoteService.instance.deleteNote(note.filePath);
       if (success) {
-        setNotes((prevNotes) => prevNotes.filter((n) => n.filePath !== note.filePath));
+        setNotes((prev) => prev.filter((n) => n.filePath !== note.filePath));
         showToast(`Deleted "${note.title}"`);
       } else {
         showToast('Failed to delete note');
@@ -92,6 +112,7 @@ export default function Index() {
       showToast('Failed to delete note');
     }
   }, [showToast]);
+
 
   const filteredNotes = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -126,6 +147,9 @@ export default function Index() {
         onDelete={handleDeleteNote}
         refreshing={refreshing}
         onRefresh={handleRefresh}
+        onEndReached={searchQuery.trim() ? undefined : loadMoreNotes}
+        isLoadingMore={isLoadingMore}
+        hasMore={hasMore && !searchQuery.trim()}
       />
       <TouchableOpacity activeOpacity={0.8} style={styles.fab} onPress={() => router.push('/editor')}><MaterialIcons name="add" size={28} color={theme.colors.card} /></TouchableOpacity>
     </View>
@@ -133,7 +157,6 @@ export default function Index() {
 }
 
 
-// Styles are created dynamically based on theme
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
   return StyleSheet.create({
     container: {

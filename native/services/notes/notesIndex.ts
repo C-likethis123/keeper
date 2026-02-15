@@ -40,6 +40,16 @@ export interface NoteIndexItem {
   sortTimestamp: number;
   createdAt: number;
   updatedAt: number;
+  /**
+   * Partition key for the new AllNotesIndex GSI (constant value "NOTES").
+   * Used for unified querying of all notes.
+   */
+  allNotesPartition?: string;
+  /**
+   * Composite sort key for the new AllNotesIndex GSI.
+   * Format: "1#timestamp" for pinned, "0#timestamp" for unpinned.
+   */
+  compositeSortKey?: string;
 }
 
 export interface ListNotesResult {
@@ -99,6 +109,8 @@ function createDynamoDocumentClient(): DynamoDBDocumentClient {
 const TABLE_NAME = process.env.EXPO_PUBLIC_NOTES_INDEX_TABLE;
 const STATUS_INDEX_NAME =
   process.env.EXPO_PUBLIC_NOTES_STATUS_INDEX ?? "StatusIndex";
+const ALL_NOTES_INDEX_NAME =
+  process.env.EXPO_PUBLIC_NOTES_ALL_NOTES_INDEX ?? "AllNotesIndex";
 
 if (!TABLE_NAME) {
   // Fail fast so misconfiguration is obvious during development.
@@ -109,6 +121,16 @@ if (!TABLE_NAME) {
 }
 
 const docClient = createDynamoDocumentClient();
+
+/**
+ * Creates a composite sort key for the AllNotesIndex GSI.
+ * Format: "1#timestamp" for pinned notes, "0#timestamp" for unpinned notes.
+ * Timestamp is zero-padded to ensure consistent string length for sorting.
+ */
+export function createSortKey(isPinned: boolean, updatedAt: number): string {
+  const prefix = isPinned ? "1" : "0";
+  return `${prefix}#${updatedAt.toString().padStart(13, "0")}`;
+}
 
 export class NotesIndexService {
   static instance = new NotesIndexService();
@@ -133,11 +155,19 @@ export class NotesIndexService {
   }
 
   async upsertNote(item: NoteIndexItem): Promise<void> {
+    const isPinned = item.status === "PINNED";
+    const compositeSortKey = createSortKey(isPinned, item.updatedAt);
+    
+    const itemWithNewSchema: NoteIndexItem = {
+      ...item,
+      allNotesPartition: "NOTES",
+      compositeSortKey,
+    };
 
     await docClient.send(
       new PutCommand({
         TableName: TABLE_NAME,
-        Item: item,
+        Item: itemWithNewSchema,
       })
     );
   }
@@ -172,6 +202,58 @@ export class NotesIndexService {
         },
         ExpressionAttributeValues: {
           ":status": status,
+        },
+        Limit: limit,
+        ScanIndexForward: false,
+        ExclusiveStartKey: cursor,
+      })
+    );
+
+    return {
+      items: (result.Items as NoteIndexItem[]) ?? [],
+      cursor: result.LastEvaluatedKey as Record<string, unknown> | undefined,
+    };
+  }
+
+  /**
+   * Fetch all notes for a given status by automatically paginating through all results.
+   * Useful for fetching all pinned notes where we want the complete list.
+   */
+  async listAllByStatus(
+    status: NoteIndexStatus,
+    batchSize = 100
+  ): Promise<NoteIndexItem[]> {
+    const allItems: NoteIndexItem[] = [];
+    let cursor: Record<string, unknown> | undefined = undefined;
+
+    do {
+      const result = await this.listByStatus(status, batchSize, cursor);
+      allItems.push(...result.items);
+      cursor = result.cursor;
+    } while (cursor);
+
+    return allItems;
+  }
+
+  /**
+   * List all notes (pinned and unpinned) using the new AllNotesIndex GSI.
+   * Results are sorted with pinned notes first, then by updatedAt descending.
+   * Supports pagination via the cursor parameter.
+   */
+  async listAllNotes(
+    limit = 20,
+    cursor?: Record<string, unknown>
+  ): Promise<ListNotesResult> {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: ALL_NOTES_INDEX_NAME,
+        KeyConditionExpression: "#pk = :pk",
+        ExpressionAttributeNames: {
+          "#pk": "allNotesPartition",
+        },
+        ExpressionAttributeValues: {
+          ":pk": "NOTES",
         },
         Limit: limit,
         ScanIndexForward: false,

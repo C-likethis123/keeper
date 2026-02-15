@@ -1,19 +1,25 @@
-import { View, FlatList, useWindowDimensions, RefreshControl } from "react-native";
+import { View, FlatList, useWindowDimensions, RefreshControl, ActivityIndicator } from "react-native";
 import EmptyState from "./EmptyState";
 import NoteCard from "@/components/NoteCard";
 import { Note } from "@/services/notes/types";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 
-export default function NoteGrid({ 
-  notes, 
+export default function NoteGrid({
+  notes,
   onDelete,
   refreshing = false,
   onRefresh,
-}: { 
+  onEndReached,
+  isLoadingMore = false,
+  hasMore = false,
+}: {
   notes: Note[];
   onDelete?: (note: Note) => void;
   refreshing?: boolean;
   onRefresh: () => void;
+  onEndReached?: () => void;
+  isLoadingMore?: boolean;
+  hasMore?: boolean;
 }) {
   const { width } = useWindowDimensions();
   const theme = useExtendedTheme();
@@ -32,31 +38,40 @@ export default function NoteGrid({
   if (width > 900) numColumns = 4;
   else if (width > 600) numColumns = 3;
 
-  const pinned = notes.filter(n => n.isPinned);
-  const unpinned = notes.filter(n => !n.isPinned);
-  const sortedNotes = [...pinned, ...unpinned];
+
+
+  const handleEndReached = () => {
+    if (hasMore && !isLoadingMore && onEndReached) {
+      onEndReached();
+    }
+  };
 
   return (
     <FlatList
       style={{ flex: 1, width: '100%' }}
-      data={sortedNotes}
+      data={notes}
       key={numColumns}
       numColumns={numColumns}
       keyExtractor={(item) => item.filePath}
       columnWrapperStyle={numColumns > 1 ? { gap: 8, marginBottom: 8 } : undefined}
-      contentContainerStyle={{ 
+      contentContainerStyle={{
         padding: 8,
-        paddingBottom: 100, // Extra padding to ensure scrollability for pull-to-refresh
+        paddingBottom: 100,
       }}
       showsVerticalScrollIndicator
       refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.colors.primary}
-            colors={[theme.colors.primary]}
-          />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={theme.colors.primary}
+          colors={[theme.colors.primary]}
+        />
       }
+      onEndReached={handleEndReached}
+      onEndReachedThreshold={0.5}
+      ListFooterComponent={isLoadingMore ? <View style={{ padding: 16, alignItems: 'center' }}>
+        <ActivityIndicator size="small" color={theme.colors.primary} />
+      </View> : null}
       renderItem={({ item }) => (
         <View style={{ flex: 1 / numColumns }}>
           <NoteCard note={item} onDelete={onDelete} />
