@@ -1,9 +1,0 @@
-name: Expo docs
-version: 0.0.1
-schema: v1
-mcpServers:
-  - name: Expo docs
-    command: npx
-    args:
-      - "expo-local-docs-mcp"
-    env: {}

@@ -1,172 +1,123 @@
 import { File, Directory } from 'expo-file-system';
 
+const MODE_FILE = 0o644;
+
+function errWithCode(message: string, code: string): Error {
+    const e = new Error(message);
+    (e as Error & { code: string }).code = code;
+    return e;
+}
+
 export function createExpoFileSystemAdapter() {
     return {
         promises: {
             async readFile(filePath: string, options?: { encoding?: BufferEncoding }): Promise<Uint8Array | string> {
                 const file = new File(filePath);
-                if (!file.exists) {
-                    const error = new Error(`File not found: ${filePath}`);
-                    (error as any).code = 'ENOENT';
-                    throw error;
-                }
-
-                const content = await file.text();
+                if (!file.exists) throw errWithCode(`File not found: ${filePath}`, 'ENOENT');
 
                 if (options?.encoding === 'utf8' || options?.encoding === 'utf-8') {
-                    return content;
+                    return await file.text();
                 }
-
-                // Convert string to Uint8Array for binary mode
-                const encoder = new TextEncoder();
-                return encoder.encode(content);
+                return await file.bytes();
             },
 
             async writeFile(filePath: string, data: Uint8Array | string, options?: { encoding?: BufferEncoding }): Promise<void> {
-                try {
-                    let content: string;
-
-                    if (data instanceof Uint8Array) {
-                        const decoder = new TextDecoder('utf-8');
-                        content = decoder.decode(data);
-                    } else {
-                        content = data;
+                const content = typeof data === 'string' ? data : new TextDecoder('utf-8').decode(data);
+                const normalizedPath = filePath.startsWith('file://') ? filePath.slice(7) : filePath;
+                const lastSlash = normalizedPath.lastIndexOf('/');
+                if (lastSlash > 0) {
+                    const parentDir = new Directory(normalizedPath.slice(0, lastSlash));
+                    if (!parentDir.exists) {
+                        await Promise.resolve(parentDir.create({ intermediates: true }));
                     }
-
-                    // Ensure parent directory exists before writing
-                    // Extract parent directory path (remove file:// prefix if present, then get dirname)
-                    let normalizedPath = filePath;
-                    if (normalizedPath.startsWith('file://')) {
-                        normalizedPath = normalizedPath.substring(7);
-                    }
-                    
-                    // Find last slash to get parent directory
-                    const lastSlashIndex = normalizedPath.lastIndexOf('/');
-                    if (lastSlashIndex > 0) {
-                        const parentDirPath = normalizedPath.substring(0, lastSlashIndex);
-                        const parentDir = new Directory(parentDirPath);
-                        if (!parentDir.exists) {
-                            // Create parent directory with all intermediate directories
-                            await Promise.resolve(parentDir.create({ intermediates: true }));
-                        }
-                    }
-
-                    const file = new File(filePath);
-                    // Ensure write is awaited (it should already be async)
-                    await file.write(content);
-                } catch (error) {
-                    console.error('Error writing file:', filePath, error);
-                    throw error;
                 }
+                const file = new File(filePath);
+                if (!file.exists) await Promise.resolve(file.create());
+                await Promise.resolve(file.write(content));
             },
 
             async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
                 const dir = new Directory(dirPath);
-                if (!dir.exists) {
-                    // Ensure create is awaited if it's async, or wrapped in Promise.resolve if sync
-                    await Promise.resolve(dir.create({ intermediates: options?.recursive ?? false }));
-                }
+                if (dir.exists) throw errWithCode(`Directory exists: ${dirPath}`, 'EEXIST');
+                await Promise.resolve(dir.create({ intermediates: options?.recursive ?? false }));
             },
 
             async rmdir(dirPath: string): Promise<void> {
                 const dir = new Directory(dirPath);
-                if (!dir.exists) {
-                    const error = new Error(`Directory not found: ${dirPath}`);
-                    (error as any).code = 'ENOENT';
-                    throw error;
-                }
-                // Ensure delete is awaited if it's async, or wrapped in Promise.resolve if sync
+                if (!dir.exists) throw errWithCode(`Directory not found: ${dirPath}`, 'ENOENT');
                 await Promise.resolve(dir.delete());
             },
 
             async readdir(dirPath: string): Promise<string[]> {
                 const dir = new Directory(dirPath);
-                if (!dir.exists) {
-                    const error = new Error(`Directory not found: ${dirPath}`);
-                    (error as any).code = 'ENOENT';
-                    throw error;
-                }
-                // list() may be sync, but since this is an async function, we can return directly
-                const entries = dir.list();
-                // Return empty array for empty directories (not an error)
-                return entries.map((entry) => entry.name);
+                const file = new File(dirPath);
+                if (file.exists) throw errWithCode(`Not a directory: ${dirPath}`, 'ENOTDIR');
+                if (!dir.exists) throw errWithCode(`Directory not found: ${dirPath}`, 'ENOENT');
+                return dir.list().map((entry) => entry.name);
             },
 
-            async stat(filePath: string): Promise<{ isFile(): boolean; isDirectory(): boolean; size: number; mtime: Date; ctime: Date }> {
-                try {
-                    const file = new File(filePath);
-                    const dir = new Directory(filePath);
+            async stat(filePath: string) {
+                const file = new File(filePath);
+                const dir = new Directory(filePath);
+                if (!file.exists && !dir.exists) throw errWithCode(`File not found: ${filePath}`, 'ENOENT');
 
-                    if (!file.exists && !dir.exists) {
-                        const error = new Error(`File not found: ${filePath}`);
-                        (error as any).code = 'ENOENT';
-                        throw error;
-                    }
+                const isFile = file.exists;
+                const mtimeMs = isFile && file.modificationTime != null ? file.modificationTime : 0;
+                const ctimeMs = mtimeMs;
 
-                    const isFile = file.exists;
-                    const isDir = dir.exists;
-
-                    return {
-                        isFile: () => isFile,
-                        isDirectory: () => isDir,
-                        size: isFile ? file.size : 0,
-                        mtime: isFile && file.modificationTime ? new Date(file.modificationTime * 1000) : new Date(),
-                        ctime: isFile && file.modificationTime ? new Date(file.modificationTime * 1000) : new Date(),
-                    };
-                } catch (error) {
-                    // Re-throw with ENOENT code for isomorphic-git compatibility
-                    if (error instanceof Error && !(error as any).code) {
-                        (error as any).code = 'ENOENT';
-                    }
-                    throw error;
-                }
+                return {
+                    type: isFile ? 'file' : 'dir',
+                    mode: MODE_FILE,
+                    size: isFile ? file.size : 0,
+                    ino: 1,
+                    mtimeMs,
+                    ctimeMs,
+                    uid: 1,
+                    gid: 1,
+                    dev: 1,
+                    isFile: () => isFile,
+                    isDirectory: () => dir.exists,
+                    isSymbolicLink: () => false,
+                };
             },
 
-            async lstat(filePath: string): Promise<{ isFile(): boolean; isDirectory(): boolean; size: number; mtime: Date; ctime: Date }> {
-                // expo-file-system doesn't distinguish between stat and lstat
+            async lstat(filePath: string) {
                 return this.stat(filePath);
+            },
+
+            async rename(oldPath: string, newPath: string): Promise<void> {
+                const source = new File(oldPath);
+                if (!source.exists) throw errWithCode(`File not found: ${oldPath}`, 'ENOENT');
+                source.move(new File(newPath));
             },
 
             async unlink(filePath: string): Promise<void> {
                 const file = new File(filePath);
-                if (!file.exists) {
-                    const error = new Error(`File not found: ${filePath}`);
-                    (error as any).code = 'ENOENT';
-                    throw error;
-                }
-                // Ensure delete is awaited if it's async, or wrapped in Promise.resolve if sync
+                if (!file.exists) throw errWithCode(`File not found: ${filePath}`, 'ENOENT');
                 await Promise.resolve(file.delete());
             },
 
             async rm(filePath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
                 const file = new File(filePath);
                 const dir = new Directory(filePath);
-
                 if (dir.exists) {
                     if (options?.recursive) {
                         await Promise.resolve(dir.delete());
                     } else {
-                        const error = new Error(`Cannot remove directory without recursive option: ${filePath}`);
-                        (error as any).code = 'EISDIR';
-                        throw error;
+                        throw errWithCode(`Cannot remove directory without recursive option: ${filePath}`, 'EISDIR');
                     }
                 } else if (file.exists) {
                     await Promise.resolve(file.delete());
                 } else if (!options?.force) {
-                    const error = new Error(`File not found: ${filePath}`);
-                    (error as any).code = 'ENOENT';
-                    throw error;
+                    throw errWithCode(`File not found: ${filePath}`, 'ENOENT');
                 }
-                // If force is true and file doesn't exist, silently succeed
             },
 
-            async readlink(filePath: string): Promise<string> {
-                // TODO: expo-file-system doesn't support symlinks - no modern equivalent available
+            async readlink(_filePath: string): Promise<string> {
                 throw new Error('Symlinks are not supported in expo-file-system');
             },
 
-            async symlink(target: string, filePath: string): Promise<void> {
-                // TODO: expo-file-system doesn't support symlinks - no modern equivalent available
+            async symlink(_target: string, _filePath: string): Promise<void> {
                 throw new Error('Symlinks are not supported in expo-file-system');
             },
         },

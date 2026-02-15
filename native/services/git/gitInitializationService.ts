@@ -1,13 +1,29 @@
 import * as git from 'isomorphic-git';
 import { Directory, File } from 'expo-file-system';
 import { createExpoFileSystemAdapter } from './expoFileSystemAdapter';
+
+const fs = createExpoFileSystemAdapter();
 import { NOTES_ROOT } from '@/services/notes/Notes';
-import { deleteGitDirectory } from '@/utils/deleteGitDirectory';
-import { createGitHttpClient } from './gitHttpClient';
-// Ensure Buffer is available for isomorphic-git
-import { Buffer } from 'buffer';
-if (typeof global.Buffer === 'undefined') {
-    global.Buffer = Buffer;
+import http from 'isomorphic-git/http/web';
+import './patch-FileReader';
+
+export interface GitHubConfig {
+    owner: string;
+    repo: string;
+    token: string;
+}
+
+function assertGitHubConfig(): GitHubConfig {
+    const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
+    const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
+    const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
+    if (!owner || !repo) {
+        throw new Error('GitHub owner and repo not configured. Set EXPO_PUBLIC_GITHUB_OWNER and EXPO_PUBLIC_GITHUB_REPO');
+    }
+    if (!token) {
+        throw new Error('GitHub token not configured. Set EXPO_PUBLIC_GITHUB_TOKEN');
+    }
+    return { owner, repo, token };
 }
 
 export interface RepositoryStatus {
@@ -27,58 +43,14 @@ export interface InitializationResult {
 
 export class GitInitializationService {
     static readonly instance = new GitInitializationService();
-
-    private fs: ReturnType<typeof createExpoFileSystemAdapter>;
-    private isInitializing = false;
+    private readonly config = assertGitHubConfig();
 
     private constructor() {
-        this.fs = createExpoFileSystemAdapter();
-    }
 
+    }
     async initialize(): Promise<InitializationResult> {
         console.log('[GitInitializationService] Starting initialization...');
-        
-        if (this.isInitializing) {
-            console.log('[GitInitializationService] Initialization already in progress');
-            return {
-                success: false,
-                wasCloned: false,
-                error: 'Initialization already in progress',
-            };
-        }
-
-        this.isInitializing = true;
-
         try {
-            const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
-            const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
-            const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
-
-            console.log('[GitInitializationService] Configuration check:');
-            console.log(`  - Owner: ${owner ? '✓' : '✗'} ${owner || 'NOT SET'}`);
-            console.log(`  - Repo: ${repo ? '✓' : '✗'} ${repo || 'NOT SET'}`);
-            console.log(`  - Token: ${token ? '✓ (length: ' + token.length + ')' : '✗ NOT SET'}`);
-
-            if (!owner || !repo) {
-                const error = 'GitHub owner and repo not configured. Please set EXPO_PUBLIC_GITHUB_OWNER and EXPO_PUBLIC_GITHUB_REPO';
-                console.error(`[GitInitializationService] ${error}`);
-                return {
-                    success: false,
-                    wasCloned: false,
-                    error,
-                };
-            }
-
-            if (!token) {
-                const error = 'GitHub token not configured. Please set EXPO_PUBLIC_GITHUB_TOKEN';
-                console.error(`[GitInitializationService] ${error}`);
-                return {
-                    success: false,
-                    wasCloned: false,
-                    error,
-                };
-            }
-
             console.log('[GitInitializationService] Checking if local repository exists and is valid...');
             const repoValidation = await this.validateRepository();
             console.log(`[GitInitializationService] Repository validation: ${repoValidation.isValid ? 'VALID' : 'INVALID'}`);
@@ -90,15 +62,9 @@ export class GitInitializationService {
             if (!repoValidation.isValid) {
                 if (repoValidation.exists) {
                     console.log('[GitInitializationService] Invalid repository detected, cleaning up before fresh clone...');
-                    const cleanupResult = await deleteGitDirectory();
-                    if (!cleanupResult.success) {
-                        console.warn(`[GitInitializationService] Failed to clean invalid repository: ${cleanupResult.error}`);
-                        // Continue anyway - clone might still work
-                    } else {
-                        console.log('[GitInitializationService] Invalid repository cleaned up successfully');
-                    }
+                    await fs.promises.rmdir(NOTES_ROOT);
                 }
-                
+
                 console.log('[GitInitializationService] Starting fresh clone...');
                 const cloned = await this.cloneRepository();
                 if (!cloned) {
@@ -166,14 +132,14 @@ export class GitInitializationService {
                 wasCloned: !repoValidation.isValid,
                 status,
             };
-            
+
             console.log('[GitInitializationService] Initialization completed successfully:');
             console.log(`  - Was cloned: ${result.wasCloned ? 'YES' : 'NO'}`);
             console.log(`  - Current branch: ${status.currentBranch}`);
             console.log(`  - Has uncommitted: ${status.hasUncommitted}`);
             console.log(`  - Is behind: ${status.isBehind}`);
             console.log(`  - Is ahead: ${status.isAhead}`);
-            
+
             return result;
         } catch (error) {
             console.error('[GitInitializationService] Initialization error:', error);
@@ -211,45 +177,45 @@ export class GitInitializationService {
             const gitDir = new Directory(gitDirPath);
             const dirExists = gitDir.exists;
             console.log(`[GitInitializationService] Checking ${gitDirPath}: ${dirExists ? 'EXISTS' : 'NOT FOUND'}`);
-            
+
             // If directory doesn't exist, repo doesn't exist
             if (!dirExists) {
                 return { exists: false, isValid: false, reason: 'Directory does not exist' };
             }
-            
+
             // Directory exists, verify it's a valid git repository
             const headFile = new File(`${gitDirPath}/HEAD`);
             const configFile = new File(`${gitDirPath}/config`);
-            
+
             if (!headFile.exists) {
                 return { exists: true, isValid: false, reason: 'HEAD file not found - repository is incomplete' };
             }
-            
+
             if (!configFile.exists) {
                 return { exists: true, isValid: false, reason: 'Config file not found - repository is incomplete' };
             }
-            
+
             // Try to verify the repository is actually usable by checking if we can read basic info
             try {
                 // Try to list branches - this will fail if the repository is corrupted
                 await git.listBranches({
-                    fs: this.fs,
+                    fs: fs,
                     dir: NOTES_ROOT,
                 });
-                
+
                 console.log(`[GitInitializationService] Valid git repository found`);
                 return { exists: true, isValid: true };
             } catch (gitError) {
                 const errorMsg = gitError instanceof Error ? gitError.message : String(gitError);
                 console.warn(`[GitInitializationService] Repository appears corrupted: ${errorMsg}`);
-                
+
                 // Check for specific error types that indicate corruption
-                if (errorMsg.includes('CommitNotFetchedError') || 
+                if (errorMsg.includes('CommitNotFetchedError') ||
                     errorMsg.includes('not available locally') ||
                     errorMsg.includes('NotFoundError')) {
                     return { exists: true, isValid: false, reason: `Repository corrupted: ${errorMsg}` };
                 }
-                
+
                 return { exists: true, isValid: false, reason: `Repository validation failed: ${errorMsg}` };
             }
         } catch (error) {
@@ -263,31 +229,21 @@ export class GitInitializationService {
 
     private async cloneRepository(): Promise<boolean> {
         try {
-            const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
-            const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
-            const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
-
-            if (!owner || !repo) {
-                throw new Error('GitHub owner and repo not configured');
-            }
-
-            if (!token) {
-                throw new Error('GitHub token not configured');
-            }
+            const { token, owner } = this.config;
 
             // Use clean URL without token - isomorphic-git will handle auth via token parameter
             const url = `https://github.com/${owner}/${repo}.git`;
 
             console.log('[GitInitializationService] Starting clone...');
-            
+
             // Clone without checking out to avoid CommitNotFetchedError
             // We'll checkout manually after the clone completes
             await git.clone({
-                fs: this.fs,
+                fs: fs,
                 dir: NOTES_ROOT,
                 url,
-                onAuth: () => ({ username: token, password: '' }),
-                http: createGitHttpClient(owner, repo),
+                onAuth: () => ({ username: owner, password: token }),
+                http,
                 depth: 1,
                 singleBranch: true,
                 noCheckout: true, // Don't checkout during clone to avoid CommitNotFetchedError
@@ -300,21 +256,21 @@ export class GitInitializationService {
             });
 
             console.log('[GitInitializationService] Clone completed, checking out branch...');
-            
+
             // Wait a moment for file system operations to complete
             await new Promise(resolve => setTimeout(resolve, 200));
-            
+
             // Now checkout the branch manually after clone completes
             try {
                 // First, try to determine the default branch (usually 'main' or 'master')
                 let branchToCheckout = 'main';
                 try {
                     const remoteBranches = await git.listBranches({
-                        fs: this.fs,
+                        fs: fs,
                         dir: NOTES_ROOT,
                         remote: 'origin',
                     });
-                    
+
                     // Prefer 'main', fallback to 'master', or use first available
                     if (remoteBranches.includes('origin/main')) {
                         branchToCheckout = 'main';
@@ -328,14 +284,14 @@ export class GitInitializationService {
                 } catch (branchError) {
                     console.warn('[GitInitializationService] Could not list branches, defaulting to main:', branchError);
                 }
-                
+
                 // Checkout the branch
                 await git.checkout({
-                    fs: this.fs,
+                    fs: fs,
                     dir: NOTES_ROOT,
                     ref: branchToCheckout,
                 });
-                
+
                 console.log(`[GitInitializationService] Successfully checked out branch: ${branchToCheckout}`);
             } catch (checkoutError) {
                 console.error('[GitInitializationService] Error during checkout:', checkoutError);
@@ -374,29 +330,19 @@ export class GitInitializationService {
 
                 // If clone fails due to repository corruption (CommitNotFetchedError, etc.),
                 // clean up and suggest retry
-                if (errorMessage.includes('commitnotfetched') || 
+                if (errorMessage.includes('commitnotfetched') ||
                     errorMessage.includes('not available locally') ||
                     errorMessage.includes('notfounderror')) {
                     console.error('[GitInitializationService] Clone failed due to repository corruption');
                     console.error('[GitInitializationService] Attempting to clean up corrupted repository...');
-                    
-                    const cleanupResult = await deleteGitDirectory();
-                    if (cleanupResult.success) {
-                        console.log('[GitInitializationService] Corrupted repository cleaned up. Please retry initialization.');
-                    } else {
-                        console.warn(`[GitInitializationService] Failed to clean corrupted repository: ${cleanupResult.error}`);
-                    }
-                    
+
+                    await fs.promises.rmdir(NOTES_ROOT);
                     return false;
                 }
 
                 // Log authentication errors with more detail
                 if (errorMessage.includes('authentication failed') || errorMessage.includes('401') || errorMessage.includes('403')) {
                     console.error('[GitInitializationService] Authentication error details:');
-                    console.error('  - Token present:', !!process.env.EXPO_PUBLIC_GITHUB_TOKEN);
-                    console.error('  - Token length:', process.env.EXPO_PUBLIC_GITHUB_TOKEN?.length || 0);
-                    console.error('  - Owner:', process.env.EXPO_PUBLIC_GITHUB_OWNER);
-                    console.error('  - Repo:', process.env.EXPO_PUBLIC_GITHUB_REPO);
                     console.error('  - Error:', error.message);
                     return false;
                 }
@@ -455,7 +401,7 @@ export class GitInitializationService {
 
             try {
                 const branches = await git.listBranches({
-                    fs: this.fs,
+                    fs: fs,
                     dir: NOTES_ROOT,
                 });
                 currentBranch = branches.find((b) => !b.startsWith('origin/')) || 'main';
@@ -468,16 +414,16 @@ export class GitInitializationService {
             let headCommitSha: string | undefined;
             try {
                 const headSha = await git.resolveRef({
-                    fs: this.fs,
+                    fs: fs,
                     dir: NOTES_ROOT,
                     ref: 'HEAD',
                 });
                 headCommitSha = headSha;
-                
+
                 // Try to read the commit to verify it exists
                 try {
                     await git.readCommit({
-                        fs: this.fs,
+                        fs: fs,
                         dir: NOTES_ROOT,
                         oid: headSha,
                     });
@@ -498,13 +444,13 @@ export class GitInitializationService {
                     console.log('[GitInitializationService] Successfully fetched missing commit');
                     // Wait a bit longer for file system operations
                     await new Promise(resolve => setTimeout(resolve, 500));
-                    
+
                     // Re-check if commit exists now - try multiple times with delays
                     let commitFound = false;
                     for (let attempt = 0; attempt < 3; attempt++) {
                         try {
                             await git.readCommit({
-                                fs: this.fs,
+                                fs: fs,
                                 dir: NOTES_ROOT,
                                 oid: headCommitSha,
                             });
@@ -519,16 +465,16 @@ export class GitInitializationService {
                             }
                         }
                     }
-                    
+
                     if (!commitFound) {
                         console.warn('[GitInitializationService] Commit still not found after fetch attempt - attempting recovery');
                         // Try to recover by checking out remote branch
                         await this.recoverFromMissingCommit(currentBranch);
-                        
+
                         // After recovery, try one more time to see if commit exists
                         try {
                             await git.readCommit({
-                                fs: this.fs,
+                                fs: fs,
                                 dir: NOTES_ROOT,
                                 oid: headCommitSha,
                             });
@@ -550,7 +496,7 @@ export class GitInitializationService {
             if (headCommitExists) {
                 try {
                     const statusMatrix = await git.statusMatrix({
-                        fs: this.fs,
+                        fs: fs,
                         dir: NOTES_ROOT,
                     });
 
@@ -571,7 +517,7 @@ export class GitInitializationService {
             if (headCommitExists) {
                 try {
                     const log = await git.log({
-                        fs: this.fs,
+                        fs: fs,
                         dir: NOTES_ROOT,
                         depth: 1,
                     });
@@ -584,14 +530,14 @@ export class GitInitializationService {
                 // If HEAD commit doesn't exist, try to get commit from remote branch
                 try {
                     const remoteBranches = await git.listBranches({
-                        fs: this.fs,
+                        fs: fs,
                         dir: NOTES_ROOT,
                         remote: 'origin',
                     });
                     const remoteBranch = remoteBranches.find(b => b === 'origin/main' || b === 'origin/master');
                     if (remoteBranch) {
                         const remoteLog = await git.log({
-                            fs: this.fs,
+                            fs: fs,
                             dir: NOTES_ROOT,
                             ref: remoteBranch,
                             depth: 1,
@@ -614,7 +560,7 @@ export class GitInitializationService {
             } catch (remoteError) {
                 remoteStatusError = remoteError instanceof Error ? remoteError : new Error(String(remoteError));
                 console.warn('[GitInitializationService] Could not get remote status:', remoteError);
-                
+
                 // If it's an auth error, we can't sync, but we should note it
                 const errorMsg = remoteStatusError.message;
                 if (errorMsg.includes('401') || errorMsg.includes('403')) {
@@ -654,29 +600,22 @@ export class GitInitializationService {
 
     private async fetchRemoteStatus(): Promise<{ isBehind: boolean; isAhead: boolean }> {
         try {
-            const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
-            const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
-            const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
-
-            if (!owner || !repo || !token) {
-                return { isBehind: false, isAhead: false };
-            }
-
+            const { token, owner } = this.config;
             await git.fetch({
-                fs: this.fs,
+                fs,
                 dir: NOTES_ROOT,
-                onAuth: () => ({ username: token, password: '' }),
-                http: createGitHttpClient(owner, repo),
+                onAuth: () => ({ username: owner, password: token }),
+                http,
                 remote: 'origin',
             });
 
             const localBranches = await git.listBranches({
-                fs: this.fs,
+                fs: fs,
                 dir: NOTES_ROOT,
             });
 
             const remoteBranches = await git.listBranches({
-                fs: this.fs,
+                fs: fs,
                 dir: NOTES_ROOT,
                 remote: 'origin',
             });
@@ -689,14 +628,14 @@ export class GitInitializationService {
             }
 
             const localLog = await git.log({
-                fs: this.fs,
+                fs: fs,
                 dir: NOTES_ROOT,
                 ref: currentBranch,
                 depth: 1,
             });
 
             const remoteLog = await git.log({
-                fs: this.fs,
+                fs: fs,
                 dir: NOTES_ROOT,
                 ref: remoteBranch,
                 depth: 1,
@@ -722,18 +661,18 @@ export class GitInitializationService {
                 // Use findMergeBase to find the common ancestor
                 // First, resolve the refs to commit OIDs
                 const localOid = await git.resolveRef({
-                    fs: this.fs,
+                    fs: fs,
                     dir: NOTES_ROOT,
                     ref: currentBranch,
                 });
                 const remoteOid = await git.resolveRef({
-                    fs: this.fs,
+                    fs: fs,
                     dir: NOTES_ROOT,
                     ref: remoteBranch,
                 });
-                
+
                 const mergeBases = await git.findMergeBase({
-                    fs: this.fs,
+                    fs: fs,
                     dir: NOTES_ROOT,
                     oids: [localOid, remoteOid],
                 });
@@ -756,20 +695,20 @@ export class GitInitializationService {
                     // Diverged - both have moved
                     // Count commits from merge base to each branch
                     const localHistory = await git.log({
-                        fs: this.fs,
+                        fs: fs,
                         dir: NOTES_ROOT,
                         ref: currentBranch,
                     });
                     const remoteHistory = await git.log({
-                        fs: this.fs,
+                        fs: fs,
                         dir: NOTES_ROOT,
                         ref: remoteBranch,
                     });
-                    
+
                     // Find index of merge base in each history
                     const localBaseIndex = localHistory.findIndex(c => c.oid === mergeBase);
                     const remoteBaseIndex = remoteHistory.findIndex(c => c.oid === mergeBase);
-                    
+
                     // If merge base is found, count commits since then
                     // If not found, assume we're behind (remote has commits we don't have)
                     if (localBaseIndex === -1 && remoteBaseIndex >= 0) {
@@ -790,14 +729,14 @@ export class GitInitializationService {
                 // Fallback: Check if remote commit is in local history
                 try {
                     const localHistory = await git.log({
-                        fs: this.fs,
+                        fs: fs,
                         dir: NOTES_ROOT,
                         ref: currentBranch,
                     });
                     isBehind = !localHistory.some((commit) => commit.oid === remoteCommit);
 
                     const remoteHistory = await git.log({
-                        fs: this.fs,
+                        fs: fs,
                         dir: NOTES_ROOT,
                         ref: remoteBranch,
                     });
@@ -812,14 +751,14 @@ export class GitInitializationService {
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
             console.warn('[GitInitializationService] Remote status check error:', error);
-            
+
             // Log more details about 401 errors
             if (errorMsg.includes('401') || errorMsg.includes('403')) {
                 console.warn('[GitInitializationService] Authentication error - check GitHub token permissions');
                 console.warn('[GitInitializationService] Token needs "repo" scope for private repositories');
                 console.warn('[GitInitializationService] Cannot determine if repository is behind without remote access');
             }
-            
+
             // If we can't check remote status, we can't know if we're behind
             // Return false to avoid false positives, but log that we couldn't check
             return { isBehind: false, isAhead: false };
@@ -832,22 +771,15 @@ export class GitInitializationService {
      */
     private async fetchMissingCommit(commitSha: string): Promise<boolean> {
         try {
-            const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
-            const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
-            const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
-
-            if (!owner || !repo || !token) {
-                console.warn('[GitInitializationService] Cannot fetch commit - GitHub configuration missing');
-                return false;
-            }
+            const { token, owner } = this.config;
 
             // Fetch from remote - this should bring in the missing commit
             // Fetch all branches and tags to ensure we get the commit
             await git.fetch({
-                fs: this.fs,
+                fs: fs,
                 dir: NOTES_ROOT,
-                onAuth: () => ({ username: token, password: '' }),
-                http: createGitHttpClient(owner, repo),
+                onAuth: () => ({ username: owner, password: token }),
+                http,
                 remote: 'origin',
                 singleBranch: false, // Fetch all branches to get the commit
                 tags: true, // Also fetch tags
@@ -860,12 +792,12 @@ export class GitInitializationService {
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
             console.warn(`[GitInitializationService] Failed to fetch missing commit ${commitSha.substring(0, 7)}:`, errorMsg);
-            
+
             if (errorMsg.includes('401') || errorMsg.includes('403')) {
                 console.warn('[GitInitializationService] Authentication failed - cannot fetch missing commit');
                 console.warn('[GitInitializationService] Please check your GitHub token has "repo" scope');
             }
-            
+
             return false;
         }
     }
@@ -876,38 +808,32 @@ export class GitInitializationService {
      */
     private async syncWithRemote(): Promise<{ success: boolean; error?: string }> {
         try {
-            const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
-            const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
-            const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
-
-            if (!owner || !repo || !token) {
-                return { success: false, error: 'GitHub configuration missing' };
-            }
+            const { token, owner } = this.config;
 
             // First, fetch the latest changes
             console.log('[GitInitializationService] Fetching latest changes from remote...');
             await git.fetch({
-                fs: this.fs,
+                fs: fs,
                 dir: NOTES_ROOT,
                 onAuth: () => ({ username: token, password: '' }),
-                http: createGitHttpClient(owner, repo),
+                http,
                 remote: 'origin',
             });
 
             // Get current branch
             const branches = await git.listBranches({
-                fs: this.fs,
+                fs: fs,
                 dir: NOTES_ROOT,
             });
             const currentBranch = branches.find((b) => !b.startsWith('origin/')) || 'main';
             const remoteBranch = `origin/${currentBranch}`;
 
             console.log(`[GitInitializationService] Attempting to merge from ${remoteBranch}...`);
-            
+
             // Try to merge with fast-forward only first (safest, no merge commit needed)
             try {
                 await git.merge({
-                    fs: this.fs,
+                    fs: fs,
                     dir: NOTES_ROOT,
                     ours: currentBranch,
                     theirs: remoteBranch,
@@ -920,7 +846,7 @@ export class GitInitializationService {
                 console.log('[GitInitializationService] Fast-forward not possible, attempting regular merge...');
                 try {
                     await git.merge({
-                        fs: this.fs,
+                        fs: fs,
                         dir: NOTES_ROOT,
                         ours: currentBranch,
                         theirs: remoteBranch,
@@ -952,18 +878,16 @@ export class GitInitializationService {
     private async recoverFromMissingCommit(currentBranch: string): Promise<void> {
         try {
             // First, try to fetch remote branches if they're not available
-            const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
-            const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
-            const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
+            const { token, owner, repo } = this.config;
 
             if (owner && repo && token) {
                 try {
                     console.log('[GitInitializationService] Fetching remote branches for recovery...');
                     await git.fetch({
-                        fs: this.fs,
+                        fs: fs,
                         dir: NOTES_ROOT,
                         onAuth: () => ({ username: token, password: '' }),
-                        http: createGitHttpClient(owner, repo),
+                        http,
                         remote: 'origin',
                         singleBranch: false,
                     });
@@ -978,7 +902,7 @@ export class GitInitializationService {
             let remoteBranches: string[] = [];
             try {
                 remoteBranches = await git.listBranches({
-                    fs: this.fs,
+                    fs: fs,
                     dir: NOTES_ROOT,
                     remote: 'origin',
                 });
@@ -986,46 +910,46 @@ export class GitInitializationService {
             } catch (listError) {
                 console.warn('[GitInitializationService] Could not list remote branches:', listError);
             }
-            
+
             // Try to find a suitable remote branch to checkout
             // Handle both "origin/main" and "main" formats
             // Filter out "HEAD" as it's not a real branch
             const validBranches = remoteBranches.filter(b => b !== 'HEAD' && b !== 'origin/HEAD');
             console.log(`[GitInitializationService] Filtered branches (excluding HEAD): ${validBranches.join(', ')}`);
-            
-            let remoteBranch: string | undefined = validBranches.find(b => 
-                b === `origin/${currentBranch}` || 
-                b === 'origin/main' || 
+
+            let remoteBranch: string | undefined = validBranches.find(b =>
+                b === `origin/${currentBranch}` ||
+                b === 'origin/main' ||
                 b === 'origin/master'
             );
-            
+
             // If not found with prefix, try without prefix
             if (!remoteBranch) {
-                remoteBranch = validBranches.find(b => 
-                    b === currentBranch || 
-                    b === 'main' || 
+                remoteBranch = validBranches.find(b =>
+                    b === currentBranch ||
+                    b === 'main' ||
                     b === 'master'
                 );
             }
-            
+
             console.log(`[GitInitializationService] Selected remote branch for recovery: ${remoteBranch || 'none'}`);
-            
+
             if (remoteBranch) {
                 console.log(`[GitInitializationService] Attempting to checkout ${remoteBranch} to recover...`);
-                
+
                 // Determine the branch name (with or without origin/ prefix)
-                const branchName = remoteBranch.startsWith('origin/') 
-                    ? remoteBranch.replace('origin/', '') 
+                const branchName = remoteBranch.startsWith('origin/')
+                    ? remoteBranch.replace('origin/', '')
                     : remoteBranch;
-                
+
                 // Try multiple strategies
                 let checkoutSuccess = false;
-                
+
                 // Strategy 1: Checkout the remote branch directly (if it has origin/ prefix)
                 if (remoteBranch.startsWith('origin/')) {
                     try {
                         await git.checkout({
-                            fs: this.fs,
+                            fs: fs,
                             dir: NOTES_ROOT,
                             ref: remoteBranch,
                         });
@@ -1035,12 +959,12 @@ export class GitInitializationService {
                         console.warn(`[GitInitializationService] Direct checkout failed:`, checkoutError);
                     }
                 }
-                
+
                 // Strategy 2: Create/checkout local branch tracking remote
                 if (!checkoutSuccess) {
                     try {
                         await git.checkout({
-                            fs: this.fs,
+                            fs: fs,
                             dir: NOTES_ROOT,
                             ref: branchName,
                             track: true,
@@ -1051,12 +975,12 @@ export class GitInitializationService {
                         console.warn(`[GitInitializationService] Tracking branch checkout failed:`, trackError);
                     }
                 }
-                
+
                 // Strategy 3: Just checkout the branch name (might work if it exists)
                 if (!checkoutSuccess) {
                     try {
                         await git.checkout({
-                            fs: this.fs,
+                            fs: fs,
                             dir: NOTES_ROOT,
                             ref: branchName,
                         });
@@ -1066,7 +990,7 @@ export class GitInitializationService {
                         console.warn(`[GitInitializationService] Simple checkout failed:`, simpleCheckoutError);
                     }
                 }
-                
+
                 // Strategy 4: Try to update HEAD to point to origin/main explicitly
                 if (!checkoutSuccess) {
                     try {
@@ -1079,35 +1003,35 @@ export class GitInitializationService {
                             // Try both formats
                             remoteRef = `origin/${remoteBranch}`;
                         }
-                        
+
                         let remoteOid: string;
                         // Try resolving in order: the branch as-is, then with origin/ prefix, then without
                         try {
                             remoteOid = await git.resolveRef({
-                                fs: this.fs,
+                                fs: fs,
                                 dir: NOTES_ROOT,
                                 ref: remoteBranch,
                             });
                         } catch (resolveError1) {
                             try {
                                 remoteOid = await git.resolveRef({
-                                    fs: this.fs,
+                                    fs: fs,
                                     dir: NOTES_ROOT,
                                     ref: remoteRef,
                                 });
                             } catch (resolveError2) {
                                 // Last try: if remoteBranch is "main", try "refs/remotes/origin/main"
                                 remoteOid = await git.resolveRef({
-                                    fs: this.fs,
+                                    fs: fs,
                                     dir: NOTES_ROOT,
                                     ref: `refs/remotes/origin/${branchName}`,
                                 });
                             }
                         }
-                        
+
                         // Update HEAD to point to this commit
                         await git.writeRef({
-                            fs: this.fs,
+                            fs: fs,
                             dir: NOTES_ROOT,
                             ref: 'HEAD',
                             value: remoteOid,
@@ -1118,28 +1042,28 @@ export class GitInitializationService {
                         console.warn(`[GitInitializationService] Failed to update HEAD:`, writeRefError);
                     }
                 }
-                
+
                 if (checkoutSuccess) {
                     // Wait for file system to sync
                     await new Promise(resolve => setTimeout(resolve, 300));
                 }
             } else {
                 console.warn(`[GitInitializationService] No suitable remote branch found. Available branches: ${remoteBranches.join(', ') || 'none'}`);
-                
+
                 // Last resort: try to checkout 'main' or resolve origin/main
                 const branchesToTry = ['main', 'origin/main', 'master', 'origin/master'];
                 for (const branchToTry of branchesToTry) {
                     try {
                         console.log(`[GitInitializationService] Attempting to resolve ${branchToTry} as last resort...`);
                         const branchOid = await git.resolveRef({
-                            fs: this.fs,
+                            fs: fs,
                             dir: NOTES_ROOT,
                             ref: branchToTry,
                         });
-                        
+
                         // Update HEAD to point to this commit
                         await git.writeRef({
-                            fs: this.fs,
+                            fs: fs,
                             dir: NOTES_ROOT,
                             ref: 'HEAD',
                             value: branchOid,
