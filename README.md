@@ -6,8 +6,7 @@ This is a cross-platform rich-text editor, built on both mobile and desktop.
 
 1. [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app)
 2. React Native
-3. DynamoDB
-4. Git libraries (isomorphic-git for handling local git repositories, Octakit for the Github API)
+3. Git libraries (isomorphic-git for handling local git repositories, Octokit for the Github API)
 
 ## Get started
 

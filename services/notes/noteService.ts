@@ -1,13 +1,14 @@
-import { File, Directory } from "expo-file-system";
-import { Note, NoteToSave } from "./types";
+import { getFile } from "@/services/git/gitApi";
+import { GitService } from "@/services/git/gitService";
 import {
   NotesIndexService,
   extractSummary,
 } from "@/services/notes/notesIndex";
-import { normalizePath } from "@/services/git/expoFileSystemAdapter";
+import { useNotesMetaStore } from "@/stores/notes/metaStore";
+import { Directory, File } from "expo-file-system";
 import { NOTES_ROOT } from "./Notes";
-import { GitService } from "@/services/git/gitService";
-import { getFile } from "@/services/git/gitApi";
+import { Note, NoteToSave } from "./types";
+
 export class NoteService {
   static instance = new NoteService();
 
@@ -49,44 +50,46 @@ export class NoteService {
               content,
               filePath,
               lastUpdated,
+              isPinned: indexItem?.status === "PINNED",
             };
           }
         } catch (localError) {
           // File doesn't exist locally, fall back to git API
         }
-        
-        // Fall back to git API if local file doesn't exist
+
         const result = await getFile(filePath);
         if (!result.success || !result.content) {
           console.warn("Failed to load note from git:", result.error);
           return null;
         }
-        
+
         const fileName = filePath.split("/").pop() || "Untitled";
         const indexItem = await NotesIndexService.instance.getNote(filePath);
         const lastUpdated = indexItem?.updatedAt || Date.now();
-        
+
         return {
           title: fileName.replace(/\.md$/, ""),
           content: result.content,
           filePath,
           lastUpdated,
+          isPinned: indexItem?.status === "PINNED",
         };
       }
-      
-      // For absolute paths, use local filesystem
+
       const file = new File(filePath);
       if (!file.exists) return null;
 
       const content = await file.text();
       const fileName = filePath.split("/").pop() || "Untitled";
       const lastUpdated = file.modificationTime ? file.modificationTime * 1000 : Date.now();
+      const pinned = useNotesMetaStore.getState().pinned[filePath] ?? false;
 
       return {
         title: fileName.replace(/\.md$/, ""),
         content,
         filePath,
         lastUpdated,
+        isPinned: pinned,
       };
     } catch (e) {
       console.warn("Failed to load note:", e);
@@ -128,7 +131,6 @@ export class NoteService {
     // Use relative path for index and git operations, absolute path for return
     const indexPath = relativePath || filePath;
     
-    // Get existing note from DynamoDB to preserve createdAt if it exists
     const existingIndexItem = await NotesIndexService.instance.getNote(indexPath);
     const createdAt = existingIndexItem?.createdAt ?? (note.lastUpdated ?? lastUpdated);
 
@@ -201,41 +203,12 @@ export class NoteService {
   }
 
   /**
-   * Index all existing .md files under NOTES_ROOT into DynamoDB.
-   * Call after clone so the notes list is populated.
+   * No-op after removing DynamoDB. The list is derived from the filesystem + metaStore on demand.
    */
-  async indexExistingNotes(): Promise<void> {
-    const root = NOTES_ROOT.endsWith("/") ? NOTES_ROOT.slice(0, -1) : NOTES_ROOT;
-    const relativePaths = await this.collectMdRelativePaths(root, "");
-    for (const relativePath of relativePaths) {
-      try {
-        const rawPath = root + "/" + relativePath;
-        const fullPath = root.startsWith("file:") ? normalizePath(rawPath) : rawPath;
-        const file = new File(fullPath);
-        if (!file.exists) continue;
-        const content = await file.text();
-        const title = relativePath.split("/").pop()?.replace(/\.md$/, "") ?? "Untitled";
-        const mtime = file.modificationTime ? file.modificationTime * 1000 : Date.now();
-        const existing = await NotesIndexService.instance.getNote(relativePath);
-        await NotesIndexService.instance.upsertNote({
-          noteId: relativePath,
-          summary: extractSummary(content),
-          title,
-          status: existing?.status ?? "UNPINNED",
-          sortTimestamp: mtime,
-          createdAt: existing?.createdAt ?? mtime,
-          updatedAt: mtime,
-        });
-      } catch (e) {
-        console.warn("Failed to index note:", relativePath, e);
-      }
-    }
-  }
+  async indexExistingNotes(): Promise<void> {}
 
   async scanNotes(folderPath: string): Promise<Note[]> {
-    // This method is kept for backward compatibility but is no longer used
-    // since we now fetch notes from DynamoDB index.
-    // If needed, it can fetch pinned state from DynamoDB for each file.
+    // Kept for backward compatibility; list comes from NotesIndexService (filesystem + metaStore).
     const metadata: Note[] = [];
     try {
       const dir = new Directory(folderPath);
@@ -243,7 +216,6 @@ export class NoteService {
 
       for (const entry of entries) {
         if (entry instanceof File && entry.name.endsWith('.md')) {
-          // Try to get pinned state from DynamoDB index
           const indexItem = await NotesIndexService.instance.getNote(entry.uri);
           const content = await entry.text();
           metadata.push({

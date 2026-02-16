@@ -1,7 +1,3 @@
-// Import crypto polyfill first, before any AWS SDK imports
-// This is required for AWS SDK v3 to work in React Native/Expo
-import 'react-native-get-random-values';
-
 // Import Buffer polyfill for isomorphic-git
 import { Buffer } from 'buffer';
 global.Buffer = Buffer;
