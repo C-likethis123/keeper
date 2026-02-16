@@ -1,7 +1,8 @@
 import { File, Directory } from 'expo-file-system';
 const MODE_FILE = 0o644;
 
-function normalizePath(path: string): string {
+/** Normalizes a path to a valid file URI (encodes |, spaces, etc.). Use before passing to expo-file-system File/Directory. */
+export function normalizePath(path: string): string {
     let pathPart = path.replace(/^file:\/\/?\/?/, '') || '/';
     if (!pathPart.startsWith('/')) pathPart = '/' + pathPart;
     const decoded = pathPart.includes('%') ? decodeURI(pathPart) : pathPart;

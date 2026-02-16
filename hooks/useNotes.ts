@@ -1,7 +1,7 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { NoteIndexItem, NotesIndexService } from "@/services/notes/notesIndex";
 import { Note } from "@/services/notes/types";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 const toNote = (item: NoteIndexItem): Note => ({
     title: item.title ||
         (item.summary.match(/^#{1,3}\s+(.+)$/m)?.[1]?.trim()) ||
@@ -21,19 +21,17 @@ export default function useNotes() {
     const [isLoading, setIsLoading] = useState(false);
 
     const [query, setQuery] = useState("");
-    const fetchNotes = useCallback(async () => {
+    const fetchNotes = useCallback(async (cursorOverride?: Record<string, unknown>) => {
         if (isLoading) return;
         setIsLoading(true);
+        const c = cursorOverride !== undefined ? cursorOverride : cursor;
         try {
-            console.log("Fetching notes with query:", query, "and cursor:", cursor);
-            const result = await NotesIndexService.instance.listAllNotes(PAGE_SIZE, cursor, query);
-            console.log("Fetched notes:", result.items.map(toNote));
+            const result = await NotesIndexService.instance.listAllNotes(PAGE_SIZE, c, query);
             setNotes(result.items.map(toNote));
             nextCursorRef.current = result.cursor;
             setHasMore(!!result.cursor);
         } catch (error: unknown) {
             if (error instanceof Error) {
-                console.error("Failed to fetch notes:", error);
                 setError(error.message);
             }
         } finally {
@@ -50,7 +48,11 @@ export default function useNotes() {
         setCursor(undefined);
         setHasMore(true);
         setError(null);
-        await fetchNotes();
+        await fetchNotes(undefined);
+    }, [fetchNotes]);
+
+    useEffect(() => {
+        fetchNotes();
     }, [fetchNotes]);
 
     return {

@@ -14,6 +14,7 @@ require('../wdyr');
 import { ToastOverlay } from "@/components/Toast";
 import { createDarkTheme, createLightTheme } from "@/constants/themes";
 import { GitInitializationService } from "@/services/git/gitInitializationService";
+import { NoteService } from "@/services/notes/noteService";
 import { useThemeStore } from "@/stores/themeStore";
 import { ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
@@ -36,6 +37,11 @@ export default function RootLayout() {
             wasCloned: result.wasCloned,
             branch: result.status?.currentBranch,
           });
+          try {
+            await NoteService.instance.indexExistingNotes();
+          } catch (e) {
+            console.warn('[App] Failed to index existing notes:', e);
+          }
         } else {
           console.error('[App] Git initialization failed:', result.error);
         }

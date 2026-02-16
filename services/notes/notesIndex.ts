@@ -6,11 +6,11 @@ import {
   type DynamoDBClientConfig,
 } from "@aws-sdk/client-dynamodb";
 import {
+  DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
   QueryCommand,
-  DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
 
 export type NoteIndexStatus = "PINNED" | "UNPINNED";
@@ -110,9 +110,14 @@ const TABLE_NAME = process.env.EXPO_PUBLIC_NOTES_INDEX_TABLE;
 const STATUS_INDEX_NAME =
   process.env.EXPO_PUBLIC_NOTES_STATUS_INDEX;
 
+/** Key schema: "allNotesPartition_compositeSortKey" = PK allNotesPartition, SK compositeSortKey (default); "allNotesPartition_noteId" = PK allNotesPartition, SK noteId; "noteId" / "pk_sk" / "pk_sk_notes" = other. */
+const KEY_SCHEMA = process.env.EXPO_PUBLIC_NOTES_INDEX_KEY_SCHEMA ?? "allNotesPartition_compositeSortKey";
+
+const NOTE_PK_PREFIX = "NOTE#";
+const NOTE_SK = "METADATA";
+const ALL_NOTES_PK = "NOTES";
+
 if (!TABLE_NAME) {
-  // Fail fast so misconfiguration is obvious during development.
-  // In production you might want a softer behaviour.
   throw new Error(
     "EXPO_PUBLIC_NOTES_INDEX_TABLE is not set. It must contain the DynamoDB table name for the notes index."
   );
@@ -127,7 +132,9 @@ const docClient = createDynamoDocumentClient();
  */
 export function createSortKey(isPinned: boolean, updatedAt: number): string {
   const prefix = isPinned ? "1" : "0";
-  return `${prefix}#${updatedAt.toString().padStart(13, "0")}`;
+  const t = Number(updatedAt);
+  const ts = Number.isFinite(t) ? t : 0;
+  return `${prefix}#${ts.toString().padStart(13, "0")}`;
 }
 
 export class NotesIndexService {
@@ -136,12 +143,32 @@ export class NotesIndexService {
   private constructor() { }
 
   async getNote(noteId: string): Promise<NoteIndexItem | null> {
+    if (KEY_SCHEMA === "allNotesPartition_compositeSortKey") {
+      const result = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "#pk = :pk",
+          FilterExpression: "#noteId = :noteId",
+          ExpressionAttributeNames: { "#pk": "allNotesPartition", "#noteId": "noteId" },
+          ExpressionAttributeValues: { ":pk": ALL_NOTES_PK, ":noteId": noteId },
+          Limit: 1,
+        })
+      );
+      const item = result.Items?.[0];
+      return item ? (item as NoteIndexItem) : null;
+    }
+    const Key =
+      KEY_SCHEMA === "allNotesPartition_noteId"
+        ? { allNotesPartition: ALL_NOTES_PK, noteId }
+        : KEY_SCHEMA === "pk_sk"
+          ? { pk: NOTE_PK_PREFIX + noteId, sk: NOTE_SK }
+          : KEY_SCHEMA === "pk_sk_notes"
+            ? { pk: ALL_NOTES_PK, sk: noteId }
+            : { noteId };
     const result = await docClient.send(
       new GetCommand({
         TableName: TABLE_NAME,
-        Key: {
-          noteId,
-        },
+        Key,
       })
     );
 
@@ -162,56 +189,61 @@ export class NotesIndexService {
       compositeSortKey,
     };
 
+    const Item =
+      KEY_SCHEMA === "pk_sk"
+        ? { ...itemWithNewSchema, pk: NOTE_PK_PREFIX + item.noteId, sk: NOTE_SK }
+        : KEY_SCHEMA === "pk_sk_notes"
+          ? { ...itemWithNewSchema, pk: ALL_NOTES_PK, sk: item.noteId }
+          : KEY_SCHEMA === "allNotesPartition_compositeSortKey"
+            ? {
+                allNotesPartition: ALL_NOTES_PK,
+                compositeSortKey,
+                noteId: item.noteId,
+                summary: item.summary,
+                title: item.title,
+                status: item.status,
+                sortTimestamp: item.sortTimestamp,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt,
+              }
+            : itemWithNewSchema;
+
     await docClient.send(
       new PutCommand({
         TableName: TABLE_NAME,
-        Item: itemWithNewSchema,
+        Item: Item as NoteIndexItem,
       })
     );
   }
 
   async deleteNote(noteId: string): Promise<void> {
+    if (KEY_SCHEMA === "allNotesPartition_compositeSortKey") {
+      const found = await this.getNote(noteId);
+      if (!found?.compositeSortKey) return;
+      await docClient.send(
+        new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: { allNotesPartition: ALL_NOTES_PK, compositeSortKey: found.compositeSortKey },
+        })
+      );
+      return;
+    }
+    const Key =
+      KEY_SCHEMA === "allNotesPartition_noteId"
+        ? { allNotesPartition: ALL_NOTES_PK, noteId }
+        : KEY_SCHEMA === "pk_sk"
+          ? { pk: NOTE_PK_PREFIX + noteId, sk: NOTE_SK }
+          : KEY_SCHEMA === "pk_sk_notes"
+            ? { pk: ALL_NOTES_PK, sk: noteId }
+            : { noteId };
     await docClient.send(
       new DeleteCommand({
         TableName: TABLE_NAME,
-        Key: {
-          noteId,
-        },
+        Key,
       })
     );
   }
 
-  /**
-   * List notes by status (PINNED or UNPINNED), ordered by sortTimestamp (typically updatedAt).
-   * Supports pagination via the cursor parameter.
-   */
-  async listByStatus(
-    status: NoteIndexStatus,
-    limit = 20,
-    cursor?: Record<string, unknown>
-  ): Promise<ListNotesResult> {
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        IndexName: STATUS_INDEX_NAME,
-        KeyConditionExpression: "#status = :status",
-        ExpressionAttributeNames: {
-          "#status": "status",
-        },
-        ExpressionAttributeValues: {
-          ":status": status,
-        },
-        Limit: limit,
-        ScanIndexForward: false,
-        ExclusiveStartKey: cursor,
-      })
-    );
-
-    return {
-      items: (result.Items as NoteIndexItem[]) ?? [],
-      cursor: result.LastEvaluatedKey as Record<string, unknown> | undefined,
-    };
-  }
 
   /**
    * List all notes (pinned and unpinned) using the new AllNotesIndex GSI.

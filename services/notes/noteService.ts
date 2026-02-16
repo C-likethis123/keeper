@@ -4,6 +4,7 @@ import {
   NotesIndexService,
   extractSummary,
 } from "@/services/notes/notesIndex";
+import { normalizePath } from "@/services/git/expoFileSystemAdapter";
 import { NOTES_ROOT } from "./Notes";
 import { GitService } from "@/services/git/gitService";
 import { getFile } from "@/services/git/gitApi";
@@ -169,6 +170,65 @@ export class NoteService {
     } catch (e) {
       console.warn("Failed to delete note:", e);
       return false;
+    }
+  }
+
+  /**
+   * Recursively collect relative paths of all .md files under dirPath, skipping .git.
+   */
+  private async collectMdRelativePaths(dirPath: string, baseRelative: string): Promise<string[]> {
+    const paths: string[] = [];
+    try {
+      const dir = new Directory(dirPath);
+      if (!dir.exists) return paths;
+      const entries = dir.list();
+      const prefix = dirPath.endsWith("/") ? dirPath : dirPath + "/";
+      for (const entry of entries) {
+        const name = entry.name;
+        if (name === ".git") continue;
+        const rel = baseRelative ? baseRelative + "/" + name : name;
+        if (entry instanceof File && name.endsWith(".md")) {
+          paths.push(rel);
+        }
+        if (entry instanceof Directory) {
+          paths.push(...(await this.collectMdRelativePaths(prefix + name, rel)));
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to list directory for index sync:", dirPath, e);
+    }
+    return paths;
+  }
+
+  /**
+   * Index all existing .md files under NOTES_ROOT into DynamoDB.
+   * Call after clone so the notes list is populated.
+   */
+  async indexExistingNotes(): Promise<void> {
+    const root = NOTES_ROOT.endsWith("/") ? NOTES_ROOT.slice(0, -1) : NOTES_ROOT;
+    const relativePaths = await this.collectMdRelativePaths(root, "");
+    for (const relativePath of relativePaths) {
+      try {
+        const rawPath = root + "/" + relativePath;
+        const fullPath = root.startsWith("file:") ? normalizePath(rawPath) : rawPath;
+        const file = new File(fullPath);
+        if (!file.exists) continue;
+        const content = await file.text();
+        const title = relativePath.split("/").pop()?.replace(/\.md$/, "") ?? "Untitled";
+        const mtime = file.modificationTime ? file.modificationTime * 1000 : Date.now();
+        const existing = await NotesIndexService.instance.getNote(relativePath);
+        await NotesIndexService.instance.upsertNote({
+          noteId: relativePath,
+          summary: extractSummary(content),
+          title,
+          status: existing?.status ?? "UNPINNED",
+          sortTimestamp: mtime,
+          createdAt: existing?.createdAt ?? mtime,
+          updatedAt: mtime,
+        });
+      } catch (e) {
+        console.warn("Failed to index note:", relativePath, e);
+      }
     }
   }
 
