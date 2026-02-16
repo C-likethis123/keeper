@@ -1,3 +1,4 @@
+import { useEditorState } from '@/contexts/EditorContext';
 import { useFocusBlock } from '@/hooks/useFocusBlock';
 import { useOverlayPosition } from '@/hooks/useOverlayPosition';
 import * as WebBrowser from 'expo-web-browser';
@@ -5,8 +6,6 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { BlockConfig, blockRegistry } from './blocks/BlockRegistry';
 import { BlockType } from './core/BlockNode';
-import { useEditorState } from './core/EditorState';
-import { createCollapsedSelection } from './core/Selection';
 import { WikiLinkOverlay } from './wikilinks/WikiLinkOverlay';
 import { useWikiLinks } from './wikilinks/useWikiLinks';
 
@@ -154,10 +153,9 @@ export function HybridEditor({
 
       // Handle focus management
       const preserveFocus = options?.preserveFocus !== false; // Default to true
-      const focusDelay = options?.focusDelay ?? 50;
 
       if (preserveFocus) {
-        focusBlock(index, { delay: focusDelay });
+        focusBlock(index);
       }
 
       return true;
@@ -176,7 +174,7 @@ export function HybridEditor({
   const handleDelete = useCallback(
     (index: number) => {
       editorState.deleteBlock(index);
-      focusBlock(index > 0 ? index - 1 : 0, { delay: 0, useAnimationFrame: false });
+      focusBlock(index > 0 ? index - 1 : 0);
     },
     [editorState, focusBlock],
   );
@@ -208,14 +206,14 @@ export function HybridEditor({
       // If it's an empty paragraph, delete and focus previous
       if (block.content === '' && index > 0) {
         editorState.deleteBlock(index);
-        focusBlock(index - 1, { delay: 0, useAnimationFrame: false });
+        focusBlock(index - 1);
         return;
       }
 
       // Merge with previous block if at start
       if (index > 0) {
         editorState.mergeWithPrevious(index);
-        focusBlock(index - 1, { delay: 0, useAnimationFrame: false });
+        focusBlock(index - 1);
       }
     },
     [editorState, focusBlock],
@@ -224,7 +222,9 @@ export function HybridEditor({
   const handleEnter = useCallback(
     (index: number, cursorOffset: number) => {
       const block = editorState.document.blocks[index];
-
+      if ([BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
+        return;
+      }
       // Handle wiki link selection if active
       if (wikiLinks.isActiveFor(index)) {
         const selected = wikiLinks.getSelectedResult();
@@ -233,43 +233,23 @@ export function HybridEditor({
           return;
         }
       }
-
-      // Let code blocks and math blocks handle newlines internally
-      if ([BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
-        return;
-      }
-
+      
+      
+      
       // Optional: final block type detection on Enter (parity with Flutter)
       // Only convert if type would actually change
       if (handleBlockTypeDetection(index, block.content, { onlyIfTypeChanges: true })) {
         return; // Conversion happened, don't split
       }
-
-      // Default behavior: split the block at the cursor and focus the new block
       // Set ignore flag before splitting to prevent TextInput from updating old block
       ignoreNextContentChangeRef.current = index;
 
       // Blur current block first to prevent it from processing the Enter key
       blurBlock();
-
-      editorState.splitBlock(index, cursorOffset);
-
-      focusBlock(index + 1, { delay: 100 });
+      // editorState.splitBlock(index, cursorOffset);
+      // focusBlock(index + 1);
     },
     [editorState, wikiLinks, handleBlockTypeDetection, focusBlock, blurBlock],
-  );
-
-  const handleFocus = useCallback(
-    (index: number) => () => {
-      const block = editorState.document.blocks[index];
-      editorState.setSelection(
-        createCollapsedSelection({
-          blockIndex: index,
-          offset: block?.content.length ?? 0,
-        }),
-      );
-    },
-    [editorState],
   );
 
   const handleSelectionChange = useCallback(
@@ -281,22 +261,6 @@ export function HybridEditor({
     },
     [editorState],
   );
-
-  const handleBlur = useCallback(() => {
-    editorState.setSelection(null);
-    setTimeout(() => {
-      // Don't end if a selection is in progress or already completed
-      if (wikiLinkSelectionInProgressRef.current) {
-        wikiLinkSelectionInProgressRef.current = false;
-        return;
-      }
-      // Only end if still active (might have been selected already)
-      // With centered overlay, we still check if overlay is visible to avoid ending during selection
-      if (wikiLinks.isActive && !wikiLinks.shouldShowOverlay) {
-        wikiLinks.handleTriggerEnd();
-      }
-    }, 200);
-  }, [editorState, wikiLinks]);
 
   const calculateListItemNumber = useCallback(
     (index: number): number | undefined => {
@@ -391,8 +355,6 @@ export function HybridEditor({
         onBackspaceAtStart: handleBackspaceAtStart(index),
         onSpace: handleSpace(index),
         onEnter: (cursorOffset) => handleEnter(index, cursorOffset),
-        onFocus: handleFocus(index),
-        onBlur: handleBlur,
         onSelectionChange: handleSelectionChange(index),
         onDelete: () => handleDelete(index),
         listItemNumber,
@@ -412,8 +374,6 @@ export function HybridEditor({
       handleBlockTypeChange,
       handleBackspaceAtStart,
       handleSpace,
-      handleFocus,
-      handleBlur,
       handleSelectionChange,
       handleEnter,
       handleDelete,

@@ -1,8 +1,9 @@
-import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import { Pressable, TextInput, StyleSheet, TextStyle, View } from 'react-native';
-import { BlockConfig } from './BlockRegistry';
-import { InlineMarkdown } from '../rendering/InlineMarkdown';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
+import { useFocusBlock } from '@/hooks/useFocusBlock';
+import React, { useCallback, useMemo } from 'react';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { InlineMarkdown } from '../rendering/InlineMarkdown';
+import { BlockConfig } from './BlockRegistry';
 
 interface ParagraphBlockProps extends BlockConfig { }
 
@@ -11,17 +12,15 @@ export const ParagraphBlock = ({
   index,
   onContentChange,
   onSpace,
+  onSelectionChange,
+
 }: ParagraphBlockProps) => {
-  const inputRef = useRef<TextInput>(null);
-  const [isFocused, setIsFocused] = useState(false);
-  const [selection, setSelection] = useState({ start: 0, end: 0 });
-
-  const handleFocus = useCallback(() => setIsFocused(true), []);
-
-  const handleBlur = useCallback(() => setIsFocused(false), []);
-
+  const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
+  const isFocused = focusBlockIndex === index;
   const theme = useExtendedTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  console.log('focusBlockIndex', focusBlockIndex);
 
   const handleContentChange = useCallback((newText: string) => {
     onContentChange(newText);
@@ -35,10 +34,7 @@ export const ParagraphBlock = ({
   }, [onSpace]);
 
   const handleSelectionChange = useCallback((e: any) => {
-    setSelection({
-      start: e.nativeEvent.selection.start,
-      end: e.nativeEvent.selection.end,
-    });
+    onSelectionChange(e.nativeEvent.selection.start, e.nativeEvent.selection.end);
   }, []);
   return (
     <Pressable
@@ -50,21 +46,17 @@ export const ParagraphBlock = ({
         isFocused && styles.focused,
         pressed && styles.pressed,
       ]}
-      onPress={handleFocus}
+      onPress={() => focusBlock(index)}
     >
-      {/* Rendered markdown overlay (when not focused) - conditionally render */}
       <View style={[styles.overlay, isFocused ? styles.inputHidden : styles.inputFocused]} pointerEvents="none">
         <InlineMarkdown text={block.content} style={styles.baseStyle} />
       </View>
-
-      {/* Editable text input - only show when focused */}
       <TextInput
-        ref={inputRef}
         style={[styles.input, styles.baseStyle, isFocused ? styles.inputFocused : styles.inputHidden]}
         value={block.content}
         onChangeText={handleContentChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
+        onFocus={() => focusBlock(index)}
+        onBlur={() => blurBlock()}
         onKeyPress={handleKeyPress}
         onSelectionChange={handleSelectionChange}
         multiline

@@ -1,10 +1,10 @@
 import React from 'react';
-import { BlockType, BlockNode } from '../core/BlockNode';
+import { BlockNode, BlockType } from '../core/BlockNode';
 import { BlockRenderer } from './BlockRenderer';
-import { UnifiedBlock } from './UnifiedBlock';
-import { ListBlock } from './ListBlock';
 import { CodeBlock } from './CodeBlock';
+import { ListBlock } from './ListBlock';
 import { MathBlock } from './MathBlock';
+import { UnifiedBlock } from './UnifiedBlock';
 
 export interface BlockConfig {
   block: BlockNode;
@@ -15,9 +15,7 @@ export interface BlockConfig {
   onBackspaceAtStart?: () => void;
   onSpace?: () => void;
   onEnter?: (cursorOffset: number) => void;
-  onFocus?: () => void;
-  onBlur?: () => void;
-  onSelectionChange?: (start: number, end: number) => void;
+  onSelectionChange: (start: number, end: number) => void;
   onDelete?: () => void;
   listItemNumber?: number; // For numbered list items
   // Wiki link callbacks

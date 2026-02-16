@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { WikiLinkSession } from './WikiLinkSession';
 import { NotesIndexService } from '@/services/notes/notesIndex';
-import { useEditorState } from '../core/EditorState';
+import { useEditorState } from '@/contexts/EditorContext';
 
 interface UseWikiLinksReturn {
   // State

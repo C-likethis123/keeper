@@ -1,3 +1,4 @@
+import { useEditorState } from '@/contexts/EditorContext';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
 import { useFocusBlock } from '@/hooks/useFocusBlock';
 import React, {
@@ -17,7 +18,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { useEditorState } from '../core/EditorState';
 import { BlockConfig } from './BlockRegistry';
 import { MathView } from './MathView';
 
@@ -25,10 +25,7 @@ export function MathBlock({
     block,
     onContentChange,
     onBackspaceAtStart,
-    onFocus,
-    onBlur,
     onSelectionChange,
-    isFocused: isFocusedFromState,
     index,
 }: BlockConfig) {
     const inputRef = useRef<TextInput>(null);
@@ -36,7 +33,8 @@ export function MathBlock({
     const [selection, setSelection] = useState<{ start: number, end: number }>({ start: 0, end: 0 });
     const [renderError, setRenderError] = useState<string | null>(null);
     const editorState = useEditorState();
-    const { focusBlock } = useFocusBlock();
+    const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
+    const isFocused = focusBlockIndex === index;
     const theme = useExtendedTheme();
 
     // Sync value with block content when it changes externally
@@ -66,7 +64,7 @@ export function MathBlock({
             const currentLineIndex = textBeforeCursor.split('\n').length - 1;
 
             if (currentLineIndex === 0 && index > 0) {
-                focusBlock(index - 1, { delay: 0, useAnimationFrame: false });
+                focusBlock(index - 1);
                 return;
             }
         }
@@ -80,7 +78,7 @@ export function MathBlock({
             if (currentLineIndex === lines.length - 1) {
                 const document = editorState.document;
                 if (index < document.blocks.length - 1) {
-                    focusBlock(index + 1, { delay: 0, useAnimationFrame: false });
+                    focusBlock(index + 1);
                     return;
                 }
             }
@@ -136,9 +134,9 @@ export function MathBlock({
         <TouchableOpacity onPress={() => inputRef.current?.focus()}>
             <View style={[
                 styles.container,
-                isFocusedFromState && styles.containerFocused,
+                isFocused && styles.containerFocused,
             ]}>
-                {!isFocusedFromState && (
+                {!isFocused && (
                     <View style={styles.mathWrapper}>
                         {renderMath()}
                     </View>
@@ -152,14 +150,14 @@ export function MathBlock({
                             fontFamily,
                             fontSize,
                             padding,
-                            color: isFocusedFromState ? theme.colors.text : 'transparent',
+                            color: isFocused ? theme.colors.text : 'transparent',
                         },
                     ]}
                     selection={selection}
                     onKeyPress={handleKeyPress}
                     onSelectionChange={handleSelectionChange}
-                    onFocus={onFocus}
-                    onBlur={onBlur}
+                    onFocus={() => focusBlock(index)}
+                    onBlur={() => blurBlock()}
                     multiline
                     autoCapitalize='none'
                     autoCorrect={false}

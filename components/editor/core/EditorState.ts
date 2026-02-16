@@ -11,7 +11,7 @@ export interface BlockSelection {
   readonly end: number;
 }
 
-interface EditorState {
+export interface EditorState {
   // Document state
   document: Document;
   selection: DocumentSelection | null;
@@ -56,7 +56,10 @@ interface EditorState {
   getHasBlockSelection: () => boolean;
 }
 
-export const useEditorState = create<EditorState>((set, get) => {
+export type UseEditorState = ReturnType<typeof createEditorState>;
+
+export function createEditorState() {
+  return create<EditorState>((set, get) => {
   const history = new History();
 
   return {
@@ -399,5 +402,6 @@ export const useEditorState = create<EditorState>((set, get) => {
       return get().blockSelection !== null;
     },
   };
-});
+  });
+}
 

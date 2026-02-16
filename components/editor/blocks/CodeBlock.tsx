@@ -1,3 +1,4 @@
+import { useFocusBlock } from '@/hooks/useFocusBlock';
 import * as Clipboard from 'expo-clipboard';
 import React, {
     useEffect,
@@ -28,22 +29,20 @@ import { CodeBlockHeader } from './CodeBlockHeader';
 
 export function CodeBlock({
     block,
+    index,
     onContentChange,
     onBackspaceAtStart,
     onDelete,
     onEnter,
-    onFocus,
-    onBlur,
     onSelectionChange,
-    isFocused: isFocusedFromState,
     onBlockTypeChange,
-    index,
 }: BlockConfig) {
     const inputRef = useRef<TextInput>(null);
     const [value, setValue] = useState(block.content);
     const highlighterRef = useRef<ScrollView>(null);
     const [selection, setSelection] = useState<{ start: number, end: number }>({ start: 0, end: 0 });
-
+    const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
+    const isFocused = focusBlockIndex === index;
     const language = block.language ?? 'plaintext';
     const languageRegistry = LanguageRegistry.instance;
     const languageConfig = useMemo(() => {

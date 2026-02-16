@@ -1,14 +1,16 @@
+import Loader from "@/components/Loader";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { HybridEditor } from "@/components/editor";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { BlockType } from "@/components/editor/core/BlockNode";
+import { EditorProvider } from "@/contexts/EditorContext";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { Note } from "@/services/notes/types";
+import { useLoadNote } from "@/hooks/useLoadNote";
 import { useNoteStore } from "@/stores/notes/noteService";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -25,7 +27,6 @@ export default function NoteEditorScreen() {
   const theme = useExtendedTheme();
 
   const { loadNote } = useNoteStore();
-  const [existingNote, setExistingNote] = useState<Note | null>(null);
   const [focusedBlockInfo, setFocusedBlockInfo] = useState<{
     blockType: BlockType | null;
     blockIndex: number | null;
@@ -36,23 +37,15 @@ export default function NoteEditorScreen() {
     blockType: null,
     blockIndex: null,
     listLevel: 0,
-    onIndent: () => {},
-    onOutdent: () => {},
+    onIndent: () => { },
+    onOutdent: () => { },
   });
 
   // Load existing note if editing
-  useEffect(() => {
-    if (filePath) {
-      loadNote(filePath as string).then((note) => {
-        if (note) {
-          setExistingNote(note);
-        }
-      });
-    }
-  }, [filePath, loadNote]);
+  const { isLoading, error, note, setNote } = useLoadNote(filePath as string);
 
   const togglePin = () => {
-    setExistingNote((prev) => {
+    setNote((prev) => {
       if (!prev) return null;
       return { ...prev, isPinned: !prev.isPinned };
     });
@@ -60,13 +53,13 @@ export default function NoteEditorScreen() {
 
   const { status, saveNow } = useAutoSave({
     filePath: filePath as string,
-    title: existingNote?.title || "",
-    content: existingNote?.content || "",
-    isPinned: existingNote?.isPinned || false,
+    title: note?.title || "",
+    content: note?.content || "",
+    isPinned: note?.isPinned || false,
   });
 
   const handleContentChange = (markdown: string) => {
-    setExistingNote((prev) => {
+    setNote((prev) => {
       if (!prev) return null;
       return { ...prev, content: markdown };
     });
@@ -99,7 +92,7 @@ export default function NoteEditorScreen() {
               <MaterialIcons
                 name="push-pin"
                 size={24}
-                color={existingNote?.isPinned ? theme.colors.primary : theme.colors.textMuted}
+                color={note?.isPinned ? theme.colors.primary : theme.colors.textMuted}
               />
             </TouchableOpacity>
           ),
@@ -108,32 +101,36 @@ export default function NoteEditorScreen() {
       />
 
       <View style={styles.container}>
-        <TextInput
-          style={styles.titleInput}
-          value={existingNote?.title || ""}
-          onChangeText={(text) => setExistingNote((prev) => {
-            if (!prev) return null;
-            return { ...prev, title: text };
-          })}
-          placeholder="Title"
-          placeholderTextColor={theme.custom.editor.placeholder}
-          autoFocus={!existingNote}
-        />
+        {isLoading ? <Loader /> :
+          <>
+            <TextInput
+              style={styles.titleInput}
+              value={note?.title || ""}
+              onChangeText={(text) => setNote((prev) => {
+                if (!prev) return null;
+                return { ...prev, title: text };
+              })}
+              placeholder="Title"
+              placeholderTextColor={theme.custom.editor.placeholder}
+              autoFocus={!note}
+            />
 
-        <EditorToolbar
-          blockType={focusedBlockInfo.blockType}
-          blockIndex={focusedBlockInfo.blockIndex}
-          listLevel={focusedBlockInfo.listLevel}
-          onIndent={focusedBlockInfo.onIndent}
-          onOutdent={focusedBlockInfo.onOutdent}
-        />
+            <EditorProvider>
+              <EditorToolbar
+                blockType={focusedBlockInfo.blockType}
+                blockIndex={focusedBlockInfo.blockIndex}
+                listLevel={focusedBlockInfo.listLevel}
+                onIndent={focusedBlockInfo.onIndent}
+                onOutdent={focusedBlockInfo.onOutdent}
+              />
 
-        <HybridEditor
-          initialContent={existingNote?.content || ""}
-          onChanged={handleContentChange}
-          autofocus={!existingNote}
-          onFocusedBlockChange={setFocusedBlockInfo}
-        />
+              <HybridEditor
+                initialContent={note?.content || ""}
+                onChanged={handleContentChange}
+                onFocusedBlockChange={setFocusedBlockInfo}
+              />
+            </EditorProvider>
+          </>}
       </View>
     </KeyboardAvoidingView>
   );

@@ -1,4 +1,5 @@
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
+import { useFocusBlock } from '@/hooks/useFocusBlock';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, TextStyle, View } from 'react-native';
 import { InlineMarkdown } from '../rendering/InlineMarkdown';
@@ -13,25 +14,13 @@ export function HeadingBlock({
   index,
   onContentChange,
   onBackspaceAtStart,
-  onFocus,
-  onBlur,
-  isFocused: isFocusedFromState,
   level,
 }: HeadingBlockProps) {
   const inputRef = useRef<TextInput>(null);
-  const [isFocused, setIsFocused] = useState(false);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
 
-  const handleFocus = useCallback(() => {
-    setIsFocused(true);
-    onFocus?.();
-  }, [onFocus]);
-
-  const handleBlur = useCallback(() => {
-    setIsFocused(false);
-    onBlur?.();
-  }, [onBlur]);
-
+  const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
+  const isFocused = focusBlockIndex === index;
 
 
   const handleSelectionChange = useCallback((e: any) => {
@@ -81,7 +70,7 @@ export function HeadingBlock({
         isFocused && styles.focused,
         pressed && styles.pressed,
       ]}
-      onPress={handleFocus}
+      onPress={() => focusBlock(index)}
     >
       {/* Rendered markdown overlay (when not focused) - conditionally render */}
       <View style={[styles.overlay, isFocused ? styles.inputHidden : styles.inputFocused]} pointerEvents="none">
@@ -94,8 +83,8 @@ export function HeadingBlock({
         style={[styles.input, headingStyle, isFocused ? styles.inputFocused : styles.inputHidden]}
         value={block.content}
         onChangeText={handleContentChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
+        onFocus={() => focusBlock(index)}
+        onBlur={blurBlock}
         onKeyPress={handleKeyPress}
         onSelectionChange={handleSelectionChange}
         multiline

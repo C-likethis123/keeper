@@ -1,11 +1,9 @@
 import { normalizePath } from "@/services/git/expoFileSystemAdapter";
-import { getFile } from "@/services/git/gitApi";
 import { GitService } from "@/services/git/gitService";
 import {
   NotesIndexService,
   extractSummary,
 } from "@/services/notes/notesIndex";
-import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { Directory, File } from "expo-file-system";
 import { NOTES_ROOT } from "./Notes";
 import { Note, NoteToSave } from "./types";
@@ -21,7 +19,7 @@ function toAbsolutePath(filePath: string): string {
 export class NoteService {
   static instance = new NoteService();
 
-  private constructor() { 
+  private constructor() {
     // Ensure NOTES_ROOT exists on initialization
     this.ensureNotesRoot();
   }
@@ -39,70 +37,27 @@ export class NoteService {
 
   async loadNote(filePath: string): Promise<Note | null> {
     try {
-      // Check if path is relative (doesn't start with / or file://)
-      const isRelative = !filePath.startsWith('/') && !filePath.startsWith('file://');
-      
-      if (isRelative) {
-        // For relative paths, try local repository first, then fall back to git API
-        const absolutePath = toAbsolutePath(filePath);
-        try {
-          const file = new File(absolutePath);
-          if (file.exists) {
-            const content = await file.text();
-            const fileName = filePath.split("/").pop() || "Untitled";
-            const indexItem = await NotesIndexService.instance.getNote(filePath);
-            const lastUpdated = indexItem!.updatedAt!;
-            
-            return {
-              title: decodeURIComponent(fileName.replace(/\.md$/, "")),
-              content,
-              filePath,
-              lastUpdated,
-              isPinned: indexItem?.status === "PINNED",
-            };
-          }
-        } catch (localError) {
-          // File doesn't exist locally, fall back to git API
-        }
-
-        const result = await getFile(filePath);
-        if (!result.success || !result.content) {
-          console.warn("Failed to load note from git:", result.error);
-          return null;
-        }
-
+      const absolutePath = toAbsolutePath(filePath);
+      const file = new File(absolutePath);
+      if (file.exists) {
+        const content = await file.text();
         const fileName = filePath.split("/").pop() || "Untitled";
         const indexItem = await NotesIndexService.instance.getNote(filePath);
-        const lastUpdated = indexItem?.updatedAt || Date.now();
+        const lastUpdated = indexItem!.updatedAt!;
 
         return {
           title: decodeURIComponent(fileName.replace(/\.md$/, "")),
-          content: result.content,
+          content,
           filePath,
           lastUpdated,
           isPinned: indexItem?.status === "PINNED",
         };
       }
-
-      const file = new File(filePath);
-      if (!file.exists) return null;
-
-      const content = await file.text();
-      const fileName = filePath.split("/").pop() || "Untitled";
-      const lastUpdated = file.modificationTime!;
-      const pinned = useNotesMetaStore.getState().pinned[filePath] ?? false;
-
-      return {
-        title: decodeURIComponent(fileName.replace(/\.md$/, "")),
-        content,
-        filePath,
-        lastUpdated,
-        isPinned: pinned,
-      };
-    } catch (e) {
-      console.warn("Failed to load note:", e);
+    } catch (localError) {
+      console.warn("Failed to load note:", localError);
       return null;
     }
+    return null;
   }
 
   async saveNote(note: NoteToSave): Promise<Note> {
@@ -110,19 +65,19 @@ export class NoteService {
     let filePath =
       note.filePath ||
       (await this.resolveFilePath(NOTES_ROOT, note.title, undefined));
-    
+
     const isRelative = !filePath.startsWith('/') && !filePath.startsWith('file://');
     const relativePath = isRelative ? filePath : undefined;
     if (isRelative) {
       filePath = `${NOTES_ROOT}${filePath}`;
     }
-    
+
     const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
     const dir = new Directory(dirPath);
     if (!dir.exists) {
       dir.create({ intermediates: true });
     }
-    
+
     // Save to absolute path
     const file = new File(filePath);
     await file.write(note.content);
@@ -132,7 +87,7 @@ export class NoteService {
 
     // Use relative path for index and git operations, absolute path for return
     const indexPath = relativePath || filePath;
-    
+
     const existingIndexItem = await NotesIndexService.instance.getNote(indexPath);
     const createdAt = existingIndexItem?.createdAt ?? (note.lastUpdated ?? lastUpdated);
 
@@ -177,38 +132,6 @@ export class NoteService {
       return false;
     }
   }
-
-  /**
-   * Recursively collect relative paths of all .md files under dirPath, skipping .git.
-   */
-  private async collectMdRelativePaths(dirPath: string, baseRelative: string): Promise<string[]> {
-    const paths: string[] = [];
-    try {
-      const dir = new Directory(dirPath);
-      if (!dir.exists) return paths;
-      const entries = dir.list();
-      const prefix = dirPath.endsWith("/") ? dirPath : dirPath + "/";
-      for (const entry of entries) {
-        const name = entry.name;
-        if (name === ".git") continue;
-        const rel = baseRelative ? baseRelative + "/" + name : name;
-        if (entry instanceof File && name.endsWith(".md")) {
-          paths.push(rel);
-        }
-        if (entry instanceof Directory) {
-          paths.push(...(await this.collectMdRelativePaths(prefix + name, rel)));
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to list directory for index sync:", dirPath, e);
-    }
-    return paths;
-  }
-
-  /**
-   * No-op after removing DynamoDB. The list is derived from the filesystem + metaStore on demand.
-   */
-  async indexExistingNotes(): Promise<void> {}
 
   async scanNotes(folderPath: string): Promise<Note[]> {
     // Kept for backward compatibility; list comes from NotesIndexService (filesystem + metaStore).

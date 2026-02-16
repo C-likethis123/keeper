@@ -1,30 +1,32 @@
-import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import { Pressable, TextInput, StyleSheet, TextStyle, View } from 'react-native';
-import { BlockConfig } from './BlockRegistry';
-import { InlineMarkdown } from '../rendering/InlineMarkdown';
+import { useEditorState } from '@/contexts/EditorContext';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
+import { useFocusBlock } from '@/hooks/useFocusBlock';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Pressable, StyleSheet, TextInput, TextStyle, View } from 'react-native';
 import { BlockType } from '../core/BlockNode';
+import { InlineMarkdown } from '../rendering/InlineMarkdown';
 import { WikiLinkTrigger } from '../wikilinks/WikiLinkTrigger';
+import { BlockConfig } from './BlockRegistry';
 
 export function UnifiedBlock({
   block,
+  index,
   onContentChange,
   onBackspaceAtStart,
   onSpace,
   onEnter,
-  onFocus,
-  onBlur,
   onSelectionChange,
   isFocused: isFocusedFromState,
   onWikiLinkTriggerStart,
   onWikiLinkQueryUpdate,
   onWikiLinkTriggerEnd,
 }: BlockConfig) {
+  const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
+  const isFocused = focusBlockIndex === index;
   const inputRef = useRef<TextInput>(null);
-  const [isFocused, setIsFocused] = useState(false);
-  const [selection, setSelection] = useState({ start: 0, end: 0 });
   const ignoreNextChangeRef = useRef(false);
   const lastBlockContentRef = useRef(block.content);
+  const editorState = useEditorState();
 
   // Sync TextInput when block content changes externally (e.g., from wiki link selection)
   useEffect(() => {
@@ -43,31 +45,29 @@ export function UnifiedBlock({
   }, [block.content]);
 
   const handleFocus = useCallback(() => {
-    setIsFocused(true);
-    onFocus?.();
-  }, [onFocus]);
+    focusBlock(index);
+  }, [focusBlock, index]);
 
   const handleBlur = useCallback(() => {
-    setIsFocused(false);
+    blurBlock();
     // End wiki link session on blur, but with a delay to allow overlay selection
     // The delay gives the overlay's onPress time to fire before ending the session
     setTimeout(() => {
       onWikiLinkTriggerEnd?.();
     }, 150);
-    onBlur?.();
-  }, [onBlur, onWikiLinkTriggerEnd]);
+  }, [blurBlock, onWikiLinkTriggerEnd]);
 
   // Auto-focus TextInput when block becomes focused (e.g., after block type change)
-  useEffect(() => {
-    if (isFocusedFromState && inputRef.current) {
-      // Use requestAnimationFrame to ensure TextInput is mounted
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 0);
-      });
-    }
-  }, [isFocusedFromState]);
+  // useEffect(() => {
+  //   if (isFocusedFromState && inputRef.current) {
+  //     // Use requestAnimationFrame to ensure TextInput is mounted
+  //     requestAnimationFrame(() => {
+  //       setTimeout(() => {
+  //         inputRef.current?.focus();
+  //       }, 0);
+  //     });
+  //   }
+  // }, [isFocusedFromState]);
 
   const handleSelectionChange = useCallback(
     (e: any) => {
@@ -75,8 +75,8 @@ export function UnifiedBlock({
         start: e.nativeEvent.selection.start,
         end: e.nativeEvent.selection.end,
       };
-      setSelection(newSelection);
-      onSelectionChange?.(newSelection.start, newSelection.end);
+      // setSelection(newSelection);
+      onSelectionChange(newSelection.start, newSelection.end);
 
       if (isFocused && newSelection.start === newSelection.end) {
         const caret = newSelection.start;
@@ -113,8 +113,6 @@ export function UnifiedBlock({
         return;
       }
 
-      // In Flutter's approach, TextInput shows content without prefix
-      // So we just update the content directly
       onContentChange(newText);
 
       // Detect wiki link triggers after content change
@@ -123,19 +121,19 @@ export function UnifiedBlock({
         // Get current selection from the input
         // Note: We can't reliably get selection here, so we'll rely on onSelectionChange
         // But we can still check for triggers in the new text
-        const caret = selection.start; // Use last known selection
-        const start = WikiLinkTrigger.findStart(newText, caret);
+        // const caret = inputRef.current.selection.start; // Use last known selection
+        // const start = WikiLinkTrigger.findStart(newText, caret);
 
-        if (start !== null) {
-          onWikiLinkTriggerStart?.(start);
-          const query = newText.substring(start + 2, caret);
-          onWikiLinkQueryUpdate?.(query, caret);
-        } else {
-          onWikiLinkTriggerEnd?.();
-        }
+        // if (start !== null) {
+        //   onWikiLinkTriggerStart?.(start);
+        //   const query = newText.substring(start + 2, caret);
+        //   onWikiLinkQueryUpdate?.(query, caret);
+        // } else {
+        //   onWikiLinkTriggerEnd?.();
+        // }
       }
     },
-    [onContentChange, isFocused, selection.start, onWikiLinkTriggerStart, onWikiLinkQueryUpdate, onWikiLinkTriggerEnd],
+    [onContentChange, isFocused, onWikiLinkTriggerStart, onWikiLinkQueryUpdate, onWikiLinkTriggerEnd],
   );
 
   const handleKeyPress = useCallback(
@@ -149,18 +147,19 @@ export function UnifiedBlock({
       }
 
       // Handle Enter key - split non-code blocks at the current cursor position
-      if ((key === 'Enter' || key === 'Return') && selection.start === selection.end) {
+      if ((key === 'Enter') && editorState.selection?.anchor.offset === editorState.selection?.focus.offset) {
         if (block.type !== BlockType.codeBlock) {
           // Mark the next onChangeText as ignorable so the stray newline doesn't
           // get written back into the original block after we split.
+          console.log('on enter')
           ignoreNextChangeRef.current = true;
-          onEnter?.(selection.start);
+          onEnter?.(editorState.selection?.focus.offset ?? 0);
         }
         return;
       }
 
       // Handle backspace at the start (position 0)
-      if (key === 'Backspace' && selection.start === 0 && selection.end === 0) {
+      if (key === 'Backspace' && editorState.selection?.anchor.offset === 0 && editorState.selection?.focus.offset === 0) {
         // Paragraph blocks: if empty, delegate to editor-level handler to delete
         if (block.type === BlockType.paragraph) {
           if (block.content === '') {
@@ -177,7 +176,7 @@ export function UnifiedBlock({
         return;
       }
     },
-    [onSpace, onEnter, onBackspaceAtStart, selection, block.type, block.content],
+    [onSpace, onEnter, onBackspaceAtStart, editorState.selection, block.type, block.content],
   );
 
   const theme = useExtendedTheme();
@@ -247,14 +246,11 @@ export function UnifiedBlock({
       ]}
       onPress={handleFocus}
     >
-      {/* Rendered markdown overlay (when not focused) - conditionally render */}
       {!isFocused && (
         <View style={[styles.overlay, { top: overlayTop }]} pointerEvents="none">
           <InlineMarkdown text={block.content} style={textStyle} />
         </View>
       )}
-
-      {/* Editable text input - always rendered, visible when focused */}
       <TextInput
         ref={inputRef}
         style={[

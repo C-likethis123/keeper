@@ -1,4 +1,5 @@
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
+import { useFocusBlock } from '@/hooks/useFocusBlock';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, TextStyle, View } from 'react-native';
 import { BlockType } from '../core/BlockNode';
@@ -9,21 +10,20 @@ import { ListMarker } from './ListMarker';
 
 export function ListBlock({
   block,
+  index,
   onContentChange,
   onBackspaceAtStart,
   onSpace,
   onEnter,
-  onFocus,
-  onBlur,
   onSelectionChange,
-  isFocused: isFocusedFromState,
   listItemNumber,
   onWikiLinkTriggerStart,
   onWikiLinkQueryUpdate,
   onWikiLinkTriggerEnd,
 }: BlockConfig) {
   const inputRef = useRef<TextInput>(null);
-  const [isFocused, setIsFocused] = useState(false);
+  const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
+  const isFocused = focusBlockIndex === index;
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const ignoreNextChangeRef = useRef(false);
   const lastBlockContentRef = useRef(block.content);
@@ -44,19 +44,13 @@ export function ListBlock({
     }
   }, [block.content]);
 
-  const handleFocus = useCallback(() => {
-    setIsFocused(true);
-    onFocus?.();
-  }, [onFocus]);
-
   const handleBlur = useCallback(() => {
-    setIsFocused(false);
+    blurBlock();
     // End wiki link session on blur, but with a delay to allow overlay selection
     setTimeout(() => {
       onWikiLinkTriggerEnd?.();
     }, 150);
-    onBlur?.();
-  }, [onBlur, onWikiLinkTriggerEnd]);
+  }, [blurBlock, onWikiLinkTriggerEnd]);
 
 
   const handleSelectionChange = useCallback(
@@ -153,7 +147,7 @@ export function ListBlock({
         isFocused && styles.focused,
         pressed && styles.pressed,
       ]}
-      onPress={handleFocus}
+      onPress={() => focusBlock(index)}
     >
       <View style={styles.row}>
         <ListMarker
@@ -173,7 +167,7 @@ export function ListBlock({
             ]}
             value={block.content}
             onChangeText={handleContentChange}
-            onFocus={handleFocus}
+            onFocus={() => focusBlock(index)}
             onBlur={handleBlur}
             onKeyPress={handleKeyPress}
             onSelectionChange={handleSelectionChange}
@@ -182,7 +176,7 @@ export function ListBlock({
             placeholderTextColor={theme.custom.editor.placeholder}
           />
           {!isFocused && (
-            <Pressable style={styles.overlay} onPress={handleFocus} pointerEvents="auto">
+            <Pressable style={styles.overlay} onPress={() => focusBlock(index)} pointerEvents="auto">
               <View style={styles.overlayContent}>
                 <InlineMarkdown text={block.content} style={textStyle} />
               </View>
