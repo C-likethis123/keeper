@@ -44,10 +44,9 @@ export class NoteService {
       
       if (isRelative) {
         // For relative paths, try local repository first, then fall back to git API
-        const localFilePath = `${NOTES_ROOT}${filePath}`;
-        
+        const absolutePath = toAbsolutePath(filePath);
         try {
-          const file = new File(localFilePath);
+          const file = new File(absolutePath);
           if (file.exists) {
             const content = await file.text();
             const fileName = filePath.split("/").pop() || "Untitled";
