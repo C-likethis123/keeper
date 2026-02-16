@@ -1,5 +1,5 @@
 import { useNoteStore } from "@/stores/notes/noteService";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type AutoSaveInput = {
   filePath: string;
@@ -19,33 +19,37 @@ export function useAutoSave({
   const timerRef = useRef<number | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
 
+  const saveNow = useCallback(async () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    setStatus("saving");
+    await saveNote({
+      filePath,
+      title: title.trim() || "Untitled",
+      content,
+      isPinned,
+    });
+    setStatus("saved");
+  }, [filePath, title, content, isPinned, saveNote]);
+
   useEffect(() => {
-    // mark dirty immediately
     setStatus("idle");
 
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
 
-    timerRef.current = setTimeout(async () => {
-      setStatus("saving");
-
-      await saveNote({
-        filePath,
-        title: title.trim() || "Untitled",
-        content,
-        isPinned,
-      });
-
-      setStatus("saved");
-    }, 2000);
+    timerRef.current = setTimeout(saveNow, 2000);
 
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
     };
-  }, [filePath, title, content, isPinned, saveNote]);
+  }, [filePath, title, content, isPinned, saveNow]);
 
-  return { status };
+  return { status, saveNow };
 }

@@ -58,7 +58,7 @@ export default function NoteEditorScreen() {
     });
   };
 
-  const { status } = useAutoSave({
+  const { status, saveNow } = useAutoSave({
     filePath: filePath as string,
     title: existingNote?.title || "",
     content: existingNote?.content || "",
@@ -85,7 +85,10 @@ export default function NoteEditorScreen() {
           title: "Editor",
           headerLeft: () => (
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={async () => {
+                await saveNow();
+                router.back();
+              }}
               style={{ marginLeft: 8, marginRight: 8 }}
             >
               <MaterialIcons name="arrow-back" size={24} color={theme.colors.text} />
@@ -124,8 +127,6 @@ export default function NoteEditorScreen() {
           onIndent={focusedBlockInfo.onIndent}
           onOutdent={focusedBlockInfo.onOutdent}
         />
-
-        <View style={styles.divider} />
 
         <HybridEditor
           initialContent={existingNote?.content || ""}

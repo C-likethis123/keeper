@@ -62,9 +62,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
   return StyleSheet.create({
     toolbar: {
       flexDirection: 'row',
-      backgroundColor: theme.colors.card,
       borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
       paddingVertical: 8,
       paddingHorizontal: 16,
       justifyContent: 'flex-start',
