@@ -13,14 +13,11 @@ export const ParagraphBlock = ({
   onContentChange,
   onSpace,
   onSelectionChange,
-
+  isFocused,
 }: ParagraphBlockProps) => {
   const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
-  const isFocused = focusBlockIndex === index;
   const theme = useExtendedTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-
-  console.log('focusBlockIndex', focusBlockIndex);
 
   const handleContentChange = useCallback((newText: string) => {
     onContentChange(newText);

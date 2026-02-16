@@ -11,6 +11,7 @@ import { ListMarker } from './ListMarker';
 export function ListBlock({
   block,
   index,
+  isFocused,
   onContentChange,
   onBackspaceAtStart,
   onSpace,
@@ -23,7 +24,6 @@ export function ListBlock({
 }: BlockConfig) {
   const inputRef = useRef<TextInput>(null);
   const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
-  const isFocused = focusBlockIndex === index;
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const ignoreNextChangeRef = useRef(false);
   const lastBlockContentRef = useRef(block.content);

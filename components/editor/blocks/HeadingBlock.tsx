@@ -12,6 +12,7 @@ interface HeadingBlockProps extends BlockConfig {
 export function HeadingBlock({
   block,
   index,
+  isFocused,
   onContentChange,
   onBackspaceAtStart,
   level,
@@ -20,7 +21,6 @@ export function HeadingBlock({
   const [selection, setSelection] = useState({ start: 0, end: 0 });
 
   const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
-  const isFocused = focusBlockIndex === index;
 
 
   const handleSelectionChange = useCallback((e: any) => {

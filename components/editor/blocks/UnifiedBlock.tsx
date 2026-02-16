@@ -7,22 +7,21 @@ import { BlockType } from '../core/BlockNode';
 import { InlineMarkdown } from '../rendering/InlineMarkdown';
 import { WikiLinkTrigger } from '../wikilinks/WikiLinkTrigger';
 import { BlockConfig } from './BlockRegistry';
-
+// TODO: Fix the wikilinks here
 export function UnifiedBlock({
   block,
   index,
+  isFocused,
   onContentChange,
   onBackspaceAtStart,
   onSpace,
   onEnter,
   onSelectionChange,
-  isFocused: isFocusedFromState,
   onWikiLinkTriggerStart,
   onWikiLinkQueryUpdate,
   onWikiLinkTriggerEnd,
 }: BlockConfig) {
   const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
-  const isFocused = focusBlockIndex === index;
   const inputRef = useRef<TextInput>(null);
   const ignoreNextChangeRef = useRef(false);
   const lastBlockContentRef = useRef(block.content);
@@ -58,16 +57,11 @@ export function UnifiedBlock({
   }, [blurBlock, onWikiLinkTriggerEnd]);
 
   // Auto-focus TextInput when block becomes focused (e.g., after block type change)
-  // useEffect(() => {
-  //   if (isFocusedFromState && inputRef.current) {
-  //     // Use requestAnimationFrame to ensure TextInput is mounted
-  //     requestAnimationFrame(() => {
-  //       setTimeout(() => {
-  //         inputRef.current?.focus();
-  //       }, 0);
-  //     });
-  //   }
-  // }, [isFocusedFromState]);
+  useEffect(() => {
+    if (isFocused && inputRef.current) {
+      inputRef.current?.focus();
+    }
+  }, [isFocused]);
 
   const handleSelectionChange = useCallback(
     (e: any) => {
@@ -151,7 +145,6 @@ export function UnifiedBlock({
         if (block.type !== BlockType.codeBlock) {
           // Mark the next onChangeText as ignorable so the stray newline doesn't
           // get written back into the original block after we split.
-          console.log('on enter')
           ignoreNextChangeRef.current = true;
           onEnter?.(editorState.selection?.focus.offset ?? 0);
         }

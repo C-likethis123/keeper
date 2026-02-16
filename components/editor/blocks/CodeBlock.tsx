@@ -33,6 +33,7 @@ export function CodeBlock({
     onContentChange,
     onBackspaceAtStart,
     onDelete,
+    isFocused,
     onEnter,
     onSelectionChange,
     onBlockTypeChange,
@@ -42,7 +43,6 @@ export function CodeBlock({
     const highlighterRef = useRef<ScrollView>(null);
     const [selection, setSelection] = useState<{ start: number, end: number }>({ start: 0, end: 0 });
     const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
-    const isFocused = focusBlockIndex === index;
     const language = block.language ?? 'plaintext';
     const languageRegistry = LanguageRegistry.instance;
     const languageConfig = useMemo(() => {

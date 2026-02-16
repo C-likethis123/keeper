@@ -2,7 +2,6 @@ import { createCollapsedSelection } from '@/components/editor/core/Selection';
 import { useEditorState } from '@/contexts/EditorContext';
 import { useCallback } from 'react';
 
-
 export interface UseFocusBlockReturn {
   focusBlockIndex: number | null;
   focusBlock: (index: number) => void;
@@ -27,8 +26,9 @@ export function useFocusBlock(): UseFocusBlockReturn {
     editorState.setSelection(null);
   }, [editorState]);
 
+  const focusBlockIndex = editorState.getFocusedBlockIndex();
   return {
-    focusBlockIndex: editorState.getFocusedBlockIndex(),
+    focusBlockIndex,
     focusBlock,
     blurBlock,
   };

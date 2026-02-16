@@ -23,18 +23,18 @@ import { MathView } from './MathView';
 
 export function MathBlock({
     block,
+    index,
     onContentChange,
     onBackspaceAtStart,
     onSelectionChange,
-    index,
+    isFocused,
 }: BlockConfig) {
     const inputRef = useRef<TextInput>(null);
     const [value, setValue] = useState(block.content);
     const [selection, setSelection] = useState<{ start: number, end: number }>({ start: 0, end: 0 });
     const [renderError, setRenderError] = useState<string | null>(null);
     const editorState = useEditorState();
-    const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
-    const isFocused = focusBlockIndex === index;
+    const { focusBlock, blurBlock } = useFocusBlock();
     const theme = useExtendedTheme();
 
     // Sync value with block content when it changes externally

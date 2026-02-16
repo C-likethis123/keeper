@@ -38,6 +38,7 @@ export function HybridEditor({
   const lastEmittedMarkdownRef = useRef<string | undefined>(undefined);
   const isInitializedRef = useRef(false);
   const ignoreNextContentChangeRef = useRef<number | null>(null);
+  const ignoreSelectionChangeUntilRef = useRef(0);
 
   // Wiki link management via hook
   const wikiLinks = useWikiLinks();
@@ -245,15 +246,19 @@ export function HybridEditor({
       ignoreNextContentChangeRef.current = index;
 
       // Blur current block first to prevent it from processing the Enter key
+      ignoreSelectionChangeUntilRef.current = Date.now() + 150;
       blurBlock();
-      // editorState.splitBlock(index, cursorOffset);
-      // focusBlock(index + 1);
+      editorState.splitBlock(index, cursorOffset);
+      focusBlock(index + 1);
     },
     [editorState, wikiLinks, handleBlockTypeDetection, focusBlock, blurBlock],
   );
 
   const handleSelectionChange = useCallback(
     (index: number) => (start: number, end: number) => {
+      if (Date.now() < ignoreSelectionChangeUntilRef.current) {
+        return;
+      }
       editorState.setSelection({
         anchor: { blockIndex: index, offset: start },
         focus: { blockIndex: index, offset: end },
