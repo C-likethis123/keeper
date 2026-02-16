@@ -7,6 +7,7 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 export default function NoteGrid({
   notes,
   onDelete,
+  onPinToggle,
   refreshing = false,
   onRefresh,
   onEndReached,
@@ -15,6 +16,7 @@ export default function NoteGrid({
 }: {
   notes: Note[];
   onDelete?: (note: Note) => void;
+  onPinToggle?: (updated: Note) => void;
   refreshing?: boolean;
   onRefresh: () => void;
   onEndReached?: () => void;
@@ -52,7 +54,7 @@ export default function NoteGrid({
       data={notes}
       key={numColumns}
       numColumns={numColumns}
-      keyExtractor={(item) => item.filePath}
+      keyExtractor={(item, index) => `${item.filePath}-${index}`}
       columnWrapperStyle={numColumns > 1 ? { gap: 8, marginBottom: 8 } : undefined}
       contentContainerStyle={{
         padding: 8,
@@ -74,7 +76,7 @@ export default function NoteGrid({
       </View> : null}
       renderItem={({ item }) => (
         <View style={{ flex: 1 / numColumns }}>
-          <NoteCard note={item} onDelete={onDelete} />
+          <NoteCard note={item} onDelete={onDelete} onPinToggle={onPinToggle} />
         </View>
       )}
     />

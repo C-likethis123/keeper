@@ -32,6 +32,10 @@ export default function Index() {
     }
   }, [showToast]);
 
+  const handlePinToggle = useCallback((updated: Note) => {
+    setNotes((prev) => prev.map((n) => (n.filePath === updated.filePath ? updated : n)));
+  }, []);
+
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -54,6 +58,7 @@ export default function Index() {
       <NoteGrid
         notes={notes}
         onDelete={handleDeleteNote}
+        onPinToggle={handlePinToggle}
         refreshing={isLoading}
         onRefresh={handleRefresh}
         onEndReached={loadMoreNotes}

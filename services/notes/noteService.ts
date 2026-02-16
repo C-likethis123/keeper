@@ -1,5 +1,6 @@
 import { getFile } from "@/services/git/gitApi";
 import { GitService } from "@/services/git/gitService";
+import { normalizePath } from "@/services/git/expoFileSystemAdapter";
 import {
   NotesIndexService,
   extractSummary,
@@ -8,6 +9,14 @@ import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { Directory, File } from "expo-file-system";
 import { NOTES_ROOT } from "./Notes";
 import { Note, NoteToSave } from "./types";
+
+function toAbsolutePath(filePath: string): string {
+  const isRelative = !filePath.startsWith("/") && !filePath.startsWith("file://");
+  if (!isRelative) return filePath;
+  const root = NOTES_ROOT.endsWith("/") ? NOTES_ROOT.slice(0, -1) : NOTES_ROOT;
+  const raw = root + "/" + filePath;
+  return NOTES_ROOT.startsWith("file:") ? normalizePath(raw) : raw;
+}
 
 export class NoteService {
   static instance = new NoteService();
@@ -158,7 +167,8 @@ export class NoteService {
 
   async deleteNote(filePath: string): Promise<boolean> {
     try {
-      const file = new File(filePath);
+      const absolutePath = toAbsolutePath(filePath);
+      const file = new File(absolutePath);
       if (!file.exists) return false;
 
       file.delete();

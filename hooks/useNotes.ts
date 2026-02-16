@@ -31,7 +31,15 @@ export default function useNotes() {
             const result = await NotesIndexService.instance.listAllNotes(PAGE_SIZE, c, query);
             const newItems = result.items.map(toNote);
             const isLoadMore = (c?.offset as number) > 0;
-            setNotes((prev) => (isLoadMore ? [...prev, ...newItems] : newItems));
+            setNotes((prev) => {
+                const combined = isLoadMore ? [...prev, ...newItems] : newItems;
+                const seen = new Set<string>();
+                return combined.filter((n) => {
+                    if (seen.has(n.filePath)) return false;
+                    seen.add(n.filePath);
+                    return true;
+                });
+            });
             nextCursorRef.current = result.cursor;
             setHasMore(!!result.cursor);
         } catch (error: unknown) {

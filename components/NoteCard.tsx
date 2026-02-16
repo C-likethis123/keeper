@@ -9,9 +9,11 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 export default function NoteCard({
     note,
     onDelete,
+    onPinToggle,
 }: {
     note: Note;
     onDelete?: (note: Note) => void;
+    onPinToggle?: (updated: Note) => void;
 }) {
     const router = useRouter();
     const theme = useExtendedTheme();
@@ -19,9 +21,10 @@ export default function NoteCard({
 
     const openNote = () => router.push(`/editor?filePath=${note.filePath}`);
 
-    const onPinToggle = () => {
-        note.isPinned = !note.isPinned;
-        NoteService.instance.saveNote(note);
+    const handlePinToggle = () => {
+        const updated = { ...note, isPinned: !note.isPinned };
+        onPinToggle?.(updated);
+        NoteService.instance.saveNote(updated);
     };
 
     return (
@@ -36,11 +39,13 @@ export default function NoteCard({
                 </Text>
 
                 {note.isPinned && (
-                    <MaterialIcons
-                        name="push-pin"
-                        size={18}
-                        color={theme.colors.primary}
-                    />
+                    <TouchableOpacity onPress={handlePinToggle} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <MaterialIcons
+                            name="push-pin"
+                            size={18}
+                            color={theme.colors.primary}
+                        />
+                    </TouchableOpacity>
                 )}
             </View>
 
@@ -55,7 +60,7 @@ export default function NoteCard({
 
                 <View style={styles.actions}>
                     {!note.isPinned && (
-                        <TouchableOpacity onPress={onPinToggle}>
+                        <TouchableOpacity onPress={handlePinToggle}>
                             <MaterialIcons name="push-pin" size={18} color={theme.colors.textMuted} />
                         </TouchableOpacity>
                     )}
