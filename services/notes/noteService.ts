@@ -1,6 +1,6 @@
+import { normalizePath } from "@/services/git/expoFileSystemAdapter";
 import { getFile } from "@/services/git/gitApi";
 import { GitService } from "@/services/git/gitService";
-import { normalizePath } from "@/services/git/expoFileSystemAdapter";
 import {
   NotesIndexService,
   extractSummary,
@@ -54,7 +54,7 @@ export class NoteService {
             const lastUpdated = indexItem?.updatedAt || (file.modificationTime ? file.modificationTime * 1000 : Date.now());
             
             return {
-              title: fileName.replace(/\.md$/, ""),
+              title: decodeURIComponent(fileName.replace(/\.md$/, "")),
               content,
               filePath,
               lastUpdated,
@@ -76,7 +76,7 @@ export class NoteService {
         const lastUpdated = indexItem?.updatedAt || Date.now();
 
         return {
-          title: fileName.replace(/\.md$/, ""),
+          title: decodeURIComponent(fileName.replace(/\.md$/, "")),
           content: result.content,
           filePath,
           lastUpdated,
@@ -93,7 +93,7 @@ export class NoteService {
       const pinned = useNotesMetaStore.getState().pinned[filePath] ?? false;
 
       return {
-        title: fileName.replace(/\.md$/, ""),
+        title: decodeURIComponent(fileName.replace(/\.md$/, "")),
         content,
         filePath,
         lastUpdated,
@@ -229,7 +229,7 @@ export class NoteService {
           const content = await entry.text();
           metadata.push({
             filePath: entry.uri,
-            title: entry.name.replace(/\.md$/, ''),
+            title: decodeURIComponent(entry.name.replace(/\.md$/, '')),
             content,
             lastUpdated: entry.modificationTime ? entry.modificationTime * 1000 : Date.now(),
             isPinned: indexItem?.status === "PINNED" || false,

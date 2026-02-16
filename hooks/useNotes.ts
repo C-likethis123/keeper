@@ -3,16 +3,20 @@ import { NoteIndexItem, NotesIndexService } from "@/services/notes/notesIndex";
 import { Note } from "@/services/notes/types";
 import { waitForMetaHydration } from "@/stores/notes/metaStore";
 import { useCallback, useEffect, useRef, useState } from "react";
-const toNote = (item: NoteIndexItem): Note => ({
-    title: item.title ||
+const toNote = (item: NoteIndexItem): Note => {
+    const rawTitle =
+        item.title ||
         (item.summary.match(/^#{1,3}\s+(.+)$/m)?.[1]?.trim()) ||
         item.noteId.split("/").pop()?.replace(/\.md$/, "") ||
-        "Untitled",
-    content: item.summary,
-    filePath: item.noteId,
-    lastUpdated: item.updatedAt,
-    isPinned: item.status === "PINNED",
-});
+        "Untitled";
+    return {
+        title: decodeURIComponent(rawTitle),
+        content: item.summary,
+        filePath: item.noteId,
+        lastUpdated: item.updatedAt,
+        isPinned: item.status === "PINNED",
+    };
+};
 export default function useNotes() {
     const [notes, setNotes] = useState<Note[]>([]);
     const [error, setError] = useState<string | null>(null);

@@ -74,7 +74,9 @@ async function loadNoteItem(relativePath: string): Promise<NoteIndexItem | null>
   const mtime = file.modificationTime ? file.modificationTime * 1000 : Date.now();
   const pinned = useNotesMetaStore.getState().pinned[relativePath] ?? false;
   const title =
-    relativePath.split("/").pop()?.replace(/\.md$/, "") ?? "Untitled";
+    decodeURIComponent(
+      relativePath.split("/").pop()?.replace(/\.md$/, "") ?? "Untitled"
+    );
   return {
     noteId: relativePath,
     summary: extractSummary(content),

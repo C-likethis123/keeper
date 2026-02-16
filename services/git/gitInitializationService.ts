@@ -105,57 +105,27 @@ export class GitInitializationService {
                 // console.log('[GitInitializationService] Repository verified successfully after clone');
             } else {
                 console.log('[GitInitializationService] Valid repository already exists, skipping clone');
+                const status = await this.checkRepositoryStatus();
+                if (status.isBehind && !status.isAhead && !status.hasUncommitted) {
+                    console.log('[GitInitializationService] Repository is behind remote, syncing...');
+                    const syncResult = await this.syncWithRemote();
+                    if (syncResult.success) {
+                        console.log('[GitInitializationService] Successfully synced with remote');
+                        const updatedStatus = await this.checkRepositoryStatus();
+                        return {
+                            success: true,
+                            wasCloned: false,
+                            status: updatedStatus,
+                        };
+                    }
+                    console.warn('[GitInitializationService] Failed to sync with remote:', syncResult.error);
+                }
+                return {
+                    success: true,
+                    wasCloned: false,
+                    status,
+                };
             }
-
-            // console.log('[GitInitializationService] Checking repository status...');
-            // const status = await this.checkRepositoryStatus();
-
-            // If repository is behind, sync with remote
-            // But only if we successfully checked remote status (not if it failed due to auth)
-            // if (status.isBehind && !status.hasUncommitted) {
-            //     console.log('[GitInitializationService] Repository is behind remote, syncing...');
-            //     const syncResult = await this.syncWithRemote();
-            //     if (syncResult.success) {
-            //         console.log('[GitInitializationService] Successfully synced with remote');
-            //         // Re-check status after sync
-            //         const updatedStatus = await this.checkRepositoryStatus();
-            //         status.isBehind = updatedStatus.isBehind;
-            //         status.isAhead = updatedStatus.isAhead;
-            //         status.lastCommit = updatedStatus.lastCommit;
-            //     } else {
-            //         console.warn('[GitInitializationService] Failed to sync with remote:', syncResult.error);
-            //         if (syncResult.error?.includes('401') || syncResult.error?.includes('403')) {
-            //             console.warn('[GitInitializationService] Sync failed due to authentication error');
-            //             console.warn('[GitInitializationService] Please update your GitHub token with "repo" scope');
-            //         }
-            //     }
-            // } else if (status.isBehind && status.hasUncommitted) {
-            //     console.warn('[GitInitializationService] Repository is behind but has uncommitted changes - skipping sync');
-            // } else if (!status.isBehind && !status.isAhead) {
-            //     // If status shows not behind/not ahead, but we had errors checking remote,
-            //     // we might not have accurate information
-            //     console.log('[GitInitializationService] Repository status check completed');
-            // }
-
-            // const result = {
-            //     success: true,
-            //     wasCloned: !repoValidation.isValid,
-            //     status,
-            // };
-
-            // console.log('[GitInitializationService] Initialization completed successfully:');
-            // console.log(`  - Was cloned: ${result.wasCloned ? 'YES' : 'NO'}`);
-            // console.log(`  - Current branch: ${status.currentBranch}`);
-            // console.log(`  - Has uncommitted: ${status.hasUncommitted}`);
-            // console.log(`  - Is behind: ${status.isBehind}`);
-            // console.log(`  - Is ahead: ${status.isAhead}`);
-
-            // return result;
-
-            return {
-                success: true,
-                wasCloned: true,
-            };
         } catch (error) {
             return {
                 success: false,
@@ -786,7 +756,7 @@ export class GitInitializationService {
             await git.fetch({
                 fs: fs,
                 dir: NOTES_ROOT,
-                onAuth: () => ({ username: token, password: '' }),
+                onAuth: () => ({ username: owner, password: token }),
                 http,
                 remote: 'origin',
             });
@@ -857,7 +827,7 @@ export class GitInitializationService {
                     await git.fetch({
                         fs: fs,
                         dir: NOTES_ROOT,
-                        onAuth: () => ({ username: token, password: '' }),
+                        onAuth: () => ({ username: owner, password: token }),
                         http,
                         remote: 'origin',
                         singleBranch: false,
