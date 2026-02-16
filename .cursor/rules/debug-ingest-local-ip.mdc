@@ -1,0 +1,27 @@
+---
+description: Use Mac LAN IP for debug/agent ingest URLs so logs work on physical devices (Expo Go)
+globs: "**/*.ts,**/*.tsx"
+alwaysApply: false
+---
+
+# Debug ingest and local server URLs
+
+When adding or editing code that sends debug/agent logs to a local ingest server (e.g. `http://127.0.0.1:7242/ingest/...`):
+
+1. **Do not hardcode `127.0.0.1`** for URLs that the app might call from a physical device. On device, localhost is the phone, not your Mac.
+
+2. **Use a single base URL** from config (e.g. `EXPO_PUBLIC_AGENT_INGEST_BASE` or a shared constant) so it can be switched once for simulator vs device.
+
+3. **For device testing**, the base URL must be your Mac’s LAN IP (same Wi‑Fi as the phone). Resolve it on the host when configuring, e.g.:
+   ```bash
+   ipconfig getifaddr en0
+   ```
+   Set that value in `.env` or your config (e.g. `EXPO_PUBLIC_AGENT_INGEST_BASE=http://192.168.x.x:7242`). Use `127.0.0.1` for simulator-only.
+
+4. **Guard ingest calls** with `__DEV__` (or your debug flag) so they never run in production.
+
+Example: one constant, used everywhere:
+```ts
+const AGENT_INGEST_BASE = process.env.EXPO_PUBLIC_AGENT_INGEST_BASE ?? 'http://127.0.0.1:7242';
+// In .env for device: EXPO_PUBLIC_AGENT_INGEST_BASE=http://<mac-lan-ip>:7242
+```
