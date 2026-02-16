@@ -6,6 +6,7 @@ interface WikiLinkOverlayProps {
   results: string[];
   selectedIndex: number;
   isLoading?: boolean;
+  query?: string;
   onSelect: (title: string) => void;
 }
 
@@ -17,6 +18,7 @@ export function WikiLinkOverlay({
   results,
   selectedIndex,
   isLoading = false,
+  query = '',
   onSelect,
 }: WikiLinkOverlayProps) {
   const theme = useExtendedTheme();
@@ -65,6 +67,10 @@ export function WikiLinkOverlay({
             );
           })}
         </ScrollView>
+      ) : query.length > 0 ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>No notes found</Text>
+        </View>
       ) : null}
     </View>
   );

@@ -1,22 +1,22 @@
-import React, { useState, useEffect, useMemo } from "react";
-import {
-  View,
-  TextInput,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableOpacity,
-} from "react-native";
-import { Stack, useRouter, useLocalSearchParams } from "expo-router";
-import { MaterialIcons } from "@expo/vector-icons";
-import { useNoteStore } from "@/stores/notes/noteService";
-import { useAutoSave } from "@/hooks/useAutoSave";
-import { Note } from "@/services/notes/types";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { HybridEditor } from "@/components/editor";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { BlockType } from "@/components/editor/core/BlockNode";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { Note } from "@/services/notes/types";
+import { useNoteStore } from "@/stores/notes/noteService";
+import { MaterialIcons } from "@expo/vector-icons";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function NoteEditorScreen() {
   const router = useRouter();

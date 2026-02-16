@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
+import { MaterialIcons } from '@expo/vector-icons';
+import React, { useMemo } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { BlockType } from './core/BlockNode';
 
 interface EditorToolbarProps {
@@ -22,22 +22,26 @@ export function EditorToolbar({
   const theme = useExtendedTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  if (Platform.OS === 'web') {
-    return null;
-  }
-
   const isListBlock =
     blockType === BlockType.bulletList || blockType === BlockType.numberedList;
-  const shouldShow = isListBlock && blockIndex !== null;
 
-  if (!shouldShow) {
-    return null;
-  }
-
-  const canOutdent = listLevel > 0;
+  const canOutdent = isListBlock && listLevel > 0;
+  const canIndent = isListBlock && listLevel < 10;
 
   return (
     <View style={styles.toolbar}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={onIndent}
+        activeOpacity={0.7}
+        disabled={!canIndent}
+      >
+        <MaterialIcons
+          name="format-indent-increase"
+          size={24}
+          color={theme.colors.text}
+        />
+      </TouchableOpacity>
       <TouchableOpacity
         style={[styles.button, !canOutdent && styles.buttonDisabled]}
         onPress={onOutdent}
@@ -48,17 +52,6 @@ export function EditorToolbar({
           name="format-indent-decrease"
           size={24}
           color={canOutdent ? theme.colors.text : theme.colors.textDisabled}
-        />
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={onIndent}
-        activeOpacity={0.7}
-      >
-        <MaterialIcons
-          name="format-indent-increase"
-          size={24}
-          color={theme.colors.text}
         />
       </TouchableOpacity>
     </View>

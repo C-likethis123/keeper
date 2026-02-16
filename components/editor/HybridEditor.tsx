@@ -1,17 +1,17 @@
-import React, { useEffect, useCallback, useRef } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
-import { useEditorState } from './core/EditorState';
-import { blockRegistry, BlockConfig } from './blocks/BlockRegistry';
+import { useFocusBlock } from '@/hooks/useFocusBlock';
+import { useOverlayPosition } from '@/hooks/useOverlayPosition';
+import * as WebBrowser from 'expo-web-browser';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { BlockConfig, blockRegistry } from './blocks/BlockRegistry';
 import { BlockType } from './core/BlockNode';
+import { useEditorState } from './core/EditorState';
 import { WikiLinkOverlay } from './wikilinks/WikiLinkOverlay';
 import { useWikiLinks } from './wikilinks/useWikiLinks';
-import { useOverlayPosition } from '@/hooks/useOverlayPosition';
-import { useFocusBlock } from '@/hooks/useFocusBlock';
 
 export interface HybridEditorProps {
   initialContent?: string;
   onChanged?: (markdown: string) => void;
-  autofocus?: boolean;
   onFocusedBlockChange?: (blockInfo: {
     blockType: BlockType | null;
     blockIndex: number | null;
@@ -31,11 +31,11 @@ export interface HybridEditorProps {
 export function HybridEditor({
   initialContent = '',
   onChanged,
-  autofocus = false,
   onFocusedBlockChange,
 }: HybridEditorProps) {
   const editorState = useEditorState();
   const lastInitialContentRef = useRef<string | undefined>(undefined);
+  const lastEmittedMarkdownRef = useRef<string | undefined>(undefined);
   const isInitializedRef = useRef(false);
   const ignoreNextContentChangeRef = useRef<number | null>(null);
 
@@ -52,37 +52,60 @@ export function HybridEditor({
   // Focus management
   const { focusBlock, blurBlock } = useFocusBlock();
 
+  const handleLinkPress = useCallback(
+    (index: number) => (urlOrWikiTitle: string) => {
+      const isUrl =
+        urlOrWikiTitle.startsWith('http://') || urlOrWikiTitle.startsWith('https://');
+      if (isUrl) {
+        Alert.alert('Link', urlOrWikiTitle, [
+          {
+            text: 'Open',
+            onPress: () => {
+              if (Platform.OS === 'web') {
+                window.open(urlOrWikiTitle, '_blank');
+              } else {
+                WebBrowser.openBrowserAsync(urlOrWikiTitle).catch(() => {});
+              }
+            },
+          },
+          { text: 'Edit', onPress: () => focusBlock(index) },
+          { text: 'Cancel', style: 'cancel' },
+        ]);
+      } else {
+        focusBlock(index);
+      }
+    },
+    [focusBlock],
+  );
+
   // Track if a selection is in progress to prevent blur from ending session
   const wikiLinkSelectionInProgressRef = useRef(false);
 
   // Initialize document from markdown when initialContent changes (only from outside, not from our own updates)
   useEffect(() => {
-    // Only reload if initialContent prop actually changed from outside
-    // Don't reload if it's the same as what we last loaded (prevents feedback loop)
+    // Skip reload when initialContent came from our own onChanged (parent echoed back)
+    if (initialContent === lastEmittedMarkdownRef.current) {
+      lastInitialContentRef.current = initialContent;
+      return;
+    }
     if (initialContent !== undefined && initialContent !== lastInitialContentRef.current) {
       const currentMarkdown = editorState.toMarkdown();
-      // Only reload if content actually changed to avoid unnecessary re-renders
       if (currentMarkdown !== initialContent) {
         editorState.loadMarkdown(initialContent);
         lastInitialContentRef.current = initialContent;
         isInitializedRef.current = true;
       }
     }
-  }, [initialContent]); // Removed editorState from dependencies to prevent feedback loop
+  }, [initialContent]);
 
   // Notify parent of changes
   useEffect(() => {
     if (onChanged) {
       const markdown = editorState.toMarkdown();
+      lastEmittedMarkdownRef.current = markdown;
       onChanged(markdown);
     }
   }, [editorState.document, onChanged, editorState]);
-
-  useEffect(() => {
-    if (autofocus && editorState.document.blocks.length > 0) {
-      focusBlock(0, { delay: 100 });
-    }
-  }, [autofocus, editorState, focusBlock]);
 
 
   const handleContentChange = useCallback(
@@ -379,6 +402,7 @@ export function HybridEditor({
       handleEnter,
       handleDelete,
       calculateListItemNumber,
+      handleLinkPress,
     ],
   );
 

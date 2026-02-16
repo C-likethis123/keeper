@@ -83,7 +83,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
   return StyleSheet.create({
     container: {
       minHeight: 40,
-      paddingVertical: 8,
       paddingHorizontal: 16,
       position: 'relative',
     },

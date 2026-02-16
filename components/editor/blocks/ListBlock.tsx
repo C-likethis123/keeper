@@ -1,11 +1,11 @@
-import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import { Pressable, TextInput, StyleSheet, TextStyle, View } from 'react-native';
-import { BlockConfig } from './BlockRegistry';
-import { InlineMarkdown } from '../rendering/InlineMarkdown';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, TextInput, TextStyle, View } from 'react-native';
 import { BlockType } from '../core/BlockNode';
-import { ListMarker } from './ListMarker';
+import { InlineMarkdown } from '../rendering/InlineMarkdown';
 import { WikiLinkTrigger } from '../wikilinks/WikiLinkTrigger';
+import { BlockConfig } from './BlockRegistry';
+import { ListMarker } from './ListMarker';
 
 export function ListBlock({
   block,
@@ -26,7 +26,7 @@ export function ListBlock({
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const ignoreNextChangeRef = useRef(false);
   const lastBlockContentRef = useRef(block.content);
-  
+
   // Sync TextInput when block content changes externally (e.g., from wiki link selection)
   useEffect(() => {
     if (block.content !== lastBlockContentRef.current && inputRef.current) {
@@ -36,7 +36,7 @@ export function ListBlock({
       if (inputRef.current) {
         inputRef.current.setNativeProps({ text: block.content });
         // Also update selection to end of new content
-        inputRef.current.setNativeProps({ 
+        inputRef.current.setNativeProps({
           selection: { start: block.content.length, end: block.content.length }
         });
       }
@@ -160,20 +160,14 @@ export function ListBlock({
           listItemNumber={listItemNumber}
         />
         <View style={styles.contentContainer}>
-          {!isFocused && (
-            <View style={styles.overlay} pointerEvents="none">
-              <View style={styles.overlayContent}>
-                <InlineMarkdown text={block.content} style={textStyle} />
-              </View>
-            </View>
-          )}
-
           <TextInput
             ref={inputRef}
+            pointerEvents={isFocused ? 'auto' : 'none'}
             style={[
               styles.input,
               textStyle,
               isFocused ? styles.inputVisible : styles.inputHidden,
+              !isFocused && styles.inputBehindOverlay,
             ]}
             value={block.content}
             onChangeText={handleContentChange}
@@ -185,6 +179,13 @@ export function ListBlock({
             placeholder="List item..."
             placeholderTextColor={theme.custom.editor.placeholder}
           />
+          {!isFocused && (
+            <Pressable style={styles.overlay} onPress={handleFocus} pointerEvents="auto">
+              <View style={styles.overlayContent}>
+                <InlineMarkdown text={block.content} style={textStyle} />
+              </View>
+            </Pressable>
+          )}
         </View>
       </View>
     </Pressable>
@@ -195,7 +196,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
   return StyleSheet.create({
     container: {
       minHeight: 40,
-      paddingVertical: 8,
       paddingHorizontal: 16,
       position: 'relative',
     },
@@ -219,9 +219,12 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
       right: 0,
       top: 0,
       bottom: 0,
-      pointerEvents: 'none',
-      zIndex: 1,
+      pointerEvents: 'box-none',
+      zIndex: 10,
       justifyContent: 'center',
+    },
+    inputBehindOverlay: {
+      zIndex: 0,
     },
     overlayContent: {
       minHeight: 24,

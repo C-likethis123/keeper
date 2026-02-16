@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { BlockType } from '../core/BlockNode';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
+import React, { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { BlockType } from '../core/BlockNode';
 
 interface ListMarkerProps {
     type: BlockType.bulletList | BlockType.numberedList;
@@ -17,18 +17,14 @@ export function ListMarker({ type, listLevel, listItemNumber }: ListMarkerProps)
     if (type === BlockType.numberedList) {
         return (
             <View style={[styles.container, { paddingLeft: indent }]}>
-                <View style={styles.numberContainer}>
-                    <Text style={styles.number}>{listItemNumber ?? 1}.</Text>
-                </View>
+                <Text style={styles.number}>{listItemNumber ?? 1}.</Text>
             </View>
         );
     }
 
     return (
         <View style={[styles.container, { paddingLeft: indent }]}>
-            <View style={styles.bulletContainer}>
-                <View style={styles.bullet} />
-            </View>
+            <View style={styles.bullet} />
         </View>
     );
 }
@@ -38,24 +34,13 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
         container: {
             justifyContent: 'center',
             alignItems: 'center',
-            height: 24,
-        },
-        numberContainer: {
-            width: 28,
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            height: 24,
+            height: 16,
+            paddingRight: 8,
         },
         number: {
             color: theme.colors.primary,
             fontSize: 16,
             lineHeight: 16,
-        },
-        bulletContainer: {
-            width: 24,
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: 24,
         },
         bullet: {
             width: 6,

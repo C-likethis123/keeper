@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
 import { useNoteStore } from "@/stores/notes/noteService";
+import { useEffect, useRef, useState } from "react";
 
 type AutoSaveInput = {
   filePath: string;
