@@ -58,7 +58,6 @@ export class GitInitializationService {
                 console.log(`[GitInitializationService] Validation reason: ${repoValidation.reason}`);
             }
 
-            // If repository is invalid, clean it up before cloning
             if (!repoValidation.isValid) {
                 if (repoValidation.exists) {
                     console.log('[GitInitializationService] Invalid repository detected, please clear your cache manually and try again');
@@ -106,20 +105,20 @@ export class GitInitializationService {
             } else {
                 console.log('[GitInitializationService] Valid repository already exists, skipping clone');
                 const status = await this.checkRepositoryStatus();
-                if (status.isBehind && !status.isAhead && !status.hasUncommitted) {
-                    console.log('[GitInitializationService] Repository is behind remote, syncing...');
-                    const syncResult = await this.syncWithRemote();
-                    if (syncResult.success) {
-                        console.log('[GitInitializationService] Successfully synced with remote');
-                        const updatedStatus = await this.checkRepositoryStatus();
-                        return {
-                            success: true,
-                            wasCloned: false,
-                            status: updatedStatus,
-                        };
-                    }
-                    console.warn('[GitInitializationService] Failed to sync with remote:', syncResult.error);
+                console.log(status.hasUncommitted
+                    ? '[GitInitializationService] Syncing with remote (may have uncommitted changes)...'
+                    : '[GitInitializationService] Syncing with remote...');
+                const syncResult = await this.syncWithRemote();
+                if (syncResult.success) {
+                    console.log('[GitInitializationService] Successfully synced with remote');
+                    const updatedStatus = await this.checkRepositoryStatus();
+                    return {
+                        success: true,
+                        wasCloned: false,
+                        status: updatedStatus,
+                    };
                 }
+                console.warn('[GitInitializationService] Failed to sync with remote:', syncResult.error);
                 return {
                     success: true,
                     wasCloned: false,
@@ -751,7 +750,6 @@ export class GitInitializationService {
         try {
             const { token, owner } = this.config;
 
-            // First, fetch the latest changes
             console.log('[GitInitializationService] Fetching latest changes from remote...');
             await git.fetch({
                 fs: fs,
@@ -761,7 +759,6 @@ export class GitInitializationService {
                 remote: 'origin',
             });
 
-            // Get current branch
             const branches = await git.listBranches({
                 fs: fs,
                 dir: NOTES_ROOT,
@@ -771,7 +768,6 @@ export class GitInitializationService {
 
             console.log(`[GitInitializationService] Attempting to merge from ${remoteBranch}...`);
 
-            // Try to merge with fast-forward only first (safest, no merge commit needed)
             try {
                 await git.merge({
                     fs: fs,
@@ -781,9 +777,15 @@ export class GitInitializationService {
                     fastForwardOnly: true,
                 });
                 console.log('[GitInitializationService] Fast-forward merge successful');
+                await git.checkout({
+                    fs,
+                    dir: NOTES_ROOT,
+                    ref: 'HEAD',
+                    noUpdateHead: true,
+                    force: true,
+                });
                 return { success: true };
             } catch (fastForwardError) {
-                // If fast-forward fails, try a regular merge
                 console.log('[GitInitializationService] Fast-forward not possible, attempting regular merge...');
                 try {
                     await git.merge({
@@ -798,6 +800,13 @@ export class GitInitializationService {
                         message: 'Merge remote changes',
                     });
                     console.log('[GitInitializationService] Merge successful');
+                    await git.checkout({
+                        fs,
+                        dir: NOTES_ROOT,
+                        ref: 'HEAD',
+                        noUpdateHead: true,
+                        force: true,
+                    });
                     return { success: true };
                 } catch (mergeError) {
                     const errorMsg = mergeError instanceof Error ? mergeError.message : String(mergeError);

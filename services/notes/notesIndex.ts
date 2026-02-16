@@ -71,7 +71,7 @@ async function loadNoteItem(relativePath: string): Promise<NoteIndexItem | null>
   const file = new File(fullPath);
   if (!file.exists) return null;
   const content = await file.text();
-  const mtime = file.modificationTime ? file.modificationTime * 1000 : Date.now();
+  const mtime = file.modificationTime!;
   const pinned = useNotesMetaStore.getState().pinned[relativePath] ?? false;
   const title =
     decodeURIComponent(

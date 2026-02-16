@@ -51,7 +51,7 @@ export class NoteService {
             const content = await file.text();
             const fileName = filePath.split("/").pop() || "Untitled";
             const indexItem = await NotesIndexService.instance.getNote(filePath);
-            const lastUpdated = indexItem?.updatedAt || (file.modificationTime ? file.modificationTime * 1000 : Date.now());
+            const lastUpdated = indexItem!.updatedAt!;
             
             return {
               title: decodeURIComponent(fileName.replace(/\.md$/, "")),
@@ -89,7 +89,7 @@ export class NoteService {
 
       const content = await file.text();
       const fileName = filePath.split("/").pop() || "Untitled";
-      const lastUpdated = file.modificationTime ? file.modificationTime * 1000 : Date.now();
+      const lastUpdated = file.modificationTime!;
       const pinned = useNotesMetaStore.getState().pinned[filePath] ?? false;
 
       return {
@@ -111,18 +111,12 @@ export class NoteService {
       note.filePath ||
       (await this.resolveFilePath(NOTES_ROOT, note.title, undefined));
     
-    // Check if path is relative (doesn't start with / or file://)
     const isRelative = !filePath.startsWith('/') && !filePath.startsWith('file://');
-    
-    // Store original relative path for git operations
     const relativePath = isRelative ? filePath : undefined;
-    
-    // Convert relative paths to absolute paths for FileSystem operations
     if (isRelative) {
       filePath = `${NOTES_ROOT}${filePath}`;
     }
     
-    // Ensure directory exists for the absolute path
     const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
     const dir = new Directory(dirPath);
     if (!dir.exists) {
@@ -231,7 +225,7 @@ export class NoteService {
             filePath: entry.uri,
             title: decodeURIComponent(entry.name.replace(/\.md$/, '')),
             content,
-            lastUpdated: entry.modificationTime ? entry.modificationTime * 1000 : Date.now(),
+            lastUpdated: entry.modificationTime!,
             isPinned: indexItem?.status === "PINNED" || false,
           });
         }

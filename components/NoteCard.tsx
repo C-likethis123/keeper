@@ -1,10 +1,10 @@
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
-import { Note } from "@/services/notes/types";
-import { useMemo } from "react";
-import { useRouter } from "expo-router";
-import { NoteService } from "@/services/notes/noteService";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { NoteService } from "@/services/notes/noteService";
+import { Note } from "@/services/notes/types";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useMemo } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function NoteCard({
     note,
@@ -12,8 +12,8 @@ export default function NoteCard({
     onPinToggle,
 }: {
     note: Note;
-    onDelete?: (note: Note) => void;
-    onPinToggle?: (updated: Note) => void;
+    onDelete: (note: Note) => void;
+    onPinToggle: (updated: Note) => void;
 }) {
     const router = useRouter();
     const theme = useExtendedTheme();
@@ -64,7 +64,7 @@ export default function NoteCard({
                             <MaterialIcons name="push-pin" size={18} color={theme.colors.textMuted} />
                         </TouchableOpacity>
                     )}
-                    <TouchableOpacity onPress={() => onDelete?.(note)}>
+                    <TouchableOpacity onPress={() => onDelete(note)}>
                         <MaterialIcons name="delete-outline" size={18} color={theme.colors.textMuted} />
                     </TouchableOpacity>
                 </View>

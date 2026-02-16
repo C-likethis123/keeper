@@ -1,8 +1,8 @@
-import { View, FlatList, useWindowDimensions, RefreshControl, ActivityIndicator } from "react-native";
-import EmptyState from "./EmptyState";
 import NoteCard from "@/components/NoteCard";
-import { Note } from "@/services/notes/types";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { Note } from "@/services/notes/types";
+import { ActivityIndicator, FlatList, RefreshControl, useWindowDimensions, View } from "react-native";
+import EmptyState from "./EmptyState";
 
 export default function NoteGrid({
   notes,
@@ -15,8 +15,8 @@ export default function NoteGrid({
   hasMore = false,
 }: {
   notes: Note[];
-  onDelete?: (note: Note) => void;
-  onPinToggle?: (updated: Note) => void;
+  onDelete: (note: Note) => void;
+  onPinToggle: (updated: Note) => void;
   refreshing?: boolean;
   onRefresh: () => void;
   onEndReached?: () => void;
@@ -43,8 +43,8 @@ export default function NoteGrid({
 
 
   const handleEndReached = () => {
-    if (hasMore && !isLoadingMore && onEndReached) {
-      onEndReached();
+    if (hasMore && !isLoadingMore) {
+      onEndReached?.();
     }
   };
 
