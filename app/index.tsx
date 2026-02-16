@@ -35,7 +35,7 @@ export default function Index() {
 
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  if (isLoading) {
+  if (isLoading && notes.length === 0) {
     return <Loader />;
   }
 

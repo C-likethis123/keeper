@@ -8,6 +8,11 @@ type NotesMetaState = {
   setPinned: (filePath: string, value: boolean) => void;
 };
 
+let resolveHydration: () => void;
+const hydrationPromise = new Promise<void>((resolve) => {
+  resolveHydration = resolve;
+});
+
 export const useNotesMetaStore = create<NotesMetaState>()(
   persist(
     (set) => ({
@@ -30,6 +35,13 @@ export const useNotesMetaStore = create<NotesMetaState>()(
     {
       name: "notes-meta",
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => () => {
+        resolveHydration();
+      },
     }
   )
 );
+
+export function waitForMetaHydration(): Promise<void> {
+  return hydrationPromise;
+}

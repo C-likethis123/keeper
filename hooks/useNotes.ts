@@ -1,6 +1,7 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { NoteIndexItem, NotesIndexService } from "@/services/notes/notesIndex";
 import { Note } from "@/services/notes/types";
+import { waitForMetaHydration } from "@/stores/notes/metaStore";
 import { useCallback, useEffect, useRef, useState } from "react";
 const toNote = (item: NoteIndexItem): Note => ({
     title: item.title ||
@@ -21,13 +22,16 @@ export default function useNotes() {
     const [isLoading, setIsLoading] = useState(false);
 
     const [query, setQuery] = useState("");
+    const prevQueryRef = useRef(query);
     const fetchNotes = useCallback(async (cursorOverride?: Record<string, unknown>) => {
         if (isLoading) return;
         setIsLoading(true);
         const c = cursorOverride !== undefined ? cursorOverride : cursor;
         try {
             const result = await NotesIndexService.instance.listAllNotes(PAGE_SIZE, c, query);
-            setNotes(result.items.map(toNote));
+            const newItems = result.items.map(toNote);
+            const isLoadMore = (c?.offset as number) > 0;
+            setNotes((prev) => (isLoadMore ? [...prev, ...newItems] : newItems));
             nextCursorRef.current = result.cursor;
             setHasMore(!!result.cursor);
         } catch (error: unknown) {
@@ -52,8 +56,32 @@ export default function useNotes() {
     }, [fetchNotes]);
 
     useEffect(() => {
-        fetchNotes();
-    }, [fetchNotes]);
+        let cancelled = false;
+        const isQueryChange = prevQueryRef.current !== query;
+        if (isQueryChange) {
+            prevQueryRef.current = query;
+            setCursor(undefined);
+            setHasMore(true);
+        }
+        const timeoutId = isQueryChange
+            ? setTimeout(() => {
+                  (async () => {
+                      await waitForMetaHydration();
+                      if (!cancelled) fetchNotes(undefined);
+                  })();
+              }, 300)
+            : undefined;
+        if (!isQueryChange) {
+            (async () => {
+                await waitForMetaHydration();
+                if (!cancelled) fetchNotes();
+            })();
+        }
+        return () => {
+            cancelled = true;
+            if (timeoutId != null) clearTimeout(timeoutId);
+        };
+    }, [fetchNotes, query]);
 
     return {
         notes,
