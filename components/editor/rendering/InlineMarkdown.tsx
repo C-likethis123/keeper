@@ -102,6 +102,33 @@ function parseInlineMarkdown(
   };
 
   while (i < text.length) {
+    const atLineStart = i === 0 || text[i - 1] === '\n';
+    const atxMatch = atLineStart && text.slice(i).match(/^(#{1,3})\s/);
+    if (atxMatch) {
+      const prefix = atxMatch[0];
+      const prefixLen = prefix.length;
+      const lineEnd = text.indexOf('\n', i + prefixLen);
+      const end = lineEnd === -1 ? text.length : lineEnd;
+      const restOfLine = text.substring(i + prefixLen, end);
+      const level = prefix.trim().length as 1 | 2 | 3;
+      const headingStyle =
+        level === 1
+          ? theme.typography.heading1
+          : level === 2
+            ? theme.typography.heading2
+            : theme.typography.heading3;
+      flushBuffer();
+      const nested = parseInlineMarkdown(
+        restOfLine,
+        { ...baseStyle, ...headingStyle },
+        onLinkPress,
+        theme,
+      );
+      segments.push(...nested);
+      i = end;
+      if (text[i] === '\n') i++;
+      continue;
+    }
     // Check for wiki links: [[text]]
     if (text[i] === '[' && i + 1 < text.length && text[i + 1] === '[') {
       const closeIndex = text.indexOf(']]', i + 2);
