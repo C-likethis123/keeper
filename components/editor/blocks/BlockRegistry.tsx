@@ -17,6 +17,7 @@ export interface BlockConfig {
   onEnter?: (cursorOffset: number) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  onSelectionChange?: (start: number, end: number) => void;
   onDelete?: () => void;
   listItemNumber?: number; // For numbered list items
   // Wiki link callbacks

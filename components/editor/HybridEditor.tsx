@@ -6,6 +6,7 @@ import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { BlockConfig, blockRegistry } from './blocks/BlockRegistry';
 import { BlockType } from './core/BlockNode';
 import { useEditorState } from './core/EditorState';
+import { createCollapsedSelection } from './core/Selection';
 import { WikiLinkOverlay } from './wikilinks/WikiLinkOverlay';
 import { useWikiLinks } from './wikilinks/useWikiLinks';
 
@@ -217,7 +218,7 @@ export function HybridEditor({
         focusBlock(index - 1, { delay: 0, useAnimationFrame: false });
       }
     },
-    [editorState],
+    [editorState, focusBlock],
   );
 
   const handleEnter = useCallback(
@@ -260,15 +261,29 @@ export function HybridEditor({
 
   const handleFocus = useCallback(
     (index: number) => () => {
-      focusBlock(index, { delay: 0, useAnimationFrame: false });
+      const block = editorState.document.blocks[index];
+      editorState.setSelection(
+        createCollapsedSelection({
+          blockIndex: index,
+          offset: block?.content.length ?? 0,
+        }),
+      );
     },
-    [focusBlock],
+    [editorState],
+  );
+
+  const handleSelectionChange = useCallback(
+    (index: number) => (start: number, end: number) => {
+      editorState.setSelection({
+        anchor: { blockIndex: index, offset: start },
+        focus: { blockIndex: index, offset: end },
+      });
+    },
+    [editorState],
   );
 
   const handleBlur = useCallback(() => {
-    // Optionally clear focus on blur
-    // editorState.setFocusedBlock(null);
-    // End wiki link session on blur, but with a small delay to allow overlay selection
+    editorState.setSelection(null);
     setTimeout(() => {
       // Don't end if a selection is in progress or already completed
       if (wikiLinkSelectionInProgressRef.current) {
@@ -280,8 +295,8 @@ export function HybridEditor({
       if (wikiLinks.isActive && !wikiLinks.shouldShowOverlay) {
         wikiLinks.handleTriggerEnd();
       }
-    }, 200); // Delay to allow overlay onPress to fire first
-  }, [wikiLinks]);
+    }, 200);
+  }, [editorState, wikiLinks]);
 
   const calculateListItemNumber = useCallback(
     (index: number): number | undefined => {
@@ -338,7 +353,7 @@ export function HybridEditor({
 
   useEffect(() => {
     if (onFocusedBlockChange) {
-      const focusedIndex = editorState.focusedBlockIndex;
+      const focusedIndex = editorState.getFocusedBlockIndex();
       if (focusedIndex !== null) {
         const block = editorState.document.blocks[focusedIndex];
         onFocusedBlockChange({
@@ -358,7 +373,7 @@ export function HybridEditor({
         });
       }
     }
-  }, [editorState.focusedBlockIndex, editorState.document.blocks, onFocusedBlockChange, handleIndent, handleOutdent]);
+  }, [editorState, onFocusedBlockChange, handleIndent, handleOutdent]);
 
   const renderBlock = useCallback(
     (block: typeof editorState.document.blocks[0], index: number) => {
@@ -366,7 +381,7 @@ export function HybridEditor({
       const config: BlockConfig = {
         block,
         index,
-        isFocused: editorState.focusedBlockIndex === index,
+        isFocused: editorState.getFocusedBlockIndex() === index,
         onContentChange: handleContentChange(index),
         onBlockTypeChange: (blockIndex: number, newType: BlockType, language?: string) => {
           if (blockIndex === index) {
@@ -378,6 +393,7 @@ export function HybridEditor({
         onEnter: (cursorOffset) => handleEnter(index, cursorOffset),
         onFocus: handleFocus(index),
         onBlur: handleBlur,
+        onSelectionChange: handleSelectionChange(index),
         onDelete: () => handleDelete(index),
         listItemNumber,
         onWikiLinkTriggerStart: (startOffset) => wikiLinks.handleTriggerStart(index, startOffset),
@@ -391,14 +407,14 @@ export function HybridEditor({
       );
     },
     [
-      editorState.document.blocks,
-      editorState.focusedBlockIndex,
+      editorState,
       handleContentChange,
       handleBlockTypeChange,
       handleBackspaceAtStart,
       handleSpace,
       handleFocus,
       handleBlur,
+      handleSelectionChange,
       handleEnter,
       handleDelete,
       calculateListItemNumber,

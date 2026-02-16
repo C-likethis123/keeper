@@ -1,31 +1,30 @@
+import * as Clipboard from 'expo-clipboard';
 import React, {
-    useRef,
-    useState,
     useEffect,
     useMemo,
+    useRef,
+    useState,
 } from 'react';
 import {
-    View,
-    TextInput,
+    NativeSyntheticEvent,
+    Platform,
     ScrollView,
     StyleSheet,
-    Platform,
-    NativeSyntheticEvent,
+    TextInput,
     TextInputKeyPressEventData,
-    TextInputSelectionChangeEventData,
     TextInputScrollEventData,
-    TextInputChangeEventData,
+    TextInputSelectionChangeEventData,
     TouchableOpacity,
+    View
 } from 'react-native';
+import * as Braces from '../code/Braces';
+import * as Indentation from '../code/Indentation';
+import { LanguageRegistry } from '../code/LanguageRegistry';
+import { SmartEditingHandler } from '../code/SmartEditingHandler';
+import SyntaxHighlighter from '../code/SyntaxHighlighter';
+import { BlockType } from '../core';
 import { BlockConfig } from './BlockRegistry';
 import { CodeBlockHeader } from './CodeBlockHeader';
-import SyntaxHighlighter, { SyntaxHighlighterSyntaxStyles } from '../code/SyntaxHighlighter';
-import { SmartEditingHandler } from '../code/SmartEditingHandler';
-import { LanguageRegistry } from '../code/LanguageRegistry';
-import * as Clipboard from 'expo-clipboard';
-import * as Indentation from '../code/Indentation';
-import * as Braces from '../code/Braces';
-import { BlockType } from '../core';
 
 export function CodeBlock({
     block,
@@ -35,6 +34,7 @@ export function CodeBlock({
     onEnter,
     onFocus,
     onBlur,
+    onSelectionChange,
     isFocused: isFocusedFromState,
     onBlockTypeChange,
     index,
@@ -133,14 +133,10 @@ export function CodeBlock({
     };
 
     const handleSelectionChange = (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
-        setSelection(e.nativeEvent.selection);
+        const sel = e.nativeEvent.selection;
+        setSelection(sel);
+        onSelectionChange?.(sel.start, sel.end);
     };
-    useEffect(() => {
-        if (isFocusedFromState && inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, [isFocusedFromState]);
-
     const handleKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
         const key = e.nativeEvent.key;
         switch (key) {

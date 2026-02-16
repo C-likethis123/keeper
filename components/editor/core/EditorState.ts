@@ -14,9 +14,8 @@ export interface BlockSelection {
 interface EditorState {
   // Document state
   document: Document;
-  selection: DocumentSelection;
+  selection: DocumentSelection | null;
   blockSelection: BlockSelection | null;
-  focusedBlockIndex: number | null;
 
   // History
   history: History;
@@ -26,8 +25,7 @@ interface EditorState {
 
   // Actions
   setDocument: (document: Document) => void;
-  setSelection: (selection: DocumentSelection) => void;
-  setFocusedBlock: (index: number | null, preserveSelection?: boolean) => void;
+  setSelection: (selection: DocumentSelection | null) => void;
   clearBlockSelection: () => void;
   selectBlock: (index: number) => void;
   selectBlockRange: (start: number, end: number) => void;
@@ -53,6 +51,7 @@ interface EditorState {
   // Computed getters (accessed via functions)
   getCanUndo: () => boolean;
   getCanRedo: () => boolean;
+  getFocusedBlockIndex: () => number | null;
   getFocusedBlock: () => BlockNode | null;
   getHasBlockSelection: () => boolean;
 }
@@ -63,9 +62,8 @@ export const useEditorState = create<EditorState>((set, get) => {
   return {
     // Initial state
     document: createEmptyDocument(),
-    selection: createStartSelection(),
+    selection: null,
     blockSelection: null,
-    focusedBlockIndex: null,
     history,
     isComposing: false,
 
@@ -73,32 +71,13 @@ export const useEditorState = create<EditorState>((set, get) => {
     setDocument: (document: Document) => {
       set({
         document,
-        selection: createStartSelection(),
-        focusedBlockIndex: null,
+        selection: null,
       });
       history.clear();
     },
 
-    setSelection: (selection: DocumentSelection) => {
+    setSelection: (selection: DocumentSelection | null) => {
       set({ selection });
-    },
-
-    setFocusedBlock: (index: number | null, preserveSelection = true) => {
-      const state = get();
-      if (state.focusedBlockIndex !== index) {
-        if (index !== null && !preserveSelection) {
-          const block = state.document.blocks[index];
-          set({
-            focusedBlockIndex: index,
-            selection: createCollapsedSelection({
-              blockIndex: index,
-              offset: block.content.length,
-            }),
-          });
-        } else {
-          set({ focusedBlockIndex: index });
-        }
-      }
     },
 
     clearBlockSelection: () => {
@@ -108,7 +87,7 @@ export const useEditorState = create<EditorState>((set, get) => {
     selectBlock: (index: number) => {
       set({
         blockSelection: { start: index, end: index },
-        focusedBlockIndex: null,
+        selection: null,
       });
     },
 
@@ -117,7 +96,7 @@ export const useEditorState = create<EditorState>((set, get) => {
       const normalizedEnd = Math.max(start, end);
       set({
         blockSelection: { start: normalizedStart, end: normalizedEnd },
-        focusedBlockIndex: null,
+        selection: null,
       });
     },
 
@@ -131,7 +110,7 @@ export const useEditorState = create<EditorState>((set, get) => {
           start: 0,
           end: state.document.blocks.length - 1,
         },
-        focusedBlockIndex: null,
+        selection: null,
       });
     },
 
@@ -165,7 +144,10 @@ export const useEditorState = create<EditorState>((set, get) => {
 
       set({
         document: newDocument,
-        selection: transaction.selectionAfter ?? state.selection,
+        selection:
+          transaction.selectionAfter !== undefined
+            ? transaction.selectionAfter
+            : state.selection,
       });
     },
 
@@ -179,7 +161,10 @@ export const useEditorState = create<EditorState>((set, get) => {
       const newDocument = applyTransaction(inverse, state.document);
       set({
         document: newDocument,
-        selection: inverse.selectionAfter ?? state.selection,
+        selection:
+          inverse.selectionAfter !== undefined
+            ? inverse.selectionAfter
+            : state.selection,
       });
 
       return true;
@@ -195,7 +180,10 @@ export const useEditorState = create<EditorState>((set, get) => {
       const newDocument = applyTransaction(transaction, state.document);
       set({
         document: newDocument,
-        selection: transaction.selectionAfter ?? state.selection,
+        selection:
+          transaction.selectionAfter !== undefined
+            ? transaction.selectionAfter
+            : state.selection,
       });
 
       return true;
@@ -302,7 +290,12 @@ export const useEditorState = create<EditorState>((set, get) => {
         .build();
 
       get().applyTransaction(transaction);
-      get().setFocusedBlock(newFocusIndex);
+      get().setSelection(
+        createCollapsedSelection({
+          blockIndex: newFocusIndex,
+          offset: newFocusBlock.content.length,
+        }),
+      );
     },
 
     splitBlock: (index: number, offset: number) => {
@@ -391,11 +384,15 @@ export const useEditorState = create<EditorState>((set, get) => {
       return get().history.canRedo;
     },
 
+    getFocusedBlockIndex: () => {
+      const state = get();
+      return state.selection?.focus.blockIndex ?? null;
+    },
+
     getFocusedBlock: () => {
       const state = get();
-      return state.focusedBlockIndex !== null
-        ? state.document.blocks[state.focusedBlockIndex]
-        : null;
+      const index = state.selection?.focus.blockIndex ?? null;
+      return index !== null ? state.document.blocks[index] : null;
     },
 
     getHasBlockSelection: () => {

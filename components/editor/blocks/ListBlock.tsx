@@ -15,6 +15,7 @@ export function ListBlock({
   onEnter,
   onFocus,
   onBlur,
+  onSelectionChange,
   isFocused: isFocusedFromState,
   listItemNumber,
   onWikiLinkTriggerStart,
@@ -57,37 +58,38 @@ export function ListBlock({
     onBlur?.();
   }, [onBlur, onWikiLinkTriggerEnd]);
 
-  useEffect(() => {
-    if (isFocusedFromState && inputRef.current) {
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 0);
-      });
-    }
-  }, [isFocusedFromState]);
 
-  const handleSelectionChange = useCallback((e: any) => {
-    const newSelection = {
-      start: e.nativeEvent.selection.start,
-      end: e.nativeEvent.selection.end,
-    };
-    setSelection(newSelection);
+  const handleSelectionChange = useCallback(
+    (e: any) => {
+      const newSelection = {
+        start: e.nativeEvent.selection.start,
+        end: e.nativeEvent.selection.end,
+      };
+      setSelection(newSelection);
+      onSelectionChange?.(newSelection.start, newSelection.end);
 
-    // Detect wiki link triggers when focused
-    if (isFocused && newSelection.start === newSelection.end) {
-      const caret = newSelection.start;
-      const start = WikiLinkTrigger.findStart(block.content, caret);
+      if (isFocused && newSelection.start === newSelection.end) {
+        const caret = newSelection.start;
+        const triggerStart = WikiLinkTrigger.findStart(block.content, caret);
 
-      if (start !== null) {
-        onWikiLinkTriggerStart?.(start);
-        const query = block.content.substring(start + 2, caret);
-        onWikiLinkQueryUpdate?.(query, caret);
-      } else {
-        onWikiLinkTriggerEnd?.();
+        if (triggerStart !== null) {
+          onWikiLinkTriggerStart?.(triggerStart);
+          const query = block.content.substring(triggerStart + 2, caret);
+          onWikiLinkQueryUpdate?.(query, caret);
+        } else {
+          onWikiLinkTriggerEnd?.();
+        }
       }
-    }
-  }, [isFocused, block.content, onWikiLinkTriggerStart, onWikiLinkQueryUpdate, onWikiLinkTriggerEnd]);
+    },
+    [
+      isFocused,
+      block.content,
+      onSelectionChange,
+      onWikiLinkTriggerStart,
+      onWikiLinkQueryUpdate,
+      onWikiLinkTriggerEnd,
+    ],
+  );
 
   const handleContentChange = useCallback(
     (newText: string) => {

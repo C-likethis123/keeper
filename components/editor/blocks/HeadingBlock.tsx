@@ -1,8 +1,8 @@
-import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import { Pressable, TextInput, StyleSheet, TextStyle, View } from 'react-native';
-import { BlockConfig } from './BlockRegistry';
-import { InlineMarkdown } from '../rendering/InlineMarkdown';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, TextInput, TextStyle, View } from 'react-native';
+import { InlineMarkdown } from '../rendering/InlineMarkdown';
+import { BlockConfig } from './BlockRegistry';
 
 interface HeadingBlockProps extends BlockConfig {
   level: 1 | 2 | 3;
@@ -32,17 +32,7 @@ export function HeadingBlock({
     onBlur?.();
   }, [onBlur]);
 
-  // Auto-focus TextInput when block becomes focused (e.g., after block type change)
-  useEffect(() => {
-    if (isFocusedFromState && inputRef.current) {
-      // Use requestAnimationFrame to ensure TextInput is mounted
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 50);
-      });
-    }
-  }, [isFocusedFromState]);
+
 
   const handleSelectionChange = useCallback((e: any) => {
     setSelection({

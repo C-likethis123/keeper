@@ -1,24 +1,24 @@
+import { useExtendedTheme } from '@/hooks/useExtendedTheme';
+import { useFocusBlock } from '@/hooks/useFocusBlock';
 import React, {
-    useRef,
-    useState,
     useEffect,
     useMemo,
+    useRef,
+    useState,
 } from 'react';
 import {
-    View,
-    TextInput,
-    StyleSheet,
-    Platform,
     NativeSyntheticEvent,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
     TextInputKeyPressEventData,
     TextInputSelectionChangeEventData,
     TouchableOpacity,
-    Text,
+    View,
 } from 'react-native';
-import { BlockConfig } from './BlockRegistry';
-import { useExtendedTheme } from '@/hooks/useExtendedTheme';
 import { useEditorState } from '../core/EditorState';
-import { useFocusBlock } from '@/hooks/useFocusBlock';
+import { BlockConfig } from './BlockRegistry';
 import { MathView } from './MathView';
 
 export function MathBlock({
@@ -27,6 +27,7 @@ export function MathBlock({
     onBackspaceAtStart,
     onFocus,
     onBlur,
+    onSelectionChange,
     isFocused: isFocusedFromState,
     index,
 }: BlockConfig) {
@@ -49,14 +50,11 @@ export function MathBlock({
         onContentChange(value);
     }, [onContentChange, value]);
 
-    useEffect(() => {
-        if (isFocusedFromState && inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, [isFocusedFromState]);
 
     const handleSelectionChange = (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
-        setSelection(e.nativeEvent.selection);
+        const sel = e.nativeEvent.selection;
+        setSelection(sel);
+        onSelectionChange?.(sel.start, sel.end);
     };
 
     const handleKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {

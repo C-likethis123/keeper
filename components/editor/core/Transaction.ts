@@ -14,8 +14,8 @@ import { ReplaceBlocksOperation } from './operations/ReplaceBlocksOperation';
 /// Transactions are applied atomically and can be undone as a single unit.
 export interface Transaction {
   readonly operations: readonly Operation[];
-  readonly selectionBefore?: DocumentSelection;
-  readonly selectionAfter?: DocumentSelection;
+  readonly selectionBefore?: DocumentSelection | null;
+  readonly selectionAfter?: DocumentSelection | null;
   readonly timestamp: Date;
   readonly description?: string;
 }
@@ -78,18 +78,18 @@ export function createInverseTransaction(
 /// Builder for creating transactions fluently
 export class TransactionBuilder {
   private operations: Operation[] = [];
-  private selectionBefore?: DocumentSelection;
-  private selectionAfter?: DocumentSelection;
+  private selectionBefore?: DocumentSelection | null;
+  private selectionAfter?: DocumentSelection | null;
   private description?: string;
 
   /// Sets the selection state before the transaction
-  withSelectionBefore(selection: DocumentSelection): this {
+  withSelectionBefore(selection: DocumentSelection | null): this {
     this.selectionBefore = selection;
     return this;
   }
 
   /// Sets the selection state after the transaction
-  withSelectionAfter(selection: DocumentSelection): this {
+  withSelectionAfter(selection: DocumentSelection | null): this {
     this.selectionAfter = selection;
     return this;
   }
