@@ -26,15 +26,6 @@ export default function NoteGrid({
   const { width } = useWindowDimensions();
   const theme = useExtendedTheme();
 
-  if (!notes.length) {
-    return (
-      <EmptyState
-        title="No notes found"
-        subtitle="Create a note to get started"
-      />
-    );
-  }
-
   // Responsive column count (matches Flutter logic)
   let numColumns = 2;
   if (width > 900) numColumns = 4;
@@ -50,7 +41,6 @@ export default function NoteGrid({
 
   return (
     <FlatList
-      style={{ flex: 1, width: '100%' }}
       data={notes}
       key={numColumns}
       numColumns={numColumns}
@@ -60,6 +50,7 @@ export default function NoteGrid({
         padding: 8,
         paddingBottom: 100,
       }}
+      ListEmptyComponent={<EmptyState title="No notes found" subtitle="Create a note to get started" />}
       showsVerticalScrollIndicator
       refreshControl={
         <RefreshControl
@@ -75,9 +66,7 @@ export default function NoteGrid({
         <ActivityIndicator size="small" color={theme.colors.primary} />
       </View> : null}
       renderItem={({ item }) => (
-        <View style={{ flex: 1 / numColumns }}>
-          <NoteCard note={item} onDelete={onDelete} onPinToggle={onPinToggle} />
-        </View>
+        <NoteCard note={item} onDelete={onDelete} onPinToggle={onPinToggle} />
       )}
     />
   );
