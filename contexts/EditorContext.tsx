@@ -66,17 +66,13 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'APPLY_TRANSACTION', transaction }),
 
       undo: () => {
-        const s = stateRef.current;
-        const inverse = historyRef.current.popUndo(s.document);
-        if (!inverse) return false;
+        if (!historyRef.current.canUndo) return false;
         dispatch({ type: 'UNDO' });
         return true;
       },
 
       redo: () => {
-        const s = stateRef.current;
-        const transaction = historyRef.current.popRedo(s.document);
-        if (!transaction) return false;
+        if (!historyRef.current.canRedo) return false;
         dispatch({ type: 'REDO' });
         return true;
       },

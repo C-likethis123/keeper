@@ -1,3 +1,4 @@
+import { useEditorState } from '@/contexts/EditorContext';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
@@ -22,15 +23,42 @@ export function EditorToolbar({
 }: EditorToolbarProps) {
   const theme = useExtendedTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const editorState = useEditorState();
 
   const isListBlock =
     blockType === BlockType.bulletList || blockType === BlockType.numberedList;
 
   const canOutdent = isListBlock && listLevel > 0;
   const canIndent = isListBlock && listLevel < 10;
+  const canUndo = editorState.getCanUndo();
+  const canRedo = editorState.getCanRedo();
 
   return (
     <View style={styles.toolbar}>
+      <TouchableOpacity
+        style={[styles.button, !canUndo && styles.buttonDisabled]}
+        onPress={editorState.undo}
+        disabled={!canUndo}
+        activeOpacity={0.7}
+      >
+        <MaterialIcons
+          name="undo"
+          size={24}
+          color={canUndo ? theme.colors.text : theme.colors.textDisabled}
+        />
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.button, !canRedo && styles.buttonDisabled]}
+        onPress={editorState.redo}
+        disabled={!canRedo}
+        activeOpacity={0.7}
+      >
+        <MaterialIcons
+          name="redo"
+          size={24}
+          color={canRedo ? theme.colors.text : theme.colors.textDisabled}
+        />
+      </TouchableOpacity>
       <TouchableOpacity
         style={styles.button}
         onPress={onIndent}
