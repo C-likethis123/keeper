@@ -7,6 +7,7 @@ import { EditorProvider } from "@/contexts/EditorContext";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useLoadNote } from "@/hooks/useLoadNote";
+import { NoteService } from "@/services/notes/noteService";
 import { useNoteStore } from "@/stores/notes/noteService";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -60,7 +61,9 @@ export default function NoteEditorScreen() {
 
   const handleContentChange = (markdown: string) => {
     setNote((prev) => {
-      if (!prev) return null;
+      if (!prev) {
+        return { title: '', content: markdown, filePath: '', lastUpdated: Date.now(), isPinned: false };
+      }
       return { ...prev, content: markdown };
     });
   };
@@ -88,15 +91,28 @@ export default function NoteEditorScreen() {
             </TouchableOpacity>
           ),
           headerRight: () => (
-            <TouchableOpacity onPress={togglePin} style={{ marginRight: 8 }}>
-              <MaterialIcons
-                name="push-pin"
-                size={24}
-                color={note?.isPinned ? theme.colors.primary : theme.colors.textMuted}
-              />
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity onPress={togglePin} style={{ marginRight: 8 }}>
+                <MaterialIcons
+                  name="push-pin"
+                  size={24}
+                  color={note?.isPinned ? theme.colors.primary : theme.colors.textMuted}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => {
+                NoteService.instance.deleteNote(note?.filePath || '').then(() => {
+                  router.back();
+                });
+              }} style={{ marginRight: 8 }}>
+                <MaterialIcons
+                  name="delete"
+                  size={24}
+                  color={theme.colors.textMuted}
+                />
+              </TouchableOpacity>
+            </>
           ),
-          headerTitle: () => <SaveIndicator status={status} />,
+          headerTitle: () => Platform.OS === 'web' ? null : <SaveIndicator status={status} />,
         }}
       />
 
@@ -107,7 +123,9 @@ export default function NoteEditorScreen() {
               style={styles.titleInput}
               value={note?.title || ""}
               onChangeText={(text) => setNote((prev) => {
-                if (!prev) return null;
+                if (!prev) {
+                  return { title: text, content: '', filePath: '', lastUpdated: Date.now(), isPinned: false };
+                }
                 return { ...prev, title: text };
               })}
               placeholder="Title"
@@ -136,7 +154,7 @@ export default function NoteEditorScreen() {
   );
 }
 
-// Styles are created dynamically based on theme
+
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
   return StyleSheet.create({
     container: {

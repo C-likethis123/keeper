@@ -266,7 +266,7 @@ export function UnifiedBlock({
   );
 }
 
-// Styles are created dynamically based on theme
+
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
   return StyleSheet.create({
     container: {

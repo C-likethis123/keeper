@@ -96,7 +96,7 @@ export function HeadingBlock({
   );
 }
 
-// Styles are created dynamically based on theme
+
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
   return StyleSheet.create({
     container: {

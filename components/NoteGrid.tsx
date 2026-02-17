@@ -45,7 +45,7 @@ export default function NoteGrid({
       key={numColumns}
       numColumns={numColumns}
       keyExtractor={(item, index) => `${item.filePath}-${index}`}
-      columnWrapperStyle={numColumns > 1 ? { gap: 8, marginBottom: 8 } : undefined}
+      columnWrapperStyle={{ gap: 8, marginBottom: 8 }}
       contentContainerStyle={{
         padding: 8,
         paddingBottom: 100,

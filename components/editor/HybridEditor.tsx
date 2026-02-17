@@ -65,7 +65,7 @@ export function HybridEditor({
               if (Platform.OS === 'web') {
                 window.open(urlOrWikiTitle, '_blank');
               } else {
-                WebBrowser.openBrowserAsync(urlOrWikiTitle).catch(() => {});
+                WebBrowser.openBrowserAsync(urlOrWikiTitle).catch(() => { });
               }
             },
           },
@@ -208,10 +208,10 @@ export function HybridEditor({
         return;
       }
 
-      // If it's an empty paragraph, delete and focus previous
-      if (block.content === '' && index > 0) {
+      // If it's an empty paragraph, delete and focus previous/next
+      if (block.content === '') {
         editorState.deleteBlock(index);
-        focusBlock(index - 1);
+        focusBlock(index > 0 ? index - 1 : 0);
         return;
       }
 
@@ -238,11 +238,6 @@ export function HybridEditor({
           return;
         }
       }
-      
-      
-      
-      // Optional: final block type detection on Enter (parity with Flutter)
-      // Only convert if type would actually change
       if (handleBlockTypeDetection(index, block.content, { onlyIfTypeChanges: true })) {
         return; // Conversion happened, don't split
       }
@@ -341,8 +336,8 @@ export function HybridEditor({
           blockType: null,
           blockIndex: null,
           listLevel: 0,
-          onIndent: () => {},
-          onOutdent: () => {},
+          onIndent: () => { },
+          onOutdent: () => { },
         });
       }
     }

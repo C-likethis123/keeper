@@ -66,7 +66,7 @@ export const ParagraphBlock = ({
 }
 
 
-// Styles are created dynamically based on theme
+
 // This is a factory function to create styles
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
   return StyleSheet.create({
