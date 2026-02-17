@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "biome lint .",
+    "lint:fix": "biome check . --apply"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -52,12 +53,11 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@types/katex": "^0.16.8",
     "@types/react": "~19.1.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@welldone-software/why-did-you-render": "^10.0.1",
-    "eslint": "^9.25.0",
-    "eslint-config-expo": "~10.0.0",
     "tsx": "^4.19.2",
     "typescript": "~5.9.2"
   },

@@ -39,15 +39,10 @@ The editor can send file change batches to a backend git service. Configure the 
 EXPO_PUBLIC_GIT_API_URL=https://your-backend.example.com/api
 ```
 
-## Get a fresh project
+## Tooling
+- Install the Biome VS Code extension and enable it for linting/formatting.
+- In CI, run `npm run lint` to use Biome.
 
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
 ## Learn more
 

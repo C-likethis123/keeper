@@ -1,14 +1,14 @@
 const braces = new Map<string, string>([
-    ['{', '}'],
-    ['(', ')'],
-    ['[', ']'],
-    ['<', '>'],
-    ['"', '"'],
-    ["'", "'"],
-    ['`', '`'],
+	["{", "}"],
+	["(", ")"],
+	["[", "]"],
+	["<", ">"],
+	['"', '"'],
+	["'", "'"],
+	["`", "`"],
 ]);
 
-const regularBraces = new Set<string>(['{', '(', '[', '<']);
+const regularBraces = new Set<string>(["{", "(", "[", "<"]);
 
 /**
  * Check if the string is an opening brace.
@@ -16,11 +16,14 @@ const regularBraces = new Set<string>(['{', '(', '[', '<']);
  * @param onlyRegularBraces Return true only on `{`, `(`, `[`, or `<`.
  * @returns boolean
  */
-export const isOpenBrace = (str: string, onlyRegularBraces: boolean = false): boolean => {
-    if (onlyRegularBraces && !isRegularBrace(str)) {
-        return false;
-    }
-    return braces.has(str);
+export const isOpenBrace = (
+	str: string,
+	onlyRegularBraces = false,
+): boolean => {
+	if (onlyRegularBraces && !isRegularBrace(str)) {
+		return false;
+	}
+	return braces.has(str);
 };
 
 /**
@@ -29,12 +32,12 @@ export const isOpenBrace = (str: string, onlyRegularBraces: boolean = false): bo
  * @returns boolean
  */
 export const isCloseBrace = (str: string): boolean => {
-    for (let value of braces.values()) {
-        if (str === value) {
-            return true;
-        }
-    }
-    return false;
+	for (const value of braces.values()) {
+		if (str === value) {
+			return true;
+		}
+	}
+	return false;
 };
 
 /**
@@ -44,10 +47,10 @@ export const isCloseBrace = (str: string): boolean => {
  * @returns boolean
  */
 export const isBracePair = (openBrace: string, closeBrace: string): boolean => {
-    if (!openBrace || !closeBrace) {
-        return false;
-    }
-    return isOpenBrace(openBrace) && getCloseBrace(openBrace) === closeBrace;
+	if (!openBrace || !closeBrace) {
+		return false;
+	}
+	return isOpenBrace(openBrace) && getCloseBrace(openBrace) === closeBrace;
 };
 
 /**
@@ -57,7 +60,7 @@ export const isBracePair = (openBrace: string, closeBrace: string): boolean => {
  * @returns string
  */
 export const getCloseBrace = (str: string): string => {
-    return braces.get(str) || '';
+	return braces.get(str) || "";
 };
 
 /**
@@ -67,5 +70,5 @@ export const getCloseBrace = (str: string): string => {
  * @returns boolean
  */
 export const isRegularBrace = (str: string): boolean => {
-    return regularBraces.has(str);
+	return regularBraces.has(str);
 };

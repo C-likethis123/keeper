@@ -1,125 +1,136 @@
-import { useEditorState } from '@/contexts/EditorContext';
-import { useExtendedTheme } from '@/hooks/useExtendedTheme';
-import { MaterialIcons } from '@expo/vector-icons';
-import React, { useMemo } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BlockType } from './core/BlockNode';
+import { useEditorState } from "@/contexts/EditorContext";
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { MaterialIcons } from "@expo/vector-icons";
+import React, { useMemo } from "react";
+import {
+	Platform,
+	StyleSheet,
+	Text,
+	TouchableOpacity,
+	View,
+} from "react-native";
+import { BlockType } from "./core/BlockNode";
 
 interface EditorToolbarProps {
-  blockType: BlockType | null;
-  blockIndex: number | null;
-  listLevel: number;
-  onIndent: () => void;
-  onOutdent: () => void;
-  onInsertImage: () => void;
+	blockType: BlockType | null;
+	blockIndex: number | null;
+	listLevel: number;
+	onIndent: () => void;
+	onOutdent: () => void;
+	onInsertImage: () => void;
 }
 
 export function EditorToolbar({
-  blockType,
-  listLevel,
-  onIndent,
-  onOutdent,
-  onInsertImage,
+	blockType,
+	listLevel,
+	onIndent,
+	onOutdent,
+	onInsertImage,
 }: EditorToolbarProps) {
-  const theme = useExtendedTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-  const editorState = useEditorState();
+	const theme = useExtendedTheme();
+	const styles = useMemo(() => createStyles(theme), [theme]);
+	const editorState = useEditorState();
 
-  const isListBlock =
-    blockType === BlockType.bulletList || blockType === BlockType.numberedList;
+	const isListBlock =
+		blockType === BlockType.bulletList || blockType === BlockType.numberedList;
 
-  const canOutdent = isListBlock && listLevel > 0;
-  const canIndent = isListBlock && listLevel < 10;
-  const canUndo = editorState.getCanUndo();
-  const canRedo = editorState.getCanRedo();
+	const canOutdent = isListBlock && listLevel > 0;
+	const canIndent = isListBlock && listLevel < 10;
+	const canUndo = editorState.getCanUndo();
+	const canRedo = editorState.getCanRedo();
 
-  return (
-    <View style={styles.toolbar}>
-      <TouchableOpacity
-        style={[styles.button, !canUndo && styles.buttonDisabled]}
-        onPress={editorState.undo}
-        disabled={!canUndo}
-        activeOpacity={0.7}
-      >
-        <MaterialIcons
-          name="undo"
-          size={24}
-          color={canUndo ? theme.colors.text : theme.colors.textDisabled}
-        />
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.button, !canRedo && styles.buttonDisabled]}
-        onPress={editorState.redo}
-        disabled={!canRedo}
-        activeOpacity={0.7}
-      >
-        <MaterialIcons
-          name="redo"
-          size={24}
-          color={canRedo ? theme.colors.text : theme.colors.textDisabled}
-        />
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={onIndent}
-        activeOpacity={0.7}
-        disabled={!canIndent}
-      >
-        <MaterialIcons
-          name="format-indent-increase"
-          size={24}
-          color={theme.colors.text}
-        />
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.button, !canOutdent && styles.buttonDisabled]}
-        onPress={onOutdent}
-        disabled={!canOutdent}
-        activeOpacity={0.7}
-      >
-        <MaterialIcons
-          name="format-indent-decrease"
-          size={24}
-          color={canOutdent ? theme.colors.text : theme.colors.textDisabled}
-        />
-      </TouchableOpacity>
-      {Platform.OS !== 'web' ? (
-        <TouchableOpacity
-          style={styles.button}
-          onPress={onInsertImage}
-          activeOpacity={0.7}
-        >
-          <MaterialIcons name="add-photo-alternate" size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-      ) : <Text>TODO: Insert Image</Text>}
-    </View>
-  );
+	return (
+		<View style={styles.toolbar}>
+			<TouchableOpacity
+				style={[styles.button, !canUndo && styles.buttonDisabled]}
+				onPress={editorState.undo}
+				disabled={!canUndo}
+				activeOpacity={0.7}
+			>
+				<MaterialIcons
+					name="undo"
+					size={24}
+					color={canUndo ? theme.colors.text : theme.colors.textDisabled}
+				/>
+			</TouchableOpacity>
+			<TouchableOpacity
+				style={[styles.button, !canRedo && styles.buttonDisabled]}
+				onPress={editorState.redo}
+				disabled={!canRedo}
+				activeOpacity={0.7}
+			>
+				<MaterialIcons
+					name="redo"
+					size={24}
+					color={canRedo ? theme.colors.text : theme.colors.textDisabled}
+				/>
+			</TouchableOpacity>
+			<TouchableOpacity
+				style={styles.button}
+				onPress={onIndent}
+				activeOpacity={0.7}
+				disabled={!canIndent}
+			>
+				<MaterialIcons
+					name="format-indent-increase"
+					size={24}
+					color={theme.colors.text}
+				/>
+			</TouchableOpacity>
+			<TouchableOpacity
+				style={[styles.button, !canOutdent && styles.buttonDisabled]}
+				onPress={onOutdent}
+				disabled={!canOutdent}
+				activeOpacity={0.7}
+			>
+				<MaterialIcons
+					name="format-indent-decrease"
+					size={24}
+					color={canOutdent ? theme.colors.text : theme.colors.textDisabled}
+				/>
+			</TouchableOpacity>
+			{Platform.OS !== "web" ? (
+				<TouchableOpacity
+					style={styles.button}
+					onPress={onInsertImage}
+					activeOpacity={0.7}
+				>
+					<MaterialIcons
+						name="add-photo-alternate"
+						size={24}
+						color={theme.colors.text}
+					/>
+				</TouchableOpacity>
+			) : (
+				<Text>TODO: Insert Image</Text>
+			)}
+		</View>
+	);
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-  return StyleSheet.create({
-    toolbar: {
-      flexDirection: 'row',
-      borderBottomWidth: 1,
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      justifyContent: 'flex-start',
-      alignItems: 'center',
-      gap: 12,
-    },
-    button: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: theme.colors.background,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-    },
-    buttonDisabled: {
-      opacity: 0.4,
-    },
-  });
+	return StyleSheet.create({
+		toolbar: {
+			flexDirection: "row",
+			borderBottomWidth: 1,
+			paddingVertical: 8,
+			paddingHorizontal: 16,
+			justifyContent: "flex-start",
+			alignItems: "center",
+			gap: 12,
+		},
+		button: {
+			width: 40,
+			height: 40,
+			borderRadius: 20,
+			backgroundColor: theme.colors.background,
+			justifyContent: "center",
+			alignItems: "center",
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+		},
+		buttonDisabled: {
+			opacity: 0.4,
+		},
+	});
 }
-

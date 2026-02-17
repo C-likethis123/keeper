@@ -1,26 +1,29 @@
-import { Note } from "@/services/notes/types";
+import type { Note } from "@/services/notes/types";
 import { useNoteStore } from "@/stores/notes/noteStore";
 import { useEffect, useState } from "react";
 
 export function useLoadNote(filePath: string) {
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [note, setNote] = useState<Note | null>(null);
-    const { loadNote } = useNoteStore();
-    useEffect(() => {
-        setIsLoading(true);
-        loadNote(filePath).then((note) => {
-            setNote(note);
-        }).catch((error) => {
-            setError(error.message);
-        }).finally(() => {
-            setIsLoading(false);
-        });
-    }, [filePath]);
-    return {
-        isLoading,
-        error,
-        note,
-        setNote,
-    }
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [note, setNote] = useState<Note | null>(null);
+	const { loadNote } = useNoteStore();
+	useEffect(() => {
+		setIsLoading(true);
+		loadNote(filePath)
+			.then((note) => {
+				setNote(note);
+			})
+			.catch((error) => {
+				setError(error.message);
+			})
+			.finally(() => {
+				setIsLoading(false);
+			});
+	}, [filePath]);
+	return {
+		isLoading,
+		error,
+		note,
+		setNote,
+	};
 }

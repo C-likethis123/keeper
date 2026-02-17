@@ -1,4 +1,4 @@
-import * as Indentation from './Indentation';
+import * as Indentation from "./Indentation";
 
 /**
  * Converts prefix tabs to the appropriate number of spaces in the given string.
@@ -6,7 +6,7 @@ import * as Indentation from './Indentation';
  * @returns string
  */
 export const convertTabsToSpaces = (str: string): string => {
-    return str.replace(/\t/g, Indentation.createIndentString());
+	return str.replace(/\t/g, Indentation.createIndentString());
 };
 
 /**
@@ -16,6 +16,12 @@ export const convertTabsToSpaces = (str: string): string => {
  * @param strToInsert String to be inserted.
  * @returns string
  */
-export const insertStringAt = (str: string, position: number, strToInsert: string): string => {
-    return str.substring(0, position + 1) + strToInsert + str.substring(position + 1);
+export const insertStringAt = (
+	str: string,
+	position: number,
+	strToInsert: string,
+): string => {
+	return (
+		str.substring(0, position + 1) + strToInsert + str.substring(position + 1)
+	);
 };
