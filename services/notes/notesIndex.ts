@@ -3,13 +3,11 @@ import { NOTES_ROOT } from "./Notes";
 import { NotesMetaService } from "./notesMetaService";
 import { toAbsoluteNotesPath } from "./notesPaths";
 
-export type NoteIndexStatus = "PINNED" | "UNPINNED";
-
 export interface NoteIndexItem {
   noteId: string;
   summary: string;
   title?: string;
-  status: NoteIndexStatus;
+  isPinned: boolean;
   sortTimestamp: number;
   createdAt: number;
   updatedAt: number;
@@ -67,7 +65,7 @@ async function loadNoteItem(
     noteId: relativePath,
     summary: extractSummary(content),
     title,
-    status: pinned ? "PINNED" : "UNPINNED",
+    isPinned: pinned,
     sortTimestamp: mtime,
     createdAt: mtime,
     updatedAt: mtime,
@@ -85,10 +83,7 @@ export class NotesIndexService {
   }
 
   static async upsertNote(item: NoteIndexItem): Promise<void> {
-    await NotesMetaService.setPinned(
-      item.noteId,
-      item.status === "PINNED"
-    );
+    await NotesMetaService.setPinned(item.noteId, item.isPinned);
   }
 
   static async deleteNote(noteId: string): Promise<void> {
@@ -109,8 +104,8 @@ export class NotesIndexService {
       if (item) items.push(item);
     }
     items.sort((a, b) => {
-      if (a.status === "PINNED" && b.status !== "PINNED") return -1;
-      if (a.status !== "PINNED" && b.status === "PINNED") return 1;
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
       return b.updatedAt - a.updatedAt;
     });
     let filtered = items;

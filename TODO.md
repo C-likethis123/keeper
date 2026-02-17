@@ -1,3 +1,8 @@
+## Phase 3: Editor undo/redo keyboard shortcuts (web)
+- In editor (e.g. HybridEditor): on keydown Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z (or Y), preventDefault and call undo/redo.
+- Use a ref for the handler so the listener stays correct; ensure the editor or wrapper is focusable so key events fire.
+- Avoid handling when a modal or native text field has focus.
+
 ## Phase 2: Wikilink overlay
 - doesn't always trigger on typing....
 - totally fix it!!!! figure out how to position it properly in mobile

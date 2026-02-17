@@ -13,7 +13,7 @@ const toNote = (item: NoteIndexItem): Note => {
         content: item.summary,
         filePath: item.noteId,
         lastUpdated: item.updatedAt,
-        isPinned: item.status === "PINNED",
+        isPinned: item.isPinned,
     };
 };
 export default function useNotes() {

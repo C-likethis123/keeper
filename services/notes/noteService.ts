@@ -90,7 +90,7 @@ export class NoteService {
       noteId: indexPath,
       summary,
       title: note.title,
-      status: pinnedState ? "PINNED" : "UNPINNED",
+      isPinned: pinnedState,
       sortTimestamp: lastUpdated,
       createdAt,
       updatedAt: lastUpdated,
@@ -143,7 +143,7 @@ export class NoteService {
             title: decodeURIComponent(entry.name.replace(/\.md$/, '')),
             content,
             lastUpdated: entry.modificationTime!,
-            isPinned: indexItem?.status === "PINNED" || false,
+            isPinned: indexItem?.isPinned ?? false,
           });
         }
       }
