@@ -21,6 +21,10 @@ import {
 import { BlockConfig } from './BlockRegistry';
 import { MathView } from './MathView';
 
+const fontSize = 16;
+const padding = 16;
+const fontFamily = Platform.OS === 'ios' ? 'Menlo-Regular' : 'monospace';
+
 export function MathBlock({
     block,
     index,
@@ -126,9 +130,6 @@ export function MathBlock({
         );
     };
 
-    const fontSize = 16;
-    const padding = 16;
-    const fontFamily = Platform.OS === 'ios' ? 'Menlo-Regular' : 'monospace';
 
     return (
         <TouchableOpacity onPress={() => inputRef.current?.focus()}>
@@ -137,7 +138,7 @@ export function MathBlock({
                 isFocused && styles.containerFocused,
             ]}>
                 {!isFocused && (
-                    <View style={styles.mathWrapper}>
+                    <View style={styles.mathWrapper} collapsable={false}>
                         {renderMath()}
                     </View>
                 )}
@@ -146,11 +147,13 @@ export function MathBlock({
                     ref={inputRef}
                     style={[
                         styles.input,
+                        !isFocused && styles.inputUnfocused,
                         {
                             fontFamily,
                             fontSize,
-                            padding,
+                            padding: isFocused ? padding : 0,
                             color: isFocused ? theme.colors.text : 'transparent',
+                            backgroundColor: isFocused ? undefined : 'transparent',
                         },
                     ]}
                     selection={selection}
@@ -163,7 +166,7 @@ export function MathBlock({
                     autoCorrect={false}
                     value={value}
                     onChangeText={setValue}
-                    placeholder="Enter LaTeX equation..."
+                    placeholder={isFocused ? 'Enter LaTeX equation...' : ''}
                     placeholderTextColor={theme.custom.editor.placeholder}
                 />
             </View>
@@ -206,6 +209,14 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
             right: 0,
             bottom: 0,
             textAlignVertical: 'top',
+        },
+        inputUnfocused: {
+            left: -9999,
+            top: 0,
+            right: -9998,
+            bottom: 1,
+            width: 1,
+            height: 1,
         },
         emptyMath: {
             padding: 16,

@@ -1,3 +1,4 @@
+import { MathView } from '@/components/editor/blocks/MathView';
 import React from 'react';
 import { Text, TextStyle, View } from 'react-native';
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
@@ -49,10 +50,9 @@ export function InlineMarkdown({
         currentTextRun = [];
       }
       
-      // Render math segment
       elements.push(
-        <View key={`math-${index}`} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', height: 20 }}>
-          <Text key={`math-fallback-${index}`} style={{ fontFamily: 'monospace', fontSize: 16 }}>{segment.text}</Text>
+        <View key={`math-${index}`} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'center' }}>
+          <MathView expression={segment.text} displayMode={false} />
         </View>
       );
     } else {
