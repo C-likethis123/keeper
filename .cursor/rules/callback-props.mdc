@@ -1,0 +1,22 @@
+---
+description: Callback prop optionality — use required when passed to all instances
+alwaysApply: true
+---
+
+# Callback Props
+
+When a callback prop is passed in to **all instances** of a component, declare it as **required**, not optional.
+
+```typescript
+// ❌ BAD — optional when always provided
+interface EditorToolbarProps {
+  onInsertImage?: () => void;
+}
+
+// ✅ GOOD — required when always provided
+interface EditorToolbarProps {
+  onInsertImage: () => void;
+}
+```
+
+Use `?` only when the prop is legitimately sometimes absent (e.g. different parents pass different props).

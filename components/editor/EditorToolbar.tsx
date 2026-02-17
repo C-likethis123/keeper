@@ -1,7 +1,7 @@
 import { useExtendedTheme } from '@/hooks/useExtendedTheme';
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BlockType } from './core/BlockNode';
 
 interface EditorToolbarProps {
@@ -10,14 +10,15 @@ interface EditorToolbarProps {
   listLevel: number;
   onIndent: () => void;
   onOutdent: () => void;
+  onInsertImage: () => void;
 }
 
 export function EditorToolbar({
   blockType,
-  blockIndex,
   listLevel,
   onIndent,
   onOutdent,
+  onInsertImage,
 }: EditorToolbarProps) {
   const theme = useExtendedTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -54,6 +55,15 @@ export function EditorToolbar({
           color={canOutdent ? theme.colors.text : theme.colors.textDisabled}
         />
       </TouchableOpacity>
+      {Platform.OS !== 'web' ? (
+        <TouchableOpacity
+          style={styles.button}
+          onPress={onInsertImage}
+          activeOpacity={0.7}
+        >
+          <MaterialIcons name="add-photo-alternate" size={24} color={theme.colors.text} />
+        </TouchableOpacity>
+      ) : <Text>TODO: Insert Image</Text>}
     </View>
   );
 }

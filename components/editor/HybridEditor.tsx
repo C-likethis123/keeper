@@ -1,11 +1,13 @@
 import { useEditorState } from '@/contexts/EditorContext';
 import { useFocusBlock } from '@/hooks/useFocusBlock';
 import { useOverlayPosition } from '@/hooks/useOverlayPosition';
+import { copyPickedImageToNotes } from '@/services/notes/imageStorage';
+import * as DocumentPicker from 'expo-document-picker';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { BlockConfig, blockRegistry } from './blocks/BlockRegistry';
-import { BlockType, createParagraphBlock } from './core/BlockNode';
+import { BlockType, createImageBlock, createParagraphBlock } from './core/BlockNode';
 import { WikiLinkOverlay } from './wikilinks/WikiLinkOverlay';
 import { useWikiLinks } from './wikilinks/useWikiLinks';
 
@@ -18,6 +20,7 @@ export interface HybridEditorProps {
     listLevel: number;
     onIndent: () => void;
     onOutdent: () => void;
+    onInsertImage: () => Promise<void>;
   }) => void;
 }
 
@@ -200,6 +203,7 @@ export function HybridEditor({
   const handleBackspaceAtStart = useCallback(
     (index: number) => () => {
       const block = editorState.document.blocks[index];
+      const prevBlock = index > 0 ? editorState.document.blocks[index - 1] : null;
 
       // If it's a non-paragraph block (except code block and math block), convert to paragraph
       if (![BlockType.paragraph, BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
@@ -215,8 +219,13 @@ export function HybridEditor({
         return;
       }
 
-      // Merge with previous block if at start
+      // Merge with previous block if at start, or focus previous when it's non-mergeable (e.g. image)
       if (index > 0) {
+        const prevType = prevBlock?.type;
+        if (prevType === BlockType.image) {
+          focusBlock(index - 1);
+          return;
+        }
         editorState.mergeWithPrevious(index);
         focusBlock(index - 1);
       }
@@ -319,6 +328,20 @@ export function HybridEditor({
     [editorState],
   );
 
+  const handleInsertImage = useCallback(async () => {
+    if (Platform.OS === 'web') return;
+    const result = await DocumentPicker.getDocumentAsync({
+      type: 'image/*',
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled) return;
+    const uri = result.assets[0].uri;
+    const path = await copyPickedImageToNotes(uri);
+    const focusedIndex = editorState.getFocusedBlockIndex() ?? 0;
+    editorState.insertBlockAfter(focusedIndex, createImageBlock(path));
+    focusBlock(focusedIndex + 1);
+  }, [editorState, focusBlock]);
+
   useEffect(() => {
     if (onFocusedBlockChange) {
       const focusedIndex = editorState.getFocusedBlockIndex();
@@ -330,6 +353,7 @@ export function HybridEditor({
           listLevel: block.listLevel,
           onIndent: () => handleIndent(focusedIndex),
           onOutdent: () => handleOutdent(focusedIndex),
+          onInsertImage: handleInsertImage,
         });
       } else {
         onFocusedBlockChange({
@@ -338,10 +362,11 @@ export function HybridEditor({
           listLevel: 0,
           onIndent: () => { },
           onOutdent: () => { },
+          onInsertImage: handleInsertImage,
         });
       }
     }
-  }, [editorState, onFocusedBlockChange, handleIndent, handleOutdent]);
+  }, [editorState, onFocusedBlockChange, handleIndent, handleOutdent, handleInsertImage]);
 
   const renderBlock = useCallback(
     (block: typeof editorState.document.blocks[0], index: number) => {

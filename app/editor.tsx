@@ -1,14 +1,14 @@
 import Loader from "@/components/Loader";
 import { SaveIndicator } from "@/components/SaveIndicator";
-import { HybridEditor } from "@/components/editor";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
+import { HybridEditor } from "@/components/editor/HybridEditor";
 import { BlockType } from "@/components/editor/core/BlockNode";
 import { EditorProvider } from "@/contexts/EditorContext";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useLoadNote } from "@/hooks/useLoadNote";
-import { NoteService } from "@/services/notes/noteService";
-import { useNoteStore } from "@/stores/notes/noteService";
+import { useNotesMetaStore } from "@/stores/notes/metaStore";
+import { useNoteStore } from "@/stores/notes/noteStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -27,29 +27,32 @@ export default function NoteEditorScreen() {
   const { filePath } = params;
   const theme = useExtendedTheme();
 
-  const { loadNote } = useNoteStore();
+  const { loadNote, deleteNote } = useNoteStore();
+  const { setPinned } = useNotesMetaStore();
   const [focusedBlockInfo, setFocusedBlockInfo] = useState<{
     blockType: BlockType | null;
     blockIndex: number | null;
     listLevel: number;
     onIndent: () => void;
     onOutdent: () => void;
+    onInsertImage: () => Promise<void>;
   }>({
     blockType: null,
     blockIndex: null,
     listLevel: 0,
     onIndent: () => { },
     onOutdent: () => { },
+    onInsertImage: async () => { },
   });
 
   // Load existing note if editing
   const { isLoading, error, note, setNote } = useLoadNote(filePath as string);
 
   const togglePin = () => {
-    setNote((prev) => {
-      if (!prev) return null;
-      return { ...prev, isPinned: !prev.isPinned };
-    });
+    if (!note) return;
+    const next = !note.isPinned;
+    setNote((prev) => (prev ? { ...prev, isPinned: next } : null));
+    setPinned(filePath as string, next);
   };
 
   const { status, saveNow } = useAutoSave({
@@ -99,10 +102,11 @@ export default function NoteEditorScreen() {
                   color={note?.isPinned ? theme.colors.primary : theme.colors.textMuted}
                 />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => {
-                NoteService.instance.deleteNote(note?.filePath || '').then(() => {
+              <TouchableOpacity onPress={async () => {
+                if (note?.filePath) {
+                  await deleteNote(note.filePath);
                   router.back();
-                });
+                }
               }} style={{ marginRight: 8 }}>
                 <MaterialIcons
                   name="delete"
@@ -140,6 +144,7 @@ export default function NoteEditorScreen() {
                 listLevel={focusedBlockInfo.listLevel}
                 onIndent={focusedBlockInfo.onIndent}
                 onOutdent={focusedBlockInfo.onOutdent}
+                onInsertImage={focusedBlockInfo.onInsertImage}
               />
 
               <HybridEditor

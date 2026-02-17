@@ -8,37 +8,42 @@ require('../wdyr');
 
 
 import { ToastOverlay } from "@/components/Toast";
-import { createDarkTheme, createLightTheme } from "@/constants/themes";
+import { createDarkTheme } from "@/constants/themes/darkTheme";
+import { createLightTheme } from "@/constants/themes/lightTheme";
 import { GitInitializationService } from "@/services/git/gitInitializationService";
+import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { useThemeStore } from "@/stores/themeStore";
 import { ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, useColorScheme, View } from "react-native";
 
 export default function RootLayout() {
-  const themeStoreHydrated = useThemeStore((s) => s.isHydrated);
   const themeMode = useThemeStore((s) => s.themeMode);
   const hydrateThemeStore = useThemeStore((s) => s.hydrate);
   const systemColorScheme = useColorScheme();
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    hydrateThemeStore();
-    (async () => {
-      try {
-        const result = await GitInitializationService.instance.initialize();
-        if (result.success) {
-          console.log('[App] Git initialization succeeded:', {
-            wasCloned: result.wasCloned,
-            branch: result.status?.currentBranch,
-          });
-        } else {
-          console.error('[App] Git initialization failed:', result.error);
+    Promise.allSettled([
+      hydrateThemeStore(),
+      useNotesMetaStore.getState().hydrate(),
+      (async () => {
+        try {
+          const result = await GitInitializationService.instance.initialize();
+          if (result.success) {
+            console.log('[App] Git initialization succeeded:', {
+              wasCloned: result.wasCloned,
+              branch: result.status?.currentBranch,
+            });
+          } else {
+            console.error('[App] Git initialization failed:', result.error);
+          }
+        } catch (error) {
+          console.error('[App] Git initialization error:', error);
         }
-      } catch (error) {
-        console.error('[App] Git initialization error:', error);
-      }
-    })();
+      })()
+    ]).then(() => setIsHydrated(true));
   }, [hydrateThemeStore]);
 
   // Determine which theme to use
@@ -48,8 +53,7 @@ export default function RootLayout() {
     return shouldUseDark ? createDarkTheme() : createLightTheme();
   }, [themeMode, systemColorScheme]);
 
-  if (!themeStoreHydrated) {
-    // Splash screen while hydrating
+  if (!isHydrated) {
     return (
       <View style={styles.splash}>
         <Text style={styles.title}>My App</Text>

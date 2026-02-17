@@ -1,7 +1,6 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { NoteIndexItem, NotesIndexService } from "@/services/notes/notesIndex";
 import { Note } from "@/services/notes/types";
-import { waitForMetaHydration } from "@/stores/notes/metaStore";
 import { useCallback, useEffect, useRef, useState } from "react";
 const toNote = (item: NoteIndexItem): Note => {
     const rawTitle =
@@ -77,15 +76,13 @@ export default function useNotes() {
         }
         const timeoutId = isQueryChange
             ? setTimeout(() => {
-                  (async () => {
-                      await waitForMetaHydration();
-                      if (!cancelled) fetchNotes(undefined);
-                  })();
-              }, 300)
+                (async () => {
+                    if (!cancelled) fetchNotes(undefined);
+                })();
+            }, 300)
             : undefined;
         if (!isQueryChange) {
             (async () => {
-                await waitForMetaHydration();
                 if (!cancelled) fetchNotes();
             })();
         }

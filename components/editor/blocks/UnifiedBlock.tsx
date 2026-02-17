@@ -153,12 +153,9 @@ export function UnifiedBlock({
 
       // Handle backspace at the start (position 0)
       if (key === 'Backspace' && editorState.selection?.anchor.offset === 0 && editorState.selection?.focus.offset === 0) {
-        // Paragraph blocks: if empty, delegate to editor-level handler to delete
+        // Paragraph blocks: delegate to editor-level handler (empty = delete, non-empty = merge or focus previous)
         if (block.type === BlockType.paragraph) {
-          if (block.content === '') {
-            onBackspaceAtStart?.();
-          }
-          // For non-empty paragraphs we currently don't merge; keep behavior as-is.
+          onBackspaceAtStart?.();
           return;
         }
 
@@ -212,19 +209,6 @@ export function UnifiedBlock({
     }
   }, [block.type]);
 
-  // Placeholder text based on block type
-  const placeholder = useMemo(() => {
-    switch (block.type) {
-      case BlockType.heading1:
-        return 'Heading 1...';
-      case BlockType.heading2:
-        return 'Heading 2...';
-      case BlockType.heading3:
-        return 'Heading 3...';
-      default:
-        return 'Start typing...';
-    }
-  }, [block.type]);
 
   return (
     <Pressable
@@ -259,7 +243,7 @@ export function UnifiedBlock({
         onSelectionChange={handleSelectionChange}
         multiline
         textAlignVertical="top"
-        placeholder={placeholder}
+        placeholder={"Start typing..."}
         placeholderTextColor={theme.custom.editor.placeholder}
       />
     </Pressable>

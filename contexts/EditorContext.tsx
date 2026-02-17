@@ -208,7 +208,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         const previousBlock = s.document.blocks[index - 1];
         if (
           currentBlock.type === BlockType.codeBlock ||
-          previousBlock.type === BlockType.codeBlock
+          previousBlock.type === BlockType.codeBlock ||
+          previousBlock.type === BlockType.image
         )
           return;
         const mergedContent = previousBlock.content + currentBlock.content;

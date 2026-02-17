@@ -23,7 +23,7 @@ import * as Indentation from '../code/Indentation';
 import { LanguageRegistry } from '../code/LanguageRegistry';
 import { SmartEditingHandler } from '../code/SmartEditingHandler';
 import SyntaxHighlighter from '../code/SyntaxHighlighter';
-import { BlockType } from '../core';
+import { BlockType } from '../core/BlockNode';
 import { BlockConfig } from './BlockRegistry';
 import { CodeBlockHeader } from './CodeBlockHeader';
 

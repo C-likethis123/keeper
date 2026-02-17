@@ -2,6 +2,7 @@ import React from 'react';
 import { BlockNode, BlockType } from '../core/BlockNode';
 import { BlockRenderer } from './BlockRenderer';
 import { CodeBlock } from './CodeBlock';
+import { ImageBlock } from './ImageBlock';
 import { ListBlock } from './ListBlock';
 import { MathBlock } from './MathBlock';
 import { UnifiedBlock } from './UnifiedBlock';
@@ -9,12 +10,12 @@ import { UnifiedBlock } from './UnifiedBlock';
 export interface BlockConfig {
   block: BlockNode;
   index: number;
-  isFocused: boolean; // Focus state from EditorState
+  isFocused: boolean;
   onContentChange: (content: string) => void;
   onBlockTypeChange?: (index: number, newType: BlockType, language?: string) => void;
-  onBackspaceAtStart?: () => void;
+  onBackspaceAtStart: () => void;
   onSpace?: () => void;
-  onEnter?: (cursorOffset: number) => void;
+  onEnter: (cursorOffset: number) => void;
   onSelectionChange: (start: number, end: number) => void;
   onDelete?: () => void;
   listItemNumber?: number; // For numbered list items
@@ -158,6 +159,11 @@ blockRegistry.registerAll([
     triggerPrefix: /^\$\$/,
     markdownPrefix: '$$',
     build: (config) => <MathBlock {...config} />,
+  },
+  {
+    type: BlockType.image,
+    markdownPrefix: '![](',
+    build: (config) => <ImageBlock {...config} />,
   },
 ]);
 
