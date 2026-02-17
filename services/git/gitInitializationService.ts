@@ -16,7 +16,7 @@ export interface GitHubConfig {
 function assertGitHubConfig(): GitHubConfig {
 	const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
 	const repo = process.env.EXPO_PUBLIC_GITHUB_REPO;
-	const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
+	const token = process.env.EXPO_GITHUB_TOKEN || process.env.EXPO_PUBLIC_GITHUB_TOKEN;
 	if (!owner || !repo) {
 		throw new Error(
 			"GitHub owner and repo not configured. Set EXPO_PUBLIC_GITHUB_OWNER and EXPO_PUBLIC_GITHUB_REPO",
@@ -24,7 +24,7 @@ function assertGitHubConfig(): GitHubConfig {
 	}
 	if (!token) {
 		throw new Error(
-			"GitHub token not configured. Set EXPO_PUBLIC_GITHUB_TOKEN",
+			"GitHub token not configured. Set EXPO_GITHUB_TOKEN",
 		);
 	}
 	return { owner, repo, token };

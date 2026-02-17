@@ -20,10 +20,6 @@ Figure out how to make it clickable
 
 - fix focus issues!
 
-## Tooling
-- Install the Biome VS Code extension and enable it for linting/formatting.
-- In CI, run `npm run lint` to use Biome.
-
 ## Future stuff from google keep
 - Add drawings
 
