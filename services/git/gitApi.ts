@@ -25,9 +25,9 @@ let octokitInstance: Octokit | null = null;
 
 function getOctokit(): Octokit {
 	if (!octokitInstance) {
-		const token = process.env.EXPO_GITHUB_TOKEN;
+		const token = process.env.EXPO_GITHUB_TOKEN || process.env.EXPO_PUBLIC_GITHUB_TOKEN;
 		if (!token) {
-			throw new Error("EXPO_GITHUB_TOKEN is not set");
+			throw new Error("GITHUB_TOKEN is not set");
 		}
 		octokitInstance = new Octokit({
 			auth: token,

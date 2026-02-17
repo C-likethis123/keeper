@@ -9,7 +9,7 @@ import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { useNoteStore } from "@/stores/notes/noteStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useMemo } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
@@ -54,6 +54,12 @@ export default function Index() {
 	}, [setPinned]);
 
 	const styles = useMemo(() => createStyles(theme), [theme]);
+
+	useFocusEffect(
+		useCallback(() => {
+			handleRefresh();
+		}, [handleRefresh]),
+	);
 
 	if (isLoading && notes.length === 0) {
 		return <Loader />;
