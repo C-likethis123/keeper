@@ -11,8 +11,14 @@ Figure out how to make it clickable
 ## Phase 2: Image blocks (web)
 - it only makes sense to implement this when I am on desktop. I rarely attach screenshots on mobile.
 
-- fix themes: it's currently very weird.
+- fix code block issues!
+
+- figure out how to export it! Especially - the over the air updates. Should work for desktop and web.
 
 - on web: keyboard shortcuts
 
+
 - fix focus issues!
+
+# Future stuff from google keep
+- Add drawings

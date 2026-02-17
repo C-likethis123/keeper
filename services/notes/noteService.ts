@@ -5,14 +5,24 @@ import {
 } from "@/services/notes/notesIndex";
 import { NotesMetaService } from "@/services/notes/notesMetaService";
 import { Directory, File } from "expo-file-system";
+import { normalizePath } from "@/services/git/expoFileSystemAdapter";
 import { NOTES_ROOT } from "./Notes";
 import { toAbsoluteNotesPath } from "./notesPaths";
 import { Note, NoteToSave } from "./types";
 
+function sanitizePathFilename(path: string): string {
+  const i = path.lastIndexOf("/");
+  if (i === -1) return path;
+  const dir = path.slice(0, i);
+  const file = path.slice(i + 1);
+  const base = file.replace(/\.md$/i, "");
+  return `${dir}/${sanitizeFileName(base)}.md`;
+}
+
 function sanitizeFileName(title: string) {
   return title
     .trim()
-    .replace(/[<>:"/\\|?*]+/g, "_")
+    .replace(/[<>:"/\\|?*\[\]]+/g, "_")
     .slice(0, 100);
 }
 export class NoteService {
@@ -64,10 +74,14 @@ export class NoteService {
       note.filePath ||
       (await this.resolveFilePath(NOTES_ROOT, note.title, undefined));
 
+    filePath = sanitizePathFilename(filePath);
+
     const isRelative = !filePath.startsWith('/') && !filePath.startsWith('file://');
     const relativePath = isRelative ? filePath : undefined;
     if (isRelative) {
-      filePath = `${NOTES_ROOT}${filePath}`;
+      filePath = toAbsoluteNotesPath(filePath);
+    } else {
+      filePath = normalizePath(filePath);
     }
 
     const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
