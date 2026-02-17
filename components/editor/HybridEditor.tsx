@@ -5,7 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { BlockConfig, blockRegistry } from './blocks/BlockRegistry';
-import { BlockType } from './core/BlockNode';
+import { BlockType, createParagraphBlock } from './core/BlockNode';
 import { WikiLinkOverlay } from './wikilinks/WikiLinkOverlay';
 import { useWikiLinks } from './wikilinks/useWikiLinks';
 
@@ -146,6 +146,10 @@ export function HybridEditor({
       // Update block type and content
       editorState.updateBlockType(index, detection.type, detection.language);
       editorState.updateBlockContent(index, detection.remainingContent);
+
+      if (detection.type === BlockType.mathBlock || detection.type === BlockType.codeBlock) {
+        editorState.insertBlockAfter(index, createParagraphBlock());
+      }
 
       // Set ignore flag if requested to prevent feedback loop
       if (options?.ignoreContentChange) {
