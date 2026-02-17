@@ -1,47 +1,32 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { NotesMetaService } from "@/services/notes/notesMetaService";
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
 
 type NotesMetaState = {
   pinned: Record<string, boolean>;
   togglePin: (filePath: string) => void;
   setPinned: (filePath: string, value: boolean) => void;
+  hydrate: () => Promise<void>;
 };
 
-let resolveHydration: () => void;
-const hydrationPromise = new Promise<void>((resolve) => {
-  resolveHydration = resolve;
-});
 
-export const useNotesMetaStore = create<NotesMetaState>()(
-  persist(
-    (set) => ({
-      pinned: {},
-      togglePin: (filePath) =>
-        set((state) => ({
-          pinned: {
-            ...state.pinned,
-            [filePath]: !state.pinned[filePath],
-          },
-        })),
-      setPinned: (filePath, value) =>
-        set((state) => ({
-          pinned: {
-            ...state.pinned,
-            [filePath]: value,
-          },
-        })),
-    }),
-    {
-      name: "notes-meta",
-      storage: createJSONStorage(() => AsyncStorage),
-      onRehydrateStorage: () => () => {
-        resolveHydration();
-      },
-    }
-  )
-);
+export const useNotesMetaStore = create<NotesMetaState>()((set, get) => ({
+  pinned: {},
+  togglePin: (filePath) => {
+    const next = !get().pinned[filePath];
+    set((state) => ({
+      pinned: { ...state.pinned, [filePath]: next },
+    }));
+    NotesMetaService.setPinned(filePath, next);
+  },
+  setPinned: (filePath, value) => {
+    set((state) => ({
+      pinned: { ...state.pinned, [filePath]: value },
+    }));
+    NotesMetaService.setPinned(filePath, value);
+  },
+  hydrate: async () => {
+    const pinned = await NotesMetaService.getPinnedMap();
+    set({ pinned });
+  },
+}));
 
-export function waitForMetaHydration(): Promise<void> {
-  return hydrationPromise;
-}

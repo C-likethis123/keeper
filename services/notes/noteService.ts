@@ -1,21 +1,20 @@
-import { normalizePath } from "@/services/git/expoFileSystemAdapter";
 import { GitService } from "@/services/git/gitService";
 import {
   NotesIndexService,
   extractSummary,
 } from "@/services/notes/notesIndex";
+import { NotesMetaService } from "@/services/notes/notesMetaService";
 import { Directory, File } from "expo-file-system";
 import { NOTES_ROOT } from "./Notes";
+import { toAbsoluteNotesPath } from "./notesPaths";
 import { Note, NoteToSave } from "./types";
 
-function toAbsolutePath(filePath: string): string {
-  const isRelative = !filePath.startsWith("/") && !filePath.startsWith("file://");
-  if (!isRelative) return filePath;
-  const root = NOTES_ROOT.endsWith("/") ? NOTES_ROOT.slice(0, -1) : NOTES_ROOT;
-  const raw = root + "/" + filePath;
-  return NOTES_ROOT.startsWith("file:") ? normalizePath(raw) : raw;
+function sanitizeFileName(title: string) {
+  return title
+    .trim()
+    .replace(/[<>:"/\\|?*]+/g, "_")
+    .slice(0, 100);
 }
-
 export class NoteService {
   static instance = new NoteService();
 
@@ -35,22 +34,21 @@ export class NoteService {
     }
   }
 
-  async loadNote(filePath: string): Promise<Note | null> {
+  static async loadNote(filePath: string): Promise<Note | null> {
     try {
-      const absolutePath = toAbsolutePath(filePath);
+      const absolutePath = toAbsoluteNotesPath(filePath);
       const file = new File(absolutePath);
       if (file.exists) {
         const content = await file.text();
+        const mtime = file.modificationTime ?? 0;
+        const isPinned = await NotesMetaService.getPinned(filePath);
         const fileName = filePath.split("/").pop() || "Untitled";
-        const indexItem = await NotesIndexService.instance.getNote(filePath);
-        const lastUpdated = indexItem!.updatedAt!;
-
         return {
           title: decodeURIComponent(fileName.replace(/\.md$/, "")),
           content,
           filePath,
-          lastUpdated,
-          isPinned: indexItem?.status === "PINNED",
+          lastUpdated: mtime,
+          isPinned,
         };
       }
     } catch (localError) {
@@ -60,7 +58,7 @@ export class NoteService {
     return null;
   }
 
-  async saveNote(note: NoteToSave): Promise<Note> {
+  static async saveNote(note: NoteToSave): Promise<Note> {
     const isNew = !note.filePath;
     let filePath =
       note.filePath ||
@@ -84,15 +82,11 @@ export class NoteService {
 
     const lastUpdated = Date.now();
     const pinnedState = !!note.isPinned;
-
-    // Use relative path for index and git operations, absolute path for return
     const indexPath = relativePath || filePath;
-
-    const existingIndexItem = await NotesIndexService.instance.getNote(indexPath);
-    const createdAt = existingIndexItem?.createdAt ?? (note.lastUpdated ?? lastUpdated);
+    const createdAt = note.lastUpdated ?? lastUpdated;
 
     const summary = extractSummary(note.content);
-    await NotesIndexService.instance.upsertNote({
+    await NotesIndexService.upsertNote({
       noteId: indexPath,
       summary,
       title: note.title,
@@ -113,15 +107,15 @@ export class NoteService {
     };
   }
 
-  async deleteNote(filePath: string): Promise<boolean> {
+  static async deleteNote(filePath: string): Promise<boolean> {
     try {
-      const absolutePath = toAbsolutePath(filePath);
+      const absolutePath = toAbsoluteNotesPath(filePath);
       const file = new File(absolutePath);
       if (!file.exists) return false;
 
       file.delete();
       try {
-        await NotesIndexService.instance.deleteNote(filePath);
+        await NotesIndexService.deleteNote(filePath);
       } catch (err) {
         console.warn("Failed to delete note from index:", err);
       }
@@ -133,7 +127,7 @@ export class NoteService {
     }
   }
 
-  async scanNotes(folderPath: string): Promise<Note[]> {
+  static async scanNotes(folderPath: string): Promise<Note[]> {
     // Kept for backward compatibility; list comes from NotesIndexService (filesystem + metaStore).
     const metadata: Note[] = [];
     try {
@@ -159,14 +153,9 @@ export class NoteService {
     return metadata;
   }
 
-  private sanitizeFileName(title: string) {
-    return title
-      .trim()
-      .replace(/[<>:"/\\|?*]+/g, "_")
-      .slice(0, 100);
-  }
 
-  private async resolveFilePath(
+
+  static async resolveFilePath(
     folderPath: string,
     title: string,
     existingPath?: string
@@ -175,7 +164,7 @@ export class NoteService {
       return existingPath;
     }
 
-    const baseName = this.sanitizeFileName(title || "Untitled");
+    const baseName = sanitizeFileName(title || "Untitled");
     let candidate = `${folderPath}/${baseName}.md`;
     let counter = 1;
 

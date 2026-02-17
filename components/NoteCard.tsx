@@ -1,5 +1,4 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { NoteService } from "@/services/notes/noteService";
 import { Note } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -24,7 +23,6 @@ export default function NoteCard({
     const handlePinToggle = () => {
         const updated = { ...note, isPinned: !note.isPinned };
         onPinToggle?.(updated);
-        NoteService.instance.saveNote(updated);
     };
 
     return (

@@ -1,39 +1,39 @@
-import { StyleSheet, TouchableOpacity, View } from "react-native";
-import React, { useMemo, useCallback } from "react";
-import { router } from 'expo-router';
-import NoteGrid from "@/components/NoteGrid";
-import { MaterialIcons } from "@expo/vector-icons";
-import { NoteService } from "@/services/notes/noteService";
-import { Note } from "@/services/notes/types";
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { useToastStore } from "@/stores/toastStore";
 import ErrorScreen from "@/components/ErrorScreen";
 import Loader from "@/components/Loader";
+import NoteGrid from "@/components/NoteGrid";
 import { SearchBar } from "@/components/SearchBar";
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
+import { Note } from "@/services/notes/types";
+import { useNotesMetaStore } from "@/stores/notes/metaStore";
+import { useNoteStore } from "@/stores/notes/noteStore";
+import { useToastStore } from "@/stores/toastStore";
+import { MaterialIcons } from "@expo/vector-icons";
+import { router } from 'expo-router';
+import React, { useCallback, useMemo } from "react";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 export default function Index() {
   const { notes, setNotes, query, hasMore, isLoading, error, handleRefresh, loadMoreNotes, setQuery } = useNotes();
   const theme = useExtendedTheme();
   const { showToast } = useToastStore();
+  const { deleteNote } = useNoteStore();
+  const { setPinned } = useNotesMetaStore();
 
   const handleDeleteNote = useCallback(async (note: Note) => {
     try {
-      const success = await NoteService.instance.deleteNote(note.filePath);
-      if (success) {
-        setNotes((prev: Note[]) => prev.filter((n: Note) => n.filePath !== note.filePath));
-        showToast(`Deleted "${note.title}"`);
-      } else {
-        showToast('Failed to delete note');
-      }
+      await deleteNote(note.filePath);
+      setNotes((prev: Note[]) => prev.filter((n: Note) => n.filePath !== note.filePath));
+      showToast(`Deleted "${note.title}"`);
     } catch (e) {
       console.warn('Failed to delete note:', e);
       showToast('Failed to delete note');
     }
-  }, [showToast]);
+  }, [deleteNote, showToast]);
 
   const handlePinToggle = useCallback((updated: Note) => {
     setNotes((prev) => prev.map((n) => (n.filePath === updated.filePath ? updated : n)));
+    setPinned(updated.filePath, updated.isPinned ?? false);
   }, []);
 
 

@@ -1,6 +1,6 @@
-import { create } from "zustand";
-import { Note, NoteToSave } from "@/services/notes/types";
 import { NoteService } from "@/services/notes/noteService";
+import { Note, NoteToSave } from "@/services/notes/types";
+import { create } from "zustand";
 
 interface NoteStore {
   notes: Record<string, Note>;
@@ -14,7 +14,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
   notes: {},
 
   loadNote: async (filePath: string) => {
-    const note = await NoteService.instance.loadNote(filePath);
+    const note = await NoteService.loadNote(filePath);
     if (note) {
       set({ notes: { ...get().notes, [filePath]: note } });
     }
@@ -22,17 +22,16 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
   },
 
   saveNote: async (note: NoteToSave) => {
-    const saved = await NoteService.instance.saveNote(note);
+    const saved = await NoteService.saveNote(note);
     set({ notes: { ...get().notes, [saved.filePath]: saved } });
   },
 
   deleteNote: async (filePath: string) => {
-    const success = await NoteService.instance.deleteNote(filePath);
-    if (success) {
-      const notes = { ...get().notes };
-      delete notes[filePath];
-      set({ notes });
-    }
+    const success = await NoteService.deleteNote(filePath);
+    if (!success) throw new Error("Failed to delete note");
+    const notes = { ...get().notes };
+    delete notes[filePath];
+    set({ notes });
   },
 
   clearCache: () => set({ notes: {} }),

@@ -1,7 +1,7 @@
-import { normalizePath } from "@/services/git/expoFileSystemAdapter";
-import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { Directory, File } from "expo-file-system";
 import { NOTES_ROOT } from "./Notes";
+import { NotesMetaService } from "./notesMetaService";
+import { toAbsoluteNotesPath } from "./notesPaths";
 
 export type NoteIndexStatus = "PINNED" | "UNPINNED";
 
@@ -13,8 +13,6 @@ export interface NoteIndexItem {
   sortTimestamp: number;
   createdAt: number;
   updatedAt: number;
-  allNotesPartition?: string;
-  compositeSortKey?: string;
 }
 
 export interface ListNotesResult {
@@ -22,12 +20,6 @@ export interface ListNotesResult {
   cursor?: Record<string, unknown>;
 }
 
-export function createSortKey(isPinned: boolean, updatedAt: number): string {
-  const prefix = isPinned ? "1" : "0";
-  const t = Number(updatedAt);
-  const ts = Number.isFinite(t) ? t : 0;
-  return `${prefix}#${ts.toString().padStart(13, "0")}`;
-}
 
 async function collectMdRelativePaths(
   dirPath: string,
@@ -58,21 +50,15 @@ async function collectMdRelativePaths(
   return paths;
 }
 
-function buildFullPath(relativePath: string): string {
-  const root = NOTES_ROOT.endsWith("/") ? NOTES_ROOT.slice(0, -1) : NOTES_ROOT;
-  const rawPath = root + "/" + relativePath;
-  return NOTES_ROOT.startsWith("file:")
-    ? normalizePath(rawPath)
-    : rawPath;
-}
-
-async function loadNoteItem(relativePath: string): Promise<NoteIndexItem | null> {
-  const fullPath = buildFullPath(relativePath);
+async function loadNoteItem(
+  relativePath: string,
+  pinned: boolean
+): Promise<NoteIndexItem | null> {
+  const fullPath = toAbsoluteNotesPath(relativePath);
   const file = new File(fullPath);
   if (!file.exists) return null;
   const content = await file.text();
   const mtime = file.modificationTime!;
-  const pinned = useNotesMetaStore.getState().pinned[relativePath] ?? false;
   const title =
     decodeURIComponent(
       relativePath.split("/").pop()?.replace(/\.md$/, "") ?? "Untitled"
@@ -91,21 +77,22 @@ async function loadNoteItem(relativePath: string): Promise<NoteIndexItem | null>
 export class NotesIndexService {
   static instance = new NotesIndexService();
 
-  private constructor() {}
+  private constructor() { }
 
   async getNote(noteId: string): Promise<NoteIndexItem | null> {
-    return loadNoteItem(noteId);
+    const pinned = await NotesMetaService.getPinned(noteId);
+    return loadNoteItem(noteId, pinned);
   }
 
-  async upsertNote(item: NoteIndexItem): Promise<void> {
-    useNotesMetaStore.getState().setPinned(
+  static async upsertNote(item: NoteIndexItem): Promise<void> {
+    await NotesMetaService.setPinned(
       item.noteId,
       item.status === "PINNED"
     );
   }
 
-  async deleteNote(noteId: string): Promise<void> {
-    useNotesMetaStore.getState().setPinned(noteId, false);
+  static async deleteNote(noteId: string): Promise<void> {
+    await NotesMetaService.removePin(noteId);
   }
 
   async listAllNotes(
@@ -114,10 +101,11 @@ export class NotesIndexService {
     query?: string
   ): Promise<ListNotesResult> {
     const root = NOTES_ROOT.endsWith("/") ? NOTES_ROOT.slice(0, -1) : NOTES_ROOT;
+    const pinned = await NotesMetaService.getPinnedMap();
     const relativePaths = await collectMdRelativePaths(root, "");
     const items: NoteIndexItem[] = [];
     for (const relativePath of relativePaths) {
-      const item = await loadNoteItem(relativePath);
+      const item = await loadNoteItem(relativePath, pinned[relativePath] ?? false);
       if (item) items.push(item);
     }
     items.sort((a, b) => {

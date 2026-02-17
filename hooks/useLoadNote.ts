@@ -1,5 +1,5 @@
 import { Note } from "@/services/notes/types";
-import { useNoteStore } from "@/stores/notes/noteService";
+import { useNoteStore } from "@/stores/notes/noteStore";
 import { useEffect, useState } from "react";
 
 export function useLoadNote(filePath: string) {
@@ -11,9 +11,9 @@ export function useLoadNote(filePath: string) {
         setIsLoading(true);
         loadNote(filePath).then((note) => {
             setNote(note);
-            setIsLoading(false);
         }).catch((error) => {
             setError(error.message);
+        }).finally(() => {
             setIsLoading(false);
         });
     }, [filePath]);
