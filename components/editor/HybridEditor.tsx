@@ -150,7 +150,6 @@ export function HybridEditor({
 			options?: {
 				ignoreContentChange?: boolean;
 				preserveFocus?: boolean;
-				focusDelay?: number;
 				onlyIfTypeChanges?: boolean;
 			},
 		): boolean => {
@@ -292,6 +291,14 @@ export function HybridEditor({
 			) {
 				return; // Conversion happened, don't split
 			}
+
+			// Convert empty list blocks to paragraphs
+			if (block.content.trim() === "" && [BlockType.numberedList, BlockType.bulletList].includes(block.type)) {
+				editorState.updateBlockType(index, BlockType.paragraph);
+				focusBlock(index);
+				return;
+			}
+
 			// Set ignore flag before splitting to prevent TextInput from updating old block
 			ignoreNextContentChangeRef.current = index;
 

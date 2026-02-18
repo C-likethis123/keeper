@@ -1,11 +1,11 @@
+import { useEditorState } from "@/contexts/EditorContext";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import React, {
 	useCallback,
 	useEffect,
 	useMemo,
-	useRef,
-	useState,
+	useRef
 } from "react";
 import {
 	type NativeSyntheticEvent,
@@ -38,11 +38,10 @@ export function ListBlock({
 	onWikiLinkTriggerEnd,
 }: BlockConfig) {
 	const inputRef = useRef<TextInput>(null);
-	const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
-	const [selection, setSelection] = useState({ start: 0, end: 0 });
+	const { focusBlock, blurBlock } = useFocusBlock();
 	const ignoreNextChangeRef = useRef(false);
 	const lastBlockContentRef = useRef(block.content);
-
+	const editorState = useEditorState();
 	// Sync TextInput when block content changes externally (e.g., from wiki link selection)
 	useEffect(() => {
 		if (block.content !== lastBlockContentRef.current && inputRef.current) {
@@ -59,6 +58,10 @@ export function ListBlock({
 		}
 	}, [block.content]);
 
+	const handleFocus = useCallback(() => {
+		focusBlock(index);
+	}, [focusBlock, index]);
+
 	const handleBlur = useCallback(() => {
 		blurBlock();
 		// End wiki link session on blur, but with a delay to allow overlay selection
@@ -73,7 +76,6 @@ export function ListBlock({
 				start: e.nativeEvent.selection.start,
 				end: e.nativeEvent.selection.end,
 			};
-			setSelection(newSelection);
 			onSelectionChange?.(newSelection.start, newSelection.end);
 
 			if (isFocused && newSelection.start === newSelection.end) {
@@ -110,28 +112,24 @@ export function ListBlock({
 			onContentChange(newText);
 
 			// Detect wiki link triggers after content change
-			requestAnimationFrame(() => {
-				if (isFocused && inputRef.current) {
-					const caret = selection.start;
-					const start = WikiLinkTrigger.findStart(newText, caret);
+			// requestAnimationFrame(() => {
+			// 	if (isFocused && inputRef.current) {
+			// 		const caret = selection.start;
+			// 		const start = WikiLinkTrigger.findStart(newText, caret);
 
-					if (start !== null) {
-						onWikiLinkTriggerStart?.(start);
-						const query = newText.substring(start + 2, caret);
-						onWikiLinkQueryUpdate?.(query, caret);
-					} else {
-						onWikiLinkTriggerEnd?.();
-					}
-				}
-			});
+			// 		if (start !== null) {
+			// 			onWikiLinkTriggerStart?.(start);
+			// 			const query = newText.substring(start + 2, caret);
+			// 			onWikiLinkQueryUpdate?.(query, caret);
+			// 		} else {
+			// 			onWikiLinkTriggerEnd?.();
+			// 		}
+			// 	}
+			// });
 		},
 		[
 			onContentChange,
 			isFocused,
-			selection.start,
-			onWikiLinkTriggerStart,
-			onWikiLinkQueryUpdate,
-			onWikiLinkTriggerEnd,
 		],
 	);
 
@@ -140,17 +138,20 @@ export function ListBlock({
 			const key = e.nativeEvent.key;
 
 			if (
-				(key === "Enter" || key === "Return") &&
-				selection.start === selection.end
+				key === "Enter" &&
+				editorState.selection?.anchor.offset ===
+				editorState.selection?.focus.offset
 			) {
 				if (block.type !== BlockType.codeBlock) {
+					// Mark the next onChangeText as ignorable so the stray newline doesn't
+					// get written back into the original block after we split.
 					ignoreNextChangeRef.current = true;
-					onEnter?.(selection.start);
+					onEnter?.(editorState.selection?.focus.offset ?? 0);
 				}
 				return;
 			}
 
-			if (key === "Backspace" && selection.start === 0 && selection.end === 0) {
+			if (key === "Backspace" && editorState.selection?.anchor.offset === 0 && editorState.selection?.focus.offset === 0) {
 				if (
 					block.type === BlockType.bulletList ||
 					block.type === BlockType.numberedList
@@ -160,7 +161,7 @@ export function ListBlock({
 				return;
 			}
 		},
-		[onEnter, onBackspaceAtStart, selection, block.type],
+		[onEnter, onBackspaceAtStart, block.type, editorState.selection],
 	);
 
 	const theme = useExtendedTheme();
@@ -177,7 +178,7 @@ export function ListBlock({
 				isFocused && styles.focused,
 				pressed && styles.pressed,
 			]}
-			onPress={() => focusBlock(index)}
+			onPress={handleFocus}
 		>
 			<View style={styles.row}>
 				<ListMarker
@@ -185,39 +186,29 @@ export function ListBlock({
 					listLevel={block.listLevel}
 					listItemNumber={listItemNumber}
 				/>
-				<View style={styles.contentContainer}>
+				{!isFocused && (
+					<View style={styles.overlayContent} pointerEvents="none">
+						<InlineMarkdown text={block.content} style={textStyle} />
+					</View>
+				)}
 					<TextInput
 						ref={inputRef}
-						pointerEvents={isFocused ? "auto" : "none"}
 						style={[
 							styles.input,
 							textStyle,
 							isFocused ? styles.inputVisible : styles.inputHidden,
-							!isFocused && styles.inputBehindOverlay,
 						]}
 						value={block.content}
 						onChangeText={handleContentChange}
-						onFocus={() => focusBlock(index)}
+						onFocus={handleFocus}
 						onBlur={handleBlur}
 						onKeyPress={handleKeyPress}
 						onSelectionChange={handleSelectionChange}
 						multiline
-						placeholder="List item..."
+						placeholder={"Start typing..."}
 						placeholderTextColor={theme.custom.editor.placeholder}
 					/>
-					{!isFocused && (
-						<Pressable
-							style={styles.overlay}
-							onPress={() => focusBlock(index)}
-							pointerEvents="auto"
-						>
-							<View style={styles.overlayContent}>
-								<InlineMarkdown text={block.content} style={textStyle} />
-							</View>
-						</Pressable>
-					)}
 				</View>
-			</View>
 		</Pressable>
 	);
 }
@@ -225,43 +216,31 @@ export function ListBlock({
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		container: {
-			minHeight: 40,
 			paddingHorizontal: 16,
 			position: "relative",
 		},
 		row: {
 			flexDirection: "row",
-			alignItems: "center",
-		},
-		contentContainer: {
-			flex: 1,
-			position: "relative",
+			alignItems: "flex-start",
 		},
 		focused: {
-			backgroundColor: theme.custom.editor.blockFocused,
+			// backgroundColor: theme.custom.editor.blockFocused,
 		},
 		pressed: {
 			opacity: 0.8,
 		},
 		overlay: {
 			position: "absolute",
-			left: 0,
-			right: 0,
-			top: 0,
-			bottom: 0,
-			pointerEvents: "box-none",
-			zIndex: 10,
-			justifyContent: "center",
+			zIndex: 1,
 		},
 		inputBehindOverlay: {
 			zIndex: 0,
 		},
 		overlayContent: {
-			minHeight: 24,
-			justifyContent: "center",
+			alignItems: "flex-start",
 		},
 		input: {
-			minHeight: 24,
+			paddingVertical: 0,
 			color: theme.colors.text,
 		},
 		inputVisible: {

@@ -34,22 +34,26 @@ export function ListMarker({
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+	const fontSize = theme.typography.body.fontSize ?? 16;
+	const lineHeight = theme.typography.body.lineHeight ?? 24;
+	const bulletSize = fontSize * 0.375;
+
 	return StyleSheet.create({
 		container: {
 			justifyContent: "center",
 			alignItems: "center",
-			height: 16,
+			height: lineHeight,
 			paddingRight: 8,
 		},
 		number: {
 			color: theme.colors.primary,
-			fontSize: 16,
-			lineHeight: 16,
+			fontSize,
+			lineHeight,
 		},
 		bullet: {
-			width: 6,
-			height: 6,
-			borderRadius: 3,
+			width: bulletSize,
+			height: bulletSize,
+			borderRadius: bulletSize / 2,
 			backgroundColor: theme.colors.primary,
 		},
 	});
