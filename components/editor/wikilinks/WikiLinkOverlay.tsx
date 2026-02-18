@@ -1,12 +1,12 @@
+import Loader from "@/components/Loader";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import React from "react";
 import {
-	ActivityIndicator,
 	Pressable,
 	ScrollView,
 	StyleSheet,
 	Text,
-	View,
+	View
 } from "react-native";
 
 interface WikiLinkOverlayProps {
@@ -36,16 +36,13 @@ export function WikiLinkOverlay({
 	return (
 		<View style={styles.container}>
 			{isLoading ? (
-				<View style={styles.loadingContainer}>
-					<ActivityIndicator size="small" color={theme.colors.primary} />
-					<Text style={styles.loadingText}>Searching...</Text>
-				</View>
+				<Loader />
 			) : results.length > 0 ? (
 				<ScrollView
 					style={styles.scrollView}
 					contentContainerStyle={styles.scrollContent}
 					scrollEnabled={needsScrolling}
-					nestedScrollEnabled={true}
+					nestedScrollEnabled
 					showsVerticalScrollIndicator={needsScrolling}
 				>
 					{results.map((item, index) => {

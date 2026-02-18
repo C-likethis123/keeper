@@ -1,4 +1,5 @@
 import { useEditorState } from "@/contexts/EditorContext";
+import { useDebounce } from "@/hooks/useDebounce";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { useCallback, useRef, useState } from "react";
 import type { WikiLinkSession } from "./WikiLinkSession";
@@ -41,6 +42,7 @@ interface UseWikiLinksReturn {
 export function useWikiLinks(): UseWikiLinksReturn {
 	const [session, setSession] = useState<WikiLinkSession | null>(null);
 	const [query, setQuery] = useState<string>("");
+	const debouncedQuery = useDebounce(query, 300);
 	const [results, setResults] = useState<string[]>([]);
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -113,14 +115,6 @@ export function useWikiLinks(): UseWikiLinksReturn {
 					startOffset: session.startOffset,
 				});
 			}
-
-			setQuery(raw);
-
-			// Fetch results (debounce by checking if search is in progress)
-			if (searchInProgressRef.current) {
-				return;
-			}
-
 			// Only show loading if there's a query to search
 			if (raw.length > 0) {
 				setIsLoading(true);
@@ -158,7 +152,6 @@ export function useWikiLinks(): UseWikiLinksReturn {
 				setResults([]);
 			} finally {
 				setIsLoading(false);
-				searchInProgressRef.current = false;
 			}
 		},
 		[session, editorState, handleTriggerEnd],
