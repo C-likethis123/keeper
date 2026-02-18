@@ -38,16 +38,10 @@ export default function NoteEditorScreen() {
 		blockType: BlockType | null;
 		blockIndex: number | null;
 		listLevel: number;
-		onIndent: () => void;
-		onOutdent: () => void;
-		onInsertImage: () => Promise<void>;
 	}>({
 		blockType: null,
 		blockIndex: null,
 		listLevel: 0,
-		onIndent: () => {},
-		onOutdent: () => {},
-		onInsertImage: async () => {},
 	});
 
 	// Load existing note if editing
@@ -182,18 +176,11 @@ export default function NoteEditorScreen() {
 								}}
 							/>
 							<EditorToolbar
-								blockType={focusedBlockInfo.blockType}
-								blockIndex={focusedBlockInfo.blockIndex}
-								listLevel={focusedBlockInfo.listLevel}
-								onIndent={focusedBlockInfo.onIndent}
-								onOutdent={focusedBlockInfo.onOutdent}
-								onInsertImage={focusedBlockInfo.onInsertImage}
 							/>
 
 							<HybridEditor
 								initialContent={note?.content || ""}
 								onChanged={handleContentChange}
-								onFocusedBlockChange={setFocusedBlockInfo}
 							/>
 						</EditorProvider>
 					</>

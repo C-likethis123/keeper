@@ -1,0 +1,75 @@
+import { BlockType, createImageBlock } from "@/components/editor/core/BlockNode";
+import { useEditorState } from "@/contexts/EditorContext";
+import { copyPickedImageToNotes } from "@/services/notes/imageStorage";
+import * as DocumentPicker from "expo-document-picker";
+import { useCallback } from "react";
+import { Platform } from "react-native";
+import { useFocusBlock } from "./useFocusBlock";
+
+export interface UseToolbarActions {
+	focusBlockIndex: number | null;
+    handleOutdent: () => void;
+    handleIndent: () => void;
+    handleInsertImage: () => Promise<void>;
+}
+
+export function useToolbarActions(): UseToolbarActions {
+	const editorState = useEditorState();
+	const { focusBlock } = useFocusBlock();
+
+	const handleIndent = useCallback(
+		() => {
+			const index = editorState.getFocusedBlockIndex();
+			if (index === null) return;
+			const block = editorState.document.blocks[index];
+			if (
+				block.type === BlockType.bulletList ||
+				block.type === BlockType.numberedList
+			) {
+				editorState.updateBlockListLevel(index, block.listLevel + 1);
+			}
+		},
+		[editorState],
+	);
+
+	const handleOutdent = useCallback(
+		() => {
+            const index = editorState.getFocusedBlockIndex();
+            if (index === null) return;
+			const block = editorState.document.blocks[index];
+			const isListBlock = block.type === BlockType.bulletList || block.type === BlockType.numberedList;
+			if (!isListBlock) {
+				return;
+			}
+			if (block.listLevel > 1) {
+				editorState.updateBlockListLevel(index, block.listLevel - 1);
+			} else {
+				editorState.updateBlockType(index, BlockType.paragraph);
+			}
+		},
+		[editorState],
+	);
+
+	const handleInsertImage = useCallback(async () => {
+		if (Platform.OS === "web") return;
+		const result = await DocumentPicker.getDocumentAsync({
+			type: "image/*",
+			copyToCacheDirectory: true,
+		});
+		if (result.canceled) return;
+		const uri = result.assets[0].uri;
+		const path = await copyPickedImageToNotes(uri);
+		const focusedIndex = editorState.getFocusedBlockIndex() ?? 0;
+		editorState.insertBlockAfter(focusedIndex, createImageBlock(path));
+		focusBlock(focusedIndex + 1);
+	}, [editorState, focusBlock]);
+
+
+	const focusBlockIndex = editorState.getFocusedBlockIndex();
+	return {
+		focusBlockIndex,
+        handleOutdent,
+        handleIndent,
+		handleInsertImage,
+	};
+}

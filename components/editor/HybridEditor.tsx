@@ -1,8 +1,6 @@
 import { useEditorState } from "@/contexts/EditorContext";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useOverlayPosition } from "@/hooks/useOverlayPosition";
-import { copyPickedImageToNotes } from "@/services/notes/imageStorage";
-import * as DocumentPicker from "expo-document-picker";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -17,8 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { type BlockConfig, blockRegistry } from "./blocks/BlockRegistry";
 import {
 	BlockType,
-	createImageBlock,
-	createParagraphBlock,
+	createParagraphBlock
 } from "./core/BlockNode";
 import { WikiLinkOverlay } from "./wikilinks/WikiLinkOverlay";
 import { useWikiLinks } from "./wikilinks/useWikiLinks";
@@ -26,14 +23,6 @@ import { useWikiLinks } from "./wikilinks/useWikiLinks";
 export interface HybridEditorProps {
 	initialContent?: string;
 	onChanged?: (markdown: string) => void;
-	onFocusedBlockChange?: (blockInfo: {
-		blockType: BlockType | null;
-		blockIndex: number | null;
-		listLevel: number;
-		onIndent: () => void;
-		onOutdent: () => void;
-		onInsertImage: () => Promise<void>;
-	}) => void;
 }
 
 /// A hybrid markdown/code editor widget
@@ -46,7 +35,6 @@ export interface HybridEditorProps {
 export function HybridEditor({
 	initialContent = "",
 	onChanged,
-	onFocusedBlockChange,
 }: HybridEditorProps) {
 	const editorState = useEditorState();
 	const lastInitialContentRef = useRef<string | undefined>(undefined);
@@ -358,79 +346,6 @@ export function HybridEditor({
 		},
 		[editorState.document.blocks],
 	);
-
-	const handleIndent = useCallback(
-		(index: number) => {
-			const block = editorState.document.blocks[index];
-			if (
-				block.type === BlockType.bulletList ||
-				block.type === BlockType.numberedList
-			) {
-				editorState.updateBlockListLevel(index, block.listLevel + 1);
-			}
-		},
-		[editorState],
-	);
-
-	const handleOutdent = useCallback(
-		(index: number) => {
-			const block = editorState.document.blocks[index];
-			if (
-				(block.type === BlockType.bulletList ||
-					block.type === BlockType.numberedList) &&
-				block.listLevel > 0
-			) {
-				editorState.updateBlockListLevel(index, block.listLevel - 1);
-			}
-		},
-		[editorState],
-	);
-
-	const handleInsertImage = useCallback(async () => {
-		if (Platform.OS === "web") return;
-		const result = await DocumentPicker.getDocumentAsync({
-			type: "image/*",
-			copyToCacheDirectory: true,
-		});
-		if (result.canceled) return;
-		const uri = result.assets[0].uri;
-		const path = await copyPickedImageToNotes(uri);
-		const focusedIndex = editorState.getFocusedBlockIndex() ?? 0;
-		editorState.insertBlockAfter(focusedIndex, createImageBlock(path));
-		focusBlock(focusedIndex + 1);
-	}, [editorState, focusBlock]);
-
-	useEffect(() => {
-		if (onFocusedBlockChange) {
-			const focusedIndex = editorState.getFocusedBlockIndex();
-			if (focusedIndex !== null) {
-				const block = editorState.document.blocks[focusedIndex];
-				onFocusedBlockChange({
-					blockType: block.type,
-					blockIndex: focusedIndex,
-					listLevel: block.listLevel,
-					onIndent: () => handleIndent(focusedIndex),
-					onOutdent: () => handleOutdent(focusedIndex),
-					onInsertImage: handleInsertImage,
-				});
-			} else {
-				onFocusedBlockChange({
-					blockType: null,
-					blockIndex: null,
-					listLevel: 0,
-					onIndent: () => {},
-					onOutdent: () => {},
-					onInsertImage: handleInsertImage,
-				});
-			}
-		}
-	}, [
-		editorState,
-		onFocusedBlockChange,
-		handleIndent,
-		handleOutdent,
-		handleInsertImage,
-	]);
 
 	const renderBlock = useCallback(
 		(block: (typeof editorState.document.blocks)[0], index: number) => {

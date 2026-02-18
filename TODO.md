@@ -1,7 +1,6 @@
 # issues
 - when I split block, the focus is on the newly created block, but typing moves the focus back to the previous block!
-- Pressing enter on a list block should turn it to a paragraph block
-- something about safe area....
+- Pressing enter on an empty list block should turn it to a paragraph block
 - Outdent on a first level list block should make it a paragraph block.
 - Pinning within the app does not work
 
