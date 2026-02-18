@@ -1,6 +1,9 @@
 import { Directory, File } from "expo-file-system";
 import { NOTES_ROOT } from "./Notes";
-import { NotesMetaService } from "./notesMetaService";
+import {
+	NotesMetaService,
+	type TitlesMap,
+} from "./notesMetaService";
 import { toAbsoluteNotesPath } from "./notesPaths";
 
 export interface NoteIndexItem {
@@ -45,18 +48,26 @@ async function collectMdRelativePaths(
 	return paths;
 }
 
+function titleFromPath(relativePath: string): string {
+	return (
+		decodeURIComponent(
+			relativePath.split("/").pop()?.replace(/\.md$/, "") ?? "Untitled",
+		)
+	);
+}
+
 async function loadNoteItem(
 	relativePath: string,
 	pinned: boolean,
+	titlesMap: TitlesMap = {},
 ): Promise<NoteIndexItem | null> {
 	const fullPath = toAbsoluteNotesPath(relativePath);
 	const file = new File(fullPath);
 	if (!file.exists) return null;
 	const content = await file.text();
 	const mtime = file.modificationTime!;
-	const title = decodeURIComponent(
-		relativePath.split("/").pop()?.replace(/\.md$/, "") ?? "Untitled",
-	);
+	const title =
+		titlesMap[relativePath] ?? titleFromPath(relativePath);
 	return {
 		noteId: relativePath,
 		summary: extractSummary(content),
@@ -80,10 +91,13 @@ export class NotesIndexService {
 
 	static async upsertNote(item: NoteIndexItem): Promise<void> {
 		await NotesMetaService.setPinned(item.noteId, item.isPinned);
+		const title = item.title ?? titleFromPath(item.noteId);
+		await NotesMetaService.setTitle(item.noteId, title);
 	}
 
 	static async deleteNote(noteId: string): Promise<void> {
 		await NotesMetaService.removePin(noteId);
+		await NotesMetaService.removeTitle(noteId);
 	}
 
 	static async listAllNotes(
@@ -94,13 +108,17 @@ export class NotesIndexService {
 		const root = NOTES_ROOT.endsWith("/")
 			? NOTES_ROOT.slice(0, -1)
 			: NOTES_ROOT;
-		const pinned = await NotesMetaService.getPinnedMap();
+		const [pinned, titlesMap] = await Promise.all([
+			NotesMetaService.getPinnedMap(),
+			NotesMetaService.getTitlesMap(),
+		]);
 		const relativePaths = await collectMdRelativePaths(root, "");
 		const items: NoteIndexItem[] = [];
 		for (const relativePath of relativePaths) {
 			const item = await loadNoteItem(
 				relativePath,
 				pinned[relativePath] ?? false,
+				titlesMap,
 			);
 			if (item) items.push(item);
 		}

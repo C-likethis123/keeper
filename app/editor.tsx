@@ -56,11 +56,18 @@ export default function NoteEditorScreen() {
 		await setPinned(path, next);
 	};
 
+	const effectiveFilePath =
+		note?.filePath ?? (filePath as string) ?? "";
+	const isNewNote = !(filePath as string)?.trim();
+
 	const { status, saveNow } = useAutoSave({
-		filePath: filePath as string,
+		filePath: effectiveFilePath,
 		title: note?.title || "",
 		content: note?.content || "",
 		isPinned: note?.isPinned || false,
+		onSaved: isNewNote
+			? (saved) => setNote(saved)
+			: undefined,
 	});
 
 	const handleContentChange = (markdown: string) => {

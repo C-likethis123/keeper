@@ -1,3 +1,4 @@
+import type { Note } from "@/services/notes/types";
 import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { useNoteStore } from "@/stores/notes/noteStore";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -7,6 +8,7 @@ type AutoSaveInput = {
 	title: string;
 	content: string;
 	isPinned: boolean;
+	onSaved?: (note: Note) => void;
 };
 
 export function useAutoSave({
@@ -14,6 +16,7 @@ export function useAutoSave({
 	title,
 	content,
 	isPinned,
+	onSaved,
 }: AutoSaveInput) {
 	const { saveNote } = useNoteStore();
 	const { setPinned } = useNotesMetaStore();
@@ -32,34 +35,8 @@ export function useAutoSave({
 			timerRef.current = null;
 		}
 
-		// #region agent log
-		fetch(
-			"http://127.0.0.1:7242/ingest/33637cfe-b39e-404b-b53c-7d1a9a880cbd",
-			{
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					"X-Debug-Session-Id": "70fb90",
-				},
-				body: JSON.stringify({
-					sessionId: "70fb90",
-					runId: "initial",
-					hypothesisId: "H1",
-					location: "useAutoSave.ts:29",
-					message: "useAutoSave.saveNow invoked",
-					data: {
-						filePath,
-						title,
-						isPinned,
-					},
-					timestamp: Date.now(),
-				}),
-			},
-		).catch(() => {});
-		// #endregion
-
 		setStatus("saving");
-		await saveNote({
+		const saved = await saveNote({
 			filePath,
 			title: title.trim() || "Untitled",
 			content,
@@ -71,7 +48,8 @@ export function useAutoSave({
 			isPinned,
 		};
 		setStatus("saved");
-	}, [filePath, title, content, isPinned, saveNote]);
+		onSaved?.(saved);
+	}, [filePath, title, content, isPinned, saveNote, onSaved]);
 
 	useEffect(() => {
 		setStatus("idle");
@@ -94,36 +72,16 @@ export function useAutoSave({
 				return;
 			}
 
-			// #region agent log
-			fetch(
-				"http://127.0.0.1:7242/ingest/33637cfe-b39e-404b-b53c-7d1a9a880cbd",
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						"X-Debug-Session-Id": "70fb90",
-					},
-					body: JSON.stringify({
-						sessionId: "70fb90",
-						runId: "initial",
-						hypothesisId: "H2",
-						location: "useAutoSave.ts:70",
-						message: "useAutoSave.autosave runSave executed",
-						data: {
-							filePath,
-							trimmedTitle,
-							onlyPinChanged: !!onlyPinChanged,
-						},
-						timestamp: Date.now(),
-					}),
-				},
-			).catch(() => {});
-			// #endregion
-
 			setStatus("saving");
-			await saveNote({ filePath, title: trimmedTitle, content, isPinned });
+			const saved = await saveNote({
+				filePath,
+				title: trimmedTitle,
+				content,
+				isPinned,
+			});
 			lastSavedRef.current = { title: trimmedTitle, content, isPinned };
 			setStatus("saved");
+			onSaved?.(saved);
 		};
 
 		timerRef.current = setTimeout(runSave, 2000);
@@ -133,7 +91,7 @@ export function useAutoSave({
 				clearTimeout(timerRef.current);
 			}
 		};
-	}, [filePath, title, content, isPinned, saveNote]);
+	}, [filePath, title, content, isPinned, saveNote, onSaved]);
 
 	return { status, saveNow };
 }
