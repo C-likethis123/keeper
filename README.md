@@ -31,6 +31,15 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+### Desktop (Tauri)
+
+The web app can run in a desktop window via [Tauri](https://tauri.app/). Prerequisites: [Rust](https://rustup.rs/) and Xcode Command Line Tools (macOS: `xcode-select --install`).
+
+- **Dev**: `npm run desktop` — starts the Expo web server and opens the Tauri window (loads from `http://localhost:8081`).
+- **Production build**: `npm run build:desktop` — exports the web bundle then builds the desktop app. Outputs are in `src-tauri/target/release/` (and bundle artifacts for your OS).
+
+The first run may prompt for system permissions (e.g. macOS).
+
 ### Git backend configuration
 
 The editor can send file change batches to a backend git service. Configure the backend URL via:
