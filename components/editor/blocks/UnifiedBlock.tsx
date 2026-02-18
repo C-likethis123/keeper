@@ -12,7 +12,7 @@ import {
 	type TextStyle,
 	View,
 } from "react-native";
-import { BlockType, isListItem } from "../core/BlockNode";
+import { BlockType, getListLevel, isListItem } from "../core/BlockNode";
 import { InlineMarkdown } from "../rendering/InlineMarkdown";
 import { WikiLinkTrigger } from "../wikilinks/WikiLinkTrigger";
 import type { BlockConfig } from "./BlockRegistry";
@@ -27,6 +27,7 @@ export function UnifiedBlock({
 	onEnter,
 	onSelectionChange,
 	listItemNumber,
+	onCheckboxToggle,
 	onWikiLinkTriggerStart,
 	onWikiLinkQueryUpdate,
 	onWikiLinkTriggerEnd,
@@ -84,10 +85,12 @@ export function UnifiedBlock({
 
 			if (isFocused && newSelection.start === newSelection.end) {
 				const caret = newSelection.start;
+				if (caret > block.content.length) {
+					return;
+				}
 				const triggerStart = WikiLinkTrigger.findStart(block.content, caret);
-
 				if (triggerStart !== null) {
-					onWikiLinkTriggerStart?.(triggerStart);
+					onWikiLinkTriggerStart();
 					const query = block.content.substring(triggerStart + 2, caret);
 					onWikiLinkQueryUpdate?.(query, caret);
 				} else {
@@ -119,21 +122,18 @@ export function UnifiedBlock({
 
 			onContentChange(newText);
 
-			// Detect wiki link triggers after content change
-			// Use requestAnimationFrame to ensure selection is updated
+			// Detect wiki link triggers after content change. Use newText.length as caret
+			// because editorState.selection is not updated yet when onChangeText fires.
 			if (isFocused && inputRef.current) {
-				// Get current selection from the input
-				// Note: We can't reliably get selection here, so we'll rely on onSelectionChange
-				// But we can still check for triggers in the new text
-				// const caret = inputRef.current.selection.start; // Use last known selection
-				// const start = WikiLinkTrigger.findStart(newText, caret);
-				// if (start !== null) {
-				//   onWikiLinkTriggerStart?.(start);
-				//   const query = newText.substring(start + 2, caret);
-				//   onWikiLinkQueryUpdate?.(query, caret);
-				// } else {
-				//   onWikiLinkTriggerEnd?.();
-				// }
+				const caret = newText.length;
+				const start = WikiLinkTrigger.findStart(newText, caret);
+				if (start !== null) {
+					onWikiLinkTriggerStart();
+					const query = newText.substring(start + 2, caret);
+					onWikiLinkQueryUpdate?.(query, caret);
+				} else {
+					onWikiLinkTriggerEnd?.();
+				}
 			}
 		},
 		[
@@ -153,6 +153,17 @@ export function UnifiedBlock({
 			if (key === " " && block.type === BlockType.paragraph) {
 				onSpace?.();
 				return;
+			}
+
+			// Cmd+Enter / Ctrl+Enter: toggle checkbox (when supported by platform)
+			if (key === "Enter" && block.type === BlockType.checkboxList) {
+				const mod =
+					"metaKey" in e.nativeEvent &&
+					(e.nativeEvent as { metaKey?: boolean }).metaKey;
+				if (mod) {
+					onCheckboxToggle(index);
+					return;
+				}
 			}
 
 			// Handle Enter key - split non-code blocks at the current cursor position
@@ -193,6 +204,8 @@ export function UnifiedBlock({
 			onSpace,
 			onEnter,
 			onBackspaceAtStart,
+			onCheckboxToggle,
+			index,
 			editorState.selection,
 			block.type,
 			block.content,
@@ -262,9 +275,24 @@ export function UnifiedBlock({
 	// (paragraph → list). Otherwise the paragraph input unmounts and keyboard dismisses.
 	const listMarker = applyListStyles ? (
 		<ListMarker
-			type={block.type as BlockType.bulletList | BlockType.numberedList}
-			listLevel={block.listLevel}
+			type={
+				block.type as
+					| BlockType.bulletList
+					| BlockType.numberedList
+					| BlockType.checkboxList
+			}
+			listLevel={getListLevel(block)}
 			listItemNumber={listItemNumber}
+			checked={
+				block.type === BlockType.checkboxList
+					? !!block.attributes?.checked
+					: undefined
+			}
+			onToggle={
+				block.type === BlockType.checkboxList
+					? () => onCheckboxToggle(index)
+					: undefined
+			}
 		/>
 	) : null;
 	const overlay = !isFocused ? (

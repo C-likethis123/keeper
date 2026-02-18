@@ -6,8 +6,8 @@ import { InsertBlockOperation } from "./operations/InsertBlockOperation";
 import type { Operation } from "./operations/Operation";
 import { ReplaceBlocksOperation } from "./operations/ReplaceBlocksOperation";
 import { UpdateBlockContentOperation } from "./operations/UpdateBlockContentOperation";
+import { UpdateBlockAttributesOperation } from "./operations/UpdateBlockAttributesOperation";
 import { UpdateBlockTypeOperation } from "./operations/UpdateBlockTypeOperation";
-import { UpdateListLevelOperation } from "./operations/UpdateListLevelOperation";
 
 /// A transaction groups multiple operations together.
 ///
@@ -132,14 +132,18 @@ export class TransactionBuilder {
 		return this;
 	}
 
-	/// Adds an operation to update the list level of a block
-	updateListLevel(
+	/// Adds an operation to update block attributes
+	updateBlockAttributes(
 		blockIndex: number,
-		oldLevel: number,
-		newLevel: number,
+		oldAttributes: Record<string, unknown>,
+		newAttributes: Record<string, unknown>,
 	): this {
 		this.operations.push(
-			new UpdateListLevelOperation(blockIndex, oldLevel, newLevel),
+			new UpdateBlockAttributesOperation(
+				blockIndex,
+				oldAttributes,
+				newAttributes,
+			),
 		);
 		return this;
 	}

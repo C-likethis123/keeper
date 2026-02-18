@@ -22,8 +22,9 @@ export interface BlockConfig {
 	onSelectionChange: (start: number, end: number) => void;
 	onDelete?: () => void;
 	listItemNumber?: number; // For numbered list items
+	onCheckboxToggle: (index: number) => void;
 	// Wiki link callbacks
-	onWikiLinkTriggerStart?: (startOffset: number) => void;
+	onWikiLinkTriggerStart: () => void;
 	onWikiLinkQueryUpdate?: (query: string, caretOffset: number) => void;
 	onWikiLinkTriggerEnd?: () => void;
 }
@@ -137,6 +138,12 @@ blockRegistry.registerAll([
 		type: BlockType.heading3,
 		triggerPrefix: /^###\s/,
 		markdownPrefix: "### ",
+		build: (config) => <UnifiedBlock {...config} />,
+	},
+	{
+		type: BlockType.checkboxList,
+		triggerPrefix: /^-\s\[[ xX]\]\s/,
+		markdownPrefix: "- [ ] ",
 		build: (config) => <UnifiedBlock {...config} />,
 	},
 	{

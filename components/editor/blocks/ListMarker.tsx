@@ -1,18 +1,27 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import React, { useMemo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import {
+	Pressable,
+	StyleSheet,
+	Text,
+	View,
+} from "react-native";
 import { BlockType } from "../core/BlockNode";
 
 interface ListMarkerProps {
-	type: BlockType.bulletList | BlockType.numberedList;
+	type: BlockType.bulletList | BlockType.numberedList | BlockType.checkboxList;
 	listLevel: number;
 	listItemNumber?: number;
+	checked?: boolean;
+	onToggle?: () => void;
 }
 
 export function ListMarker({
 	type,
 	listLevel,
 	listItemNumber,
+	checked = false,
+	onToggle,
 }: ListMarkerProps) {
 	const theme = useExtendedTheme();
 	const styles = useMemo(() => createStyles(theme), [theme]);
@@ -22,6 +31,26 @@ export function ListMarker({
 		return (
 			<View style={[styles.container, { paddingLeft: indent }]}>
 				<Text style={styles.number}>{listItemNumber ?? 1}.</Text>
+			</View>
+		);
+	}
+
+	if (type === BlockType.checkboxList) {
+		return (
+			<View style={[styles.container, { paddingLeft: indent }]}>
+				<Pressable
+					onPress={onToggle}
+					style={({ pressed }) => [
+						styles.checkbox,
+						checked && styles.checkboxChecked,
+						pressed && styles.checkboxPressed,
+					]}
+					hitSlop={8}
+				>
+					{checked && (
+						<Text style={styles.checkmark}>✓</Text>
+					)}
+				</Pressable>
 			</View>
 		);
 	}
@@ -55,6 +84,27 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			height: bulletSize,
 			borderRadius: bulletSize / 2,
 			backgroundColor: theme.colors.primary,
+		},
+		checkbox: {
+			borderRadius: 3,
+			borderWidth: 1.5,
+			lineHeight,
+			height: fontSize,
+			width: fontSize,
+			borderColor: theme.colors.primary,
+			justifyContent: "center",
+			alignItems: "center",
+		},
+		checkboxChecked: {
+			backgroundColor: theme.colors.primary,
+		},
+		checkboxPressed: {
+			opacity: 0.8,
+		},
+		checkmark: {
+			color: theme.colors.background,
+			fontSize: bulletSize,
+			fontWeight: "bold",
 		},
 	});
 }

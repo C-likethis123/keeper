@@ -1,4 +1,4 @@
-import { type BlockType, copyBlock } from "../BlockNode";
+import { BlockType, copyBlock } from "../BlockNode";
 import { type Document, updateBlock } from "../Document";
 import { type Operation, OperationType } from "./Operation";
 
@@ -16,10 +16,17 @@ export class UpdateBlockTypeOperation implements Operation {
 
 	apply(document: Document): Document {
 		const block = document.blocks[this.blockIndex];
+		let attributes = { ...block.attributes };
+		if (this.newType === BlockType.checkboxList) {
+			attributes = { ...attributes, checked: !!block.attributes?.checked };
+		}
+		if (this.newLanguage !== undefined) {
+			attributes = { ...attributes, language: this.newLanguage };
+		}
 		return updateBlock(
 			document,
 			this.blockIndex,
-			copyBlock(block, { type: this.newType, language: this.newLanguage }),
+			copyBlock(block, { type: this.newType, attributes }),
 		);
 	}
 

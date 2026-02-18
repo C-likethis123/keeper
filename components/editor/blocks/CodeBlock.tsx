@@ -18,7 +18,7 @@ import * as Indentation from "../code/Indentation";
 import { LanguageRegistry } from "../code/LanguageRegistry";
 import { SmartEditingHandler } from "../code/SmartEditingHandler";
 import SyntaxHighlighter from "../code/SyntaxHighlighter";
-import { BlockType } from "../core/BlockNode";
+import { BlockType, getBlockLanguage } from "../core/BlockNode";
 import type { BlockConfig } from "./BlockRegistry";
 import { CodeBlockHeader } from "./CodeBlockHeader";
 
@@ -41,7 +41,7 @@ export function CodeBlock({
 		end: 0,
 	});
 	const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
-	const language = block.language ?? "plaintext";
+	const language = getBlockLanguage(block) ?? "plaintext";
 	const languageRegistry = LanguageRegistry.instance;
 	const languageConfig = useMemo(() => {
 		return languageRegistry.getLanguage(language);

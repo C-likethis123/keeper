@@ -45,6 +45,7 @@ export interface EditorState extends EditorStateSlice {
 		language?: string,
 	) => void;
 	updateBlockListLevel: (index: number, newLevel: number) => void;
+	toggleCheckbox: (index: number) => void;
 	insertBlockAfter: (index: number, block: BlockNode) => void;
 	deleteBlock: (index: number) => void;
 	splitBlock: (index: number, offset: number) => void;

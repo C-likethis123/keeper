@@ -6,6 +6,7 @@ export enum BlockType {
 	heading3 = "heading3",
 	bulletList = "bulletList",
 	numberedList = "numberedList",
+	checkboxList = "checkboxList",
 	codeBlock = "codeBlock",
 	mathBlock = "mathBlock",
 	image = "image",
@@ -13,15 +14,23 @@ export enum BlockType {
 
 /// Immutable node representing a block of content in the document.
 ///
-/// Each block has a unique ID, type, and content. Code blocks also
-/// store the programming language for syntax highlighting.
+/// Each block has a unique ID, type, and content. Extensible metadata
+/// (listLevel, language, checked, etc.) lives in attributes.
 export interface BlockNode {
 	readonly id: string;
 	readonly type: BlockType;
 	readonly content: string;
-	readonly language?: string; // For code blocks
-	readonly listLevel: number; // For list blocks
 	readonly attributes: Record<string, unknown>;
+}
+
+export function getListLevel(block: BlockNode): number {
+	const v = block.attributes?.listLevel;
+	return typeof v === "number" ? v : 0;
+}
+
+export function getBlockLanguage(block: BlockNode): string | undefined {
+	const v = block.attributes?.language;
+	return typeof v === "string" ? v : undefined;
 }
 
 let idCounter = 0;
@@ -36,7 +45,6 @@ export function createParagraphBlock(content = ""): BlockNode {
 		id: generateId(),
 		type: BlockType.paragraph,
 		content,
-		listLevel: 0,
 		attributes: {},
 	};
 }
@@ -50,7 +58,6 @@ export function createHeadingBlock(
 		id: generateId(),
 		type: level,
 		content,
-		listLevel: 0,
 		attributes: {},
 	};
 }
@@ -65,8 +72,21 @@ export function createListBlock(
 		id: generateId(),
 		type: numbered ? BlockType.numberedList : BlockType.bulletList,
 		content,
-		listLevel,
-		attributes: {},
+		attributes: { listLevel },
+	};
+}
+
+/// Creates a new checkbox list block
+export function createCheckboxBlock(
+	content = "",
+	listLevel = 0,
+	checked = false,
+): BlockNode {
+	return {
+		id: generateId(),
+		type: BlockType.checkboxList,
+		content,
+		attributes: { listLevel, checked: !!checked },
 	};
 }
 
@@ -76,9 +96,7 @@ export function createCodeBlock(content = "", language?: string): BlockNode {
 		id: generateId(),
 		type: BlockType.codeBlock,
 		content,
-		language,
-		listLevel: 0,
-		attributes: {},
+		attributes: language !== undefined && language !== "" ? { language } : {},
 	};
 }
 
@@ -88,7 +106,6 @@ export function createMathBlock(content = ""): BlockNode {
 		id: generateId(),
 		type: BlockType.mathBlock,
 		content,
-		listLevel: 0,
 		attributes: {},
 	};
 }
@@ -99,7 +116,6 @@ export function createImageBlock(path: string): BlockNode {
 		id: generateId(),
 		type: BlockType.image,
 		content: path,
-		listLevel: 0,
 		attributes: {},
 	};
 }
@@ -113,15 +129,13 @@ export function copyBlock(
 		id: updates.id ?? block.id,
 		type: updates.type ?? block.type,
 		content: updates.content ?? block.content,
-		language: updates.language ?? block.language,
-		listLevel: updates.listLevel ?? block.listLevel,
 		attributes: updates.attributes ?? block.attributes,
 	};
 }
 
 /// Converts the block to its markdown representation
 export function blockToMarkdown(block: BlockNode, listNumber?: number): string {
-	const listIndentation = "  ".repeat(block.listLevel);
+	const listIndentation = "  ".repeat(getListLevel(block));
 
 	switch (block.type) {
 		case BlockType.heading1:
@@ -132,10 +146,14 @@ export function blockToMarkdown(block: BlockNode, listNumber?: number): string {
 			return `### ${block.content}`;
 		case BlockType.bulletList:
 			return `${listIndentation}- ${block.content}`;
+		case BlockType.checkboxList: {
+			const checked = !!block.attributes?.checked;
+			return `${listIndentation}${checked ? "- [x] " : "- [ ] "}${block.content}`;
+		}
 		case BlockType.numberedList:
 			return `${listIndentation}${listNumber ?? 1}. ${block.content}`;
 		case BlockType.codeBlock:
-			const lang = block.language ?? "";
+			const lang = getBlockLanguage(block) ?? "";
 			return `\`\`\`${lang}\n${block.content}\n\`\`\``;
 		case BlockType.mathBlock:
 			return `$$\n${block.content}\n$$`;
@@ -152,8 +170,14 @@ export function isCodeBlock(block: BlockNode): boolean {
 }
 
 /// Whether this block is a list item
-export function isListItem(type: BlockType): type is BlockType.bulletList | BlockType.numberedList {
-	return type === BlockType.bulletList || type === BlockType.numberedList;
+export function isListItem(
+	type: BlockType | null,
+): type is BlockType.bulletList | BlockType.numberedList | BlockType.checkboxList {
+	return (
+		type === BlockType.bulletList ||
+		type === BlockType.numberedList ||
+		type === BlockType.checkboxList
+	);
 }
 
 /// Whether this block is a heading

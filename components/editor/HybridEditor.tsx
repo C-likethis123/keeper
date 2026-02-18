@@ -15,7 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { type BlockConfig, blockRegistry } from "./blocks/BlockRegistry";
 import {
 	BlockType,
-	createParagraphBlock
+	createParagraphBlock,
+	getListLevel,
 } from "./core/BlockNode";
 import { WikiLinkOverlay } from "./wikilinks/WikiLinkOverlay";
 import { useWikiLinks } from "./wikilinks/useWikiLinks";
@@ -54,7 +55,7 @@ export function HybridEditor({
 	});
 
 	// Focus management
-	const { focusBlock, blurBlock } = useFocusBlock();
+	const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
 
 	const insets = useSafeAreaInsets();
 	const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -273,7 +274,7 @@ export function HybridEditor({
 				return;
 			}
 			// Handle wiki link selection if active
-			if (wikiLinks.isActiveFor(index)) {
+			if (wikiLinks.isActive) {
 				const selected = wikiLinks.getSelectedResult();
 				if (selected) {
 					wikiLinks.handleSelect(
@@ -293,7 +294,14 @@ export function HybridEditor({
 			}
 
 			// Convert empty list blocks to paragraphs
-			if (block.content.trim() === "" && [BlockType.numberedList, BlockType.bulletList].includes(block.type)) {
+			if (
+				block.content.trim() === "" &&
+				[
+					BlockType.numberedList,
+					BlockType.bulletList,
+					BlockType.checkboxList,
+				].includes(block.type)
+			) {
 				editorState.updateBlockType(index, BlockType.paragraph);
 				focusBlock(index);
 				return;
@@ -331,20 +339,19 @@ export function HybridEditor({
 				return undefined;
 			}
 
-			const listLevel = block.listLevel;
-			// Count consecutive numbered lists before this one
+			const listLevel = getListLevel(block);
 			let number = 1;
 			for (let i = index - 1; i >= 0; i--) {
 				const prevBlock = editorState.document.blocks[i];
 				if (
 					prevBlock.type !== BlockType.numberedList ||
-					prevBlock.listLevel < listLevel
+					getListLevel(prevBlock) < listLevel
 				) {
 					break;
 				}
 				if (
 					prevBlock.type === BlockType.numberedList &&
-					prevBlock.listLevel === listLevel
+					getListLevel(prevBlock) === listLevel
 				) {
 					number++;
 				}
@@ -377,10 +384,10 @@ export function HybridEditor({
 				onSelectionChange: handleSelectionChange(index),
 				onDelete: () => handleDelete(index),
 				listItemNumber,
-				onWikiLinkTriggerStart: (startOffset) =>
-					wikiLinks.handleTriggerStart(index, startOffset),
-				onWikiLinkQueryUpdate: (query, caretOffset) =>
-					wikiLinks.handleQueryUpdate(index, query, caretOffset),
+				onCheckboxToggle: (blockIndex) =>
+					editorState.toggleCheckbox(blockIndex),
+				onWikiLinkTriggerStart: wikiLinks.handleTriggerStart,
+				onWikiLinkQueryUpdate: wikiLinks.handleQueryUpdate,
 				onWikiLinkTriggerEnd: wikiLinks.handleTriggerEnd,
 			};
 			return (
@@ -406,7 +413,7 @@ export function HybridEditor({
 		],
 	);
 
-	const showWikiLinkOverlay = wikiLinks.shouldShowOverlay;
+	const showWikiLinkOverlay = wikiLinks.isActive;
 
 	return (
 		<View style={styles.container}>
@@ -431,7 +438,7 @@ export function HybridEditor({
 				})}
 			</ScrollView>
 			{/* Render overlay outside ScrollView to prevent touch conflicts */}
-			{showWikiLinkOverlay && wikiLinks.session && (
+			{showWikiLinkOverlay && (
 				<View
 					style={overlayPosition.wrapperStyle}
 					{...overlayPosition.wrapperProps}
@@ -444,11 +451,12 @@ export function HybridEditor({
 							results={wikiLinks.results}
 							selectedIndex={wikiLinks.selectedIndex}
 							isLoading={wikiLinks.isLoading}
+							query={wikiLinks.query}
 							onSelect={(title) => {
 								wikiLinkSelectionInProgressRef.current = true;
 								wikiLinks.handleSelect(
 									title,
-									wikiLinks.session!.blockIndex,
+									focusBlockIndex ?? 0,
 									editorState.updateBlockContent,
 								);
 							}}

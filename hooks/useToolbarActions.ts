@@ -1,4 +1,9 @@
-import { BlockType, createImageBlock } from "@/components/editor/core/BlockNode";
+import {
+	BlockType,
+	createImageBlock,
+	getListLevel,
+	isListItem,
+} from "@/components/editor/core/BlockNode";
 import { useEditorState } from "@/contexts/EditorContext";
 import { copyPickedImageToNotes } from "@/services/notes/imageStorage";
 import * as DocumentPicker from "expo-document-picker";
@@ -8,9 +13,10 @@ import { useFocusBlock } from "./useFocusBlock";
 
 export interface UseToolbarActions {
 	focusBlockIndex: number | null;
-    handleOutdent: () => void;
-    handleIndent: () => void;
-    handleInsertImage: () => Promise<void>;
+	handleOutdent: () => void;
+	handleIndent: () => void;
+	handleConvertToCheckbox: () => void;
+	handleInsertImage: () => Promise<void>;
 }
 
 export function useToolbarActions(): UseToolbarActions {
@@ -22,11 +28,8 @@ export function useToolbarActions(): UseToolbarActions {
 			const index = editorState.getFocusedBlockIndex();
 			if (index === null) return;
 			const block = editorState.document.blocks[index];
-			if (
-				block.type === BlockType.bulletList ||
-				block.type === BlockType.numberedList
-			) {
-				editorState.updateBlockListLevel(index, block.listLevel + 1);
+			if (isListItem(block.type)) {
+				editorState.updateBlockListLevel(index, getListLevel(block) + 1);
 			}
 		},
 		[editorState],
@@ -37,12 +40,10 @@ export function useToolbarActions(): UseToolbarActions {
 			const index = editorState.getFocusedBlockIndex();
 			if (index === null) return;
 			const block = editorState.document.blocks[index];
-			const isListBlock =
-				block.type === BlockType.bulletList ||
-				block.type === BlockType.numberedList;
+			const isListBlock = isListItem(block.type);
 			if (!isListBlock) return;
-			if (block.listLevel > 0) {
-				editorState.updateBlockListLevel(index, block.listLevel - 1);
+			if (getListLevel(block) > 0) {
+				editorState.updateBlockListLevel(index, getListLevel(block) - 1);
 			} else {
 				editorState.updateBlockType(index, BlockType.paragraph);
 				focusBlock(index);
@@ -50,6 +51,15 @@ export function useToolbarActions(): UseToolbarActions {
 		},
 		[editorState, focusBlock],
 	);
+
+	const handleConvertToCheckbox = useCallback(() => {
+		const index = editorState.getFocusedBlockIndex();
+		if (index === null) return;
+		const block = editorState.document.blocks[index];
+		if (block.type === BlockType.checkboxList) return;
+		editorState.updateBlockType(index, BlockType.checkboxList);
+		focusBlock(index);
+	}, [editorState, focusBlock]);
 
 	const handleInsertImage = useCallback(async () => {
 		if (Platform.OS === "web") return;
@@ -69,8 +79,9 @@ export function useToolbarActions(): UseToolbarActions {
 	const focusBlockIndex = editorState.getFocusedBlockIndex();
 	return {
 		focusBlockIndex,
-        handleOutdent,
-        handleIndent,
+		handleOutdent,
+		handleIndent,
+		handleConvertToCheckbox,
 		handleInsertImage,
 	};
 }

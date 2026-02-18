@@ -1,26 +1,20 @@
 import { useEditorState } from "@/contexts/EditorContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { NotesIndexService } from "@/services/notes/notesIndex";
-import { useCallback, useRef, useState } from "react";
-import type { WikiLinkSession } from "./WikiLinkSession";
+import { useCallback, useEffect, useState } from "react";
+import { WikiLinkTrigger } from "./WikiLinkTrigger";
 
 interface UseWikiLinksReturn {
 	// State
-	session: WikiLinkSession | null;
 	query: string;
 	results: string[];
 	selectedIndex: number;
 	isActive: boolean;
 	isLoading: boolean;
-	shouldShowOverlay: boolean;
 
 	// Handlers
-	handleTriggerStart: (blockIndex: number, startOffset: number) => void;
-	handleQueryUpdate: (
-		blockIndex: number,
-		query: string,
-		caretOffset: number,
-	) => Promise<void>;
+	handleTriggerStart: () => void;
+	handleQueryUpdate: (query: string) => void;
 	handleTriggerEnd: () => void;
 	handleSelect: (
 		link: string,
@@ -33,14 +27,12 @@ interface UseWikiLinksReturn {
 	selectPrevious: () => void;
 	getSelectedResult: () => string | null;
 
-	// Utilities
-	isActiveFor: (blockIndex: number) => boolean;
 }
 
 /// Custom hook for managing wiki link autocomplete state
 /// Replaces the WikiLinkController class with React state management
 export function useWikiLinks(): UseWikiLinksReturn {
-	const [session, setSession] = useState<WikiLinkSession | null>(null);
+	const [isActive, setIsActive] = useState<boolean>(false);
 	const [query, setQuery] = useState<string>("");
 	const debouncedQuery = useDebounce(query, 300);
 	const [results, setResults] = useState<string[]>([]);
@@ -48,15 +40,11 @@ export function useWikiLinks(): UseWikiLinksReturn {
 	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const editorState = useEditorState();
 	// Use ref to track if search is in progress to avoid race conditions
-	const searchInProgressRef = useRef(false);
-
-	const isActive = session !== null;
-	const shouldShowOverlay =
-		session !== null && (isLoading || results.length > 0);
+	// const searchInProgressRef = useRef(false);
 
 	/// End the wiki link session
 	const handleTriggerEnd = useCallback(() => {
-		setSession(null);
+		setIsActive(false);
 		setQuery("");
 		setResults([]);
 		setSelectedIndex(0);
@@ -65,75 +53,37 @@ export function useWikiLinks(): UseWikiLinksReturn {
 
 	/// Start a new wiki link session
 	const handleTriggerStart = useCallback(
-		(blockIndex: number, startOffset: number) => {
-			// Only start if not already active for this block
-			if (session?.blockIndex === blockIndex) {
+		() => {
+			if (isActive) {
 				return;
 			}
-
-			setSession({
-				blockIndex,
-				startOffset,
-			});
+			setIsActive(true);
 			setQuery("");
 			setResults([]);
 			setSelectedIndex(0);
 			setIsLoading(false);
 		},
-		[session],
+		[isActive],
 	);
 
-	/// Update the query and search for results
-	const handleQueryUpdate = useCallback(
-		async (blockIndex: number, queryText: string, caretOffset: number) => {
-			if (session === null) return;
+	useEffect(() => {
+		if (!isActive) {
+			return;
+		}
 
-			const start = session.startOffset;
+		setIsLoading(true);
 
-			// Get current block from editor state (zustand stores read current state)
-			const block = editorState.document.blocks[blockIndex];
-			if (
-				!block ||
-				caretOffset < start + 2 ||
-				caretOffset > block.content.length
-			) {
-				handleTriggerEnd();
-				return;
-			}
-			const raw = block.content.substring(start + 2, caretOffset);
-
-			// User typed closing bracket or newline → exit
-			if (raw.includes("]") || raw.includes("\n")) {
-				handleTriggerEnd();
-				return;
-			}
-
-			// Update block index if it changed (e.g., block type conversion)
-			if (session.blockIndex !== blockIndex) {
-				setSession({
-					blockIndex,
-					startOffset: session.startOffset,
-				});
-			}
-			// Only show loading if there's a query to search
-			if (raw.length > 0) {
-				setIsLoading(true);
-			}
-
-			searchInProgressRef.current = true;
+		const fetchResults = async () => {
 			try {
-				const result = await NotesIndexService.instance.listAllNotes(
+				const result = await NotesIndexService.listAllNotes(
 					20,
 					undefined,
-					raw.length > 0 ? raw : undefined,
+					debouncedQuery.length > 0 ? debouncedQuery : undefined,
 				);
-
 				const titles: string[] = [];
 				const seenTitles = new Set<string>();
 
 				for (const item of result.items) {
-					if (titles.length >= 20) break;
-
 					const title =
 						item.title ||
 						item.noteId.split("/").pop()?.replace(/\.md$/, "") ||
@@ -153,9 +103,13 @@ export function useWikiLinks(): UseWikiLinksReturn {
 			} finally {
 				setIsLoading(false);
 			}
-		},
-		[session, editorState, handleTriggerEnd],
-	);
+		};
+
+		fetchResults();
+	}, [debouncedQuery, isActive]);
+
+	/// Update the query and search for results
+	const handleQueryUpdate = setQuery;
 
 	/// Cancel the wiki link session (same as end)
 	const cancel = useCallback(() => {
@@ -169,16 +123,22 @@ export function useWikiLinks(): UseWikiLinksReturn {
 			blockIndex: number,
 			onUpdateContent: (index: number, content: string) => void,
 		) => {
-			if (session === null || session.blockIndex !== blockIndex) {
+			if (!isActive || !editorState.selection?.focus.offset) {
 				return;
 			}
 
-			// Get current block from editor state (zustand stores read current state)
 			const block = editorState.document.blocks[blockIndex];
 			if (!block) return;
 
 			const text = block.content;
-			const start = session.startOffset;
+			// from where the cursor starts, find the nearest start
+			const start = WikiLinkTrigger.findStart(
+				text,
+				editorState.selection?.focus.offset,
+			);
+			if (start === null) {
+				return;
+			}
 			const end = start + 2 + query.length; // [[ + query
 
 			const newText =
@@ -187,7 +147,7 @@ export function useWikiLinks(): UseWikiLinksReturn {
 			onUpdateContent(blockIndex, newText);
 			handleTriggerEnd();
 		},
-		[session, query, editorState, handleTriggerEnd],
+		[query, editorState, handleTriggerEnd],
 	);
 
 	/// Navigate to next result
@@ -208,23 +168,13 @@ export function useWikiLinks(): UseWikiLinksReturn {
 		return results[selectedIndex];
 	}, [results, selectedIndex]);
 
-	/// Check if wiki link is active for a specific block
-	const isActiveFor = useCallback(
-		(blockIndex: number): boolean => {
-			return session !== null && session.blockIndex === blockIndex;
-		},
-		[session],
-	);
-
 	return {
 		// State
-		session,
 		query,
 		results,
 		selectedIndex,
 		isActive,
 		isLoading,
-		shouldShowOverlay,
 
 		// Handlers
 		handleTriggerStart,
@@ -236,8 +186,5 @@ export function useWikiLinks(): UseWikiLinksReturn {
 		selectNext,
 		selectPrevious,
 		getSelectedResult,
-
-		// Utilities
-		isActiveFor,
 	};
 }

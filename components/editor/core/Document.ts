@@ -2,12 +2,14 @@ import {
 	type BlockNode,
 	BlockType,
 	blockToMarkdown,
+	createCheckboxBlock,
 	createCodeBlock,
 	createHeadingBlock,
 	createImageBlock,
 	createListBlock,
 	createMathBlock,
 	createParagraphBlock,
+	getListLevel,
 	isCodeBlock,
 } from "./BlockNode";
 
@@ -103,6 +105,15 @@ export function createDocumentFromMarkdown(markdown: string): Document {
 			blocks.push(createHeadingBlock(BlockType.heading2, line.substring(3)));
 		} else if (line.startsWith("# ")) {
 			blocks.push(createHeadingBlock(BlockType.heading1, line.substring(2)));
+		} else if (/^(\s*)- \[([ xX])\]\s+(.*)$/.test(line)) {
+			const checkboxMatch = line.match(/^(\s*)- \[([ xX])\]\s+(.*)$/);
+			if (checkboxMatch) {
+				const leadingSpaces = checkboxMatch[1].length;
+				const listLevel = Math.floor(leadingSpaces / 2);
+				const checked = checkboxMatch[2].toLowerCase() === "x";
+				const content = checkboxMatch[3];
+				blocks.push(createCheckboxBlock(content, listLevel, checked));
+			}
 		} else if (/^(\s*)([-*]|\d+\.)\s+(.*)$/.test(line)) {
 			const listMatch = line.match(/^(\s*)([-*]|\d+\.)\s+(.*)$/);
 			if (listMatch) {
@@ -256,20 +267,19 @@ function calculateListItemNumber(
 		return undefined;
 	}
 
-	const listLevel = block.listLevel;
-	// Count consecutive numbered lists before this one
+	const listLevel = getListLevel(block);
 	let number = 1;
 	for (let i = index - 1; i >= 0; i--) {
 		const prevBlock = document.blocks[i];
 		if (
 			prevBlock.type !== BlockType.numberedList ||
-			prevBlock.listLevel < listLevel
+			getListLevel(prevBlock) < listLevel
 		) {
 			break;
 		}
 		if (
 			prevBlock.type === BlockType.numberedList &&
-			prevBlock.listLevel === listLevel
+			getListLevel(prevBlock) === listLevel
 		) {
 			number++;
 		}

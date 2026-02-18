@@ -32,6 +32,32 @@ export function useAutoSave({
 			timerRef.current = null;
 		}
 
+		// #region agent log
+		fetch(
+			"http://127.0.0.1:7242/ingest/33637cfe-b39e-404b-b53c-7d1a9a880cbd",
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"X-Debug-Session-Id": "70fb90",
+				},
+				body: JSON.stringify({
+					sessionId: "70fb90",
+					runId: "initial",
+					hypothesisId: "H1",
+					location: "useAutoSave.ts:29",
+					message: "useAutoSave.saveNow invoked",
+					data: {
+						filePath,
+						title,
+						isPinned,
+					},
+					timestamp: Date.now(),
+				}),
+			},
+		).catch(() => {});
+		// #endregion
+
 		setStatus("saving");
 		await saveNote({
 			filePath,
@@ -67,6 +93,33 @@ export function useAutoSave({
 				lastSavedRef.current = { title: trimmedTitle, content, isPinned };
 				return;
 			}
+
+			// #region agent log
+			fetch(
+				"http://127.0.0.1:7242/ingest/33637cfe-b39e-404b-b53c-7d1a9a880cbd",
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						"X-Debug-Session-Id": "70fb90",
+					},
+					body: JSON.stringify({
+						sessionId: "70fb90",
+						runId: "initial",
+						hypothesisId: "H2",
+						location: "useAutoSave.ts:70",
+						message: "useAutoSave.autosave runSave executed",
+						data: {
+							filePath,
+							trimmedTitle,
+							onlyPinChanged: !!onlyPinChanged,
+						},
+						timestamp: Date.now(),
+					}),
+				},
+			).catch(() => {});
+			// #endregion
+
 			setStatus("saving");
 			await saveNote({ filePath, title: trimmedTitle, content, isPinned });
 			lastSavedRef.current = { title: trimmedTitle, content, isPinned };

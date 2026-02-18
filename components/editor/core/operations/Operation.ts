@@ -7,9 +7,9 @@ export enum OperationType {
 	insertBlock = "insertBlock",
 	deleteBlock = "deleteBlock",
 	updateBlock = "updateBlock",
+	updateBlockAttributes = "updateBlockAttributes",
 	replaceBlocks = "replaceBlocks",
 	setSelection = "setSelection",
-	updateListLevel = "updateListLevel",
 	composite = "composite",
 }
 

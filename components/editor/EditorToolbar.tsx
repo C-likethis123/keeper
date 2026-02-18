@@ -10,33 +10,31 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
-import { BlockType } from "./core/BlockNode";
+import { BlockType, getListLevel, isListItem } from "./core/BlockNode";
 
 export function EditorToolbar() {
 	const theme = useExtendedTheme();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const editorState = useEditorState();
-	const {
-		type: blockType,
-		listLevel,
-	} = editorState.getFocusedBlock() ?? {
-		type: null,
-		listLevel: 0,
-	};
-	const { handleOutdent, handleIndent, handleInsertImage } = useToolbarActions();
+	const block = editorState.getFocusedBlock();
+	const blockType = block?.type ?? null;
+	const listLevel = block ? getListLevel(block) : 0;
+	const { handleOutdent, handleIndent, handleConvertToCheckbox, handleInsertImage } =
+		useToolbarActions();
 
-	const isListBlock =
-		blockType === BlockType.bulletList || blockType === BlockType.numberedList;
+	const isListBlock = isListItem(blockType);
 
 	const canOutdent = isListBlock;
 	const canIndent = isListBlock && listLevel >= 0 && listLevel < 10;
+	const canConvertToCheckbox =
+		blockType != null && blockType !== BlockType.checkboxList;
 	const canUndo = editorState.getCanUndo();
 	const canRedo = editorState.getCanRedo();
 
 	return (
 		<View style={styles.toolbar}>
 			<TouchableOpacity
-				style={[styles.button, !canUndo && styles.buttonHidden]}
+				style={[styles.button]}
 				onPress={editorState.undo}
 				disabled={!canUndo}
 				activeOpacity={0.7}
@@ -48,7 +46,7 @@ export function EditorToolbar() {
 				/>
 			</TouchableOpacity>
 			<TouchableOpacity
-				style={[styles.button, !canRedo && styles.buttonHidden]}
+				style={[styles.button]}
 				onPress={editorState.redo}
 				disabled={!canRedo}
 
@@ -61,9 +59,10 @@ export function EditorToolbar() {
 				/>
 			</TouchableOpacity>
 			<TouchableOpacity
-				style={[styles.button, !canIndent && styles.buttonHidden]}
+				style={[styles.button]}
 				onPress={handleIndent}
 				activeOpacity={0.7}
+				disabled={!canIndent}
 			>
 				<MaterialIcons
 					name="format-indent-increase"
@@ -72,12 +71,25 @@ export function EditorToolbar() {
 				/>
 			</TouchableOpacity>
 			<TouchableOpacity
-				style={[styles.button, !canOutdent && styles.buttonHidden]}
+				style={[styles.button]}
 				onPress={handleOutdent}
 				activeOpacity={0.7}
+				disabled={!canOutdent}
 			>
 				<MaterialIcons
 					name="format-indent-decrease"
+					size={24}
+					color={theme.colors.text}
+				/>
+			</TouchableOpacity>
+			<TouchableOpacity
+				style={[styles.button]}
+				onPress={handleConvertToCheckbox}
+				activeOpacity={0.7}
+				disabled={!canConvertToCheckbox}
+			>
+				<MaterialIcons
+					name="check-box-outline-blank"
 					size={24}
 					color={theme.colors.text}
 				/>

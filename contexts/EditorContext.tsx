@@ -2,6 +2,8 @@ import {
 	type BlockNode,
 	BlockType,
 	createParagraphBlock,
+	getBlockLanguage,
+	getListLevel,
 } from "@/components/editor/core/BlockNode";
 import {
 	type Document,
@@ -116,9 +118,16 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
 			) => {
 				const s = stateRef.current;
 				const block = s.document.blocks[index];
-				if (block.type === newType && block.language === language) return;
+				if (block.type === newType && getBlockLanguage(block) === language)
+					return;
 				const transaction = new TransactionBuilder()
-					.updateType(index, block.type, newType, block.language, language)
+					.updateType(
+						index,
+						block.type,
+						newType,
+						getBlockLanguage(block),
+						language,
+					)
 					.withSelectionBefore(s.selection)
 					.withSelectionAfter(s.selection)
 					.withDescription("Change block type")
@@ -129,10 +138,26 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
 			updateBlockListLevel: (index: number, newLevel: number) => {
 				const s = stateRef.current;
 				const block = s.document.blocks[index];
-				if (block.listLevel === newLevel) return;
+				if (getListLevel(block) === newLevel) return;
+				const oldAttrs = { ...block.attributes };
+				const newAttrs = { ...block.attributes, listLevel: newLevel };
 				const transaction = new TransactionBuilder()
-					.updateListLevel(index, block.listLevel, newLevel)
+					.updateBlockAttributes(index, oldAttrs, newAttrs)
 					.withDescription("Update list level")
+					.build();
+				dispatch({ type: "APPLY_TRANSACTION", transaction });
+			},
+
+			toggleCheckbox: (index: number) => {
+				const s = stateRef.current;
+				const block = s.document.blocks[index];
+				if (block.type !== BlockType.checkboxList) return;
+				const oldAttrs = block.attributes ?? {};
+				const checked = !!oldAttrs.checked;
+				const newAttrs = { ...oldAttrs, checked: !checked };
+				const transaction = new TransactionBuilder()
+					.updateBlockAttributes(index, oldAttrs, newAttrs)
+					.withDescription("Toggle checkbox")
 					.build();
 				dispatch({ type: "APPLY_TRANSACTION", transaction });
 			},
@@ -191,15 +216,21 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
 				const afterContent = block.content.substring(offset);
 				const newBlockType =
 					block.type === BlockType.bulletList ||
-					block.type === BlockType.numberedList
+					block.type === BlockType.numberedList ||
+					block.type === BlockType.checkboxList
 						? block.type
 						: BlockType.paragraph;
+				const listLevel = getListLevel(block);
 				const newBlock: BlockNode = {
 					id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 					type: newBlockType,
 					content: afterContent,
-					listLevel: block.listLevel,
-					attributes: {},
+					attributes:
+						block.type === BlockType.checkboxList
+							? { listLevel, checked: false }
+							: newBlockType !== BlockType.paragraph
+								? { listLevel }
+								: {},
 				};
 				const transaction = new TransactionBuilder()
 					.updateContent(index, block.content, beforeContent)

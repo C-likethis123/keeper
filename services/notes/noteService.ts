@@ -66,6 +66,33 @@ export class NoteService {
 	}
 
 	static async saveNote(note: NoteToSave): Promise<Note> {
+		// #region agent log
+		fetch(
+			"http://127.0.0.1:7242/ingest/33637cfe-b39e-404b-b53c-7d1a9a880cbd",
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"X-Debug-Session-Id": "70fb90",
+				},
+				body: JSON.stringify({
+					sessionId: "70fb90",
+					runId: "initial",
+					hypothesisId: "H1",
+					location: "noteService.ts:68",
+					message: "NoteService.saveNote called",
+					data: {
+						hasFilePath: !!note.filePath,
+						filePath: note.filePath ?? null,
+						title: note.title,
+						isPinned: !!note.isPinned,
+					},
+					timestamp: Date.now(),
+				}),
+			},
+		).catch(() => {});
+		// #endregion
+
 		const isNew = !note.filePath;
 		let filePath =
 			note.filePath ||
@@ -96,6 +123,34 @@ export class NoteService {
 		const pinnedState = !!note.isPinned;
 		const indexPath = relativePath || filePath;
 		const createdAt = note.lastUpdated ?? lastUpdated;
+
+		// #region agent log
+		fetch(
+			"http://127.0.0.1:7242/ingest/33637cfe-b39e-404b-b53c-7d1a9a880cbd",
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"X-Debug-Session-Id": "70fb90",
+				},
+				body: JSON.stringify({
+					sessionId: "70fb90",
+					runId: "initial",
+					hypothesisId: "H2",
+					location: "noteService.ts:100",
+					message: "NoteService.saveNote resolved paths",
+					data: {
+						isNew,
+						effectiveFilePath: filePath,
+						relativePath: relativePath ?? null,
+						indexPath,
+						title: note.title,
+					},
+					timestamp: Date.now(),
+				}),
+			},
+		).catch(() => {});
+		// #endregion
 
 		const summary = extractSummary(note.content);
 		await NotesIndexService.upsertNote({
@@ -171,6 +226,31 @@ export class NoteService {
 		existingPath?: string,
 	): Promise<string> {
 		if (existingPath) {
+			// #region agent log
+			fetch(
+				"http://127.0.0.1:7242/ingest/33637cfe-b39e-404b-b53c-7d1a9a880cbd",
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						"X-Debug-Session-Id": "70fb90",
+					},
+					body: JSON.stringify({
+						sessionId: "70fb90",
+						runId: "initial",
+						hypothesisId: "H3",
+						location: "noteService.ts:173",
+						message: "NoteService.resolveFilePath using existingPath",
+						data: {
+							folderPath,
+							title,
+							existingPath,
+						},
+						timestamp: Date.now(),
+					}),
+				},
+			).catch(() => {});
+			// #endregion
 			return existingPath;
 		}
 
@@ -182,6 +262,33 @@ export class NoteService {
 			candidate = `${folderPath}/${baseName}_${counter}.md`;
 			counter++;
 		}
+
+		// #region agent log
+		fetch(
+			"http://127.0.0.1:7242/ingest/33637cfe-b39e-404b-b53c-7d1a9a880cbd",
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"X-Debug-Session-Id": "70fb90",
+				},
+				body: JSON.stringify({
+					sessionId: "70fb90",
+					runId: "initial",
+					hypothesisId: "H4",
+					location: "noteService.ts:181",
+					message: "NoteService.resolveFilePath generated candidate",
+					data: {
+						folderPath,
+						title,
+						baseName,
+						finalCandidate: candidate,
+					},
+					timestamp: Date.now(),
+				}),
+			},
+		).catch(() => {});
+		// #endregion
 
 		return candidate;
 	}
