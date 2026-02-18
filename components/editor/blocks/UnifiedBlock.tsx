@@ -159,7 +159,7 @@ export function UnifiedBlock({
 			if (
 				key === "Enter" &&
 				editorState.selection?.anchor.offset ===
-				editorState.selection?.focus.offset
+					editorState.selection?.focus.offset
 			) {
 				if (block.type !== BlockType.codeBlock) {
 					// Mark the next onChangeText as ignorable so the stray newline doesn't
@@ -239,7 +239,6 @@ export function UnifiedBlock({
 		}
 	}, [block.type]);
 
-	const listItem = isListItem(block);
 	const textInputProps = {
 		ref: inputRef,
 		style: [
@@ -258,33 +257,48 @@ export function UnifiedBlock({
 		placeholderTextColor: theme.custom.editor.placeholder,
 	};
 
-	const overlayStyle = listItem
-		? styles.overlayContent
-		: [styles.overlay, { top: overlayTop }];
+	const applyListStyles = isListItem(block.type);
+	// Single branch so the same TextInput stays mounted when block type changes
+	// (paragraph → list). Otherwise the paragraph input unmounts and keyboard dismisses.
+	const listMarker = applyListStyles ? (
+		<ListMarker
+			type={block.type as BlockType.bulletList | BlockType.numberedList}
+			listLevel={block.listLevel}
+			listItemNumber={listItemNumber}
+		/>
+	) : null;
+	const overlay = !isFocused ? (
+		applyListStyles ? (
+			<View style={styles.overlayContent} pointerEvents="none">
+				<InlineMarkdown text={block.content} style={textStyle} />
+			</View>
+		) : (
+			<View
+				style={[styles.overlay, { top: overlayTop }]}
+				pointerEvents="none"
+			>
+				<InlineMarkdown text={block.content} style={textStyle} />
+			</View>
+		)
+	) : null;
 
 	return (
 		<Pressable
 			style={({ pressed }) => [
 				styles.container,
 				containerPadding,
+				applyListStyles && isFocused && styles.focused,
 				pressed && styles.pressed,
 			]}
 			onPress={handleFocus}
 		>
-			<View style={listItem ? styles.row : styles.rowNoGap}>
-				{listItem &&
-					<ListMarker
-						type={block.type as BlockType.bulletList | BlockType.numberedList}
-						listLevel={block.listLevel}
-						listItemNumber={listItemNumber}
-					/>
-				}
-				<View style={overlayStyle} pointerEvents="none">
-					{!isFocused && (
-						<InlineMarkdown text={block.content} style={textStyle} />
-					)}
-				</View>
-				<TextInput {...textInputProps} />
+			<View style={styles.row}>
+				{listMarker}
+				{overlay}
+				<TextInput
+					{...textInputProps}
+					textAlignVertical={applyListStyles ? undefined : "top"}
+				/>
 			</View>
 		</Pressable>
 	);
@@ -304,12 +318,8 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			flexDirection: "row",
 			alignItems: "flex-start",
 		},
-		rowNoGap: {
-			flexDirection: "row",
-			alignItems: "flex-start",
-		},
-		listMarkerPlaceholder: {
-			width: 0,
+		focused: {
+			backgroundColor: theme.custom.editor.blockFocused,
 		},
 		overlay: {
 			position: "absolute",

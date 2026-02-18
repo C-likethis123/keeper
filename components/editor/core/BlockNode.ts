@@ -152,10 +152,8 @@ export function isCodeBlock(block: BlockNode): boolean {
 }
 
 /// Whether this block is a list item
-export function isListItem(block: BlockNode): boolean {
-	return (
-		block.type === BlockType.bulletList || block.type === BlockType.numberedList
-	);
+export function isListItem(type: BlockType): type is BlockType.bulletList | BlockType.numberedList {
+	return type === BlockType.bulletList || type === BlockType.numberedList;
 }
 
 /// Whether this block is a heading

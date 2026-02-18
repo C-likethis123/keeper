@@ -34,20 +34,21 @@ export function useToolbarActions(): UseToolbarActions {
 
 	const handleOutdent = useCallback(
 		() => {
-            const index = editorState.getFocusedBlockIndex();
-            if (index === null) return;
+			const index = editorState.getFocusedBlockIndex();
+			if (index === null) return;
 			const block = editorState.document.blocks[index];
-			const isListBlock = block.type === BlockType.bulletList || block.type === BlockType.numberedList;
-			if (!isListBlock) {
-				return;
-			}
-			if (block.listLevel > 1) {
+			const isListBlock =
+				block.type === BlockType.bulletList ||
+				block.type === BlockType.numberedList;
+			if (!isListBlock) return;
+			if (block.listLevel > 0) {
 				editorState.updateBlockListLevel(index, block.listLevel - 1);
 			} else {
 				editorState.updateBlockType(index, BlockType.paragraph);
+				focusBlock(index);
 			}
 		},
-		[editorState],
+		[editorState, focusBlock],
 	);
 
 	const handleInsertImage = useCallback(async () => {

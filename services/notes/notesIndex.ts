@@ -86,7 +86,7 @@ export class NotesIndexService {
 		await NotesMetaService.removePin(noteId);
 	}
 
-	async listAllNotes(
+	static async listAllNotes(
 		limit = 20,
 		cursor?: Record<string, unknown>,
 		query?: string,

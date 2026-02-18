@@ -37,7 +37,7 @@ export default function useNotes() {
 			setIsLoading(true);
 			const c = cursorOverride !== undefined ? cursorOverride : cursor;
 			try {
-				const result = await NotesIndexService.instance.listAllNotes(
+				const result = await NotesIndexService.listAllNotes(
 					PAGE_SIZE,
 					c,
 					query,

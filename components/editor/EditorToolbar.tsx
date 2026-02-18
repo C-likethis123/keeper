@@ -29,7 +29,7 @@ export function EditorToolbar() {
 		blockType === BlockType.bulletList || blockType === BlockType.numberedList;
 
 	const canOutdent = isListBlock;
-	const canIndent = isListBlock && listLevel > 0 && listLevel < 10;
+	const canIndent = isListBlock && listLevel >= 0 && listLevel < 10;
 	const canUndo = editorState.getCanUndo();
 	const canRedo = editorState.getCanRedo();
 
