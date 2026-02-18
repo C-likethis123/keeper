@@ -46,12 +46,15 @@ export default function Index() {
 		[deleteNote, showToast],
 	);
 
-	const handlePinToggle = useCallback((updated: Note) => {
-		setNotes((prev) =>
-			prev.map((n) => (n.filePath === updated.filePath ? updated : n)),
-		);
-		setPinned(updated.filePath, updated.isPinned ?? false);
-	}, [setPinned]);
+	const handlePinToggle = useCallback(
+		async (updated: Note) => {
+			setNotes((prev) =>
+				prev.map((n) => (n.filePath === updated.filePath ? updated : n)),
+			);
+			await setPinned(updated.filePath, updated.isPinned ?? false);
+		},
+		[setPinned],
+	);
 
 	const styles = useMemo(() => createStyles(theme), [theme]);
 

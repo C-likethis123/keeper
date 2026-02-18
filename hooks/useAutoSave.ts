@@ -16,6 +16,7 @@ export function useAutoSave({
 	isPinned,
 }: AutoSaveInput) {
 	const { saveNote } = useNoteStore();
+	const { setPinned } = useNotesMetaStore();
 
 	const timerRef = useRef<number | null>(null);
 	const lastSavedRef = useRef<{
@@ -62,7 +63,7 @@ export function useAutoSave({
 				last.content === content &&
 				last.isPinned !== isPinned;
 			if (onlyPinChanged && filePath) {
-				useNotesMetaStore.getState().setPinned(filePath, isPinned);
+				await setPinned(filePath, isPinned);
 				lastSavedRef.current = { title: trimmedTitle, content, isPinned };
 				return;
 			}

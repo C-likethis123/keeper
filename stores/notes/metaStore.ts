@@ -4,7 +4,7 @@ import { create } from "zustand";
 type NotesMetaState = {
 	pinned: Record<string, boolean>;
 	togglePin: (filePath: string) => void;
-	setPinned: (filePath: string, value: boolean) => void;
+	setPinned: (filePath: string, value: boolean) => Promise<void>;
 	hydrate: () => Promise<void>;
 };
 
@@ -17,11 +17,11 @@ export const useNotesMetaStore = create<NotesMetaState>()((set, get) => ({
 		}));
 		NotesMetaService.setPinned(filePath, next);
 	},
-	setPinned: (filePath, value) => {
+	setPinned: async (filePath, value) => {
 		set((state) => ({
 			pinned: { ...state.pinned, [filePath]: value },
 		}));
-		NotesMetaService.setPinned(filePath, value);
+		await NotesMetaService.setPinned(filePath, value);
 	},
 	hydrate: async () => {
 		const pinned = await NotesMetaService.getPinnedMap();

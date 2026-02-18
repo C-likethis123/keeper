@@ -47,11 +47,13 @@ export default function NoteEditorScreen() {
 	// Load existing note if editing
 	const { isLoading, error, note, setNote } = useLoadNote(filePath as string);
 
-	const togglePin = () => {
+	const togglePin = async () => {
 		if (!note) return;
+		const path = note.filePath;
+		if (!path) return;
 		const next = !note.isPinned;
 		setNote((prev) => (prev ? { ...prev, isPinned: next } : null));
-		setPinned(filePath as string, next);
+		await setPinned(path, next);
 	};
 
 	const { status, saveNow } = useAutoSave({
