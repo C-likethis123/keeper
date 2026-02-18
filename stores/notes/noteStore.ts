@@ -5,7 +5,7 @@ import { create } from "zustand";
 interface NoteStore {
 	notes: Record<string, Note>;
 	loadNote: (filePath: string) => Promise<Note | null>;
-	saveNote: (note: NoteToSave) => Promise<void>;
+	saveNote: (note: NoteToSave) => Promise<Note>;
 	deleteNote: (filePath: string) => Promise<void>;
 	clearCache: () => void;
 }
@@ -24,6 +24,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
 	saveNote: async (note: NoteToSave) => {
 		const saved = await NoteService.saveNote(note);
 		set({ notes: { ...get().notes, [saved.filePath]: saved } });
+		return saved;
 	},
 
 	deleteNote: async (filePath: string) => {

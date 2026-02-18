@@ -44,5 +44,8 @@ app-example
 /ios
 /android
 
+# Tauri
+src-tauri/target/
+
 # cursor debug
-.cursor/debug.log
+.cursor/debug.*.log
