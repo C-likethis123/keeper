@@ -21,12 +21,16 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const HEADER_HEIGHT = 44;
 
 export default function NoteEditorScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams();
 	const { filePath } = params;
 	const theme = useExtendedTheme();
+	const insets = useSafeAreaInsets();
 
 	const { loadNote, deleteNote } = useNoteStore();
 	const { setPinned } = useNotesMetaStore();
@@ -84,6 +88,7 @@ export default function NoteEditorScreen() {
 		<KeyboardAvoidingView
 			style={{ flex: 1 }}
 			behavior={Platform.OS === "ios" ? "padding" : undefined}
+			keyboardVerticalOffset={insets.top + HEADER_HEIGHT}
 		>
 			<Stack.Screen
 				options={{

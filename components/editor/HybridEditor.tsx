@@ -4,8 +4,16 @@ import { useOverlayPosition } from "@/hooks/useOverlayPosition";
 import { copyPickedImageToNotes } from "@/services/notes/imageStorage";
 import * as DocumentPicker from "expo-document-picker";
 import * as WebBrowser from "expo-web-browser";
-import React, { useCallback, useEffect, useRef } from "react";
-import { Alert, Platform, ScrollView, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+	Alert,
+	Keyboard,
+	Platform,
+	ScrollView,
+	StyleSheet,
+	View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { type BlockConfig, blockRegistry } from "./blocks/BlockRegistry";
 import {
 	BlockType,
@@ -59,6 +67,23 @@ export function HybridEditor({
 
 	// Focus management
 	const { focusBlock, blurBlock } = useFocusBlock();
+
+	const insets = useSafeAreaInsets();
+	const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+	useEffect(() => {
+		if (Platform.OS === "web") return;
+		const showSub = Keyboard.addListener("keyboardDidShow", (e) =>
+			setKeyboardHeight(e.endCoordinates.height),
+		);
+		const hideSub = Keyboard.addListener("keyboardDidHide", () =>
+			setKeyboardHeight(0),
+		);
+		return () => {
+			showSub.remove();
+			hideSub.remove();
+		};
+	}, []);
 
 	const handleLinkPress = useCallback(
 		(index: number) => (urlOrWikiTitle: string) => {
@@ -465,7 +490,13 @@ export function HybridEditor({
 		<View style={styles.container}>
 			<ScrollView
 				style={styles.scrollView}
-				contentContainerStyle={styles.scrollContent}
+				contentContainerStyle={[
+					styles.scrollContent,
+					{
+						paddingBottom:
+							20 + insets.bottom + keyboardHeight,
+					},
+				]}
 				keyboardShouldPersistTaps="handled"
 			>
 				{editorState.document.blocks.map((block, index) => {

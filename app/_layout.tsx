@@ -14,6 +14,7 @@ import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { useThemeStore } from "@/stores/themeStore";
 import { ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
@@ -73,10 +74,12 @@ export default function RootLayout() {
 	}
 
 	return (
-		<ThemeProvider value={effectiveTheme}>
-			<Stack />
-			<ToastOverlay />
-		</ThemeProvider>
+		<SafeAreaProvider>
+			<ThemeProvider value={effectiveTheme}>
+				<Stack />
+				<ToastOverlay />
+			</ThemeProvider>
+		</SafeAreaProvider>
 	);
 }
 
