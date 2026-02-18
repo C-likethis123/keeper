@@ -1,8 +1,6 @@
 # issues
-- when I split block, the focus is on the newly created block, but typing moves the focus back to the previous block!
-- Pressing enter on an empty list block should turn it to a paragraph block
-- Outdent on a first level list block should make it a paragraph block.
 - Pinning within the app does not work
+- Does not detect block type changes midway, only for newly created blocks
 
 ## Phase 3: Editor undo/redo keyboard shortcuts (web)
 - In editor (e.g. HybridEditor): on keydown Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z (or Y), preventDefault and call undo/redo.

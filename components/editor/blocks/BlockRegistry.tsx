@@ -3,7 +3,6 @@ import { type BlockNode, BlockType } from "../core/BlockNode";
 import { BlockRenderer } from "./BlockRenderer";
 import { CodeBlock } from "./CodeBlock";
 import { ImageBlock } from "./ImageBlock";
-import { ListBlock } from "./ListBlock";
 import { MathBlock } from "./MathBlock";
 import { UnifiedBlock } from "./UnifiedBlock";
 
@@ -144,13 +143,13 @@ blockRegistry.registerAll([
 		type: BlockType.bulletList,
 		triggerPrefix: /^-\s/,
 		markdownPrefix: "- ",
-		build: (config) => <ListBlock {...config} />,
+		build: (config) => <UnifiedBlock {...config} />,
 	},
 	{
 		type: BlockType.numberedList,
 		triggerPrefix: /^(\d+)\.\s/,
 		markdownPrefix: "1. ",
-		build: (config) => <ListBlock {...config} />,
+		build: (config) => <UnifiedBlock {...config} />,
 	},
 	{
 		type: BlockType.codeBlock,

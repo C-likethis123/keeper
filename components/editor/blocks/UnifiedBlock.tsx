@@ -12,11 +12,11 @@ import {
 	type TextStyle,
 	View,
 } from "react-native";
-import { BlockType } from "../core/BlockNode";
+import { BlockType, isListItem } from "../core/BlockNode";
 import { InlineMarkdown } from "../rendering/InlineMarkdown";
 import { WikiLinkTrigger } from "../wikilinks/WikiLinkTrigger";
 import type { BlockConfig } from "./BlockRegistry";
-// TODO: Fix the wikilinks here
+import { ListMarker } from "./ListMarker";
 export function UnifiedBlock({
 	block,
 	index,
@@ -26,11 +26,12 @@ export function UnifiedBlock({
 	onSpace,
 	onEnter,
 	onSelectionChange,
+	listItemNumber,
 	onWikiLinkTriggerStart,
 	onWikiLinkQueryUpdate,
 	onWikiLinkTriggerEnd,
 }: BlockConfig) {
-	const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
+	const { focusBlock, blurBlock } = useFocusBlock();
 	const inputRef = useRef<TextInput>(null);
 	const ignoreNextChangeRef = useRef(false);
 	const lastBlockContentRef = useRef(block.content);
@@ -238,11 +239,54 @@ export function UnifiedBlock({
 		}
 	}, [block.type]);
 
+	const textInputProps = {
+		ref: inputRef,
+		style: [
+			styles.input,
+			textStyle,
+			isFocused ? styles.inputVisible : styles.inputHidden,
+		],
+		value: block.content,
+		onChangeText: handleContentChange,
+		onFocus: handleFocus,
+		onBlur: handleBlur,
+		onKeyPress: handleKeyPress,
+		onSelectionChange: handleSelectionChange,
+		multiline: true,
+		placeholder: "Start typing...",
+		placeholderTextColor: theme.custom.editor.placeholder,
+	};
+
+	if (isListItem(block)) {
+		return (
+			<Pressable
+				style={({ pressed }) => [
+					styles.container,
+					containerPadding,
+					isFocused && styles.focused,
+					pressed && styles.pressed,
+				]}
+				onPress={handleFocus}
+			>
+				<View style={styles.row}>
+					<ListMarker
+						type={block.type as BlockType.bulletList | BlockType.numberedList}
+						listLevel={block.listLevel}
+						listItemNumber={listItemNumber}
+					/>
+					{!isFocused && (
+						<View style={styles.overlayContent} pointerEvents="none">
+							<InlineMarkdown text={block.content} style={textStyle} />
+						</View>
+					)}
+					<TextInput {...textInputProps} />
+				</View>
+			</Pressable>
+		);
+	}
+
 	return (
 		<Pressable
-			// Note: `pressed` in Pressable style callback refers to touch/mouse press state,
-			// NOT keyboard focus. Keyboard focus is handled separately via TextInput's
-			// onFocus/onBlur events and the `isFocused` state.
 			style={({ pressed }) => [
 				styles.container,
 				containerPadding,
@@ -259,24 +303,7 @@ export function UnifiedBlock({
 					<InlineMarkdown text={block.content} style={textStyle} />
 				</View>
 			)}
-			<TextInput
-				ref={inputRef}
-				style={[
-					styles.input,
-					textStyle,
-					isFocused ? styles.inputVisible : styles.inputHidden,
-				]}
-				value={block.content}
-				onChangeText={handleContentChange}
-				onFocus={handleFocus}
-				onBlur={handleBlur}
-				onKeyPress={handleKeyPress}
-				onSelectionChange={handleSelectionChange}
-				multiline
-				textAlignVertical="top"
-				placeholder={"Start typing..."}
-				placeholderTextColor={theme.custom.editor.placeholder}
-			/>
+			<TextInput {...textInputProps} textAlignVertical="top" />
 		</Pressable>
 	);
 }
@@ -294,6 +321,10 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		pressed: {
 			opacity: 0.8,
 		},
+		row: {
+			flexDirection: "row",
+			alignItems: "flex-start",
+		},
 		overlay: {
 			position: "absolute",
 			left: 16,
@@ -301,8 +332,12 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			pointerEvents: "none",
 			zIndex: 1,
 		},
+		overlayContent: {
+			alignItems: "flex-start",
+		},
 		input: {
 			minHeight: 24,
+			paddingVertical: 0,
 			color: theme.colors.text,
 		},
 		inputVisible: {
@@ -310,8 +345,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		inputHidden: {
 			opacity: 0,
-			// Keep TextInput in layout so it's still clickable
-			// The overlay will cover it visually, but clicks go through (pointerEvents: 'none')
 		},
 	});
 }
