@@ -48,4 +48,4 @@ app-example
 src-tauri/target/
 
 # cursor debug
-.cursor/debug.*.log
+.cursor/debug*.log

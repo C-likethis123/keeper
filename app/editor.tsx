@@ -184,13 +184,12 @@ export default function NoteEditorScreen() {
 									}
 								}}
 							/>
-							<EditorToolbar
-							/>
-
 							<HybridEditor
 								initialContent={note?.content || ""}
 								onChanged={handleContentChange}
 							/>
+							<EditorToolbar />
+
 						</EditorProvider>
 					</>
 				)}

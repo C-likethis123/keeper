@@ -54,6 +54,37 @@ export function UnifiedBlock({
 		}
 	}, [block.content]);
 
+	// Re-apply selection after native value update so cursor at end doesn't jump (native often resets selection when value prop changes)
+	const prevContentRef = useRef(block.content);
+	useEffect(() => {
+		if (
+			!isFocused ||
+			!inputRef.current ||
+			!editorState.selection ||
+			editorState.selection.focus.blockIndex !== index
+		)
+			return;
+		if (block.content === prevContentRef.current) return;
+		prevContentRef.current = block.content;
+		const start = Math.min(
+			editorState.selection.anchor.offset,
+			editorState.selection.focus.offset,
+		);
+		const end = Math.max(
+			editorState.selection.anchor.offset,
+			editorState.selection.focus.offset,
+		);
+		const len = block.content.length;
+		const sel = {
+			start: Math.min(start, len),
+			end: Math.min(end, len),
+		};
+		const id = requestAnimationFrame(() => {
+			inputRef.current?.setNativeProps({ selection: sel });
+		});
+		return () => cancelAnimationFrame(id);
+	}, [block.content, index, isFocused, editorState.selection]);
+
 	const handleFocus = useCallback(() => {
 		focusBlock(index);
 	}, [focusBlock, index]);
@@ -252,6 +283,27 @@ export function UnifiedBlock({
 		}
 	}, [block.type]);
 
+	const selectionProp =
+		isFocused &&
+		editorState.selection &&
+		editorState.selection.focus.blockIndex === index
+			? (() => {
+					const start = Math.min(
+						editorState.selection!.anchor.offset,
+						editorState.selection!.focus.offset,
+					);
+					const end = Math.max(
+						editorState.selection!.anchor.offset,
+						editorState.selection!.focus.offset,
+					);
+					const len = block.content.length;
+					return {
+						start: Math.min(start, len),
+						end: Math.min(end, len),
+					};
+				})()
+			: undefined;
+
 	const textInputProps = {
 		ref: inputRef,
 		style: [
@@ -260,6 +312,7 @@ export function UnifiedBlock({
 			isFocused ? styles.inputVisible : styles.inputHidden,
 		],
 		value: block.content,
+		...(selectionProp !== undefined && { selection: selectionProp }),
 		onChangeText: handleContentChange,
 		onFocus: handleFocus,
 		onBlur: handleBlur,
