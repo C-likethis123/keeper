@@ -12,9 +12,9 @@ import { createLightTheme } from "@/constants/themes/lightTheme";
 import { GitInitializationService } from "@/services/git/gitInitializationService";
 import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { useThemeStore } from "@/stores/themeStore";
+import { checkForUpdates } from "@/utils/checkForUpdates";
 import { ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
@@ -23,6 +23,7 @@ import {
 	View,
 	useColorScheme,
 } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
 	const themeMode = useThemeStore((s) => s.themeMode);
@@ -31,6 +32,7 @@ export default function RootLayout() {
 	const [isHydrated, setIsHydrated] = useState(false);
 
 	useEffect(() => {
+		checkForUpdates();
 		Promise.allSettled([
 			hydrateThemeStore(),
 			useNotesMetaStore.getState().hydrate(),
