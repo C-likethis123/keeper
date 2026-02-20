@@ -81,7 +81,7 @@ async function getFileSha(filePath: string): Promise<string | null> {
 			return response.data.sha;
 		}
 	} catch (error: unknown) {
-		if ((error as {status?: number})?.status === 404) {
+		if ((error as { status?: number })?.status === 404) {
 			// File doesn't exist, which is fine for new files
 			return null;
 		}
@@ -182,96 +182,33 @@ export async function commitChanges(
 
 export async function getFile(filePath: string): Promise<GetFileResponse> {
 	try {
-		const localFilePath = `${NOTES_ROOT}${filePath}`;
-
-		try {
-			const file = new File(localFilePath);
-			if (file.exists) {
-				const content = await file.text();
-				return {
-					success: true,
-					content,
-				};
-			}
-		} catch (localError) {
-			if (
-				localError instanceof Error &&
-				!localError.message.includes("not found") &&
-				!localError.message.includes("ENOENT")
-			) {
-				console.warn(
-					"[GitApi] Error reading local file, falling back to GitHub API:",
-					localError.message,
-				);
-			}
-		}
-
-		const { owner, repo } = getGitHubConfig();
-		const octokit = getOctokit();
-		const response = await octokit.rest.repos.getContent({
-			owner,
-			repo,
-			path: filePath,
-		});
-
-		if (Array.isArray(response.data)) {
-			return {
-				success: false,
-				error: "Path is a directory, not a file",
-			};
-		}
-
-		if ("content" in response.data && response.data.encoding === "base64") {
-			const base64Content = response.data.content.replace(/\s/g, "");
-			let content: string;
-
-			try {
-				if (typeof Buffer !== "undefined") {
-					content = Buffer.from(base64Content, "base64").toString("utf-8");
-				} else if (typeof atob !== "undefined") {
-					content = atob(base64Content);
-				} else {
-					return {
-						success: false,
-						error: "Base64 decoding not available in this environment",
-					};
-				}
-			} catch (decodeError) {
-				return {
-					success: false,
-					error: `Failed to decode base64 content: ${decodeError instanceof Error ? decodeError.message : String(decodeError)}`,
-				};
-			}
-
+		const file = new File(NOTES_ROOT, filePath);
+		if (file.exists) {
+			const content = await file.text();
 			return {
 				success: true,
 				content,
 			};
 		}
-
-		return {
-			success: false,
-			error: "File is not a regular file or has unsupported encoding",
-		};
-	} catch (error: any) {
-		console.warn("[GitApi] Failed to get file:", error?.message ?? error);
-
-		let errorMessage = error instanceof Error ? error.message : String(error);
-
-		if (error?.status === 401 || error?.status === 403) {
-			errorMessage = "Authentication failed: Invalid or expired GitHub token";
-		} else if (error?.status === 404) {
-			errorMessage = `File not found: ${filePath}`;
-		} else if (
-			error?.message?.includes("network") ||
-			error?.message?.includes("fetch")
+	} catch (localError) {
+		if (
+			localError instanceof Error &&
+			!localError.message.includes("not found") &&
+			!localError.message.includes("ENOENT")
 		) {
-			errorMessage = "Network error: Check your internet connection";
-		}
+			console.warn(
+				"[GitApi] Error reading local file, falling back to GitHub API:",
+				localError.message,
+			);
 
+		}
 		return {
 			success: false,
-			error: errorMessage,
-		};
+			error: localError instanceof Error ? localError.message : String(localError)
+		}
+	}
+	return {
+		success: false,
+		error: "File not found"
 	}
 }

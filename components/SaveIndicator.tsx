@@ -12,20 +12,16 @@ type Props = {
 const titleMap = {
 	saving: "Saving…",
 	saved: "Saved",
-	idle: "",
 };
 
 const iconNameMap = {
 	saving: "sync",
 	saved: "check-circle",
-	idle: "edit",
 } as const;
 
 export function SaveIndicator({ status }: Props) {
 	const theme = useExtendedTheme();
 	const styles = useMemo(() => createStyles(theme), [theme]);
-
-	const iconName = iconNameMap[status];
 
 	// Use theme-aware colors with better contrast
 	const iconColor = useMemo(() => {
@@ -34,13 +30,16 @@ export function SaveIndicator({ status }: Props) {
 				return theme.dark ? "#fbbf24" : "#f59e0b"; // Lighter amber for dark mode
 			case "saved":
 				return theme.dark ? "#4ade80" : "#16a34a"; // Lighter green for dark mode
-			case "idle":
-				return theme.colors.textMuted;
 			default:
 				return theme.colors.text;
 		}
 	}, [status, theme]);
 
+	if (status === "idle") {
+		return null;
+	}
+
+	const iconName = iconNameMap[status];
 	return (
 		<View style={styles.container}>
 			<MaterialIcons name={iconName} size={16} color={iconColor} />

@@ -53,6 +53,11 @@ export function UnifiedBlock({
 			}
 		}
 	}, [block.content]);
+	useEffect(() => {
+		if (isFocused && inputRef.current) {
+			inputRef.current.focus();
+		}
+	}, [isFocused]);
 
 	// Re-apply selection after native value update so cursor at end doesn't jump (native often resets selection when value prop changes)
 	const prevContentRef = useRef(block.content);
@@ -97,13 +102,6 @@ export function UnifiedBlock({
 			onWikiLinkTriggerEnd?.();
 		}, 150);
 	}, [blurBlock, onWikiLinkTriggerEnd]);
-
-	// Auto-focus TextInput when block becomes focused (e.g., after block type change)
-	useEffect(() => {
-		if (isFocused && inputRef.current) {
-			inputRef.current?.focus();
-		}
-	}, [isFocused]);
 
 	const handleSelectionChange = useCallback(
 		(e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
@@ -201,7 +199,7 @@ export function UnifiedBlock({
 			if (
 				key === "Enter" &&
 				editorState.selection?.anchor.offset ===
-					editorState.selection?.focus.offset
+				editorState.selection?.focus.offset
 			) {
 				if (block.type !== BlockType.codeBlock) {
 					// Mark the next onChangeText as ignorable so the stray newline doesn't
@@ -266,42 +264,33 @@ export function UnifiedBlock({
 			case BlockType.heading1:
 			case BlockType.heading2:
 			case BlockType.heading3:
-				return { paddingVertical: 12 };
+				return { paddingVertical: 10 };
 			default:
-				return { paddingVertical: 4 };
+				return { paddingVertical: 2 };
 		}
 	}, [block.type]);
 
-	const overlayTop = useMemo(() => {
-		switch (block.type) {
-			case BlockType.heading1:
-			case BlockType.heading2:
-			case BlockType.heading3:
-				return 12;
-			default:
-				return 4;
-		}
-	}, [block.type]);
+
 
 	const selectionProp =
 		isFocused &&
-		editorState.selection &&
-		editorState.selection.focus.blockIndex === index
+			editorState.selection &&
+			editorState.selection.focus.blockIndex === index
 			? (() => {
-					const start = Math.min(
-						editorState.selection!.anchor.offset,
-						editorState.selection!.focus.offset,
-					);
-					const end = Math.max(
-						editorState.selection!.anchor.offset,
-						editorState.selection!.focus.offset,
-					);
-					const len = block.content.length;
-					return {
-						start: Math.min(start, len),
-						end: Math.min(end, len),
-					};
-				})()
+				const start = Math.min(
+					editorState.selection!.anchor.offset,
+					editorState.selection!.focus.offset,
+				);
+				const end = Math.max(
+					editorState.selection!.anchor.offset,
+					editorState.selection!.focus.offset,
+				);
+				const len = block.content.length;
+				return {
+					start: Math.min(start, len),
+					end: Math.min(end, len),
+				};
+			})()
 			: undefined;
 
 	const textInputProps = {
@@ -319,6 +308,7 @@ export function UnifiedBlock({
 		onKeyPress: handleKeyPress,
 		onSelectionChange: handleSelectionChange,
 		multiline: true,
+		autofocus: true,
 		placeholder: "Start typing...",
 		placeholderTextColor: theme.custom.editor.placeholder,
 	};
@@ -330,9 +320,9 @@ export function UnifiedBlock({
 		<ListMarker
 			type={
 				block.type as
-					| BlockType.bulletList
-					| BlockType.numberedList
-					| BlockType.checkboxList
+				| BlockType.bulletList
+				| BlockType.numberedList
+				| BlockType.checkboxList
 			}
 			listLevel={getListLevel(block)}
 			listItemNumber={listItemNumber}
@@ -355,7 +345,7 @@ export function UnifiedBlock({
 			</View>
 		) : (
 			<View
-				style={[styles.overlay, { top: overlayTop }]}
+				style={styles.overlay}
 				pointerEvents="none"
 			>
 				<InlineMarkdown text={block.content} style={textStyle} />
@@ -389,7 +379,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		container: {
 			minHeight: 40,
-			paddingHorizontal: 16,
+			paddingHorizontal: 14,
 			position: "relative",
 		},
 		pressed: {
@@ -404,8 +394,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		overlay: {
 			position: "absolute",
-			left: 16,
-			right: 16,
+			left: 0,
+			right: 0,
+			top: 0,
 			pointerEvents: "none",
 			zIndex: 1,
 		},
@@ -413,8 +404,11 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			alignItems: "flex-start",
 		},
 		input: {
+			flex: 1,
 			minHeight: 24,
-			paddingVertical: 0,
+			padding: 0,
+			paddingHorizontal: 2,
+			paddingVertical: 2,
 			color: theme.colors.text,
 		},
 		inputVisible: {

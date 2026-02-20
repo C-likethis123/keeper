@@ -6,7 +6,8 @@ export interface Note {
 	isPinned?: boolean;
 }
 
-export interface NoteToSave extends Omit<Note, "lastUpdated" | "filePath"> {
+export interface NoteToSave extends Omit<Note, "lastUpdated" | "filePath" | "title"> {
+	title?: string;
 	lastUpdated?: number;
 	filePath?: string;
 }

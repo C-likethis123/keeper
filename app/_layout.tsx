@@ -32,7 +32,9 @@ export default function RootLayout() {
 	const [isHydrated, setIsHydrated] = useState(false);
 
 	useEffect(() => {
-		checkForUpdates();
+		if (!__DEV__) {
+			checkForUpdates();
+		}
 		Promise.allSettled([
 			hydrateThemeStore(),
 			useNotesMetaStore.getState().hydrate(),
