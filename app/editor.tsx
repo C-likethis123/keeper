@@ -1,6 +1,5 @@
 import Loader from "@/components/Loader";
 import { SaveIndicator } from "@/components/SaveIndicator";
-import { EditorHeaderRight } from "@/components/editor/EditorHeaderRight";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { HybridEditor } from "@/components/editor/HybridEditor";
 import type { BlockType } from "@/components/editor/core/BlockNode";
@@ -174,16 +173,6 @@ export default function NoteEditorScreen() {
 						/>
 
 						<EditorProvider>
-							<EditorHeaderRight
-								note={note}
-								onTogglePin={togglePin}
-								onDelete={async () => {
-									if (note?.filePath) {
-										await deleteNote(note.filePath);
-										router.back();
-									}
-								}}
-							/>
 							<HybridEditor
 								initialContent={note?.content || ""}
 								onChanged={handleContentChange}

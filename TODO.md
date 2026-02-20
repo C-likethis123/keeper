@@ -1,6 +1,35 @@
 # issues
-- Pinning within the app does not work
-- Does not detect block type changes midway, only for newly created blocks
+- cursor back and forth: when going to a new line within the same text input, there's a flicker
+
+- fix expo over the air updates
+
+- keyboard avoiding view
+
+- Autocomplete from keyboard not pasted correctly, theres a flicker
+
+- debug desktop tauri app
+
+- I need a system that tracks asks, figures out what is priority, and time spent on X issue
+Llm stats - how to be more environmentally friendly?
+Bundle size, performance optimisation stats
+
+Figure out how to sort notes - maybe by theme, by priority. Maybe something that auto processes my notes into categories as I tend to spawn new notes. (Recommendation, but for notes)
+
+What makes it relevant?
+- time
+- topic
+- relation to other notes
+
+
+Archive old journals
+Types of notes:
+- journals 
+- resources
+- todos 
+
+
+
+
 
 ## Phase 3: Editor undo/redo keyboard shortcuts (web)
 - In editor (e.g. HybridEditor): on keydown Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z (or Y), preventDefault and call undo/redo.
@@ -26,6 +55,14 @@ Figure out how to make wikilinks clickable
 
 ## Future stuff from google keep
 - Add drawings
+
+- video embedding
+- pdf viewer, a bit like zotero.
+- fix code editor
+- drawings (lower priority)
+- look at logseq toolbar, it's all a the bottom
+- implement flashcards
+
 
 ---
 In the future, to support iOS, use `eas build:configure`
