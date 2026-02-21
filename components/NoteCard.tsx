@@ -18,7 +18,7 @@ export default function NoteCard({
 	const theme = useExtendedTheme();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 
-	const openNote = () => router.push(`/editor?filePath=${note.filePath}`);
+	const openNote = () => router.push(`/editor?id=${note.id}`);
 
 	const handlePinToggle = () => {
 		const updated = { ...note, isPinned: !note.isPinned };

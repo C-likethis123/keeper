@@ -80,14 +80,9 @@ export function useWikiLinks(): UseWikiLinksReturn {
 				const seenTitles = new Set<string>();
 
 				for (const item of result.items) {
-					const title =
-						item.title ||
-						item.noteId.split("/").pop()?.replace(/\.md$/, "") ||
-						"";
-
-					if (title && !seenTitles.has(title)) {
-						seenTitles.add(title);
-						titles.push(title);
+					if (item.title && !seenTitles.has(item.title)) {
+						seenTitles.add(item.title);
+						titles.push(item.title);
 					}
 				}
 
@@ -137,8 +132,7 @@ export function useWikiLinks(): UseWikiLinksReturn {
 			}
 			const end = start + 2 + query.length; // [[ + query
 
-			const newText =
-				`${text.substring(0, start)}[[${link}]]${text.substring(end)}`;
+			const newText = `${text.substring(0, start)}[[${link}]]${text.substring(end)}`;
 
 			onUpdateContent(blockIndex, newText);
 			handleTriggerEnd();

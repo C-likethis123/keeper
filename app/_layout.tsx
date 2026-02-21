@@ -10,6 +10,7 @@ import { ToastOverlay } from "@/components/Toast";
 import { createDarkTheme } from "@/constants/themes/darkTheme";
 import { createLightTheme } from "@/constants/themes/lightTheme";
 import { GitInitializationService } from "@/services/git/gitInitializationService";
+import { notesIndexDbEnsurePopulated } from "@/services/notes/notesIndexDb";
 import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { useThemeStore } from "@/stores/themeStore";
 import { checkForUpdates } from "@/utils/checkForUpdates";
@@ -18,7 +19,6 @@ import { Stack } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
-	Platform,
 	StyleSheet,
 	Text,
 	View,
@@ -60,6 +60,10 @@ export default function RootLayout() {
 						wasCloned: result.wasCloned,
 						branch: result.status?.currentBranch,
 					});
+					if (result.wasCloned) {
+						console.log("[App] Git repository was cloned, indexing notes...");
+						await notesIndexDbEnsurePopulated();
+					}
 				} else {
 					console.error("[App] Git initialization failed:", result.error);
 				}
@@ -67,9 +71,7 @@ export default function RootLayout() {
 				console.error("[App] Git initialization error:", error);
 			}
 		})();
-		const waitFor =
-			Platform.OS === "web" ? [themeP, notesP] : [themeP, notesP, gitP];
-		Promise.allSettled(waitFor).then(() => {
+		Promise.allSettled([themeP, notesP, gitP]).then(() => {
 			hasHydratedOnce = true;
 			setIsHydrated(true);
 		});

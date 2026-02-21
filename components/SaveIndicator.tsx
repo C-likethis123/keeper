@@ -3,7 +3,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-type SaveStatus = "idle" | "saving" | "saved";
+export type SaveStatus = "idle" | "saving" | "saved";
 
 type Props = {
 	status: SaveStatus;
@@ -66,7 +66,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		title: {
 			fontSize: 14,
 			fontWeight: "600",
-			color: theme.colors.text, // Use theme text color for better contrast
+			color: theme.colors.text,
 		},
 		subtitle: {
 			fontSize: 11,

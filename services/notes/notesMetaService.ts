@@ -49,9 +49,9 @@ export class NotesMetaService {
 
 	private constructor() {}
 
-	static async getPinned(filePath: string): Promise<boolean> {
+	static async getPinned(id: string): Promise<boolean> {
 		const raw = await AsyncStorage.getItem(STORAGE_KEY);
-		return getStoredState(raw).pinned[filePath] ?? false;
+		return getStoredState(raw).pinned[id] ?? false;
 	}
 
 	static async getPinnedMap(): Promise<PinnedMap> {
@@ -59,10 +59,10 @@ export class NotesMetaService {
 		return getStoredState(raw).pinned;
 	}
 
-	static async setPinned(filePath: string, value: boolean): Promise<void> {
+	static async setPinned(id: string, value: boolean): Promise<void> {
 		await setStoredState((prev) => ({
 			...prev,
-			pinned: { ...prev.pinned, [filePath]: value },
+			pinned: { ...prev.pinned, [id]: value },
 		}));
 	}
 
@@ -71,30 +71,30 @@ export class NotesMetaService {
 		return getStoredState(raw).titles;
 	}
 
-	static async getTitle(filePath: string): Promise<string | undefined> {
+	static async getTitle(id: string): Promise<string> {
 		const titles = await NotesMetaService.getTitlesMap();
-		return titles[filePath];
+		return titles[id] ?? "";
 	}
 
-	static async setTitle(filePath: string, title: string): Promise<void> {
+	static async setTitle(id: string, title: string): Promise<void> {
 		await setStoredState((prev) => ({
 			...prev,
-			titles: { ...prev.titles, [filePath]: title },
+			titles: { ...prev.titles, [id]: title },
 		}));
 	}
 
-	static async removePin(filePath: string): Promise<void> {
+	static async removePin(id: string): Promise<void> {
 		await setStoredState((prev) => {
 			const pinned = { ...prev.pinned };
-			delete pinned[filePath];
+			delete pinned[id];
 			return { ...prev, pinned };
 		});
 	}
 
-	static async removeTitle(filePath: string): Promise<void> {
+	static async removeTitle(id: string): Promise<void> {
 		await setStoredState((prev) => {
 			const titles = { ...prev.titles };
-			delete titles[filePath];
+			delete titles[id];
 			return { ...prev, titles };
 		});
 	}

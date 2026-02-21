@@ -10,6 +10,7 @@ import { useNoteStore } from "@/stores/notes/noteStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
+import { nanoid } from "nanoid";
 import React, { useCallback, useMemo } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
@@ -27,16 +28,14 @@ export default function Index() {
 	} = useNotes();
 	const theme = useExtendedTheme();
 	const { showToast } = useToastStore();
-	const { deleteNote } = useNoteStore();
+	const { saveNote, deleteNote } = useNoteStore();
 	const { setPinned } = useNotesMetaStore();
 
 	const handleDeleteNote = useCallback(
 		async (note: Note) => {
 			try {
-				await deleteNote(note.filePath);
-				setNotes((prev: Note[]) =>
-					prev.filter((n: Note) => n.filePath !== note.filePath),
-				);
+				await deleteNote(note.id);
+				setNotes((prev: Note[]) => prev.filter((n: Note) => n.id !== note.id));
 				showToast(`Deleted "${note.title}"`);
 			} catch (e) {
 				console.warn("Failed to delete note:", e);
@@ -48,10 +47,8 @@ export default function Index() {
 
 	const handlePinToggle = useCallback(
 		async (updated: Note) => {
-			setNotes((prev) =>
-				prev.map((n) => (n.filePath === updated.filePath ? updated : n)),
-			);
-			await setPinned(updated.filePath, updated.isPinned ?? false);
+			setNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
+			await setPinned(updated.id, updated.isPinned ?? false);
 		},
 		[setNotes, setPinned],
 	);
@@ -88,7 +85,18 @@ export default function Index() {
 			<TouchableOpacity
 				activeOpacity={0.8}
 				style={styles.fab}
-				onPress={() => router.push("/editor")}
+				onPress={async () => {
+					const newNote = {
+						id: nanoid(),
+						title: "",
+						content: "",
+						lastUpdated: Date.now(),
+						isPinned: false,
+					};
+					await saveNote(newNote);
+					setNotes((prev) => [...prev, newNote]);
+					router.push(`/editor?id=${newNote.id}`);
+				}}
 			>
 				<MaterialIcons name="add" size={28} color={theme.colors.card} />
 			</TouchableOpacity>

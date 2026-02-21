@@ -1,14 +1,7 @@
 export interface Note {
+	id: string;
 	title: string;
 	content: string;
-	filePath: string;
 	lastUpdated: number;
 	isPinned?: boolean;
-}
-
-export interface NoteToSave
-	extends Omit<Note, "lastUpdated" | "filePath" | "title"> {
-	title?: string;
-	lastUpdated?: number;
-	filePath?: string;
 }

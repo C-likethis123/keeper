@@ -1,37 +1,39 @@
 import { NoteService } from "@/services/notes/noteService";
-import type { Note, NoteToSave } from "@/services/notes/types";
+import type { Note } from "@/services/notes/types";
 import { create } from "zustand";
 
 interface NoteStore {
 	notes: Record<string, Note>;
-	loadNote: (filePath: string) => Promise<Note | null>;
-	saveNote: (note: NoteToSave) => Promise<Note>;
-	deleteNote: (filePath: string) => Promise<void>;
+	loadNote: (id: string) => Promise<Note | null>;
+	saveNote: (note: Note) => Promise<Note>;
+	deleteNote: (id: string) => Promise<void>;
 	clearCache: () => void;
 }
 
+// TODO: create a notes store AND a 'use notes'.
+// Or maybe I need to replace that with a selector....
 export const useNoteStore = create<NoteStore>((set, get) => ({
 	notes: {},
 
-	loadNote: async (filePath: string) => {
-		const note = await NoteService.loadNote(filePath);
+	loadNote: async (id: string) => {
+		const note = await NoteService.loadNote(id);
 		if (note) {
-			set({ notes: { ...get().notes, [filePath]: note } });
+			set({ notes: { ...get().notes, [id]: note } });
 		}
 		return note;
 	},
 
-	saveNote: async (note: NoteToSave) => {
+	saveNote: async (note: Note) => {
 		const saved = await NoteService.saveNote(note);
-		set({ notes: { ...get().notes, [saved.filePath]: saved } });
+		set({ notes: { ...get().notes, [saved.id]: saved } });
 		return saved;
 	},
 
-	deleteNote: async (filePath: string) => {
-		const success = await NoteService.deleteNote(filePath);
+	deleteNote: async (id: string) => {
+		const success = await NoteService.deleteNote(id);
 		if (!success) throw new Error("Failed to delete note");
 		const notes = { ...get().notes };
-		delete notes[filePath];
+		delete notes[id];
 		set({ notes });
 	},
 

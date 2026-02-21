@@ -2,17 +2,17 @@ import Loader from "@/components/Loader";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { HybridEditor } from "@/components/editor/HybridEditor";
-import type { BlockType } from "@/components/editor/core/BlockNode";
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import { EditorProvider } from "@/contexts/EditorContext";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useLoadNote } from "@/hooks/useLoadNote";
+import type { Note } from "@/services/notes/types";
 import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { useNoteStore } from "@/stores/notes/noteStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
 	Platform,
 	StyleSheet,
@@ -24,57 +24,29 @@ import {
 export default function NoteEditorScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams();
-	const { filePath } = params;
+	const { id } = params;
 	const theme = useExtendedTheme();
 
-	const { loadNote, deleteNote } = useNoteStore();
+	const { deleteNote, saveNote } = useNoteStore();
 	const { setPinned } = useNotesMetaStore();
-	const [focusedBlockInfo, setFocusedBlockInfo] = useState<{
-		blockType: BlockType | null;
-		blockIndex: number | null;
-		listLevel: number;
-	}>({
-		blockType: null,
-		blockIndex: null,
-		listLevel: 0,
-	});
 
-	// Load existing note if editing
-	const { isLoading, error, note, setNote } = useLoadNote(filePath as string);
+	const { isLoading, error, note, setNote } = useLoadNote(id as string);
 
 	const togglePin = async () => {
-		if (!note) return;
-		const path = note.filePath;
-		if (!path) return;
 		const next = !note.isPinned;
-		setNote((prev) => (prev ? { ...prev, isPinned: next } : null));
-		await setPinned(path, next);
+		setNote((prev: Note) => ({ ...prev, isPinned: next }));
+		await setPinned(note.id, next);
 	};
 
-	const effectiveFilePath = note?.filePath ?? (filePath as string) ?? "";
-	const isNewNote = !(filePath as string)?.trim();
-
-	const { status, saveNow } = useAutoSave({
-		filePath: effectiveFilePath,
-		title: note?.title || "",
-		content: note?.content || "",
-		isPinned: note?.isPinned || false,
-		onSaved: isNewNote ? (saved) => setNote(saved) : undefined,
+	const { status } = useAutoSave({
+		id: id as string,
+		title: note.title,
+		content: note.content,
+		isPinned: note.isPinned ?? false,
 	});
 
 	const handleContentChange = (markdown: string) => {
-		setNote((prev) => {
-			if (!prev) {
-				return {
-					title: "",
-					content: markdown,
-					filePath: "",
-					lastUpdated: Date.now(),
-					isPinned: false,
-				};
-			}
-			return { ...prev, content: markdown };
-		});
+		setNote((prev: Note) => ({ ...prev, content: markdown }));
 	};
 
 	const styles = useMemo(() => createStyles(theme), [theme]);
@@ -87,7 +59,13 @@ export default function NoteEditorScreen() {
 					headerLeft: () => (
 						<TouchableOpacity
 							onPress={async () => {
-								await saveNow();
+								await saveNote({
+									id: note.id,
+									title: note.title,
+									content: note.content,
+									isPinned: note.isPinned,
+									lastUpdated: Date.now(),
+								});
 								router.back();
 							}}
 							style={{ marginLeft: 8, marginRight: 8 }}
@@ -114,10 +92,8 @@ export default function NoteEditorScreen() {
 							</TouchableOpacity>
 							<TouchableOpacity
 								onPress={async () => {
-									if (note?.filePath) {
-										await deleteNote(note.filePath);
-										router.back();
-									}
+									await deleteNote(note.id);
+									router.back();
 								}}
 								style={{ marginRight: 8 }}
 							>
@@ -141,18 +117,9 @@ export default function NoteEditorScreen() {
 					<>
 						<TextInput
 							style={styles.titleInput}
-							value={note?.title || ""}
+							value={note.title}
 							onChangeText={(text) =>
 								setNote((prev) => {
-									if (!prev) {
-										return {
-											title: text,
-											content: "",
-											filePath: "",
-											lastUpdated: Date.now(),
-											isPinned: false,
-										};
-									}
 									return { ...prev, title: text };
 								})
 							}
@@ -164,7 +131,7 @@ export default function NoteEditorScreen() {
 						<EditorProvider>
 							<EditorToolbar />
 							<HybridEditor
-								initialContent={note?.content || ""}
+								initialContent={note.content}
 								onChanged={handleContentChange}
 							/>
 						</EditorProvider>

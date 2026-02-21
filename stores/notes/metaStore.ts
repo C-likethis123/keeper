@@ -3,25 +3,25 @@ import { create } from "zustand";
 
 type NotesMetaState = {
 	pinned: Record<string, boolean>;
-	togglePin: (filePath: string) => void;
-	setPinned: (filePath: string, value: boolean) => Promise<void>;
+	togglePin: (id: string) => void;
+	setPinned: (id: string, value: boolean) => Promise<void>;
 	hydrate: () => Promise<void>;
 };
 
 export const useNotesMetaStore = create<NotesMetaState>()((set, get) => ({
 	pinned: {},
-	togglePin: (filePath) => {
-		const next = !get().pinned[filePath];
+	togglePin: (id) => {
+		const next = !get().pinned[id];
 		set((state) => ({
-			pinned: { ...state.pinned, [filePath]: next },
+			pinned: { ...state.pinned, [id]: next },
 		}));
-		NotesMetaService.setPinned(filePath, next);
+		NotesMetaService.setPinned(id, next);
 	},
-	setPinned: async (filePath, value) => {
+	setPinned: async (id, value) => {
 		set((state) => ({
-			pinned: { ...state.pinned, [filePath]: value },
+			pinned: { ...state.pinned, [id]: value },
 		}));
-		await NotesMetaService.setPinned(filePath, value);
+		await NotesMetaService.setPinned(id, value);
 	},
 	hydrate: async () => {
 		const pinned = await NotesMetaService.getPinnedMap();

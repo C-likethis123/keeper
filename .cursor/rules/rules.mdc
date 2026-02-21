@@ -9,6 +9,7 @@ alwaysApply: true
   - Use functional components and hooks over class components.
   - Ensure components are modular, reusable, and maintainable.
   - Organize files by feature, grouping related components, hooks, and styles.
+  - When singleton files are written, the public methods should be static.
   - Adhere to Biome coding conventions
   
   Naming Conventions:
