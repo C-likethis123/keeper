@@ -173,6 +173,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): JSX.Element => {
 			if (node.children) {
 				const textElement = (
 					<Text
+						// biome-ignore lint/suspicious/noArrayIndexKey: syntax tree order is stable
 						key={`${key}.${index}`}
 						style={[
 							{
@@ -194,6 +195,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): JSX.Element => {
 				const lineNumberElement =
 					key !== "0" || index >= nodes.length - 2 ? undefined : (
 						<Text
+							// biome-ignore lint/suspicious/noArrayIndexKey: syntax tree order is stable
 							key={`$line.${index}`}
 							style={{
 								position: "absolute",
@@ -213,7 +215,10 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): JSX.Element => {
 
 				acc.push(
 					showLineNumbers && lineNumberElement ? (
-						<View key={`view.line.${index}`}>
+						<View
+							// biome-ignore lint/suspicious/noArrayIndexKey: syntax tree order is stable
+							key={`view.line.${index}`}
+						>
 							{lineNumberElement}
 							{textElement}
 						</View>

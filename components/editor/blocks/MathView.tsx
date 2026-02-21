@@ -97,6 +97,7 @@ export function MathView({
 				backgroundColor: "transparent",
 				color: textColor,
 			},
+			// biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output, not user input
 			dangerouslySetInnerHTML: { __html: html ?? "" },
 		});
 	}

@@ -20,7 +20,7 @@ export const ToastOverlay = () => {
 				useNativeDriver: true,
 			}).start();
 		}
-	}, [message]);
+	}, [message, opacity]);
 
 	if (!message) return null;
 

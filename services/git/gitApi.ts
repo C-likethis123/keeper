@@ -158,10 +158,12 @@ export async function commitChanges(
 
 					lastCommitHash = response.data.commit.sha;
 				}
-			} catch (error: any) {
+			} catch (error: unknown) {
+				const msg =
+					error instanceof Error ? error.message : String(error);
 				console.warn(
 					`[GitApi] Failed to ${operation} file ${filePath}:`,
-					error?.message ?? error,
+					msg,
 				);
 				// Continue with other changes even if one fails
 			}
@@ -171,8 +173,10 @@ export async function commitChanges(
 			success: true,
 			commitHash: lastCommitHash,
 		};
-	} catch (error: any) {
-		console.warn("[GitApi] Failed to commit changes:", error?.message ?? error);
+	} catch (error: unknown) {
+		const message =
+			error instanceof Error ? error.message : String(error);
+		console.warn("[GitApi] Failed to commit changes:", message);
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
@@ -200,15 +204,15 @@ export async function getFile(filePath: string): Promise<GetFileResponse> {
 				"[GitApi] Error reading local file, falling back to GitHub API:",
 				localError.message,
 			);
-
 		}
 		return {
 			success: false,
-			error: localError instanceof Error ? localError.message : String(localError)
-		}
+			error:
+				localError instanceof Error ? localError.message : String(localError),
+		};
 	}
 	return {
 		success: false,
-		error: "File not found"
-	}
+		error: "File not found",
+	};
 }

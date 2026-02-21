@@ -63,7 +63,7 @@ export default function useNotes() {
 				setIsLoading(false);
 			}
 		},
-		[query, cursor],
+		[query, cursor, isLoading],
 	);
 
 	const loadMoreNotes = useCallback(async () => {

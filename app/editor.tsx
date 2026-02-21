@@ -18,7 +18,7 @@ import {
 	StyleSheet,
 	TextInput,
 	TouchableOpacity,
-	View
+	View,
 } from "react-native";
 
 export default function NoteEditorScreen() {
@@ -51,8 +51,7 @@ export default function NoteEditorScreen() {
 		await setPinned(path, next);
 	};
 
-	const effectiveFilePath =
-		note?.filePath ?? (filePath as string) ?? "";
+	const effectiveFilePath = note?.filePath ?? (filePath as string) ?? "";
 	const isNewNote = !(filePath as string)?.trim();
 
 	const { status, saveNow } = useAutoSave({
@@ -60,9 +59,7 @@ export default function NoteEditorScreen() {
 		title: note?.title || "",
 		content: note?.content || "",
 		isPinned: note?.isPinned || false,
-		onSaved: isNewNote
-			? (saved) => setNote(saved)
-			: undefined,
+		onSaved: isNewNote ? (saved) => setNote(saved) : undefined,
 	});
 
 	const handleContentChange = (markdown: string) => {
@@ -165,13 +162,11 @@ export default function NoteEditorScreen() {
 						/>
 
 						<EditorProvider>
-
-								<EditorToolbar />
+							<EditorToolbar />
 							<HybridEditor
 								initialContent={note?.content || ""}
 								onChanged={handleContentChange}
 							/>
-						
 						</EditorProvider>
 					</>
 				)}

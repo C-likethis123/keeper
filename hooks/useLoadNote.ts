@@ -19,7 +19,7 @@ export function useLoadNote(filePath: string) {
 			.finally(() => {
 				setIsLoading(false);
 			});
-	}, [filePath]);
+	}, [filePath, loadNote]);
 	return {
 		isLoading,
 		error,

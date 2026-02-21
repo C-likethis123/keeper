@@ -94,8 +94,7 @@ export function useAutoSave({
 				clearTimeout(timerRef.current);
 			}
 		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [filePath, content, isPinned]); // saveNote / onSaved are stable; titleRef is always current
+	}, [filePath, content, isPinned, saveNote, onSaved, setPinned]);
 
 	return { status, saveNow };
 }

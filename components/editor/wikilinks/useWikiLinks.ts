@@ -2,7 +2,7 @@ import { useEditorState } from "@/contexts/EditorContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { useCallback, useEffect, useState } from "react";
-import { WikiLinkTrigger } from "./WikiLinkTrigger";
+import { findWikiLinkTriggerStart } from "./WikiLinkTrigger";
 
 interface UseWikiLinksReturn {
 	// State
@@ -26,7 +26,6 @@ interface UseWikiLinksReturn {
 	selectNext: () => void;
 	selectPrevious: () => void;
 	getSelectedResult: () => string | null;
-
 }
 
 /// Custom hook for managing wiki link autocomplete state
@@ -52,19 +51,16 @@ export function useWikiLinks(): UseWikiLinksReturn {
 	}, []);
 
 	/// Start a new wiki link session
-	const handleTriggerStart = useCallback(
-		() => {
-			if (isActive) {
-				return;
-			}
-			setIsActive(true);
-			setQuery("");
-			setResults([]);
-			setSelectedIndex(0);
-			setIsLoading(false);
-		},
-		[isActive],
-	);
+	const handleTriggerStart = useCallback(() => {
+		if (isActive) {
+			return;
+		}
+		setIsActive(true);
+		setQuery("");
+		setResults([]);
+		setSelectedIndex(0);
+		setIsLoading(false);
+	}, [isActive]);
 
 	useEffect(() => {
 		if (!isActive) {
@@ -132,9 +128,9 @@ export function useWikiLinks(): UseWikiLinksReturn {
 
 			const text = block.content;
 			// from where the cursor starts, find the nearest start
-			const start = WikiLinkTrigger.findStart(
+			const start = findWikiLinkTriggerStart(
 				text,
-				editorState.selection?.focus.offset,
+				editorState.selection?.focus.offset ?? 0,
 			);
 			if (start === null) {
 				return;
@@ -142,12 +138,12 @@ export function useWikiLinks(): UseWikiLinksReturn {
 			const end = start + 2 + query.length; // [[ + query
 
 			const newText =
-				text.substring(0, start) + `[[${link}]]` + text.substring(end);
+				`${text.substring(0, start)}[[${link}]]${text.substring(end)}`;
 
 			onUpdateContent(blockIndex, newText);
 			handleTriggerEnd();
 		},
-		[query, editorState, handleTriggerEnd],
+		[query, editorState, handleTriggerEnd, isActive],
 	);
 
 	/// Navigate to next result

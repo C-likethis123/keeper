@@ -5,8 +5,8 @@ import { DeleteBlockOperation } from "./operations/DeleteBlockOperation";
 import { InsertBlockOperation } from "./operations/InsertBlockOperation";
 import type { Operation } from "./operations/Operation";
 import { ReplaceBlocksOperation } from "./operations/ReplaceBlocksOperation";
-import { UpdateBlockContentOperation } from "./operations/UpdateBlockContentOperation";
 import { UpdateBlockAttributesOperation } from "./operations/UpdateBlockAttributesOperation";
+import { UpdateBlockContentOperation } from "./operations/UpdateBlockContentOperation";
 import { UpdateBlockTypeOperation } from "./operations/UpdateBlockTypeOperation";
 
 /// A transaction groups multiple operations together.

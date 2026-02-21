@@ -1,13 +1,7 @@
 import Loader from "@/components/Loader";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import React from "react";
-import {
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	Text,
-	View
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 interface WikiLinkOverlayProps {
 	results: string[];
@@ -49,6 +43,7 @@ export function WikiLinkOverlay({
 						const isSelected = index === selectedIndex;
 						return (
 							<Pressable
+								// biome-ignore lint/suspicious/noArrayIndexKey: results list order stable; index needed for duplicate items
 								key={`${item}-${index}`}
 								onPress={() => onSelect(item)}
 								style={({ pressed }) => [

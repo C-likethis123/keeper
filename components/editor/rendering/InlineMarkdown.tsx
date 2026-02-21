@@ -34,9 +34,18 @@ export function InlineMarkdown({
 			// Flush current text run
 			if (currentTextRun.length > 0) {
 				elements.push(
-					<Text key={`text-${index}`} style={style}>
+					<Text
+						// biome-ignore lint/suspicious/noArrayIndexKey: segment order stable
+						key={`text-${index}`}
+						style={style}
+					>
 						{currentTextRun.map((s, i) => (
-							<Text key={i} style={[style, s.style]} onPress={s.onPress}>
+							<Text
+								// biome-ignore lint/suspicious/noArrayIndexKey: run order stable
+								key={i}
+								style={[style, s.style]}
+								onPress={s.onPress}
+							>
 								{s.text}
 							</Text>
 						))}
@@ -47,6 +56,7 @@ export function InlineMarkdown({
 
 			elements.push(
 				<View
+					// biome-ignore lint/suspicious/noArrayIndexKey: segment order stable
 					key={`math-${index}`}
 					style={{
 						flexDirection: "row",
@@ -67,7 +77,12 @@ export function InlineMarkdown({
 		elements.push(
 			<Text key="text-final" style={style}>
 				{currentTextRun.map((s, i) => (
-					<Text key={i} style={[style, s.style]} onPress={s.onPress}>
+					<Text
+						// biome-ignore lint/suspicious/noArrayIndexKey: run order stable
+						key={i}
+						style={[style, s.style]}
+						onPress={s.onPress}
+					>
 						{s.text}
 					</Text>
 				))}

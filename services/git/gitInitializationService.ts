@@ -113,8 +113,8 @@ export class GitInitializationService {
 				//     };
 				// }
 				// console.log('[GitInitializationService] Repository verified successfully after clone');
-			} else {
-				console.log(
+			}
+			console.log(
 					"[GitInitializationService] Valid repository already exists, skipping clone",
 				);
 				const status = await this.checkRepositoryStatus();
@@ -144,7 +144,6 @@ export class GitInitializationService {
 					wasCloned: false,
 					status,
 				};
-			}
 		} catch (error) {
 			return {
 				success: false,
@@ -208,7 +207,7 @@ export class GitInitializationService {
 					dir: NOTES_ROOT,
 				});
 
-				console.log(`[GitInitializationService] Valid git repository found`);
+				console.log("[GitInitializationService] Valid git repository found");
 				return { exists: true, isValid: true };
 			} catch (gitError) {
 				const errorMsg =
@@ -298,7 +297,7 @@ export class GitInitializationService {
 				});
 
 				console.log(
-					`[GitInitializationService] Successfully checked out branch: main`,
+					"[GitInitializationService] Successfully checked out branch: main",
 				);
 			} catch (checkoutError) {
 				console.error(
@@ -346,7 +345,7 @@ export class GitInitializationService {
 
 			if (error instanceof Error) {
 				const errorMessage = error.message.toLowerCase();
-				const errorCode = (error as any).code;
+				const errorCode = (error as Error & { code?: string }).code;
 
 				// If clone fails due to repository corruption (CommitNotFetchedError, etc.),
 				// clean up and suggest retry
@@ -1138,7 +1137,7 @@ export class GitInitializationService {
 						checkoutSuccess = true;
 					} catch (checkoutError) {
 						console.warn(
-							`[GitInitializationService] Direct checkout failed:`,
+							"[GitInitializationService] Direct checkout failed:",
 							checkoutError,
 						);
 					}
@@ -1159,7 +1158,7 @@ export class GitInitializationService {
 						checkoutSuccess = true;
 					} catch (trackError) {
 						console.warn(
-							`[GitInitializationService] Tracking branch checkout failed:`,
+							"[GitInitializationService] Tracking branch checkout failed:",
 							trackError,
 						);
 					}
@@ -1179,7 +1178,7 @@ export class GitInitializationService {
 						checkoutSuccess = true;
 					} catch (simpleCheckoutError) {
 						console.warn(
-							`[GitInitializationService] Simple checkout failed:`,
+							"[GitInitializationService] Simple checkout failed:",
 							simpleCheckoutError,
 						);
 					}
@@ -1236,7 +1235,7 @@ export class GitInitializationService {
 						checkoutSuccess = true;
 					} catch (writeRefError) {
 						console.warn(
-							`[GitInitializationService] Failed to update HEAD:`,
+							"[GitInitializationService] Failed to update HEAD:",
 							writeRefError,
 						);
 					}
@@ -1283,7 +1282,6 @@ export class GitInitializationService {
 						break;
 					} catch (resolveError) {
 						// Try next branch
-						continue;
 					}
 				}
 			}

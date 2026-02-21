@@ -28,10 +28,7 @@ export function CodeBlockHeader({
 		return config?.displayName || lang.charAt(0).toUpperCase() + lang.slice(1);
 	};
 
-	const styles = useMemo(
-		() => createStyles(theme),
-		[theme],
-	);
+	const styles = useMemo(() => createStyles(theme), [theme]);
 
 	return (
 		<View style={styles.container}>
@@ -68,7 +65,7 @@ export function CodeBlockHeader({
 								style={[
 									styles.languageOptionText,
 									selectedLanguage === lang &&
-									styles.languageOptionTextSelected,
+										styles.languageOptionTextSelected,
 								]}
 							>
 								{formatLanguageName(lang)}
@@ -98,9 +95,7 @@ export function CodeBlockHeader({
 	);
 }
 
-function createStyles(
-	theme: ReturnType<typeof useExtendedTheme>,
-) {
+function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	const headerTextColor = "#fff";
 	const headerBgColor = theme.custom.codeEditor?.background || "#1e1e1e";
 	const headerSelectedBg = withOpacity(headerBgColor, 0.5);

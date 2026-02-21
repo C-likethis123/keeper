@@ -4,7 +4,14 @@ import { NOTES_ROOT } from "@/services/notes/Notes";
 import { Paths } from "expo-file-system";
 import { Image } from "expo-image";
 import React, { useCallback, useMemo, useState } from "react";
-import { type NativeSyntheticEvent, Pressable, StyleSheet, TextInput, type TextInputKeyPressEventData, type TextInputSelectionChangeEventData } from "react-native";
+import {
+	type NativeSyntheticEvent,
+	Pressable,
+	StyleSheet,
+	TextInput,
+	type TextInputKeyPressEventData,
+	type TextInputSelectionChangeEventData,
+} from "react-native";
 import type { BlockConfig } from "./BlockRegistry";
 
 function resolveImageUri(path: string): string {

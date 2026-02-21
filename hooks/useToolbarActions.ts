@@ -23,34 +23,28 @@ export function useToolbarActions(): UseToolbarActions {
 	const editorState = useEditorState();
 	const { focusBlock } = useFocusBlock();
 
-	const handleIndent = useCallback(
-		() => {
-			const index = editorState.getFocusedBlockIndex();
-			if (index === null) return;
-			const block = editorState.document.blocks[index];
-			if (isListItem(block.type)) {
-				editorState.updateBlockListLevel(index, getListLevel(block) + 1);
-			}
-		},
-		[editorState],
-	);
+	const handleIndent = useCallback(() => {
+		const index = editorState.getFocusedBlockIndex();
+		if (index === null) return;
+		const block = editorState.document.blocks[index];
+		if (isListItem(block.type)) {
+			editorState.updateBlockListLevel(index, getListLevel(block) + 1);
+		}
+	}, [editorState]);
 
-	const handleOutdent = useCallback(
-		() => {
-			const index = editorState.getFocusedBlockIndex();
-			if (index === null) return;
-			const block = editorState.document.blocks[index];
-			const isListBlock = isListItem(block.type);
-			if (!isListBlock) return;
-			if (getListLevel(block) > 0) {
-				editorState.updateBlockListLevel(index, getListLevel(block) - 1);
-			} else {
-				editorState.updateBlockType(index, BlockType.paragraph);
-				focusBlock(index);
-			}
-		},
-		[editorState, focusBlock],
-	);
+	const handleOutdent = useCallback(() => {
+		const index = editorState.getFocusedBlockIndex();
+		if (index === null) return;
+		const block = editorState.document.blocks[index];
+		const isListBlock = isListItem(block.type);
+		if (!isListBlock) return;
+		if (getListLevel(block) > 0) {
+			editorState.updateBlockListLevel(index, getListLevel(block) - 1);
+		} else {
+			editorState.updateBlockType(index, BlockType.paragraph);
+			focusBlock(index);
+		}
+	}, [editorState, focusBlock]);
 
 	const handleConvertToCheckbox = useCallback(() => {
 		const index = editorState.getFocusedBlockIndex();
@@ -74,7 +68,6 @@ export function useToolbarActions(): UseToolbarActions {
 		editorState.insertBlockAfter(focusedIndex, createImageBlock(path));
 		focusBlock(focusedIndex + 1);
 	}, [editorState, focusBlock]);
-
 
 	const focusBlockIndex = editorState.getFocusedBlockIndex();
 	return {
