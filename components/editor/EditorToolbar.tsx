@@ -134,8 +134,5 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			borderWidth: 1,
 			borderColor: theme.colors.border,
 		},
-		buttonHidden: {
-			display: "none",
-		},
 	});
 }

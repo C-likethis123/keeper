@@ -18,41 +18,57 @@ import { Stack } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
+	Platform,
 	StyleSheet,
 	Text,
 	View,
 	useColorScheme,
 } from "react-native";
 
+let hasHydratedOnce = false;
+
 export default function RootLayout() {
 	const themeMode = useThemeStore((s) => s.themeMode);
 	const hydrateThemeStore = useThemeStore((s) => s.hydrate);
 	const systemColorScheme = useColorScheme();
-	const [isHydrated, setIsHydrated] = useState(false);
+	const [isHydrated, setIsHydrated] = useState(hasHydratedOnce);
 
 	useEffect(() => {
 		if (!__DEV__) {
 			checkForUpdates();
 		}
-		Promise.allSettled([
-			hydrateThemeStore(),
-			useNotesMetaStore.getState().hydrate(),
-			(async () => {
-				try {
-					const result = await GitInitializationService.instance.initialize();
-					if (result.success) {
-						console.log("[App] Git initialization succeeded:", {
-							wasCloned: result.wasCloned,
-							branch: result.status?.currentBranch,
-						});
-					} else {
-						console.error("[App] Git initialization failed:", result.error);
-					}
-				} catch (error) {
-					console.error("[App] Git initialization error:", error);
+		const themeP = hydrateThemeStore().then(
+			() => {},
+			(e) => {
+				console.error("[App] Theme hydrate error:", e);
+			},
+		);
+		const notesP = useNotesMetaStore.getState().hydrate().then(
+			() => {},
+			(e) => {
+				console.error("[App] Notes hydrate error:", e);
+			},
+		);
+		const gitP = (async () => {
+			try {
+				const result = await GitInitializationService.instance.initialize();
+				if (result.success) {
+					console.log("[App] Git initialization succeeded:", {
+						wasCloned: result.wasCloned,
+						branch: result.status?.currentBranch,
+					});
+				} else {
+					console.error("[App] Git initialization failed:", result.error);
 				}
-			})(),
-		]).then(() => setIsHydrated(true));
+			} catch (error) {
+				console.error("[App] Git initialization error:", error);
+			}
+		})();
+		const waitFor = Platform.OS === "web" ? [themeP, notesP] : [themeP, notesP, gitP];
+		Promise.allSettled(waitFor).then(() => {
+			hasHydratedOnce = true;
+			setIsHydrated(true);
+		});
 	}, [hydrateThemeStore]);
 
 	// Determine which theme to use
@@ -63,7 +79,7 @@ export default function RootLayout() {
 		return shouldUseDark ? createDarkTheme() : createLightTheme();
 	}, [themeMode, systemColorScheme]);
 
-	if (!isHydrated) {
+	if (!isHydrated && !hasHydratedOnce) {
 		return (
 			<View style={styles.splash}>
 				<Text style={styles.title}>Keeper</Text>

@@ -5,8 +5,8 @@
   "identifier": "com.clikethis123.keeper",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:8081",
-    "beforeDevCommand": "npm run web",
+    "devUrl": "http://localhost:8082",
+    "beforeDevCommand": "npm run web:desktop",
     "beforeBuildCommand": "npm run build:web"
   },
   "app": {

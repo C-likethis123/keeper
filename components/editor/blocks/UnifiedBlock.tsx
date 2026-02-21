@@ -183,17 +183,6 @@ export function UnifiedBlock({
 				return;
 			}
 
-			// Cmd+Enter / Ctrl+Enter: toggle checkbox (when supported by platform)
-			if (key === "Enter" && block.type === BlockType.checkboxList) {
-				const mod =
-					"metaKey" in e.nativeEvent &&
-					(e.nativeEvent as { metaKey?: boolean }).metaKey;
-				if (mod) {
-					onCheckboxToggle(index);
-					return;
-				}
-			}
-
 			// Handle Enter key - split non-code blocks at the current cursor position
 			if (
 				key === "Enter" &&
@@ -293,50 +282,11 @@ export function UnifiedBlock({
 		onKeyPress: handleKeyPress,
 		onSelectionChange: handleSelectionChange,
 		multiline: true,
-		autofocus: true,
 		placeholder: "Start typing...",
 		placeholderTextColor: theme.custom.editor.placeholder,
 	};
 
 	const applyListStyles = isListItem(block.type);
-	// Single branch so the same TextInput stays mounted when block type changes
-	// (paragraph → list). Otherwise the paragraph input unmounts and keyboard dismisses.
-	const listMarker = applyListStyles ? (
-		<ListMarker
-			type={
-				block.type as
-				| BlockType.bulletList
-				| BlockType.numberedList
-				| BlockType.checkboxList
-			}
-			listLevel={getListLevel(block)}
-			listItemNumber={listItemNumber}
-			checked={
-				block.type === BlockType.checkboxList
-					? !!block.attributes?.checked
-					: undefined
-			}
-			onToggle={
-				block.type === BlockType.checkboxList
-					? () => onCheckboxToggle(index)
-					: undefined
-			}
-		/>
-	) : null;
-	const overlay = !isFocused ? (
-		applyListStyles ? (
-			<View style={styles.overlayContent} pointerEvents="none">
-				<InlineMarkdown text={block.content} style={textStyle} />
-			</View>
-		) : (
-			<View
-				style={styles.overlay}
-				pointerEvents="none"
-			>
-				<InlineMarkdown text={block.content} style={textStyle} />
-			</View>
-		)
-	) : null;
 
 	return (
 		<Pressable
@@ -347,8 +297,34 @@ export function UnifiedBlock({
 			onPress={handleFocus}
 		>
 			<View style={styles.row}>
-				{listMarker}
-				{overlay}
+				{applyListStyles && <ListMarker
+					type={
+						block.type as
+						| BlockType.bulletList
+						| BlockType.numberedList
+						| BlockType.checkboxList
+					}
+					listLevel={getListLevel(block)}
+					listItemNumber={listItemNumber}
+					checked={
+						block.type === BlockType.checkboxList
+							? !!block.attributes?.checked
+							: undefined
+					}
+					onToggle={
+						block.type === BlockType.checkboxList
+							? () => onCheckboxToggle(index)
+							: undefined
+					}
+				/>}
+				<View
+					style={[
+						!isFocused ? (applyListStyles ? styles.overlayContent : styles.overlay) : {display: "none"},
+					]}
+					pointerEvents="none"
+				>
+					<InlineMarkdown text={block.content} style={textStyle} />
+				</View>
 				<TextInput
 					{...textInputProps}
 					textAlignVertical={applyListStyles ? undefined : "top"}
@@ -361,7 +337,6 @@ export function UnifiedBlock({
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		container: {
-			minHeight: 40,
 			paddingVertical: 2,
 			paddingHorizontal: 14,
 			position: "relative",
@@ -386,10 +361,8 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		input: {
 			flex: 1,
-			minHeight: 24,
 			padding: 0,
 			paddingHorizontal: 2,
-			paddingVertical: 2,
 			color: theme.colors.text,
 		},
 		inputVisible: {
@@ -397,6 +370,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		inputHidden: {
 			opacity: 0,
+			height: 0,
 		},
 	});
 }
