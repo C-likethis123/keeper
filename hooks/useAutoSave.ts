@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 type AutoSaveInput = {
 	filePath: string;
+	/** Title is read via a ref — changes to it never restart the auto-save timer. */
 	title: string;
 	content: string;
 	isPinned: boolean;
@@ -21,36 +22,40 @@ export function useAutoSave({
 	const { saveNote } = useNoteStore();
 	const { setPinned } = useNotesMetaStore();
 
+	// Kept as a ref so saveNow() always uses the latest title without
+	// making title a dependency of the auto-save effect.
+	const titleRef = useRef(title);
+	titleRef.current = title;
+
 	const timerRef = useRef<number | null>(null);
-	const lastSavedRef = useRef<{
-		title: string;
-		content: string;
-		isPinned: boolean;
-	} | null>(null);
+	const lastSavedRef = useRef<{ content: string; isPinned: boolean } | null>(
+		null,
+	);
 	const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
 
+	/**
+	 * saveNow — call this imperatively (back-button, or title-input blur).
+	 * Always saves with the latest title from the ref.
+	 */
 	const saveNow = useCallback(async () => {
 		if (timerRef.current) {
 			clearTimeout(timerRef.current);
 			timerRef.current = null;
 		}
-
 		setStatus("saving");
 		const saved = await saveNote({
 			filePath,
-			title: title.trim() || "Untitled",
+			title: titleRef.current.trim() || "Untitled",
 			content,
 			isPinned,
 		});
-		lastSavedRef.current = {
-			title: title.trim() || "Untitled",
-			content,
-			isPinned,
-		};
+		lastSavedRef.current = { content, isPinned };
 		setStatus("saved");
 		onSaved?.(saved);
-	}, [filePath, title, content, isPinned, saveNote, onSaved]);
+	}, [filePath, content, isPinned, saveNote, onSaved]);
 
+	// Auto-save fires 2 s after content or isPinned changes.
+	// Title is intentionally excluded — it is saved only via saveNow (on blur).
 	useEffect(() => {
 		setStatus("idle");
 
@@ -59,27 +64,25 @@ export function useAutoSave({
 		}
 
 		const runSave = async () => {
-			const trimmedTitle = title.trim() || "Untitled";
 			const last = lastSavedRef.current;
+
+			// Only-pin-changed optimisation: skip full file write.
 			const onlyPinChanged =
-				last &&
-				last.title === trimmedTitle &&
-				last.content === content &&
-				last.isPinned !== isPinned;
+				last && last.content === content && last.isPinned !== isPinned;
 			if (onlyPinChanged && filePath) {
 				await setPinned(filePath, isPinned);
-				lastSavedRef.current = { title: trimmedTitle, content, isPinned };
+				lastSavedRef.current = { content, isPinned };
 				return;
 			}
 
 			setStatus("saving");
 			const saved = await saveNote({
 				filePath,
-				title: trimmedTitle,
+				title: titleRef.current.trim() || "Untitled",
 				content,
 				isPinned,
 			});
-			lastSavedRef.current = { title: trimmedTitle, content, isPinned };
+			lastSavedRef.current = { content, isPinned };
 			setStatus("saved");
 			onSaved?.(saved);
 		};
@@ -91,7 +94,8 @@ export function useAutoSave({
 				clearTimeout(timerRef.current);
 			}
 		};
-	}, [filePath, title, content, isPinned, saveNote, onSaved]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [filePath, content, isPinned]); // saveNote / onSaved are stable; titleRef is always current
 
 	return { status, saveNow };
 }

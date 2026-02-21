@@ -139,7 +139,6 @@ export function UnifiedBlock({
 
 	const handleContentChange = useCallback(
 		(newText: string) => {
-			// Update ref to track current content
 			lastBlockContentRef.current = newText;
 			// When we handle Enter to split the block, React Native's TextInput will still
 			// emit an onChangeText with a newline. We want to ignore that one change,
@@ -258,20 +257,6 @@ export function UnifiedBlock({
 		}
 	}, [block.type, theme.typography]);
 
-	// Compute container padding and overlay top position based on block type
-	const containerPadding = useMemo(() => {
-		switch (block.type) {
-			case BlockType.heading1:
-			case BlockType.heading2:
-			case BlockType.heading3:
-				return { paddingVertical: 10 };
-			default:
-				return { paddingVertical: 2 };
-		}
-	}, [block.type]);
-
-
-
 	const selectionProp =
 		isFocused &&
 			editorState.selection &&
@@ -357,8 +342,6 @@ export function UnifiedBlock({
 		<Pressable
 			style={({ pressed }) => [
 				styles.container,
-				containerPadding,
-				applyListStyles && isFocused && styles.focused,
 				pressed && styles.pressed,
 			]}
 			onPress={handleFocus}
@@ -379,6 +362,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		container: {
 			minHeight: 40,
+			paddingVertical: 2,
 			paddingHorizontal: 14,
 			position: "relative",
 		},
@@ -388,9 +372,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		row: {
 			flexDirection: "row",
 			alignItems: "flex-start",
-		},
-		focused: {
-			backgroundColor: theme.custom.editor.blockFocused,
 		},
 		overlay: {
 			position: "absolute",

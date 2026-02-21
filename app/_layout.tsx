@@ -23,7 +23,6 @@ import {
 	View,
 	useColorScheme,
 } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
 	const themeMode = useThemeStore((s) => s.themeMode);
@@ -67,7 +66,7 @@ export default function RootLayout() {
 	if (!isHydrated) {
 		return (
 			<View style={styles.splash}>
-				<Text style={styles.title}>My App</Text>
+				<Text style={styles.title}>Keeper</Text>
 				<ActivityIndicator
 					size="large"
 					color="#2563eb"
@@ -78,12 +77,10 @@ export default function RootLayout() {
 	}
 
 	return (
-		<SafeAreaProvider>
-			<ThemeProvider value={effectiveTheme}>
-				<Stack />
-				<ToastOverlay />
-			</ThemeProvider>
-		</SafeAreaProvider>
+		<ThemeProvider value={effectiveTheme}>
+			<Stack />
+			<ToastOverlay />
+		</ThemeProvider>
 	);
 }
 

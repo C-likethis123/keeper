@@ -1,17 +1,15 @@
+import { ScrollView } from "@/components/ScrollView";
 import { useEditorState } from "@/contexts/EditorContext";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useOverlayPosition } from "@/hooks/useOverlayPosition";
 import * as WebBrowser from "expo-web-browser";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
 	Alert,
-	Keyboard,
 	Platform,
-	ScrollView,
 	StyleSheet,
-	View,
+	View
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { type BlockConfig, blockRegistry } from "./blocks/BlockRegistry";
 import {
 	BlockType,
@@ -57,23 +55,6 @@ export function HybridEditor({
 	// Focus management
 	const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
 
-	const insets = useSafeAreaInsets();
-	const [keyboardHeight, setKeyboardHeight] = useState(0);
-
-	useEffect(() => {
-		if (Platform.OS === "web") return;
-		const showSub = Keyboard.addListener("keyboardDidShow", (e) =>
-			setKeyboardHeight(e.endCoordinates.height),
-		);
-		const hideSub = Keyboard.addListener("keyboardDidHide", () =>
-			setKeyboardHeight(0),
-		);
-		return () => {
-			showSub.remove();
-			hideSub.remove();
-		};
-	}, []);
-
 	const handleLinkPress = useCallback(
 		(index: number) => (urlOrWikiTitle: string) => {
 			const isUrl =
@@ -87,7 +68,7 @@ export function HybridEditor({
 							if (Platform.OS === "web") {
 								window.open(urlOrWikiTitle, "_blank");
 							} else {
-								WebBrowser.openBrowserAsync(urlOrWikiTitle).catch(() => {});
+								WebBrowser.openBrowserAsync(urlOrWikiTitle).catch(() => { });
 							}
 						},
 					},
@@ -415,19 +396,11 @@ export function HybridEditor({
 
 	const showWikiLinkOverlay = wikiLinks.isActive;
 
+
+
 	return (
 		<View style={styles.container}>
-			<ScrollView
-				style={styles.scrollView}
-				contentContainerStyle={[
-					styles.scrollContent,
-					{
-						paddingBottom:
-							20 + insets.bottom + keyboardHeight,
-					},
-				]}
-				keyboardShouldPersistTaps="handled"
-			>
+			<ScrollView>
 				{editorState.document.blocks.map((block, index) => {
 					const blockElement = renderBlock(block, index);
 					return (

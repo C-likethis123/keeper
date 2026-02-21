@@ -4,7 +4,7 @@ ADB is used to connect the phone with the laptop.
 
 1. Install ADB on laptop
 2. Turn on developer settings and pair laptop with phone via ADB
-
+3. Make sure hotspot is enabled and laptop is connected to hotspot internet
 
 # Set up Cursor's debug mode
 

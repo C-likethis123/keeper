@@ -3,6 +3,7 @@ import { SaveIndicator } from "@/components/SaveIndicator";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { HybridEditor } from "@/components/editor/HybridEditor";
 import type { BlockType } from "@/components/editor/core/BlockNode";
+import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import { EditorProvider } from "@/contexts/EditorContext";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
@@ -13,23 +14,18 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-	KeyboardAvoidingView,
 	Platform,
 	StyleSheet,
 	TextInput,
 	TouchableOpacity,
-	View,
+	View
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const HEADER_HEIGHT = 44;
 
 export default function NoteEditorScreen() {
 	const router = useRouter();
 	const params = useLocalSearchParams();
 	const { filePath } = params;
 	const theme = useExtendedTheme();
-	const insets = useSafeAreaInsets();
 
 	const { loadNote, deleteNote } = useNoteStore();
 	const { setPinned } = useNotesMetaStore();
@@ -87,11 +83,7 @@ export default function NoteEditorScreen() {
 	const styles = useMemo(() => createStyles(theme), [theme]);
 
 	return (
-		<KeyboardAvoidingView
-			style={{ flex: 1 }}
-			behavior={Platform.OS === "ios" ? "padding" : undefined}
-			keyboardVerticalOffset={insets.top + HEADER_HEIGHT}
-		>
+		<View style={styles.screen}>
 			<Stack.Screen
 				options={{
 					title: "Editor",
@@ -145,7 +137,7 @@ export default function NoteEditorScreen() {
 				}}
 			/>
 
-			<View style={styles.container}>
+			<View style={styles.content}>
 				{isLoading ? (
 					<Loader />
 				) : (
@@ -173,26 +165,39 @@ export default function NoteEditorScreen() {
 						/>
 
 						<EditorProvider>
+
+								<EditorToolbar />
 							<HybridEditor
 								initialContent={note?.content || ""}
 								onChanged={handleContentChange}
 							/>
-							<EditorToolbar />
-
+						
 						</EditorProvider>
 					</>
 				)}
 			</View>
-		</KeyboardAvoidingView>
+		</View>
 	);
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
-		container: {
+		screen: {
+			flex: 1,
+		},
+		content: {
 			flex: 1,
 			padding: 16,
+			paddingBottom: 16 + TOOLBAR_HEIGHT,
 			backgroundColor: theme.colors.background,
+		},
+		toolbarWrapper: {
+			position: "absolute",
+			left: 0,
+			right: 0,
+			backgroundColor: theme.colors.background,
+			borderTopWidth: 1,
+			borderTopColor: theme.colors.border,
 		},
 		titleInput: {
 			fontSize: 20,
@@ -202,11 +207,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			borderBottomColor: theme.colors.border,
 			paddingVertical: 4,
 			color: theme.colors.text,
-		},
-		divider: {
-			height: 1,
-			backgroundColor: theme.colors.border,
-			marginVertical: 8,
 		},
 	});
 }
