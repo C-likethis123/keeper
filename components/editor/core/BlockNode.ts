@@ -152,9 +152,10 @@ export function blockToMarkdown(block: BlockNode, listNumber?: number): string {
 		}
 		case BlockType.numberedList:
 			return `${listIndentation}${listNumber ?? 1}. ${block.content}`;
-		case BlockType.codeBlock:
+		case BlockType.codeBlock: {
 			const lang = getBlockLanguage(block) ?? "";
 			return `\`\`\`${lang}\n${block.content}\n\`\`\``;
+		}
 		case BlockType.mathBlock:
 			return `$$\n${block.content}\n$$`;
 		case BlockType.image:
@@ -172,7 +173,10 @@ export function isCodeBlock(block: BlockNode): boolean {
 /// Whether this block is a list item
 export function isListItem(
 	type: BlockType | null,
-): type is BlockType.bulletList | BlockType.numberedList | BlockType.checkboxList {
+): type is
+	| BlockType.bulletList
+	| BlockType.numberedList
+	| BlockType.checkboxList {
 	return (
 		type === BlockType.bulletList ||
 		type === BlockType.numberedList ||

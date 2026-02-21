@@ -44,7 +44,7 @@ export function MathBlock({
 		if (block.content !== value) {
 			setValue(block.content);
 		}
-	}, [block.content]);
+	}, [block.content, value]);
 
 	useEffect(() => {
 		onContentChange(value);

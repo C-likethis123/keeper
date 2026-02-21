@@ -1,14 +1,15 @@
 // A wrapper around the ScrollView component that handles platform specific bheaviour
 
-import { Platform, ScrollView as RnScrollView, ScrollViewProps as RnScrollViewProps, StyleSheet } from "react-native";
+import {
+	Platform,
+	ScrollView as RnScrollView,
+	type ScrollViewProps as RnScrollViewProps,
+	StyleSheet,
+} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
-interface ScrollViewProps extends RnScrollViewProps {
-}
-export function ScrollView({
-	children,
-	...props
-}: ScrollViewProps) {
+interface ScrollViewProps extends RnScrollViewProps {}
+export function ScrollView({ children, ...props }: ScrollViewProps) {
 	const scrollProps = {
 		style: styles.scrollView,
 		keyboardShouldPersistTaps: "handled" as const,
@@ -25,7 +26,7 @@ export function ScrollView({
 			{...scrollProps}
 			{...props}
 			enableOnAndroid
-            keyboardOpeningTime={0}
+			keyboardOpeningTime={0}
 			enableResetScrollToCoords={false}
 		>
 			{children}
@@ -34,7 +35,7 @@ export function ScrollView({
 }
 
 const styles = StyleSheet.create({
-    scrollView: {
-        flex: 1,
-    },
+	scrollView: {
+		flex: 1,
+	},
 });

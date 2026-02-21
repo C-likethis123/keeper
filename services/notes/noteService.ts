@@ -73,7 +73,7 @@ export class NoteService {
 		const isNew = !note.filePath;
 		let filePath =
 			note.filePath ||
-			(await this.resolveFilePath(NOTES_ROOT, note.title, undefined));
+			(await NoteService.resolveFilePath(NOTES_ROOT, note.title, undefined));
 
 		filePath = sanitizePathFilename(filePath);
 
@@ -158,7 +158,7 @@ export class NoteService {
 						filePath: entry.uri,
 						title: decodeURIComponent(entry.name.replace(/\.md$/, "")),
 						content,
-						lastUpdated: entry.modificationTime!,
+						lastUpdated: entry.modificationTime ?? 0,
 						isPinned: indexItem?.isPinned ?? false,
 					});
 				}

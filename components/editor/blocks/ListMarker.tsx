@@ -1,11 +1,6 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import React, { useMemo } from "react";
-import {
-	Pressable,
-	StyleSheet,
-	Text,
-	View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BlockType } from "../core/BlockNode";
 
 interface ListMarkerProps {
@@ -47,9 +42,7 @@ export function ListMarker({
 					]}
 					hitSlop={8}
 				>
-					{checked && (
-						<Text style={styles.checkmark}>✓</Text>
-					)}
+					{checked && <Text style={styles.checkmark}>✓</Text>}
 				</Pressable>
 			</View>
 		);

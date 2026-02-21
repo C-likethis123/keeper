@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { BlockType, getListLevel, isListItem } from "../core/BlockNode";
 import { InlineMarkdown } from "../rendering/InlineMarkdown";
-import { WikiLinkTrigger } from "../wikilinks/WikiLinkTrigger";
+import { findWikiLinkTriggerStart } from "../wikilinks/WikiLinkTrigger";
 import type { BlockConfig } from "./BlockRegistry";
 import { ListMarker } from "./ListMarker";
 export function UnifiedBlock({
@@ -117,7 +117,7 @@ export function UnifiedBlock({
 				if (caret > block.content.length) {
 					return;
 				}
-				const triggerStart = WikiLinkTrigger.findStart(block.content, caret);
+				const triggerStart = findWikiLinkTriggerStart(block.content, caret);
 				if (triggerStart !== null) {
 					onWikiLinkTriggerStart();
 					const query = block.content.substring(triggerStart + 2, caret);
@@ -154,7 +154,7 @@ export function UnifiedBlock({
 			// because editorState.selection is not updated yet when onChangeText fires.
 			if (isFocused && inputRef.current) {
 				const caret = newText.length;
-				const start = WikiLinkTrigger.findStart(newText, caret);
+				const start = findWikiLinkTriggerStart(newText, caret);
 				if (start !== null) {
 					onWikiLinkTriggerStart();
 					const query = newText.substring(start + 2, caret);
@@ -187,7 +187,7 @@ export function UnifiedBlock({
 			if (
 				key === "Enter" &&
 				editorState.selection?.anchor.offset ===
-				editorState.selection?.focus.offset
+					editorState.selection?.focus.offset
 			) {
 				if (block.type !== BlockType.codeBlock) {
 					// Mark the next onChangeText as ignorable so the stray newline doesn't
@@ -221,11 +221,8 @@ export function UnifiedBlock({
 			onSpace,
 			onEnter,
 			onBackspaceAtStart,
-			onCheckboxToggle,
-			index,
 			editorState.selection,
 			block.type,
-			block.content,
 		],
 	);
 
@@ -248,23 +245,19 @@ export function UnifiedBlock({
 
 	const selectionProp =
 		isFocused &&
-			editorState.selection &&
-			editorState.selection.focus.blockIndex === index
+		editorState.selection &&
+		editorState.selection.focus.blockIndex === index
 			? (() => {
-				const start = Math.min(
-					editorState.selection!.anchor.offset,
-					editorState.selection!.focus.offset,
-				);
-				const end = Math.max(
-					editorState.selection!.anchor.offset,
-					editorState.selection!.focus.offset,
-				);
-				const len = block.content.length;
-				return {
-					start: Math.min(start, len),
-					end: Math.min(end, len),
-				};
-			})()
+					const sel = editorState.selection;
+					if (!sel) return undefined;
+					const start = Math.min(sel.anchor.offset, sel.focus.offset);
+					const end = Math.max(sel.anchor.offset, sel.focus.offset);
+					const len = block.content.length;
+					return {
+						start: Math.min(start, len),
+						end: Math.min(end, len),
+					};
+				})()
 			: undefined;
 
 	const textInputProps = {
@@ -290,36 +283,39 @@ export function UnifiedBlock({
 
 	return (
 		<Pressable
-			style={({ pressed }) => [
-				styles.container,
-				pressed && styles.pressed,
-			]}
+			style={({ pressed }) => [styles.container, pressed && styles.pressed]}
 			onPress={handleFocus}
 		>
 			<View style={styles.row}>
-				{applyListStyles && <ListMarker
-					type={
-						block.type as
-						| BlockType.bulletList
-						| BlockType.numberedList
-						| BlockType.checkboxList
-					}
-					listLevel={getListLevel(block)}
-					listItemNumber={listItemNumber}
-					checked={
-						block.type === BlockType.checkboxList
-							? !!block.attributes?.checked
-							: undefined
-					}
-					onToggle={
-						block.type === BlockType.checkboxList
-							? () => onCheckboxToggle(index)
-							: undefined
-					}
-				/>}
+				{applyListStyles && (
+					<ListMarker
+						type={
+							block.type as
+								| BlockType.bulletList
+								| BlockType.numberedList
+								| BlockType.checkboxList
+						}
+						listLevel={getListLevel(block)}
+						listItemNumber={listItemNumber}
+						checked={
+							block.type === BlockType.checkboxList
+								? !!block.attributes?.checked
+								: undefined
+						}
+						onToggle={
+							block.type === BlockType.checkboxList
+								? () => onCheckboxToggle(index)
+								: undefined
+						}
+					/>
+				)}
 				<View
 					style={[
-						!isFocused ? (applyListStyles ? styles.overlayContent : styles.overlay) : {display: "none"},
+						!isFocused
+							? applyListStyles
+								? styles.overlayContent
+								: styles.overlay
+							: { display: "none" },
 					]}
 					pointerEvents="none"
 				>

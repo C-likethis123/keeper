@@ -28,19 +28,22 @@ if (typeof globalThis.FileReader !== "undefined") {
 		const str = input.replace(/=+$/, "");
 		let output = "";
 
-		if (str.length % 4 == 1) {
+		if (str.length % 4 === 1) {
 			throw new Error(
 				"'atob' failed: The string to be decoded is not correctly encoded.",
 			);
 		}
 		for (
-			let bc = 0, bs = 0, buffer, i = 0;
+			let bc = 0, bs = 0, buffer: string | number = "", i = 0;
+			// biome-ignore lint/suspicious/noAssignInExpressions: atob polyfill loop
 			(buffer = str.charAt(i++));
+			// biome-ignore lint/suspicious/noAssignInExpressions lint/style/noCommaOperator: atob polyfill
 			~buffer && ((bs = bc % 4 ? bs * 64 + buffer : buffer), bc++ % 4)
-				? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
+				? // biome-ignore lint/suspicious/noAssignInExpressions: atob polyfill
+					(output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
 				: 0
 		) {
-			buffer = chars.indexOf(buffer);
+			buffer = chars.indexOf(buffer as string);
 		}
 
 		return output;

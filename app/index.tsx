@@ -43,7 +43,7 @@ export default function Index() {
 				showToast("Failed to delete note");
 			}
 		},
-		[deleteNote, showToast],
+		[deleteNote, setNotes, showToast],
 	);
 
 	const handlePinToggle = useCallback(
@@ -53,7 +53,7 @@ export default function Index() {
 			);
 			await setPinned(updated.filePath, updated.isPinned ?? false);
 		},
-		[setPinned],
+		[setNotes, setPinned],
 	);
 
 	const styles = useMemo(() => createStyles(theme), [theme]);

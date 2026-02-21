@@ -66,7 +66,8 @@ export class History {
 				this.config.groupingDelay
 		) {
 			// Group with previous transaction
-			const previous = this.undoStack.pop()!;
+			const previous = this.undoStack.pop();
+			if (!previous) return;
 			const grouped: Transaction = {
 				operations: [...previous.operations, ...transaction.operations],
 				selectionBefore: previous.selectionBefore,
@@ -93,7 +94,8 @@ export class History {
 			return null;
 		}
 
-		const transaction = this.undoStack.pop()!;
+		const transaction = this.undoStack.pop();
+		if (!transaction) return null;
 		const inverse = createInverseTransaction(transaction, document);
 		this.redoStack.push(transaction);
 		this.lastTransactionTime = undefined; // Break grouping
@@ -107,7 +109,8 @@ export class History {
 			return null;
 		}
 
-		const transaction = this.redoStack.pop()!;
+		const transaction = this.redoStack.pop();
+		if (!transaction) return null;
 		this.undoStack.push(transaction);
 		this.lastTransactionTime = undefined;
 

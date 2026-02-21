@@ -181,9 +181,8 @@ export class SmartEditingHandler {
 	): SmartEditResult {
 		if (shift) {
 			return this.handleOutdent(text, cursorOffset);
-		} else {
-			return this.handleIndent(text, cursorOffset);
 		}
+		return this.handleIndent(text, cursorOffset);
 	}
 
 	private handleIndent(text: string, cursorOffset: number): SmartEditResult {
@@ -223,7 +222,8 @@ export class SmartEditingHandler {
 				),
 				handled: true,
 			};
-		} else if (currentLine.startsWith("\t")) {
+		}
+		if (currentLine.startsWith("\t")) {
 			const newText =
 				text.substring(0, lineStart) +
 				currentLine.substring(1) +

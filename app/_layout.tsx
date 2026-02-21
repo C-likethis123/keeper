@@ -43,12 +43,15 @@ export default function RootLayout() {
 				console.error("[App] Theme hydrate error:", e);
 			},
 		);
-		const notesP = useNotesMetaStore.getState().hydrate().then(
-			() => {},
-			(e) => {
-				console.error("[App] Notes hydrate error:", e);
-			},
-		);
+		const notesP = useNotesMetaStore
+			.getState()
+			.hydrate()
+			.then(
+				() => {},
+				(e) => {
+					console.error("[App] Notes hydrate error:", e);
+				},
+			);
 		const gitP = (async () => {
 			try {
 				const result = await GitInitializationService.instance.initialize();
@@ -64,7 +67,8 @@ export default function RootLayout() {
 				console.error("[App] Git initialization error:", error);
 			}
 		})();
-		const waitFor = Platform.OS === "web" ? [themeP, notesP] : [themeP, notesP, gitP];
+		const waitFor =
+			Platform.OS === "web" ? [themeP, notesP] : [themeP, notesP, gitP];
 		Promise.allSettled(waitFor).then(() => {
 			hasHydratedOnce = true;
 			setIsHydrated(true);

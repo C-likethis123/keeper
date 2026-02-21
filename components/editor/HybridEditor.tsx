@@ -4,12 +4,7 @@ import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useOverlayPosition } from "@/hooks/useOverlayPosition";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useRef } from "react";
-import {
-	Alert,
-	Platform,
-	StyleSheet,
-	View
-} from "react-native";
+import { Alert, Platform, StyleSheet, View } from "react-native";
 import { type BlockConfig, blockRegistry } from "./blocks/BlockRegistry";
 import {
 	BlockType,
@@ -68,7 +63,7 @@ export function HybridEditor({
 							if (Platform.OS === "web") {
 								window.open(urlOrWikiTitle, "_blank");
 							} else {
-								WebBrowser.openBrowserAsync(urlOrWikiTitle).catch(() => { });
+								WebBrowser.openBrowserAsync(urlOrWikiTitle).catch(() => {});
 							}
 						},
 					},
@@ -103,7 +98,7 @@ export function HybridEditor({
 				isInitializedRef.current = true;
 			}
 		}
-	}, [initialContent]);
+	}, [initialContent, editorState]);
 
 	// Notify parent of changes
 	useEffect(() => {
@@ -112,7 +107,7 @@ export function HybridEditor({
 			lastEmittedMarkdownRef.current = markdown;
 			onChanged(markdown);
 		}
-	}, [editorState.document, onChanged, editorState]);
+	}, [onChanged, editorState]);
 
 	const handleContentChange = useCallback(
 		(index: number) => (content: string) => {
@@ -387,7 +382,6 @@ export function HybridEditor({
 			handleEnter,
 			handleDelete,
 			calculateListItemNumber,
-			handleLinkPress,
 			wikiLinks.handleTriggerStart,
 			wikiLinks.handleQueryUpdate,
 			wikiLinks.handleTriggerEnd,
@@ -395,8 +389,6 @@ export function HybridEditor({
 	);
 
 	const showWikiLinkOverlay = wikiLinks.isActive;
-
-
 
 	return (
 		<View style={styles.container}>

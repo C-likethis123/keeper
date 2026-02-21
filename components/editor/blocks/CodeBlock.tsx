@@ -100,7 +100,7 @@ export function CodeBlock({
 					const beforeExtra = result.newText.substring(0, newlineIndex + 1);
 					const afterExtra = result.newText.substring(newlineIndex + 1);
 					const extraIndentation =
-						"\n" + Indentation.createIndentString(addedIndentionSize);
+						`\n${Indentation.createIndentString(addedIndentionSize)}`;
 					const finalText = beforeExtra + extraIndentation + afterExtra;
 
 					// Adjust cursor position to account for the extra content
@@ -222,7 +222,7 @@ export function CodeBlock({
 					onBlockTypeChange?.(index, BlockType.codeBlock, language);
 				}}
 				onCopyPressed={handleCopy}
-				onDelete={onDelete!}
+				onDelete={onDelete ?? (() => {})}
 			/>
 			<View>
 				<SyntaxHighlighter

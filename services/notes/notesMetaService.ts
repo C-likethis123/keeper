@@ -11,8 +11,9 @@ function getStoredState(raw: string | null): StoredState {
 	if (!raw) return { pinned: {}, titles: {} };
 	const parsed = JSON.parse(raw) as unknown;
 	if (parsed && typeof parsed === "object" && "state" in parsed) {
-		const state = (parsed as { state?: { pinned?: PinnedMap; titles?: TitlesMap } })
-			.state;
+		const state = (
+			parsed as { state?: { pinned?: PinnedMap; titles?: TitlesMap } }
+		).state;
 		return {
 			pinned: state?.pinned ?? {},
 			titles: state?.titles ?? {},
@@ -27,7 +28,9 @@ function getStoredState(raw: string | null): StoredState {
 	return { pinned: {}, titles: {} };
 }
 
-function setStoredState(update: (prev: StoredState) => StoredState): Promise<void> {
+function setStoredState(
+	update: (prev: StoredState) => StoredState,
+): Promise<void> {
 	return AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
 		const prev = getStoredState(raw);
 		const next = update(prev);
@@ -69,7 +72,7 @@ export class NotesMetaService {
 	}
 
 	static async getTitle(filePath: string): Promise<string | undefined> {
-		const titles = await this.getTitlesMap();
+		const titles = await NotesMetaService.getTitlesMap();
 		return titles[filePath];
 	}
 

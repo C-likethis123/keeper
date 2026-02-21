@@ -1,9 +1,6 @@
 import { Directory, File } from "expo-file-system";
 import { NOTES_ROOT } from "./Notes";
-import {
-	NotesMetaService,
-	type TitlesMap,
-} from "./notesMetaService";
+import { NotesMetaService, type TitlesMap } from "./notesMetaService";
 import { toAbsoluteNotesPath } from "./notesPaths";
 
 export interface NoteIndexItem {
@@ -30,11 +27,11 @@ async function collectMdRelativePaths(
 		const dir = new Directory(dirPath);
 		if (!dir.exists) return paths;
 		const entries = dir.list();
-		const prefix = dirPath.endsWith("/") ? dirPath : dirPath + "/";
+		const prefix = dirPath.endsWith("/") ? dirPath : `${dirPath}/`;
 		for (const entry of entries) {
 			const name = entry.name;
 			if (name === ".git") continue;
-			const rel = baseRelative ? baseRelative + "/" + name : name;
+			const rel = baseRelative ? `${baseRelative}/${name}` : name;
 			if (entry instanceof File && name.endsWith(".md")) {
 				paths.push(rel);
 			}
@@ -49,10 +46,8 @@ async function collectMdRelativePaths(
 }
 
 function titleFromPath(relativePath: string): string {
-	return (
-		decodeURIComponent(
-			relativePath.split("/").pop()?.replace(/\.md$/, "") ?? "Untitled",
-		)
+	return decodeURIComponent(
+		relativePath.split("/").pop()?.replace(/\.md$/, "") ?? "Untitled",
 	);
 }
 
@@ -65,9 +60,8 @@ async function loadNoteItem(
 	const file = new File(fullPath);
 	if (!file.exists) return null;
 	const content = await file.text();
-	const mtime = file.modificationTime!;
-	const title =
-		titlesMap[relativePath] ?? titleFromPath(relativePath);
+	const mtime = file.modificationTime ?? 0;
+	const title = titlesMap[relativePath] ?? titleFromPath(relativePath);
 	return {
 		noteId: relativePath,
 		summary: extractSummary(content),

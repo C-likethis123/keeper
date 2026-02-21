@@ -19,8 +19,12 @@ export function EditorToolbar() {
 	const block = editorState.getFocusedBlock();
 	const blockType = block?.type ?? null;
 	const listLevel = block ? getListLevel(block) : 0;
-	const { handleOutdent, handleIndent, handleConvertToCheckbox, handleInsertImage } =
-		useToolbarActions();
+	const {
+		handleOutdent,
+		handleIndent,
+		handleConvertToCheckbox,
+		handleInsertImage,
+	} = useToolbarActions();
 
 	const isListBlock = isListItem(blockType);
 
@@ -49,7 +53,6 @@ export function EditorToolbar() {
 				style={[styles.button]}
 				onPress={editorState.redo}
 				disabled={!canRedo}
-
 				activeOpacity={0.7}
 			>
 				<MaterialIcons
