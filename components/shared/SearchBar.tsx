@@ -63,6 +63,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		searchIcon: {
 			marginRight: 8,
+			color: theme.colors.textMuted,
 		},
 		searchInput: {
 			flex: 1,

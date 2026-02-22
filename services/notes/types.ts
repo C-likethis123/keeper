@@ -3,5 +3,5 @@ export interface Note {
 	title: string;
 	content: string;
 	lastUpdated: number;
-	isPinned?: boolean;
+	isPinned: boolean;
 }

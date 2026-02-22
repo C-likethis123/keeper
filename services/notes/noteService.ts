@@ -41,10 +41,10 @@ export class NoteService {
 				const mtime = file.modificationTime ?? 0;
 				return {
 					id,
-					title: data.title,
+					title: data.title ?? "",
 					content,
 					lastUpdated: mtime,
-					isPinned: data.pinned,
+					isPinned: data.pinned ?? false,
 				};
 			}
 		} catch (localError) {
@@ -54,21 +54,20 @@ export class NoteService {
 		return null;
 	}
 
-	static async saveNote(note: Note): Promise<Note> {
+	// this is called multiple times with empty content!
+	static async saveNote(note: Note, isNewNote = false): Promise<Note> {
 		const id = note.id;
-		const file = new File(NOTES_ROOT, `${id}.md`);
-		await file.write(
-			matter.stringify(note.content, {
-				frontmatter: {
-					pinned: note.isPinned,
-					title: note.title,
-					id: note.id,
-				},
-			}),
-		);
-
 		const pinnedState = !!note.isPinned;
-		const title = note.title.trim();
+		const title = (note.title ?? "").trim();
+		const file = new File(NOTES_ROOT, `${id}.md`);
+		const content = matter.stringify(note.content, {
+			frontmatter: {
+				pinned: pinnedState,
+				title,
+				id: note.id,
+			},
+		});
+		await file.write(content);
 		const summary = extractSummary(note.content);
 
 		await NotesIndexService.upsertNote({
@@ -79,7 +78,7 @@ export class NoteService {
 			updatedAt: note.lastUpdated,
 		});
 
-		GitService.queueChange(`${id}.md`, !note.id ? "add" : "modify");
+		GitService.queueChange(`${id}.md`, isNewNote ? "add" : "modify");
 		void GitService.commitBatch();
 
 		return {

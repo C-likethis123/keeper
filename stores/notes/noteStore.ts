@@ -61,7 +61,7 @@ interface NoteStore {
 	notes: Record<string, Note>;
 	noteLists: Record<string, NoteListEntry>;
 	loadNote: (id: string) => Promise<Note | null>;
-	saveNote: (note: Note) => Promise<Note>;
+	saveNote: (note: Note, isNewNote?: boolean) => Promise<Note>;
 	deleteNote: (id: string) => Promise<void>;
 	fetchList: (
 		listKey: string,
@@ -87,17 +87,11 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
 		return note;
 	},
 
-	saveNote: async (note: Note) => {
-		const saved = await NoteService.saveNote(note);
-		const { notes, noteLists } = get();
+	saveNote: async (note: Note, isNewNote = false) => {
+		const saved = await NoteService.saveNote(note, isNewNote);
+		const { notes } = get();
 		const nextNotes = { ...notes, [saved.id]: saved };
-		const nextLists = { ...noteLists };
-		for (const key of Object.keys(nextLists)) {
-			if (nextLists[key].ids.includes(saved.id)) {
-				nextLists[key] = { ids: [], hasMore: true };
-			}
-		}
-		set({ notes: nextNotes, noteLists: nextLists });
+		set({ notes: nextNotes });
 		return saved;
 	},
 

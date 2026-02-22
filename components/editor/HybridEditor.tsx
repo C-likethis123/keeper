@@ -4,7 +4,7 @@ import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useOverlayPosition } from "@/hooks/useOverlayPosition";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useRef } from "react";
-import { Alert, Platform, StyleSheet, View } from "react-native";
+import { Alert, Platform, Pressable, StyleSheet, View } from "react-native";
 import { type BlockConfig, blockRegistry } from "./blocks/BlockRegistry";
 import {
 	BlockType,
@@ -80,17 +80,27 @@ export function HybridEditor({
 	// Track if a selection is in progress to prevent blur from ending session
 	const wikiLinkSelectionInProgressRef = useRef(false);
 
+	// Notify parent of changes. Declared before init effect so it runs first; init then sees lastEmittedMarkdownRef and can skip when content is our echo (avoids flicker).
+	useEffect(() => {
+		if (onChanged) {
+			const markdown = editorState.toMarkdown();
+			lastEmittedMarkdownRef.current = markdown;
+			onChanged(markdown);
+		}
+	}, [onChanged, editorState]);
+
 	// Initialize document from markdown when initialContent changes (only from outside, not from our own updates)
 	useEffect(() => {
+		// Do not run when initialContent is unchanged (effect ran only due to editorState/typing); avoids loading stale content and flicker.
+		if (initialContent === lastInitialContentRef.current) {
+			return;
+		}
 		// Skip reload when initialContent came from our own onChanged (parent echoed back)
 		if (initialContent === lastEmittedMarkdownRef.current) {
 			lastInitialContentRef.current = initialContent;
 			return;
 		}
-		if (
-			initialContent !== undefined &&
-			initialContent !== lastInitialContentRef.current
-		) {
+		if (initialContent !== undefined) {
 			const currentMarkdown = editorState.toMarkdown();
 			if (currentMarkdown !== initialContent) {
 				editorState.loadMarkdown(initialContent);
@@ -99,15 +109,6 @@ export function HybridEditor({
 			}
 		}
 	}, [initialContent, editorState]);
-
-	// Notify parent of changes
-	useEffect(() => {
-		if (onChanged) {
-			const markdown = editorState.toMarkdown();
-			lastEmittedMarkdownRef.current = markdown;
-			onChanged(markdown);
-		}
-	}, [onChanged, editorState]);
 
 	const handleContentChange = useCallback(
 		(index: number) => (content: string) => {
@@ -392,15 +393,23 @@ export function HybridEditor({
 
 	return (
 		<View style={styles.container}>
-			<ScrollView>
-				{editorState.document.blocks.map((block, index) => {
-					const blockElement = renderBlock(block, index);
-					return (
-						<View key={block.id} style={styles.blockWrapper}>
-							{blockElement}
-						</View>
-					);
-				})}
+			<ScrollView contentContainerStyle={styles.scrollContent}>
+				<Pressable
+					style={styles.pressableArea}
+					onPress={() => {
+						const lastIndex = editorState.document.blocks.length - 1;
+						focusBlock(lastIndex);
+					}}
+				>
+					{editorState.document.blocks.map((block, index) => {
+						const blockElement = renderBlock(block, index);
+						return (
+							<View key={block.id} style={styles.blockWrapper}>
+								{blockElement}
+							</View>
+						);
+					})}
+				</Pressable>
 			</ScrollView>
 			{/* Render overlay outside ScrollView to prevent touch conflicts */}
 			{showWikiLinkOverlay && (
@@ -442,7 +451,11 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	scrollContent: {
+		flexGrow: 1,
 		paddingBottom: 20,
+	},
+	pressableArea: {
+		flex: 1,
 	},
 	blockWrapper: {
 		width: "100%",

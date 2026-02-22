@@ -1,8 +1,8 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function NoteCard({
@@ -16,7 +16,7 @@ export default function NoteCard({
 }) {
 	const router = useRouter();
 	const theme = useExtendedTheme();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const styles = useStyles(createStyles);
 
 	const openNote = () => router.push(`/editor?id=${note.id}`);
 

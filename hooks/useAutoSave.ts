@@ -11,7 +11,7 @@ type AutoSaveInput = {
 };
 
 export function useAutoSave({ id, title, content, isPinned }: AutoSaveInput) {
-	const { saveNote } = useNoteStore();
+	const saveNote = useNoteStore((state) => state.saveNote);
 
 	const timerRef = useRef<number | null>(null);
 	const lastSavedRef = useRef<Note | null>(null);
@@ -25,22 +25,33 @@ export function useAutoSave({ id, title, content, isPinned }: AutoSaveInput) {
 		}
 
 		const runSave = async () => {
-			setStatus("saving");
-			await saveNote({
-				id,
-				title: title.trim(),
-				content,
-				isPinned,
-				lastUpdated: Date.now(),
-			});
-			lastSavedRef.current = {
-				id,
-				content,
-				isPinned,
-				title: title.trim(),
-				lastUpdated: Date.now(),
-			};
-			setStatus("saved");
+			const previousId = lastSavedRef.current?.id;
+			const previousTitle = lastSavedRef.current?.title;
+			const previousContent = lastSavedRef.current?.content;
+			const previousIsPinned = lastSavedRef.current?.isPinned;
+			if (
+				id !== previousId ||
+				title !== previousTitle ||
+				content !== previousContent ||
+				isPinned !== previousIsPinned
+			) {
+				setStatus("saving");
+				await saveNote({
+					id,
+					title: title.trim(),
+					content,
+					isPinned,
+					lastUpdated: Date.now(),
+				});
+				lastSavedRef.current = {
+					id,
+					content,
+					isPinned,
+					title: title.trim(),
+					lastUpdated: Date.now(),
+				};
+				setStatus("saved");
+			}
 		};
 
 		timerRef.current = setTimeout(runSave, 2000);

@@ -51,8 +51,7 @@ function getGitHubConfig() {
 
 async function readLocalFileContent(filePath: string): Promise<string | null> {
 	try {
-		const localFilePath = `${NOTES_ROOT}${filePath}`;
-		const file = new File(localFilePath);
+		const file = new File(NOTES_ROOT, filePath);
 		if (file.exists) {
 			return await file.text();
 		}
@@ -63,30 +62,22 @@ async function readLocalFileContent(filePath: string): Promise<string | null> {
 	return null;
 }
 
-async function getFileSha(filePath: string): Promise<string | null> {
-	try {
-		const { owner, repo } = getGitHubConfig();
-		const octokit = getOctokit();
-		const response = await octokit.rest.repos.getContent({
-			owner,
-			repo,
-			path: filePath,
-		});
+async function getFileSha(filePath: string): Promise<string> {
+	const { owner, repo } = getGitHubConfig();
+	const octokit = getOctokit();
+	const response = await octokit.rest.repos.getContent({
+		owner,
+		repo,
+		path: filePath,
+	});
 
-		if (Array.isArray(response.data)) {
-			return null;
-		}
-
-		if ("sha" in response.data) {
-			return response.data.sha;
-		}
-	} catch (error: unknown) {
-		if ((error as { status?: number })?.status === 404) {
-			// File doesn't exist, which is fine for new files
-			return null;
-		}
-		throw error;
+	if (Array.isArray(response.data)) {
+		throw new Error(`Path is a directory, not a file: ${filePath}`);
 	}
+	if (!("sha" in response.data)) {
+		throw new Error(`No sha in response for ${filePath}`);
+	}
+	return response.data.sha;
 }
 
 export async function commitChanges(
@@ -113,12 +104,6 @@ export async function commitChanges(
 			try {
 				if (operation === "delete") {
 					const sha = await getFileSha(filePath);
-					if (!sha) {
-						console.warn(
-							`[GitApi] File ${filePath} does not exist, skipping delete`,
-						);
-						continue;
-					}
 
 					const response = await octokit.rest.repos.deleteFile({
 						owner,
@@ -138,14 +123,12 @@ export async function commitChanges(
 						continue;
 					}
 
-					// Encode content to base64
-					const encodedContent =
-						typeof Buffer !== "undefined"
-							? Buffer.from(content, "utf-8").toString("base64")
-							: btoa(unescape(encodeURIComponent(content)));
+					const encodedContent = Buffer.from(content, "utf-8").toString(
+						"base64",
+					);
 
-					// Get SHA if file exists (for updates)
-					const sha = await getFileSha(filePath);
+					const sha =
+						operation === "modify" ? await getFileSha(filePath) : undefined;
 
 					const response = await octokit.rest.repos.createOrUpdateFileContents({
 						owner,
@@ -153,18 +136,14 @@ export async function commitChanges(
 						path: filePath,
 						message: commitMessage,
 						content: encodedContent,
-						...(sha ? { sha } : {}), // Include SHA only if file exists (for updates)
+						...(sha !== undefined ? { sha } : {}),
 					});
 
 					lastCommitHash = response.data.commit.sha;
 				}
 			} catch (error: unknown) {
-				const msg =
-					error instanceof Error ? error.message : String(error);
-				console.warn(
-					`[GitApi] Failed to ${operation} file ${filePath}:`,
-					msg,
-				);
+				const msg = error instanceof Error ? error.message : String(error);
+				console.warn(`[GitApi] Failed to ${operation} file ${filePath}:`, msg);
 				// Continue with other changes even if one fails
 			}
 		}
@@ -174,8 +153,7 @@ export async function commitChanges(
 			commitHash: lastCommitHash,
 		};
 	} catch (error: unknown) {
-		const message =
-			error instanceof Error ? error.message : String(error);
+		const message = error instanceof Error ? error.message : String(error);
 		console.warn("[GitApi] Failed to commit changes:", message);
 		return {
 			success: false,

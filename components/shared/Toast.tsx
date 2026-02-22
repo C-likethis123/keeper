@@ -5,7 +5,7 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Platform, StyleSheet, Text } from "react-native";
 
 export const ToastOverlay = () => {
-	const { message } = useToastStore();
+	const message = useToastStore((s) => s.message);
 	const opacity = useRef(new Animated.Value(0)).current;
 	const styles = useStyles(createStyles);
 
