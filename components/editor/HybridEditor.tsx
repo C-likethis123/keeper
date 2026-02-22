@@ -1,4 +1,4 @@
-import { ScrollView } from "@/components/ScrollView";
+import { ScrollView } from "@/components/shared/ScrollView";
 import { useEditorState } from "@/contexts/EditorContext";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useOverlayPosition } from "@/hooks/useOverlayPosition";

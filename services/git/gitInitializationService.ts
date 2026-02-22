@@ -115,35 +115,35 @@ export class GitInitializationService {
 				// console.log('[GitInitializationService] Repository verified successfully after clone');
 			}
 			console.log(
-					"[GitInitializationService] Valid repository already exists, skipping clone",
-				);
-				const status = await this.checkRepositoryStatus();
+				"[GitInitializationService] Valid repository already exists, skipping clone",
+			);
+			const status = await this.checkRepositoryStatus();
+			console.log(
+				status.hasUncommitted
+					? "[GitInitializationService] Syncing with remote (may have uncommitted changes)..."
+					: "[GitInitializationService] Syncing with remote...",
+			);
+			const syncResult = await this.syncWithRemote();
+			if (syncResult.success) {
 				console.log(
-					status.hasUncommitted
-						? "[GitInitializationService] Syncing with remote (may have uncommitted changes)..."
-						: "[GitInitializationService] Syncing with remote...",
+					"[GitInitializationService] Successfully synced with remote",
 				);
-				const syncResult = await this.syncWithRemote();
-				if (syncResult.success) {
-					console.log(
-						"[GitInitializationService] Successfully synced with remote",
-					);
-					const updatedStatus = await this.checkRepositoryStatus();
-					return {
-						success: true,
-						wasCloned: false,
-						status: updatedStatus,
-					};
-				}
-				console.warn(
-					"[GitInitializationService] Failed to sync with remote:",
-					syncResult.error,
-				);
+				const updatedStatus = await this.checkRepositoryStatus();
 				return {
 					success: true,
 					wasCloned: false,
-					status,
+					status: updatedStatus,
 				};
+			}
+			console.warn(
+				"[GitInitializationService] Failed to sync with remote:",
+				syncResult.error,
+			);
+			return {
+				success: true,
+				wasCloned: false,
+				status,
+			};
 		} catch (error) {
 			return {
 				success: false,
@@ -180,8 +180,8 @@ export class GitInitializationService {
 			}
 
 			// Directory exists, verify it's a valid git repository
-			const headFile = new File(`${gitDirPath}/HEAD`);
-			const configFile = new File(`${gitDirPath}/config`);
+			const headFile = new File(gitDirPath, "HEAD");
+			const configFile = new File(gitDirPath, "config");
 
 			if (!headFile.exists) {
 				return {
@@ -315,8 +315,8 @@ export class GitInitializationService {
 			);
 
 			// Verify that key files exist after clone
-			const headFile = new File(`${NOTES_ROOT}.git/HEAD`);
-			const configFile = new File(`${NOTES_ROOT}.git/config`);
+			const headFile = new File(NOTES_ROOT, ".git/HEAD");
+			const configFile = new File(NOTES_ROOT, ".git/config");
 
 			// Wait a bit for file system operations to complete
 			await new Promise((resolve) => setTimeout(resolve, 200));
@@ -421,7 +421,7 @@ export class GitInitializationService {
 		try {
 			// First check if HEAD exists - if not, repository isn't properly initialized
 			try {
-				const headFile = new File(`${NOTES_ROOT}.git/HEAD`);
+				const headFile = new File(NOTES_ROOT, ".git/HEAD");
 				if (!headFile.exists) {
 					console.warn(
 						"[GitInitializationService] HEAD file not found - repository may not be fully cloned",

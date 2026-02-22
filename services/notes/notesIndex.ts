@@ -33,7 +33,7 @@ export class NotesIndexService {
 		await notesIndexDbDelete(noteId);
 	}
 
-	static async listAllNotes(
+	static async listNotes(
 		limit = 20,
 		offset?: number,
 		query?: string,

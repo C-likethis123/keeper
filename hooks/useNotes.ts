@@ -1,74 +1,53 @@
-import { PAGE_SIZE } from "@/constants/pagination";
 import {
-	type NoteIndexItem,
-	NotesIndexService,
-} from "@/services/notes/notesIndex";
-import type { Note } from "@/services/notes/types";
+	getNotesForList,
+	listKeyFromQuery,
+	useNoteStore,
+} from "@/stores/notes/noteStore";
+import { useShallow } from "zustand/react/shallow";
 import { useCallback, useEffect, useRef, useState } from "react";
-const toNote = (item: NoteIndexItem): Note => {
-	return {
-		id: item.noteId,
-		title: item.title,
-		content: item.summary,
-		lastUpdated: item.updatedAt,
-		isPinned: item.isPinned,
-	};
-};
+
 export default function useNotes() {
-	const [notes, setNotes] = useState<Note[]>([]);
+	const [query, setQuery] = useState("");
+	const listKey = listKeyFromQuery(query);
+	const notes = useNoteStore(
+		useShallow((state) => getNotesForList(state, listKey)),
+	);
+	const hasMore = useNoteStore(
+		(state) => state.noteLists[listKey]?.hasMore ?? true,
+	);
+	const fetchList = useNoteStore((state) => state.fetchList);
 	const [error, setError] = useState<string | null>(null);
-	const [offset, setOffset] = useState<number | undefined>(undefined);
-	const nextOffsetRef = useRef<number | undefined>(undefined);
-	const [hasMore, setHasMore] = useState(true);
 	const [isLoading, setIsLoading] = useState(false);
 
-	const [query, setQuery] = useState("");
+	const loadingRef = useRef(false);
 	const prevQueryRef = useRef(query);
 	const fetchNotes = useCallback(
-		async (offsetOverride?: number) => {
-			if (isLoading) return;
+		async (append: boolean) => {
+			if (loadingRef.current) return;
+			loadingRef.current = true;
 			setIsLoading(true);
-			const off = offsetOverride !== undefined ? offsetOverride : offset;
 			try {
-				const result = await NotesIndexService.listAllNotes(
-					PAGE_SIZE,
-					off,
-					query,
-				);
-				const newItems = result.items.map(toNote);
-				const isLoadMore = (off ?? 0) > 0;
-				setNotes((prev) => {
-					const combined = isLoadMore ? [...prev, ...newItems] : newItems;
-					const seen = new Set<string>();
-					return combined.filter((n) => {
-						if (seen.has(n.id)) return false;
-						seen.add(n.id);
-						return true;
-					});
-				});
-				nextOffsetRef.current = result.cursor?.offset;
-				setHasMore(!!result.cursor);
-			} catch (error: unknown) {
-				if (error instanceof Error) {
-					setError(error.message);
+				await fetchList(listKey, { append });
+			} catch (err: unknown) {
+				if (err instanceof Error) {
+					setError(err.message);
 				}
 			} finally {
+				loadingRef.current = false;
 				setIsLoading(false);
 			}
 		},
-		[query, offset, isLoading],
+		[listKey, fetchList],
 	);
 
 	const loadMoreNotes = useCallback(async () => {
 		if (!hasMore || isLoading) return;
-		setOffset(nextOffsetRef.current);
-	}, [hasMore, isLoading]);
+		await fetchNotes(true);
+	}, [hasMore, isLoading, fetchNotes]);
 
 	const handleRefresh = useCallback(async () => {
-		setOffset(undefined);
-		setHasMore(true);
 		setError(null);
-		await fetchNotes(0);
+		await fetchNotes(false);
 	}, [fetchNotes]);
 
 	useEffect(() => {
@@ -76,20 +55,14 @@ export default function useNotes() {
 		const isQueryChange = prevQueryRef.current !== query;
 		if (isQueryChange) {
 			prevQueryRef.current = query;
-			setOffset(undefined);
-			setHasMore(true);
 		}
 		const timeoutId = isQueryChange
 			? setTimeout(() => {
-					(async () => {
-						if (!cancelled) fetchNotes(0);
-					})();
+					if (!cancelled) fetchNotes(false);
 				}, 300)
 			: undefined;
 		if (!isQueryChange) {
-			(async () => {
-				if (!cancelled) fetchNotes();
-			})();
+			fetchNotes(false);
 		}
 		return () => {
 			cancelled = true;
@@ -99,7 +72,6 @@ export default function useNotes() {
 
 	return {
 		notes,
-		setNotes,
 		hasMore,
 		isLoading,
 		loadMoreNotes,

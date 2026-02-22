@@ -1,4 +1,4 @@
-import Loader from "@/components/Loader";
+import Loader from "@/components/shared/Loader";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";

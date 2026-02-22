@@ -5,6 +5,16 @@ import matter from "gray-matter";
 import { NOTES_ROOT } from "./Notes";
 import type { Note } from "./types";
 
+// Persists notes to the file system
+
+// application level: notes crud
+
+// application cache: a hook or a zustand store - basically what `useNoteStore` is doing now.
+
+// persistence layer: notes DB
+
+// there's two types of data: notes and note indices
+
 export class NoteService {
 	static instance = new NoteService();
 

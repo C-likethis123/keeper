@@ -1,8 +1,8 @@
-import Loader from "@/components/Loader";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { HybridEditor } from "@/components/editor/HybridEditor";
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
+import Loader from "@/components/shared/Loader";
 import { EditorProvider } from "@/contexts/EditorContext";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";

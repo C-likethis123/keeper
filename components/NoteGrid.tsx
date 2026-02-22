@@ -8,7 +8,7 @@ import {
 	View,
 	useWindowDimensions,
 } from "react-native";
-import EmptyState from "./EmptyState";
+import EmptyState from "./shared/EmptyState";
 
 export default function NoteGrid({
 	notes,

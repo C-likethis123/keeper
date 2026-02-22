@@ -1,7 +1,7 @@
-import ErrorScreen from "@/components/ErrorScreen";
-import Loader from "@/components/Loader";
 import NoteGrid from "@/components/NoteGrid";
-import { SearchBar } from "@/components/SearchBar";
+import ErrorScreen from "@/components/shared/ErrorScreen";
+import Loader from "@/components/shared/Loader";
+import { SearchBar } from "@/components/shared/SearchBar";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
 import type { Note } from "@/services/notes/types";
@@ -16,7 +16,6 @@ import { StyleSheet, TouchableOpacity, View } from "react-native";
 export default function Index() {
 	const {
 		notes,
-		setNotes,
 		query,
 		hasMore,
 		isLoading,
@@ -33,22 +32,20 @@ export default function Index() {
 		async (note: Note) => {
 			try {
 				await deleteNote(note.id);
-				setNotes((prev: Note[]) => prev.filter((n: Note) => n.id !== note.id));
 				showToast(`Deleted "${note.title}"`);
 			} catch (e) {
 				console.warn("Failed to delete note:", e);
 				showToast("Failed to delete note");
 			}
 		},
-		[deleteNote, setNotes, showToast],
+		[deleteNote, showToast],
 	);
 
 	const handlePinToggle = useCallback(
 		async (updated: Note) => {
-			setNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
 			await saveNote(updated);
 		},
-		[saveNote, setNotes],
+		[saveNote],
 	);
 
 	const styles = useMemo(() => createStyles(theme), [theme]);
@@ -92,7 +89,6 @@ export default function Index() {
 						isPinned: false,
 					};
 					await saveNote(newNote);
-					setNotes((prev) => [...prev, newNote]);
 					router.push(`/editor?id=${newNote.id}`);
 				}}
 			>

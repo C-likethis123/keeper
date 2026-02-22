@@ -3,14 +3,16 @@ import { Buffer } from "buffer";
 global.Buffer = Buffer;
 globalThis.Buffer = Buffer;
 
-// Import WDYR first, before React imports (development only)
-require("../wdyr");
+if (__DEV__) {
+	require("../wdyr");
+}
 
-import { ToastOverlay } from "@/components/Toast";
+import { ToastOverlay } from "@/components/shared/Toast";
 import { createDarkTheme } from "@/constants/themes/darkTheme";
 import { createLightTheme } from "@/constants/themes/lightTheme";
 import { GitInitializationService } from "@/services/git/gitInitializationService";
 import { notesIndexDbRebuildFromDisk } from "@/services/notes/notesIndexDb";
+import { useNoteStore } from "@/stores/notes/noteStore";
 import { useThemeStore } from "@/stores/themeStore";
 import { checkForUpdates } from "@/utils/checkForUpdates";
 import { ThemeProvider } from "@react-navigation/native";
@@ -31,7 +33,7 @@ export default function RootLayout() {
 	const hydrateThemeStore = useThemeStore((s) => s.hydrate);
 	const systemColorScheme = useColorScheme();
 	const [isHydrated, setIsHydrated] = useState(hasHydratedOnce);
-
+	const clearCache = useNoteStore((s) => s.clearCache);
 	useEffect(() => {
 		if (!__DEV__) {
 			checkForUpdates();
@@ -50,6 +52,7 @@ export default function RootLayout() {
 						wasCloned: result.wasCloned,
 						branch: result.status?.currentBranch,
 					});
+					clearCache();
 					if (result.wasCloned) {
 						console.log("[App] Git repository was cloned, indexing notes...");
 						await notesIndexDbRebuildFromDisk();
@@ -65,7 +68,7 @@ export default function RootLayout() {
 			hasHydratedOnce = true;
 			setIsHydrated(true);
 		});
-	}, [hydrateThemeStore]);
+	}, [hydrateThemeStore, clearCache]);
 
 	// Determine which theme to use
 	const effectiveTheme = useMemo(() => {
