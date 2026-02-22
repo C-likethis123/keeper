@@ -10,8 +10,7 @@ import { ToastOverlay } from "@/components/Toast";
 import { createDarkTheme } from "@/constants/themes/darkTheme";
 import { createLightTheme } from "@/constants/themes/lightTheme";
 import { GitInitializationService } from "@/services/git/gitInitializationService";
-import { notesIndexDbEnsurePopulated } from "@/services/notes/notesIndexDb";
-import { useNotesMetaStore } from "@/stores/notes/metaStore";
+import { notesIndexDbRebuildFromDisk } from "@/services/notes/notesIndexDb";
 import { useThemeStore } from "@/stores/themeStore";
 import { checkForUpdates } from "@/utils/checkForUpdates";
 import { ThemeProvider } from "@react-navigation/native";
@@ -43,15 +42,6 @@ export default function RootLayout() {
 				console.error("[App] Theme hydrate error:", e);
 			},
 		);
-		const notesP = useNotesMetaStore
-			.getState()
-			.hydrate()
-			.then(
-				() => {},
-				(e) => {
-					console.error("[App] Notes hydrate error:", e);
-				},
-			);
 		const gitP = (async () => {
 			try {
 				const result = await GitInitializationService.instance.initialize();
@@ -62,7 +52,7 @@ export default function RootLayout() {
 					});
 					if (result.wasCloned) {
 						console.log("[App] Git repository was cloned, indexing notes...");
-						await notesIndexDbEnsurePopulated();
+						await notesIndexDbRebuildFromDisk();
 					}
 				} else {
 					console.error("[App] Git initialization failed:", result.error);
@@ -71,7 +61,7 @@ export default function RootLayout() {
 				console.error("[App] Git initialization error:", error);
 			}
 		})();
-		Promise.allSettled([themeP, notesP, gitP]).then(() => {
+		Promise.allSettled([themeP, gitP]).then(() => {
 			hasHydratedOnce = true;
 			setIsHydrated(true);
 		});

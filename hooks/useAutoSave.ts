@@ -1,6 +1,5 @@
 import type { SaveStatus } from "@/components/SaveIndicator";
 import type { Note } from "@/services/notes/types";
-import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { useNoteStore } from "@/stores/notes/noteStore";
 import { useEffect, useRef, useState } from "react";
 
@@ -13,7 +12,6 @@ type AutoSaveInput = {
 
 export function useAutoSave({ id, title, content, isPinned }: AutoSaveInput) {
 	const { saveNote } = useNoteStore();
-	const { setPinned } = useNotesMetaStore();
 
 	const timerRef = useRef<number | null>(null);
 	const lastSavedRef = useRef<Note | null>(null);
@@ -27,24 +25,6 @@ export function useAutoSave({ id, title, content, isPinned }: AutoSaveInput) {
 		}
 
 		const runSave = async () => {
-			const last = lastSavedRef.current;
-			const onlyPinChanged =
-				last &&
-				title.trim() === last.title &&
-				last.content === content &&
-				last.isPinned !== isPinned;
-			if (onlyPinChanged) {
-				await setPinned(id, isPinned);
-				lastSavedRef.current = {
-					id,
-					content,
-					isPinned,
-					title: title.trim(),
-					lastUpdated: Date.now(),
-				};
-				return;
-			}
-
 			setStatus("saving");
 			await saveNote({
 				id,
@@ -70,7 +50,7 @@ export function useAutoSave({ id, title, content, isPinned }: AutoSaveInput) {
 				clearTimeout(timerRef.current);
 			}
 		};
-	}, [id, title, content, isPinned, saveNote, setPinned]);
+	}, [id, title, content, isPinned, saveNote]);
 
 	return { status };
 }

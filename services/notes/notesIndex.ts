@@ -5,7 +5,6 @@ import {
 	notesIndexDbListAll,
 	notesIndexDbUpsert,
 } from "./notesIndexDb";
-import { NotesMetaService } from "./notesMetaService";
 
 export interface NoteIndexItem {
 	noteId: string;
@@ -27,14 +26,10 @@ export class NotesIndexService {
 	}
 
 	static async upsertNote(item: NoteIndexItem): Promise<void> {
-		await NotesMetaService.setPinned(item.noteId, item.isPinned);
-		await NotesMetaService.setTitle(item.noteId, item.title);
 		await notesIndexDbUpsert(item);
 	}
 
 	static async deleteNote(noteId: string): Promise<void> {
-		await NotesMetaService.removePin(noteId);
-		await NotesMetaService.removeTitle(noteId);
 		await notesIndexDbDelete(noteId);
 	}
 

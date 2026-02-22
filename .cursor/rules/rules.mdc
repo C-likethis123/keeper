@@ -11,6 +11,7 @@ alwaysApply: true
   - Organize files by feature, grouping related components, hooks, and styles.
   - When singleton files are written, the public methods should be static.
   - Adhere to Biome coding conventions
+  - When using file paths, opt to use Paths.join, File(X, X), or Directory(X,X)
   
   Naming Conventions:
   - Use camelCase for variable and function names (e.g., `isFetchingData`, `handleUserInput`).

@@ -1,7 +1,7 @@
 import { GitService } from "@/services/git/gitService";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
-import { NotesMetaService } from "@/services/notes/notesMetaService";
 import { Directory, File } from "expo-file-system";
+import matter from "gray-matter";
 import { NOTES_ROOT } from "./Notes";
 import type { Note } from "./types";
 
@@ -27,18 +27,14 @@ export class NoteService {
 		try {
 			const file = new File(NOTES_ROOT, `${id}.md`);
 			if (file.exists) {
-				const content = await file.text();
+				const { data, content } = matter(await file.text());
 				const mtime = file.modificationTime ?? 0;
-				const [isPinned, title] = await Promise.all([
-					NotesMetaService.getPinned(id),
-					NotesMetaService.getTitle(id),
-				]);
 				return {
 					id,
-					title,
+					title: data.title,
 					content,
 					lastUpdated: mtime,
-					isPinned,
+					isPinned: data.pinned,
 				};
 			}
 		} catch (localError) {
@@ -51,14 +47,20 @@ export class NoteService {
 	static async saveNote(note: Note): Promise<Note> {
 		const id = note.id;
 		const file = new File(NOTES_ROOT, `${id}.md`);
-		await file.write(note.content);
+		await file.write(
+			matter.stringify(note.content, {
+				frontmatter: {
+					pinned: note.isPinned,
+					title: note.title,
+					id: note.id,
+				},
+			}),
+		);
 
 		const pinnedState = !!note.isPinned;
 		const title = note.title.trim();
 		const summary = extractSummary(note.content);
 
-		await NotesMetaService.setPinned(id, pinnedState);
-		await NotesMetaService.setTitle(id, title);
 		await NotesIndexService.upsertNote({
 			noteId: id,
 			summary,
@@ -97,34 +99,5 @@ export class NoteService {
 			console.warn("Failed to delete note:", e);
 			return false;
 		}
-	}
-
-	static async scanNotes(folderPath: string): Promise<Note[]> {
-		const metadata: Note[] = [];
-		try {
-			const dir = new Directory(folderPath);
-			const entries = dir.list();
-
-			for (const entry of entries) {
-				if (entry instanceof File && entry.name.endsWith(".md")) {
-					const noteId = entry.name.replace(/\.md$/, "");
-					const indexItem = await NotesIndexService.instance.getNote(noteId);
-					const content = await entry.text();
-					const [storedTitle] = await Promise.all([
-						NotesMetaService.getTitle(noteId),
-					]);
-					metadata.push({
-						id: noteId,
-						title: storedTitle,
-						content,
-						lastUpdated: entry.modificationTime ?? 0,
-						isPinned: indexItem?.isPinned ?? false,
-					});
-				}
-			}
-		} catch (e) {
-			console.warn("Failed to scan notes:", e);
-		}
-		return metadata;
 	}
 }

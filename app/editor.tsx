@@ -8,7 +8,6 @@ import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useLoadNote } from "@/hooks/useLoadNote";
 import type { Note } from "@/services/notes/types";
-import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { useNoteStore } from "@/stores/notes/noteStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -28,14 +27,12 @@ export default function NoteEditorScreen() {
 	const theme = useExtendedTheme();
 
 	const { deleteNote, saveNote } = useNoteStore();
-	const { setPinned } = useNotesMetaStore();
 
 	const { isLoading, error, note, setNote } = useLoadNote(id as string);
 
 	const togglePin = async () => {
 		const next = !note.isPinned;
 		setNote((prev: Note) => ({ ...prev, isPinned: next }));
-		await setPinned(note.id, next);
 	};
 
 	const { status } = useAutoSave({

@@ -1,9 +1,9 @@
 import { Directory, File } from "expo-file-system";
 import * as SQLite from "expo-sqlite";
+import matter from "gray-matter";
 import { NOTES_ROOT } from "./Notes";
 import type { NoteIndexItem } from "./notesIndex";
 import { extractSummary } from "./notesIndex";
-import { NotesMetaService } from "./notesMetaService";
 
 const DB_NAME = "notes-index.db";
 const TABLE = "note_index";
@@ -137,33 +137,19 @@ export async function notesIndexDbListAll(
 	return { items, cursor: nextCursor };
 }
 
-export async function notesIndexDbEnsurePopulated(): Promise<void> {
-	const database = await getDb();
-	const row = await database.getFirstAsync<{ n: number }>(
-		`SELECT COUNT(*) as n FROM ${TABLE}`,
-	);
-	if ((row?.n ?? 0) > 0) return;
-	await notesIndexDbRebuildFromDisk();
-}
-
 export async function notesIndexDbRebuildFromDisk(): Promise<void> {
 	const dir = new Directory(NOTES_ROOT);
 	if (!dir.exists) return;
-	const [pinnedMap, titlesMap] = await Promise.all([
-		NotesMetaService.getPinnedMap(),
-		NotesMetaService.getTitlesMap(),
-	]);
 	const entries = dir.list();
 	const database = await getDb();
+	await database.runAsync(`DELETE FROM ${TABLE}`);
 	await database.withTransactionAsync(async () => {
 		for (const entry of entries) {
 			if (!(entry instanceof File) || !entry.name.endsWith(".md")) continue;
 			const id = entry.name.replace(/\.md$/, "");
-			const content = await entry.text();
+			const { content, data } = matter(await entry.text());
 			const mtime = entry.modificationTime ?? 0;
-			const title =
-				titlesMap[id] ??
-				decodeURIComponent(entry.name.replace(/\.md$/, "") || "Untitled");
+			const title = data.title;
 			await database.runAsync(
 				`INSERT INTO ${TABLE} (id, title, summary, is_pinned, updated_at)
 				 VALUES (?, ?, ?, ?, ?)
@@ -175,7 +161,7 @@ export async function notesIndexDbRebuildFromDisk(): Promise<void> {
 				id,
 				title,
 				extractSummary(content),
-				pinnedMap[id] ? 1 : 0,
+				data.pinned ? 1 : 0,
 				mtime,
 			);
 		}

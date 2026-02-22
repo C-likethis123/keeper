@@ -5,7 +5,6 @@ import { SearchBar } from "@/components/SearchBar";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
 import type { Note } from "@/services/notes/types";
-import { useNotesMetaStore } from "@/stores/notes/metaStore";
 import { useNoteStore } from "@/stores/notes/noteStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -29,7 +28,6 @@ export default function Index() {
 	const theme = useExtendedTheme();
 	const { showToast } = useToastStore();
 	const { saveNote, deleteNote } = useNoteStore();
-	const { setPinned } = useNotesMetaStore();
 
 	const handleDeleteNote = useCallback(
 		async (note: Note) => {
@@ -48,9 +46,9 @@ export default function Index() {
 	const handlePinToggle = useCallback(
 		async (updated: Note) => {
 			setNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
-			await setPinned(updated.id, updated.isPinned ?? false);
+			await saveNote(updated);
 		},
-		[setNotes, setPinned],
+		[saveNote, setNotes],
 	);
 
 	const styles = useMemo(() => createStyles(theme), [theme]);
