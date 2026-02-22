@@ -1,3 +1,5 @@
+import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -15,6 +17,7 @@ export default function EmptyState({
 	actionLabel,
 	onActionPress,
 }: EmptyStateProps) {
+	const styles = useStyles(createStyles);
 	const showAction = actionLabel && onActionPress;
 
 	return (
@@ -31,7 +34,6 @@ export default function EmptyState({
 						<Ionicons
 							name="settings-outline"
 							size={18}
-							color="#fff"
 							style={styles.buttonIcon}
 						/>
 						<Text style={styles.buttonLabel}>{actionLabel}</Text>
@@ -42,52 +44,55 @@ export default function EmptyState({
 	);
 }
 
-const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-		justifyContent: "center",
-		alignItems: "center",
-		padding: 32,
-	},
+function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+	return StyleSheet.create({
+		container: {
+			flex: 1,
+			justifyContent: "center",
+			alignItems: "center",
+			padding: 32,
+		},
 
-	content: {
-		alignItems: "center",
-		maxWidth: 420,
-	},
+		content: {
+			alignItems: "center",
+			maxWidth: 420,
+		},
 
-	title: {
-		marginTop: 16,
-		fontSize: 20,
-		fontWeight: "600",
-		color: "rgba(60, 60, 67, 0.85)",
-		textAlign: "center",
-	},
+		title: {
+			marginTop: 16,
+			fontSize: 20,
+			fontWeight: "600",
+			color: theme.colors.text,
+			textAlign: "center",
+		},
 
-	subtitle: {
-		marginTop: 8,
-		fontSize: 15,
-		color: "rgba(60, 60, 67, 0.6)",
-		textAlign: "center",
-		lineHeight: 20,
-	},
+		subtitle: {
+			marginTop: 8,
+			fontSize: 15,
+			color: theme.colors.textMuted,
+			textAlign: "center",
+			lineHeight: 20,
+		},
 
-	button: {
-		flexDirection: "row",
-		alignItems: "center",
-		marginTop: 24,
-		paddingHorizontal: 20,
-		paddingVertical: 12,
-		borderRadius: 24,
-		backgroundColor: "#2563eb", // primary
-	},
+		button: {
+			flexDirection: "row",
+			alignItems: "center",
+			marginTop: 24,
+			paddingHorizontal: 20,
+			paddingVertical: 12,
+			borderRadius: 24,
+			backgroundColor: theme.colors.primary,
+		},
 
-	buttonIcon: {
-		marginRight: 8,
-	},
+		buttonIcon: {
+			marginRight: 8,
+			color: theme.colors.primaryContrast,
+		},
 
-	buttonLabel: {
-		color: "#fff",
-		fontWeight: "600",
-		fontSize: 15,
-	},
-});
+		buttonLabel: {
+			color: theme.colors.primaryContrast,
+			fontWeight: "600",
+			fontSize: 15,
+		},
+	});
+}

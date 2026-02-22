@@ -96,14 +96,13 @@ export function CodeBlockHeader({
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	const headerTextColor = "#fff";
-	const headerBgColor = theme.custom.codeEditor?.background || "#1e1e1e";
-	const headerSelectedBg = withOpacity(headerBgColor, 0.5);
+	const { codeEditor } = theme.custom;
+	const headerSelectedBg = withOpacity(codeEditor.background, 0.5);
 	return StyleSheet.create({
 		container: {
 			paddingHorizontal: 12,
 			paddingVertical: 6,
-			backgroundColor: headerBgColor,
+			backgroundColor: codeEditor.headerBackground,
 			borderTopLeftRadius: 8,
 			borderTopRightRadius: 8,
 			flexDirection: "row",
@@ -116,24 +115,24 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			gap: 8,
 		},
 		languageText: {
-			color: headerTextColor,
+			color: codeEditor.headerText,
 			fontSize: 14,
 		},
 		actionButtonIcon: {
-			color: headerTextColor,
+			color: codeEditor.headerText,
 		},
 		languagePicker: {
 			position: "absolute",
 			top: "100%",
 			left: 0,
 			right: 0,
-			backgroundColor: headerBgColor,
+			backgroundColor: codeEditor.headerBackground,
 			borderBottomLeftRadius: 8,
 			borderBottomRightRadius: 8,
 			maxHeight: 200,
 			zIndex: 1000,
 			elevation: 5,
-			shadowColor: "#000",
+			shadowColor: theme.colors.shadow,
 			shadowOffset: { width: 0, height: 2 },
 			shadowOpacity: 0.25,
 			shadowRadius: 3.84,
@@ -146,7 +145,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			backgroundColor: headerSelectedBg,
 		},
 		languageOptionText: {
-			color: headerTextColor,
+			color: codeEditor.headerText,
 			fontSize: 14,
 		},
 		languageOptionTextSelected: {

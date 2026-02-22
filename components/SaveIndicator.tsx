@@ -1,6 +1,7 @@
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import type { ExtendedTheme } from "@/constants/themes/types";
+import { useStyles } from "@/hooks/useStyles";
 import { MaterialIcons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 export type SaveStatus = "idle" | "saving" | "saved";
@@ -20,20 +21,7 @@ const iconNameMap = {
 } as const;
 
 export function SaveIndicator({ status }: Props) {
-	const theme = useExtendedTheme();
-	const styles = useMemo(() => createStyles(theme), [theme]);
-
-	// Use theme-aware colors with better contrast
-	const iconColor = useMemo(() => {
-		switch (status) {
-			case "saving":
-				return theme.dark ? "#fbbf24" : "#f59e0b"; // Lighter amber for dark mode
-			case "saved":
-				return theme.dark ? "#4ade80" : "#16a34a"; // Lighter green for dark mode
-			default:
-				return theme.colors.text;
-		}
-	}, [status, theme]);
+	const styles = useStyles(createStyles);
 
 	if (status === "idle") {
 		return null;
@@ -42,7 +30,11 @@ export function SaveIndicator({ status }: Props) {
 	const iconName = iconNameMap[status];
 	return (
 		<View style={styles.container}>
-			<MaterialIcons name={iconName} size={16} color={iconColor} />
+			<MaterialIcons
+				name={iconName}
+				size={16}
+				style={status === "saving" ? styles.savingIcon : styles.savedIcon}
+			/>
 			<View style={styles.textContainer}>
 				<Text style={styles.title} numberOfLines={1}>
 					{titleMap[status]}
@@ -51,8 +43,7 @@ export function SaveIndicator({ status }: Props) {
 		</View>
 	);
 }
-
-function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+function createStyles(theme: ExtendedTheme) {
 	return StyleSheet.create({
 		container: {
 			flexDirection: "row",
@@ -71,6 +62,15 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		subtitle: {
 			fontSize: 11,
 			color: theme.colors.textMuted,
+		},
+		icon: {
+			color: theme.colors.text,
+		},
+		savingIcon: {
+			color: theme.colors.statusSaving,
+		},
+		savedIcon: {
+			color: theme.colors.statusSaved,
 		},
 	});
 }

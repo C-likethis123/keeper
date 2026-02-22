@@ -7,6 +7,10 @@ export type ExtendedThemeColors = Theme["colors"] & {
 	textFaded: string;
 	textDisabled: string;
 	primaryPressed: string;
+	shadow: string;
+	primaryContrast: string;
+	statusSaving: string;
+	statusSaved: string;
 };
 
 export interface SyntaxTheme {
@@ -29,6 +33,7 @@ export interface SyntaxTheme {
 export interface CodeEditorTheme {
 	background: string;
 	headerBackground: string;
+	headerText: string;
 	border: string;
 	icon: string;
 	dropdownText: string;
@@ -47,6 +52,7 @@ export interface ExtendedTheme extends Omit<Theme, "colors"> {
 	custom: {
 		syntax: SyntaxTheme;
 		codeEditor: CodeEditorTheme;
+		toast: { background: string; text: string };
 		editor: {
 			blockBackground: string;
 			blockFocused: string;

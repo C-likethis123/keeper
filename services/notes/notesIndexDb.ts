@@ -149,7 +149,7 @@ export async function notesIndexDbRebuildFromDisk(): Promise<void> {
 			const id = entry.name.replace(/\.md$/, "");
 			const { content, data } = matter(await entry.text());
 			const mtime = entry.modificationTime ?? 0;
-			const title = data.title;
+			const title = data.title ?? "";
 			await database.runAsync(
 				`INSERT INTO ${TABLE} (id, title, summary, is_pinned, updated_at)
 				 VALUES (?, ?, ?, ?, ?)

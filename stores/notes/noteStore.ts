@@ -18,8 +18,15 @@ export function listKeyFromQuery(query: string): string {
 	return query.trim();
 }
 
-export function getNoteById(state: NoteStore, id: string): Note | undefined {
-	return state.notes[id];
+const DEFAULT_NOTE: Note = {
+	id: "",
+	title: "",
+	content: "",
+	lastUpdated: 0,
+	isPinned: false,
+};
+export function getNoteById(state: NoteStore, id: string): Note {
+	return state.notes[id] ?? DEFAULT_NOTE;
 }
 
 const EMPTY_LIST_ENTRY: NoteListEntry = { ids: [], hasMore: false };

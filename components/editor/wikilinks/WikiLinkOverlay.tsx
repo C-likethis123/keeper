@@ -82,7 +82,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			maxWidth: 200,
 			backgroundColor: theme.colors.card,
 			borderRadius: 8,
-			shadowColor: "#000",
+			shadowColor: theme.colors.shadow,
 			shadowOffset: { width: 0, height: 2 },
 			shadowOpacity: 0.25,
 			shadowRadius: 8,
@@ -102,7 +102,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			minHeight: ITEM_HEIGHT,
 		},
 		itemSelected: {
-			// Use a more visible background color with better contrast
 			backgroundColor: theme.colors.primary,
 		},
 		itemPressed: {
@@ -114,8 +113,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			color: theme.colors.text,
 		},
 		itemTextSelected: {
-			// Use white text on primary background for maximum contrast
-			color: "#FFFFFF",
+			color: theme.colors.primaryContrast,
 			fontWeight: "600",
 		},
 		loadingContainer: {

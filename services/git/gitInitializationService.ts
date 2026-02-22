@@ -163,11 +163,10 @@ export class GitInitializationService {
 		reason?: string;
 	}> {
 		try {
-			const gitDirPath = `${NOTES_ROOT}.git`;
-			const gitDir = new Directory(gitDirPath);
+			const gitDir = new Directory(NOTES_ROOT, ".git");
 			const dirExists = gitDir.exists;
 			console.log(
-				`[GitInitializationService] Checking ${gitDirPath}: ${dirExists ? "EXISTS" : "NOT FOUND"}`,
+				`[GitInitializationService] Checking ${gitDir.uri}: ${dirExists ? "EXISTS" : "NOT FOUND"}`,
 			);
 
 			// If directory doesn't exist, repo doesn't exist
@@ -180,8 +179,8 @@ export class GitInitializationService {
 			}
 
 			// Directory exists, verify it's a valid git repository
-			const headFile = new File(gitDirPath, "HEAD");
-			const configFile = new File(gitDirPath, "config");
+			const headFile = new File(gitDir, "HEAD");
+			const configFile = new File(gitDir, "config");
 
 			if (!headFile.exists) {
 				return {
