@@ -1,6 +1,6 @@
 import type { SaveStatus } from "@/components/SaveIndicator";
+import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
-import { useNoteStore } from "@/stores/notes/noteStore";
 import { useEffect, useRef, useState } from "react";
 
 type AutoSaveInput = {
@@ -11,8 +11,6 @@ type AutoSaveInput = {
 };
 
 export function useAutoSave({ id, title, content, isPinned }: AutoSaveInput) {
-	const saveNote = useNoteStore((state) => state.saveNote);
-
 	const timerRef = useRef<number | null>(null);
 	const lastSavedRef = useRef<Note | null>(null);
 	const [status, setStatus] = useState<SaveStatus>("idle");
@@ -36,7 +34,7 @@ export function useAutoSave({ id, title, content, isPinned }: AutoSaveInput) {
 				isPinned !== previousIsPinned
 			) {
 				setStatus("saving");
-				await saveNote({
+				await NoteService.saveNote({
 					id,
 					title: title.trim(),
 					content,
@@ -61,7 +59,7 @@ export function useAutoSave({ id, title, content, isPinned }: AutoSaveInput) {
 				clearTimeout(timerRef.current);
 			}
 		};
-	}, [id, title, content, isPinned, saveNote]);
+	}, [id, title, content, isPinned]);
 
 	return { status };
 }

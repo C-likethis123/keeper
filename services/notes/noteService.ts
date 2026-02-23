@@ -9,8 +9,6 @@ import type { Note } from "./types";
 
 // application level: notes crud
 
-// application cache: a hook or a zustand store - basically what `useNoteStore` is doing now.
-
 // persistence layer: notes DB
 
 // there's two types of data: notes and note indices
@@ -37,7 +35,8 @@ export class NoteService {
 		try {
 			const file = new File(NOTES_ROOT, `${id}.md`);
 			if (file.exists) {
-				const { data, content } = matter(await file.text());
+				const result = matter(await file.text());
+				const { data, content } = result;
 				const mtime = file.modificationTime ?? 0;
 				return {
 					id,
@@ -54,18 +53,15 @@ export class NoteService {
 		return null;
 	}
 
-	// this is called multiple times with empty content!
 	static async saveNote(note: Note, isNewNote = false): Promise<Note> {
 		const id = note.id;
 		const pinnedState = !!note.isPinned;
 		const title = (note.title ?? "").trim();
 		const file = new File(NOTES_ROOT, `${id}.md`);
 		const content = matter.stringify(note.content, {
-			frontmatter: {
-				pinned: pinnedState,
-				title,
-				id: note.id,
-			},
+			pinned: pinnedState,
+			title,
+			id: note.id,
 		});
 		await file.write(content);
 		const summary = extractSummary(note.content);

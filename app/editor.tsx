@@ -1,5 +1,6 @@
 import NoteEditorView from "@/components/NoteEditorView";
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
+import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useLoadNote } from "@/hooks/useLoadNote";
@@ -16,10 +17,31 @@ export default function NoteEditorScreen() {
 
 	const styles = useStyles(createStyles);
 
+	if (isLoading) {
+		return (
+			<View style={styles.screen}>
+				<View style={styles.content}>
+					<Loader />
+				</View>
+			</View>
+		);
+	}
+	if (error || !note) {
+		return (
+			<View style={styles.screen}>
+				<View style={styles.content}>
+					<ErrorScreen
+						errorMessage={error ?? "Note not found"}
+						onRetry={() => {}}
+					/>
+				</View>
+			</View>
+		);
+	}
 	return (
 		<View style={styles.screen}>
 			<View style={styles.content}>
-				{isLoading ? <Loader /> : <NoteEditorView note={note} />}
+				<NoteEditorView note={note} />
 			</View>
 		</View>
 	);

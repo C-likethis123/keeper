@@ -1,17 +1,18 @@
-import { getNoteById, useNoteStore } from "@/stores/notes/noteStore";
+import { NoteService } from "@/services/notes/noteService";
+import type { Note } from "@/services/notes/types";
 import { useEffect, useState } from "react";
 
 export function useLoadNote(id: string) {
-	const note = useNoteStore((state) => getNoteById(state, id));
+	const [note, setNote] = useState<Note | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const loadNote = useNoteStore((state) => state.loadNote);
 
 	useEffect(() => {
 		setIsLoading(true);
 		setError(null);
-		loadNote(id)
+		NoteService.loadNote(id)
 			.then((loaded) => {
+				setNote(loaded);
 				if (!loaded) {
 					setError("Note not found");
 				}
@@ -20,7 +21,8 @@ export function useLoadNote(id: string) {
 				setError(err instanceof Error ? err.message : String(err));
 			})
 			.finally(() => setIsLoading(false));
-	}, [id, loadNote]);
+	}, [id]);
+
 	return {
 		isLoading,
 		error,

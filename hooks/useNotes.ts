@@ -1,33 +1,57 @@
+import { PAGE_SIZE } from "@/constants/pagination";
 import {
-	getNotesForList,
-	listKeyFromQuery,
-	useNoteStore,
-} from "@/stores/notes/noteStore";
-import { useShallow } from "zustand/react/shallow";
+	NotesIndexService,
+	type NoteIndexItem,
+} from "@/services/notes/notesIndex";
+import type { Note } from "@/services/notes/types";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+function listKeyFromQuery(query: string): string {
+	return query.trim();
+}
+
+function toNote(item: NoteIndexItem): Note {
+	return {
+		id: item.noteId,
+		title: item.title,
+		content: item.summary,
+		lastUpdated: item.updatedAt,
+		isPinned: item.isPinned,
+	};
+}
 
 export default function useNotes() {
 	const [query, setQuery] = useState("");
 	const listKey = listKeyFromQuery(query);
-	const notes = useNoteStore(
-		useShallow((state) => getNotesForList(state, listKey)),
-	);
-	const hasMore = useNoteStore(
-		(state) => state.noteLists[listKey]?.hasMore ?? true,
-	);
-	const fetchList = useNoteStore((state) => state.fetchList);
+	const [notes, setNotes] = useState<Note[]>([]);
+	const [hasMore, setHasMore] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 
 	const loadingRef = useRef(false);
+	const nextOffsetRef = useRef<number | undefined>(undefined);
 	const prevQueryRef = useRef(query);
+
 	const fetchNotes = useCallback(
 		async (append: boolean) => {
 			if (loadingRef.current) return;
 			loadingRef.current = true;
 			setIsLoading(true);
 			try {
-				await fetchList(listKey, { append });
+				const offset = append ? nextOffsetRef.current ?? 0 : 0;
+				const results = await NotesIndexService.listNotes(
+					PAGE_SIZE,
+					offset,
+					listKey,
+				);
+				nextOffsetRef.current = results.cursor?.offset;
+				const newNotes = results.items.map(toNote);
+				if (append) {
+					setNotes((prev) => [...prev, ...newNotes]);
+				} else {
+					setNotes(newNotes);
+				}
+				setHasMore(!!results.cursor);
 			} catch (err: unknown) {
 				if (err instanceof Error) {
 					setError(err.message);
@@ -37,7 +61,7 @@ export default function useNotes() {
 				setIsLoading(false);
 			}
 		},
-		[listKey, fetchList],
+		[listKey],
 	);
 
 	const loadMoreNotes = useCallback(async () => {
@@ -47,6 +71,7 @@ export default function useNotes() {
 
 	const handleRefresh = useCallback(async () => {
 		setError(null);
+		nextOffsetRef.current = undefined;
 		await fetchNotes(false);
 	}, [fetchNotes]);
 

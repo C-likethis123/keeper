@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "@/constants/pagination";
 import { useEditorState } from "@/contexts/EditorContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { NotesIndexService } from "@/services/notes/notesIndex";
@@ -71,8 +72,8 @@ export function useWikiLinks(): UseWikiLinksReturn {
 
 		const fetchResults = async () => {
 			try {
-				const result = await NotesIndexService.listAllNotes(
-					20,
+				const result = await NotesIndexService.listNotes(
+					PAGE_SIZE,
 					undefined,
 					debouncedQuery.length > 0 ? debouncedQuery : undefined,
 				);

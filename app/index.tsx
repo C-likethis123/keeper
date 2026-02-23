@@ -5,13 +5,13 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
+import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
-import { useNoteStore } from "@/stores/notes/noteStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { nanoid } from "nanoid";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 export default function Index() {
@@ -27,33 +27,24 @@ export default function Index() {
 	} = useNotes();
 	const theme = useExtendedTheme();
 	const showToast = useToastStore((state) => state.showToast);
-	const saveNote = useNoteStore((state) => state.saveNote);
-	const deleteNote = useNoteStore((state) => state.deleteNote);
-
-	// it ocillates between 20 and 0 notes...
-	useEffect(() => {
-		console.log("index.tsx: notes", notes.length);
-	}, [notes]);
 
 	const handleDeleteNote = useCallback(
 		async (note: Note) => {
 			try {
-				await deleteNote(note.id);
+				const success = await NoteService.deleteNote(note.id);
+				if (!success) throw new Error("Failed to delete note");
 				showToast(`Deleted "${note.title}"`);
 			} catch (e) {
 				console.warn("Failed to delete note:", e);
 				showToast("Failed to delete note");
 			}
 		},
-		[deleteNote, showToast],
+		[showToast],
 	);
 
-	const handlePinToggle = useCallback(
-		async (updated: Note) => {
-			await saveNote(updated);
-		},
-		[saveNote],
-	);
+	const handlePinToggle = useCallback(async (updated: Note) => {
+		await NoteService.saveNote(updated);
+	}, []);
 
 	const styles = useStyles(createStyles);
 
@@ -95,9 +86,7 @@ export default function Index() {
 						lastUpdated: Date.now(),
 						isPinned: false,
 					};
-					console.log("creating a new note,", newNote);
-
-					await saveNote(newNote, true);
+					await NoteService.saveNote(newNote, true);
 					router.push(`/editor?id=${newNote.id}`);
 				}}
 			>

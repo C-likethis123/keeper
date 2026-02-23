@@ -7,7 +7,6 @@ import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import { GitInitializationService } from "@/services/git/gitInitializationService";
 import { notesIndexDbRebuildFromDisk } from "@/services/notes/notesIndexDb";
-import { useNoteStore } from "@/stores/notes/noteStore";
 import { checkForUpdates } from "@/utils/checkForUpdates";
 import { ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
@@ -30,7 +29,6 @@ if (__DEV__) {
 export default function RootLayout() {
 	const themeMode = useColorScheme();
 	const [isHydrated, setIsHydrated] = useState(false);
-	const clearCache = useNoteStore((s) => s.clearCache);
 	useEffect(() => {
 		if (!__DEV__) {
 			checkForUpdates();
@@ -43,7 +41,6 @@ export default function RootLayout() {
 						wasCloned: result.wasCloned,
 						branch: result.status?.currentBranch,
 					});
-					clearCache();
 					if (result.wasCloned) {
 						console.log("[App] Git repository was cloned, indexing notes...");
 						await notesIndexDbRebuildFromDisk();
@@ -58,7 +55,7 @@ export default function RootLayout() {
 		Promise.allSettled([gitP]).then(() => {
 			setIsHydrated(true);
 		});
-	}, [clearCache]);
+	}, []);
 
 	return (
 		<ThemeProvider value={themeMode === "light" ? lightTheme : darkTheme}>

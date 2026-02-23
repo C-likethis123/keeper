@@ -5,8 +5,8 @@ import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import { EditorProvider } from "@/contexts/EditorContext";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
-import { useNoteStore } from "@/stores/notes/noteStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
@@ -23,28 +23,22 @@ export default function NoteEditorView(props: { note: Note }) {
 	const router = useRouter();
 	const theme = useExtendedTheme();
 	const [note, setNote] = useState<Note>(props.note);
-	const deleteNote = useNoteStore((state) => state.deleteNote);
-	const saveNote = useNoteStore((state) => state.saveNote);
 
 	const togglePin = useCallback(async () => {
 		const next = !note?.isPinned;
 		const newNote = { ...note, isPinned: next };
-		await saveNote(newNote);
+		await NoteService.saveNote(newNote);
 		setNote(newNote);
-	}, [note, saveNote]);
+	}, [note]);
 
 	const { status } = useAutoSave(note);
 
-	const handleContentChange = useCallback(
-		async (markdown: string) => {
-			setNote((prev) => {
-				const next = { ...prev, content: markdown };
-				void saveNote(next);
-				return next;
-			});
-		},
-		[saveNote],
-	);
+	const handleContentChange = useCallback(async (markdown: string) => {
+		setNote((prev) => {
+			const next = { ...prev, content: markdown };
+			return next;
+		});
+	}, []);
 
 	const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -58,7 +52,7 @@ export default function NoteEditorView(props: { note: Note }) {
 							onPress={async () => {
 								const title = note.title;
 								const content = note.content;
-								await saveNote({
+								await NoteService.saveNote({
 									id: note.id,
 									title,
 									content,
@@ -91,7 +85,7 @@ export default function NoteEditorView(props: { note: Note }) {
 							</TouchableOpacity>
 							<TouchableOpacity
 								onPress={async () => {
-									await deleteNote(note?.id as string);
+									await NoteService.deleteNote(note.id as string);
 									router.back();
 								}}
 								style={{ marginRight: 8 }}
