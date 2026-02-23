@@ -21,20 +21,9 @@ export interface GetFileResponse {
 	error?: string;
 }
 
-let octokitInstance: Octokit | null = null;
-
-function getOctokit(): Octokit {
-	if (!octokitInstance) {
-		const token = process.env.EXPO_PUBLIC_GITHUB_TOKEN;
-		if (!token) {
-			throw new Error("GITHUB_TOKEN is not set");
-		}
-		octokitInstance = new Octokit({
-			auth: token,
-		});
-	}
-	return octokitInstance;
-}
+const OctokitClient: Octokit = new Octokit({
+	auth: process.env.EXPO_PUBLIC_GITHUB_TOKEN,
+});
 
 function getGitHubConfig() {
 	const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
@@ -64,8 +53,7 @@ async function readLocalFileContent(filePath: string): Promise<string | null> {
 
 async function getFileSha(filePath: string): Promise<string> {
 	const { owner, repo } = getGitHubConfig();
-	const octokit = getOctokit();
-	const response = await octokit.rest.repos.getContent({
+	const response = await OctokitClient.rest.repos.getContent({
 		owner,
 		repo,
 		path: filePath,
@@ -90,7 +78,6 @@ export async function commitChanges(
 
 	try {
 		const { owner, repo } = getGitHubConfig();
-		const octokit = getOctokit();
 		const commitMessage = message || `Update ${changes.length} file(s)`;
 
 		let lastCommitHash: string | undefined;
@@ -105,7 +92,7 @@ export async function commitChanges(
 				if (operation === "delete") {
 					const sha = await getFileSha(filePath);
 
-					const response = await octokit.rest.repos.deleteFile({
+					const response = await OctokitClient.rest.repos.deleteFile({
 						owner,
 						repo,
 						path: filePath,
@@ -130,14 +117,15 @@ export async function commitChanges(
 					const sha =
 						operation === "modify" ? await getFileSha(filePath) : undefined;
 
-					const response = await octokit.rest.repos.createOrUpdateFileContents({
-						owner,
-						repo,
-						path: filePath,
-						message: commitMessage,
-						content: encodedContent,
-						...(sha !== undefined ? { sha } : {}),
-					});
+					const response =
+						await OctokitClient.rest.repos.createOrUpdateFileContents({
+							owner,
+							repo,
+							path: filePath,
+							message: commitMessage,
+							content: encodedContent,
+							...(sha !== undefined ? { sha } : {}),
+						});
 
 					lastCommitHash = response.data.commit.sha;
 				}
