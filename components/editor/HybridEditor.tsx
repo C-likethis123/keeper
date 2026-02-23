@@ -31,6 +31,8 @@ export function HybridEditor({
 	onChanged,
 }: HybridEditorProps) {
 	const editorState = useEditorState();
+	const editorStateRef = useRef(editorState);
+	editorStateRef.current = editorState;
 	const lastInitialContentRef = useRef<string | undefined>(undefined);
 	const lastEmittedMarkdownRef = useRef<string | undefined>(undefined);
 	const isInitializedRef = useRef(false);
@@ -80,17 +82,19 @@ export function HybridEditor({
 	// Track if a selection is in progress to prevent blur from ending session
 	const wikiLinkSelectionInProgressRef = useRef(false);
 
-	// Notify parent of changes. Declared before init effect so it runs first; init then sees lastEmittedMarkdownRef and can skip when content is our echo (avoids flicker).
+	// Notify parent of changes. Only after we've applied initialContent (lastInitialContentRef set by init effect), so we never emit the initial empty document and overwrite the parent's note.
 	useEffect(() => {
-		if (onChanged) {
+		if (onChanged && lastInitialContentRef.current !== undefined) {
 			const markdown = editorState.toMarkdown();
 			lastEmittedMarkdownRef.current = markdown;
 			onChanged(markdown);
 		}
 	}, [onChanged, editorState]);
 
-	// Initialize document from markdown when initialContent changes (only from outside, not from our own updates)
+	// Initialize document from markdown when initialContent changes (only from outside, not from our own updates).
+	// Depends only on initialContent so we do not re-run after our own loadMarkdown (which would change editorState and cause an update loop).
 	useEffect(() => {
+		const state = editorStateRef.current;
 		// Do not run when initialContent is unchanged (effect ran only due to editorState/typing); avoids loading stale content and flicker.
 		if (initialContent === lastInitialContentRef.current) {
 			return;
@@ -101,14 +105,14 @@ export function HybridEditor({
 			return;
 		}
 		if (initialContent !== undefined) {
-			const currentMarkdown = editorState.toMarkdown();
+			const currentMarkdown = state.toMarkdown();
 			if (currentMarkdown !== initialContent) {
-				editorState.loadMarkdown(initialContent);
-				lastInitialContentRef.current = initialContent;
+				state.loadMarkdown(initialContent);
 				isInitializedRef.current = true;
 			}
+			lastInitialContentRef.current = initialContent;
 		}
-	}, [initialContent, editorState]);
+	}, [initialContent]);
 
 	const handleContentChange = useCallback(
 		(index: number) => (content: string) => {
