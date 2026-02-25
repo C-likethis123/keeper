@@ -1,5 +1,5 @@
 import { PAGE_SIZE } from "@/constants/pagination";
-import { useEditorState } from "@/contexts/EditorContext";
+import { useEditorDocument, useEditorSelection } from "@/stores/editorStore";
 import { useDebounce } from "@/hooks/useDebounce";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { useCallback, useEffect, useState } from "react";
@@ -38,7 +38,8 @@ export function useWikiLinks(): UseWikiLinksReturn {
 	const [results, setResults] = useState<string[]>([]);
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [isLoading, setIsLoading] = useState<boolean>(false);
-	const editorState = useEditorState();
+	const document = useEditorDocument();
+	const selection = useEditorSelection();
 	// Use ref to track if search is in progress to avoid race conditions
 	// const searchInProgressRef = useRef(false);
 
@@ -115,18 +116,18 @@ export function useWikiLinks(): UseWikiLinksReturn {
 			blockIndex: number,
 			onUpdateContent: (index: number, content: string) => void,
 		) => {
-			if (!isActive || !editorState.selection?.focus.offset) {
+			if (!isActive || !selection?.focus.offset) {
 				return;
 			}
 
-			const block = editorState.document.blocks[blockIndex];
+			const block = document.blocks[blockIndex];
 			if (!block) return;
 
 			const text = block.content;
 			// from where the cursor starts, find the nearest start
 			const start = findWikiLinkTriggerStart(
 				text,
-				editorState.selection?.focus.offset ?? 0,
+				selection?.focus.offset ?? 0,
 			);
 			if (start === null) {
 				return;
@@ -138,7 +139,7 @@ export function useWikiLinks(): UseWikiLinksReturn {
 			onUpdateContent(blockIndex, newText);
 			handleTriggerEnd();
 		},
-		[query, editorState, handleTriggerEnd, isActive],
+		[query, document, selection, handleTriggerEnd, isActive],
 	);
 
 	/// Navigate to next result

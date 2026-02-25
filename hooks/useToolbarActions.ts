@@ -4,15 +4,14 @@ import {
 	getListLevel,
 	isListItem,
 } from "@/components/editor/core/BlockNode";
-import { useEditorState } from "@/contexts/EditorContext";
 import { copyPickedImageToNotes } from "@/services/notes/imageStorage";
+import { useEditorState } from "@/stores/editorStore";
 import * as DocumentPicker from "expo-document-picker";
 import { useCallback } from "react";
 import { Platform } from "react-native";
 import { useFocusBlock } from "./useFocusBlock";
 
 export interface UseToolbarActions {
-	focusBlockIndex: number | null;
 	handleOutdent: () => void;
 	handleIndent: () => void;
 	handleConvertToCheckbox: () => void;
@@ -20,40 +19,50 @@ export interface UseToolbarActions {
 }
 
 export function useToolbarActions(): UseToolbarActions {
-	const editorState = useEditorState();
+	const getFocusedBlockIndex = useEditorState((s) => s.getFocusedBlockIndex);
+	const updateBlockListLevel = useEditorState((s) => s.updateBlockListLevel);
+	const updateBlockType = useEditorState((s) => s.updateBlockType);
+	const document = useEditorState((s) => s.document);
+	const insertBlockAfter = useEditorState((s) => s.insertBlockAfter);
 	const { focusBlock } = useFocusBlock();
 
 	const handleIndent = useCallback(() => {
-		const index = editorState.getFocusedBlockIndex();
+		const index = getFocusedBlockIndex();
 		if (index === null) return;
-		const block = editorState.document.blocks[index];
+		const block = document.blocks[index];
 		if (isListItem(block.type)) {
-			editorState.updateBlockListLevel(index, getListLevel(block) + 1);
+			updateBlockListLevel(index, getListLevel(block) + 1);
 		}
-	}, [editorState]);
+	}, [document, getFocusedBlockIndex, updateBlockListLevel]);
 
 	const handleOutdent = useCallback(() => {
-		const index = editorState.getFocusedBlockIndex();
+		const index = getFocusedBlockIndex();
 		if (index === null) return;
-		const block = editorState.document.blocks[index];
+		const block = document.blocks[index];
 		const isListBlock = isListItem(block.type);
 		if (!isListBlock) return;
 		if (getListLevel(block) > 0) {
-			editorState.updateBlockListLevel(index, getListLevel(block) - 1);
+			updateBlockListLevel(index, getListLevel(block) - 1);
 		} else {
-			editorState.updateBlockType(index, BlockType.paragraph);
+			updateBlockType(index, BlockType.paragraph);
 			focusBlock(index);
 		}
-	}, [editorState, focusBlock]);
+	}, [
+		document,
+		getFocusedBlockIndex,
+		updateBlockListLevel,
+		updateBlockType,
+		focusBlock,
+	]);
 
 	const handleConvertToCheckbox = useCallback(() => {
-		const index = editorState.getFocusedBlockIndex();
+		const index = getFocusedBlockIndex();
 		if (index === null) return;
-		const block = editorState.document.blocks[index];
+		const block = document.blocks[index];
 		if (block.type === BlockType.checkboxList) return;
-		editorState.updateBlockType(index, BlockType.checkboxList);
+		updateBlockType(index, BlockType.checkboxList);
 		focusBlock(index);
-	}, [editorState, focusBlock]);
+	}, [document, getFocusedBlockIndex, updateBlockType, focusBlock]);
 
 	const handleInsertImage = useCallback(async () => {
 		if (Platform.OS === "web") return;
@@ -64,14 +73,12 @@ export function useToolbarActions(): UseToolbarActions {
 		if (result.canceled) return;
 		const uri = result.assets[0].uri;
 		const path = await copyPickedImageToNotes(uri);
-		const focusedIndex = editorState.getFocusedBlockIndex() ?? 0;
-		editorState.insertBlockAfter(focusedIndex, createImageBlock(path));
+		const focusedIndex = getFocusedBlockIndex() ?? 0;
+		insertBlockAfter(focusedIndex, createImageBlock(path));
 		focusBlock(focusedIndex + 1);
-	}, [editorState, focusBlock]);
+	}, [getFocusedBlockIndex, insertBlockAfter, focusBlock]);
 
-	const focusBlockIndex = editorState.getFocusedBlockIndex();
 	return {
-		focusBlockIndex,
 		handleOutdent,
 		handleIndent,
 		handleConvertToCheckbox,

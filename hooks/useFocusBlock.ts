@@ -1,5 +1,5 @@
 import { createCollapsedSelection } from "@/components/editor/core/Selection";
-import { useEditorState } from "@/contexts/EditorContext";
+import { useEditorDocument, useEditorSelection, useEditorState } from "@/stores/editorStore";
 import { useCallback } from "react";
 
 export interface UseFocusBlockReturn {
@@ -9,24 +9,26 @@ export interface UseFocusBlockReturn {
 }
 
 export function useFocusBlock(): UseFocusBlockReturn {
-	const editorState = useEditorState();
+	const document = useEditorDocument();
+	const selection = useEditorSelection();
+	const setSelection = useEditorState((s) => s.setSelection);
 
 	const focusBlock = useCallback(
 		(index: number) => {
-			const block = editorState.document.blocks[index];
+			const block = document.blocks[index];
 			const offset = block?.content.length ?? 0;
-			editorState.setSelection(
+			setSelection(
 				createCollapsedSelection({ blockIndex: index, offset }),
 			);
 		},
-		[editorState],
+		[document, setSelection],
 	);
 
 	const blurBlock = useCallback(() => {
-		editorState.setSelection(null);
-	}, [editorState]);
+		setSelection(null);
+	}, [setSelection]);
 
-	const focusBlockIndex = editorState.getFocusedBlockIndex();
+	const focusBlockIndex = selection?.focus.blockIndex ?? null;
 	return {
 		focusBlockIndex,
 		focusBlock,

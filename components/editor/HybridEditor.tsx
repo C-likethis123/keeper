@@ -1,12 +1,17 @@
 import { ScrollView } from "@/components/shared/ScrollView";
-import { useEditorState } from "@/contexts/EditorContext";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import { useOverlayPosition } from "@/hooks/useOverlayPosition";
+import {
+	useEditorDocument,
+	useEditorSelection,
+	useEditorState,
+} from "@/stores/editorStore";
+import { flip, shift, useFloating } from "@floating-ui/react-native";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useRef } from "react";
 import { Alert, Platform, Pressable, StyleSheet, View } from "react-native";
 import { type BlockConfig, blockRegistry } from "./blocks/BlockRegistry";
 import {
+	type BlockNode,
 	BlockType,
 	createParagraphBlock,
 	getListLevel,
@@ -30,9 +35,19 @@ export function HybridEditor({
 	initialContent = "",
 	onChanged,
 }: HybridEditorProps) {
-	const editorState = useEditorState();
-	const editorStateRef = useRef(editorState);
-	editorStateRef.current = editorState;
+	const document = useEditorDocument();
+	const selection = useEditorSelection();
+	const toMarkdown = useEditorState((s) => s.toMarkdown);
+	const loadMarkdown = useEditorState((s) => s.loadMarkdown);
+	const setSelection = useEditorState((s) => s.setSelection);
+	const updateBlockType = useEditorState((s) => s.updateBlockType);
+	const splitBlock = useEditorState((s) => s.splitBlock);
+	const deleteBlock = useEditorState((s) => s.deleteBlock);
+	const mergeWithPrevious = useEditorState((s) => s.mergeWithPrevious);
+	const toggleCheckbox = useEditorState((s) => s.toggleCheckbox);
+	const getFocusedBlock = useEditorState((s) => s.getFocusedBlock);
+	const insertBlockAfter = useEditorState((s) => s.insertBlockAfter);
+	const updateBlockContent = useEditorState((s) => s.updateBlockContent);
 	const lastInitialContentRef = useRef<string | undefined>(undefined);
 	const lastEmittedMarkdownRef = useRef<string | undefined>(undefined);
 	const isInitializedRef = useRef(false);
@@ -42,11 +57,15 @@ export function HybridEditor({
 	// Wiki link management via hook
 	const wikiLinks = useWikiLinks();
 
-	// Overlay positioning
-	const overlayPosition = useOverlayPosition({
-		strategy: "center",
-		zIndex: 1000,
-		elevation: 10,
+	const {
+		refs,
+		floatingStyles,
+		scrollProps,
+		update: updateFloatingPosition,
+	} = useFloating({
+		placement: "bottom",
+		middleware: [flip(), shift()],
+		sameScrollView: false,
 	});
 
 	// Focus management
@@ -85,16 +104,15 @@ export function HybridEditor({
 	// Notify parent of changes. Only after we've applied initialContent (lastInitialContentRef set by init effect), so we never emit the initial empty document and overwrite the parent's note.
 	useEffect(() => {
 		if (onChanged && lastInitialContentRef.current !== undefined) {
-			const markdown = editorState.toMarkdown();
+			const markdown = toMarkdown();
 			lastEmittedMarkdownRef.current = markdown;
 			onChanged(markdown);
 		}
-	}, [onChanged, editorState]);
+	}, [onChanged, toMarkdown]);
 
 	// Initialize document from markdown when initialContent changes (only from outside, not from our own updates).
 	// Depends only on initialContent so we do not re-run after our own loadMarkdown (which would change editorState and cause an update loop).
 	useEffect(() => {
-		const state = editorStateRef.current;
 		// Do not run when initialContent is unchanged (effect ran only due to editorState/typing); avoids loading stale content and flicker.
 		if (initialContent === lastInitialContentRef.current) {
 			return;
@@ -105,14 +123,14 @@ export function HybridEditor({
 			return;
 		}
 		if (initialContent !== undefined) {
-			const currentMarkdown = state.toMarkdown();
+			const currentMarkdown = toMarkdown();
 			if (currentMarkdown !== initialContent) {
-				state.loadMarkdown(initialContent);
+				loadMarkdown(initialContent);
 				isInitializedRef.current = true;
 			}
 			lastInitialContentRef.current = initialContent;
 		}
-	}, [initialContent]);
+	}, [initialContent, toMarkdown, loadMarkdown]);
 
 	const handleContentChange = useCallback(
 		(index: number) => (content: string) => {
@@ -120,9 +138,9 @@ export function HybridEditor({
 				ignoreNextContentChangeRef.current = null;
 				return;
 			}
-			editorState.updateBlockContent(index, content);
+			updateBlockContent(index, content);
 		},
-		[editorState],
+		[updateBlockContent],
 	);
 
 	const handleBlockTypeDetection = useCallback(
@@ -135,7 +153,7 @@ export function HybridEditor({
 				onlyIfTypeChanges?: boolean;
 			},
 		): boolean => {
-			const block = editorState.document.blocks[index];
+			const block = getFocusedBlock();
 			const detection = blockRegistry.detectBlockType(content);
 
 			if (!detection) {
@@ -143,19 +161,19 @@ export function HybridEditor({
 			}
 
 			// If onlyIfTypeChanges is true, check if type would actually change
-			if (options?.onlyIfTypeChanges && block.type === detection.type) {
+			if (options?.onlyIfTypeChanges && block?.type === detection.type) {
 				return false;
 			}
 
 			// Update block type and content
-			editorState.updateBlockType(index, detection.type, detection.language);
-			editorState.updateBlockContent(index, detection.remainingContent);
+			updateBlockType(index, detection.type, detection.language);
+			updateBlockContent(index, detection.remainingContent);
 
 			if (
 				detection.type === BlockType.mathBlock ||
 				detection.type === BlockType.codeBlock
 			) {
-				editorState.insertBlockAfter(index, createParagraphBlock());
+				insertBlockAfter(index, createParagraphBlock());
 			}
 
 			// Set ignore flag if requested to prevent feedback loop
@@ -172,47 +190,58 @@ export function HybridEditor({
 
 			return true;
 		},
-		[editorState, focusBlock],
+		[
+			insertBlockAfter,
+			updateBlockType,
+			updateBlockContent,
+			focusBlock,
+			getFocusedBlock,
+		],
 	);
 
 	const handleBlockTypeChange = useCallback(
 		(index: number, newType: BlockType, language?: string) => {
-			editorState.updateBlockType(index, newType, language);
+			updateBlockType(index, newType, language);
 			focusBlock(index);
 		},
-		[editorState, focusBlock],
+		[updateBlockType, focusBlock],
 	);
 
 	const handleDelete = useCallback(
 		(index: number) => {
-			editorState.deleteBlock(index);
+			deleteBlock(index);
 			focusBlock(index > 0 ? index - 1 : 0);
 		},
-		[editorState, focusBlock],
+		[deleteBlock, focusBlock],
 	);
 
 	const handleSpace = useCallback(
 		(index: number) => () => {
-			const block = editorState.document.blocks[index];
+			const block = getFocusedBlock();
+			if (!block) {
+				return;
+			}
 			// Get current content and add space (space key was just pressed)
-			const newContent = `${block.content} `;
+			const newContent = `${block.content ?? ""} `;
 
 			if (
 				!handleBlockTypeDetection(index, newContent, {
 					ignoreContentChange: true,
 				})
 			) {
-				editorState.updateBlockContent(index, newContent);
+				updateBlockContent(index, newContent);
 			}
 		},
-		[editorState, handleBlockTypeDetection],
+		[updateBlockContent, handleBlockTypeDetection, getFocusedBlock],
 	);
 
 	const handleBackspaceAtStart = useCallback(
 		(index: number) => () => {
-			const block = editorState.document.blocks[index];
-			const prevBlock =
-				index > 0 ? editorState.document.blocks[index - 1] : null;
+			const block = getFocusedBlock();
+			if (!block) {
+				return;
+			}
+			const prevBlock = index > 0 ? document.blocks[index - 1] : null;
 
 			// If it's a non-paragraph block (except code block and math block), convert to paragraph
 			if (
@@ -220,16 +249,16 @@ export function HybridEditor({
 					BlockType.paragraph,
 					BlockType.codeBlock,
 					BlockType.mathBlock,
-				].includes(block.type)
+				].includes(block.type ?? BlockType.paragraph)
 			) {
-				editorState.updateBlockType(index, BlockType.paragraph);
+				updateBlockType(index, BlockType.paragraph);
 				focusBlock(index);
 				return;
 			}
 
 			// If it's an empty paragraph, delete and focus previous/next
 			if (block.content === "") {
-				editorState.deleteBlock(index);
+				deleteBlock(index);
 				focusBlock(index > 0 ? index - 1 : 0);
 				return;
 			}
@@ -241,16 +270,26 @@ export function HybridEditor({
 					focusBlock(index - 1);
 					return;
 				}
-				editorState.mergeWithPrevious(index);
+				mergeWithPrevious(index);
 				focusBlock(index - 1);
 			}
 		},
-		[editorState, focusBlock],
+		[
+			focusBlock,
+			deleteBlock,
+			getFocusedBlock,
+			document,
+			mergeWithPrevious,
+			updateBlockType,
+		],
 	);
 
 	const handleEnter = useCallback(
 		(index: number, cursorOffset: number) => {
-			const block = editorState.document.blocks[index];
+			const block = getFocusedBlock();
+			if (!block) {
+				return;
+			}
 			if ([BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
 				return;
 			}
@@ -258,11 +297,7 @@ export function HybridEditor({
 			if (wikiLinks.isActive) {
 				const selected = wikiLinks.getSelectedResult();
 				if (selected) {
-					wikiLinks.handleSelect(
-						selected,
-						index,
-						editorState.updateBlockContent,
-					);
+					wikiLinks.handleSelect(selected, index, updateBlockContent);
 					return;
 				}
 			}
@@ -283,21 +318,26 @@ export function HybridEditor({
 					BlockType.checkboxList,
 				].includes(block.type)
 			) {
-				editorState.updateBlockType(index, BlockType.paragraph);
+				updateBlockType(index, BlockType.paragraph);
 				focusBlock(index);
 				return;
 			}
 
 			// Set ignore flag before splitting to prevent TextInput from updating old block
 			ignoreNextContentChangeRef.current = index;
-
-			// Blur current block first to prevent it from processing the Enter key
 			ignoreSelectionChangeUntilRef.current = Date.now() + 150;
-			blurBlock();
-			editorState.splitBlock(index, cursorOffset);
+			splitBlock(index, cursorOffset);
 			focusBlock(index + 1);
 		},
-		[editorState, wikiLinks, handleBlockTypeDetection, focusBlock, blurBlock],
+		[
+			wikiLinks,
+			updateBlockContent,
+			handleBlockTypeDetection,
+			focusBlock,
+			updateBlockType,
+			splitBlock,
+			getFocusedBlock,
+		],
 	);
 
 	const handleSelectionChange = useCallback(
@@ -305,17 +345,28 @@ export function HybridEditor({
 			if (Date.now() < ignoreSelectionChangeUntilRef.current) {
 				return;
 			}
-			editorState.setSelection({
+			const cur = selection;
+			if (
+				cur?.focus.blockIndex === index &&
+				cur.anchor.offset === start &&
+				cur.focus.offset === end
+			) {
+				return;
+			}
+			setSelection({
 				anchor: { blockIndex: index, offset: start },
 				focus: { blockIndex: index, offset: end },
 			});
 		},
-		[editorState],
+		[setSelection, selection],
 	);
 
 	const calculateListItemNumber = useCallback(
 		(index: number): number | undefined => {
-			const block = editorState.document.blocks[index];
+			const block = getFocusedBlock();
+			if (!block) {
+				return undefined;
+			}
 			if (block.type !== BlockType.numberedList) {
 				return undefined;
 			}
@@ -323,7 +374,7 @@ export function HybridEditor({
 			const listLevel = getListLevel(block);
 			let number = 1;
 			for (let i = index - 1; i >= 0; i--) {
-				const prevBlock = editorState.document.blocks[i];
+				const prevBlock = document.blocks[i];
 				if (
 					prevBlock.type !== BlockType.numberedList ||
 					getListLevel(prevBlock) < listLevel
@@ -339,16 +390,16 @@ export function HybridEditor({
 			}
 			return number;
 		},
-		[editorState.document.blocks],
+		[document.blocks, getFocusedBlock],
 	);
 
 	const renderBlock = useCallback(
-		(block: (typeof editorState.document.blocks)[0], index: number) => {
+		(block: BlockNode, index: number) => {
 			const listItemNumber = calculateListItemNumber(index);
 			const config: BlockConfig = {
 				block,
 				index,
-				isFocused: editorState.getFocusedBlockIndex() === index,
+				isFocused: focusBlockIndex === index,
 				onContentChange: handleContentChange(index),
 				onBlockTypeChange: (
 					blockIndex: number,
@@ -365,8 +416,7 @@ export function HybridEditor({
 				onSelectionChange: handleSelectionChange(index),
 				onDelete: () => handleDelete(index),
 				listItemNumber,
-				onCheckboxToggle: (blockIndex) =>
-					editorState.toggleCheckbox(blockIndex),
+				onCheckboxToggle: (blockIndex) => toggleCheckbox(blockIndex),
 				onWikiLinkTriggerStart: wikiLinks.handleTriggerStart,
 				onWikiLinkQueryUpdate: wikiLinks.handleQueryUpdate,
 				onWikiLinkTriggerEnd: wikiLinks.handleTriggerEnd,
@@ -378,7 +428,8 @@ export function HybridEditor({
 			);
 		},
 		[
-			editorState,
+			focusBlockIndex,
+			toggleCheckbox,
 			handleContentChange,
 			handleBlockTypeChange,
 			handleBackspaceAtStart,
@@ -394,21 +445,36 @@ export function HybridEditor({
 	);
 
 	const showWikiLinkOverlay = wikiLinks.isActive;
+	const overlayWrapperRef = useRef<View>(null);
+
+	useEffect(() => {
+		if (!showWikiLinkOverlay) return;
+		const id = requestAnimationFrame(() => {
+			updateFloatingPosition();
+		});
+		return () => cancelAnimationFrame(id);
+	}, [showWikiLinkOverlay, updateFloatingPosition]);
 
 	return (
 		<View style={styles.container}>
-			<ScrollView contentContainerStyle={styles.scrollContent}>
+			<ScrollView contentContainerStyle={styles.scrollContent} {...scrollProps}>
 				<Pressable
 					style={styles.pressableArea}
 					onPress={() => {
-						const lastIndex = editorState.document.blocks.length - 1;
+						const lastIndex = document.blocks.length - 1;
 						focusBlock(lastIndex);
 					}}
 				>
-					{editorState.document.blocks.map((block, index) => {
+					{document.blocks.map((block, index) => {
 						const blockElement = renderBlock(block, index);
+						const isFocusedBlock = index === focusBlockIndex;
 						return (
-							<View key={block.id} style={styles.blockWrapper}>
+							<View
+								key={block.id}
+								style={styles.blockWrapper}
+								ref={isFocusedBlock ? refs.setReference : undefined}
+								collapsable={isFocusedBlock ? false : undefined}
+							>
 								{blockElement}
 							</View>
 						);
@@ -418,12 +484,16 @@ export function HybridEditor({
 			{/* Render overlay outside ScrollView to prevent touch conflicts */}
 			{showWikiLinkOverlay && (
 				<View
-					style={overlayPosition.wrapperStyle}
-					{...overlayPosition.wrapperProps}
+					ref={overlayWrapperRef}
+					style={styles.overlayWrapper}
+					pointerEvents="box-none"
+					collapsable={false}
 				>
 					<View
-						style={overlayPosition.containerStyle}
-						{...overlayPosition.containerProps}
+						ref={refs.setFloating}
+						style={floatingStyles}
+						collapsable={false}
+						pointerEvents="auto"
 					>
 						<WikiLinkOverlay
 							results={wikiLinks.results}
@@ -435,7 +505,7 @@ export function HybridEditor({
 								wikiLinks.handleSelect(
 									title,
 									focusBlockIndex ?? 0,
-									editorState.updateBlockContent,
+									updateBlockContent,
 								);
 							}}
 						/>
@@ -450,6 +520,12 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		position: "relative",
+	},
+	overlayWrapper: {
+		position: "absolute",
+		zIndex: 1000,
+		elevation: 10,
+		top: 0,
 	},
 	scrollView: {
 		flex: 1,

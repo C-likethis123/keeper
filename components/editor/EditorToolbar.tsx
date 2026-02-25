@@ -1,6 +1,6 @@
-import { useEditorState } from "@/contexts/EditorContext";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useToolbarActions } from "@/hooks/useToolbarActions";
+import { useEditorState } from "@/stores/editorStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import {
@@ -15,8 +15,12 @@ import { BlockType, getListLevel, isListItem } from "./core/BlockNode";
 export function EditorToolbar() {
 	const theme = useExtendedTheme();
 	const styles = useMemo(() => createStyles(theme), [theme]);
-	const editorState = useEditorState();
-	const block = editorState.getFocusedBlock();
+	const getCanUndo = useEditorState((s) => s.getCanUndo);
+	const getCanRedo = useEditorState((s) => s.getCanRedo);
+	const undo = useEditorState((s) => s.undo);
+	const redo = useEditorState((s) => s.redo);
+	const getFocusedBlock = useEditorState((s) => s.getFocusedBlock);
+	const block = getFocusedBlock();
 	const blockType = block?.type ?? null;
 	const listLevel = block ? getListLevel(block) : 0;
 	const {
@@ -32,14 +36,14 @@ export function EditorToolbar() {
 	const canIndent = isListBlock && listLevel >= 0 && listLevel < 10;
 	const canConvertToCheckbox =
 		blockType != null && blockType !== BlockType.checkboxList;
-	const canUndo = editorState.getCanUndo();
-	const canRedo = editorState.getCanRedo();
+	const canUndo = getCanUndo();
+	const canRedo = getCanRedo();
 
 	return (
 		<View style={styles.toolbar}>
 			<TouchableOpacity
 				style={[styles.button]}
-				onPress={editorState.undo}
+				onPress={undo}
 				disabled={!canUndo}
 				activeOpacity={0.7}
 			>
@@ -51,7 +55,7 @@ export function EditorToolbar() {
 			</TouchableOpacity>
 			<TouchableOpacity
 				style={[styles.button]}
-				onPress={editorState.redo}
+				onPress={redo}
 				disabled={!canRedo}
 				activeOpacity={0.7}
 			>

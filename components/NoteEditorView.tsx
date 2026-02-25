@@ -2,14 +2,15 @@ import { SaveIndicator } from "@/components/SaveIndicator";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { HybridEditor } from "@/components/editor/HybridEditor";
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
-import { EditorProvider } from "@/contexts/EditorContext";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
+import type { EditorState } from "@/components/editor/core/EditorState";
+import { useEditorState } from "@/stores/editorStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	Platform,
 	StyleSheet,
@@ -32,6 +33,13 @@ export default function NoteEditorView(props: { note: Note }) {
 	}, [note]);
 
 	const { status } = useAutoSave(note);
+
+	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
+	// Reset editor when switching to a different note; omit note.content so we don't run on every keystroke
+	// biome-ignore lint/correctness/useExhaustiveDependencies: note.id only — loading note.content on id change
+	useEffect(() => {
+		loadMarkdown(note.content);
+	}, [note.id, loadMarkdown]);
 
 	const handleContentChange = useCallback(async (markdown: string) => {
 		setNote((prev) => {
@@ -114,13 +122,11 @@ export default function NoteEditorView(props: { note: Note }) {
 					placeholderTextColor={theme.custom.editor.placeholder}
 				/>
 
-				<EditorProvider>
-					<EditorToolbar />
-					<HybridEditor
-						initialContent={note.content}
-						onChanged={handleContentChange}
-					/>
-				</EditorProvider>
+				<EditorToolbar />
+				<HybridEditor
+					initialContent={note.content}
+					onChanged={handleContentChange}
+				/>
 			</View>
 		</View>
 	);

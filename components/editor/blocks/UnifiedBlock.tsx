@@ -1,4 +1,4 @@
-import { useEditorState } from "@/contexts/EditorContext";
+import { useEditorSelection } from "@/stores/editorStore";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
@@ -36,7 +36,7 @@ export function UnifiedBlock({
 	const inputRef = useRef<TextInput>(null);
 	const ignoreNextChangeRef = useRef(false);
 	const lastBlockContentRef = useRef(block.content);
-	const editorState = useEditorState();
+	const selection = useEditorSelection();
 
 	// Sync TextInput when block content changes externally (e.g., from wiki link selection)
 	useEffect(() => {
@@ -65,19 +65,19 @@ export function UnifiedBlock({
 		if (
 			!isFocused ||
 			!inputRef.current ||
-			!editorState.selection ||
-			editorState.selection.focus.blockIndex !== index
+			!selection ||
+			selection.focus.blockIndex !== index
 		)
 			return;
 		if (block.content === prevContentRef.current) return;
 		prevContentRef.current = block.content;
 		const start = Math.min(
-			editorState.selection.anchor.offset,
-			editorState.selection.focus.offset,
+			selection.anchor.offset,
+			selection.focus.offset,
 		);
 		const end = Math.max(
-			editorState.selection.anchor.offset,
-			editorState.selection.focus.offset,
+			selection.anchor.offset,
+			selection.focus.offset,
 		);
 		const len = block.content.length;
 		const sel = {
@@ -88,7 +88,7 @@ export function UnifiedBlock({
 			inputRef.current?.setNativeProps({ selection: sel });
 		});
 		return () => cancelAnimationFrame(id);
-	}, [block.content, index, isFocused, editorState.selection]);
+	}, [block.content, index, isFocused, selection]);
 
 	const handleFocus = useCallback(() => {
 		focusBlock(index);
@@ -151,7 +151,7 @@ export function UnifiedBlock({
 			onContentChange(newText);
 
 			// Detect wiki link triggers after content change. Use newText.length as caret
-			// because editorState.selection is not updated yet when onChangeText fires.
+			// because selection is not updated yet when onChangeText fires.
 			if (isFocused && inputRef.current) {
 				const caret = newText.length;
 				const start = findWikiLinkTriggerStart(newText, caret);
@@ -186,14 +186,13 @@ export function UnifiedBlock({
 			// Handle Enter key - split non-code blocks at the current cursor position
 			if (
 				key === "Enter" &&
-				editorState.selection?.anchor.offset ===
-					editorState.selection?.focus.offset
+				selection?.anchor.offset === selection?.focus.offset
 			) {
 				if (block.type !== BlockType.codeBlock) {
 					// Mark the next onChangeText as ignorable so the stray newline doesn't
 					// get written back into the original block after we split.
 					ignoreNextChangeRef.current = true;
-					onEnter?.(editorState.selection?.focus.offset ?? 0);
+					onEnter?.(selection?.focus.offset ?? 0);
 				}
 				return;
 			}
@@ -201,8 +200,8 @@ export function UnifiedBlock({
 			// Handle backspace at the start (position 0)
 			if (
 				key === "Backspace" &&
-				editorState.selection?.anchor.offset === 0 &&
-				editorState.selection?.focus.offset === 0
+				selection?.anchor.offset === 0 &&
+				selection?.focus.offset === 0
 			) {
 				// Paragraph blocks: delegate to editor-level handler (empty = delete, non-empty = merge or focus previous)
 				if (block.type === BlockType.paragraph) {
@@ -221,7 +220,7 @@ export function UnifiedBlock({
 			onSpace,
 			onEnter,
 			onBackspaceAtStart,
-			editorState.selection,
+			selection,
 			block.type,
 		],
 	);
@@ -245,10 +244,10 @@ export function UnifiedBlock({
 
 	const selectionProp =
 		isFocused &&
-		editorState.selection &&
-		editorState.selection.focus.blockIndex === index
+		selection &&
+		selection.focus.blockIndex === index
 			? (() => {
-					const sel = editorState.selection;
+					const sel = selection;
 					if (!sel) return undefined;
 					const start = Math.min(sel.anchor.offset, sel.focus.offset);
 					const end = Math.max(sel.anchor.offset, sel.focus.offset);

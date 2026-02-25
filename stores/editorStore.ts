@@ -1,0 +1,295 @@
+import {
+	type BlockNode,
+	BlockType,
+	createParagraphBlock,
+	getBlockLanguage,
+	getListLevel,
+} from "@/components/editor/core/BlockNode";
+import {
+	type Document,
+	createDocumentFromMarkdown,
+	createEmptyDocument,
+	documentToMarkdown,
+} from "@/components/editor/core/Document";
+import {
+	type EditorState,
+	type EditorStateSlice,
+	editorReducer,
+	initialEditorStateSlice,
+} from "@/components/editor/core/EditorState";
+import { History } from "@/components/editor/core/History";
+import { createCollapsedSelection } from "@/components/editor/core/Selection";
+import {
+	type Transaction,
+	TransactionBuilder,
+} from "@/components/editor/core/Transaction";
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
+
+type EditorAction = Parameters<typeof editorReducer>[1];
+
+const history = new History();
+export const useEditorState = create<EditorState>()(
+	devtools(
+		(set, get) => {
+	const dispatch = (action: EditorAction) =>
+		set((state) => editorReducer(state, action, history));
+
+	return {
+		...initialEditorStateSlice,
+
+		setDocument: (document: Document) =>
+			dispatch({ type: "SET_DOCUMENT", document }),
+
+		setSelection: (selection: EditorStateSlice["selection"]) =>
+			dispatch({ type: "SET_SELECTION", selection }),
+
+		clearBlockSelection: () => dispatch({ type: "CLEAR_BLOCK_SELECTION" }),
+
+		selectBlock: (index: number) => dispatch({ type: "SELECT_BLOCK", index }),
+
+		selectBlockRange: (start: number, end: number) =>
+			dispatch({ type: "SELECT_BLOCK_RANGE", start, end }),
+
+		selectAllBlocks: () => dispatch({ type: "SELECT_ALL_BLOCKS" }),
+
+		deleteSelectedBlocks: () => {
+			const s = get();
+			if (!s.blockSelection) return;
+			const { start, end } = s.blockSelection;
+			const oldBlocks = s.document.blocks.slice(start, end + 1);
+			const transaction = new TransactionBuilder()
+				.replaceBlocks(start, end + 1, oldBlocks, [createParagraphBlock()])
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+			dispatch({ type: "CLEAR_BLOCK_SELECTION" });
+		},
+
+		applyTransaction: (transaction: Transaction) =>
+			dispatch({ type: "APPLY_TRANSACTION", transaction }),
+
+		undo: () => {
+			if (!history.canUndo) return false;
+			dispatch({ type: "UNDO" });
+			return true;
+		},
+
+		redo: () => {
+			if (!history.canRedo) return false;
+			dispatch({ type: "REDO" });
+			return true;
+		},
+
+		updateBlockContent: (index: number, newContent: string) => {
+			const s = get();
+			const block = s.document.blocks[index];
+			if (block.content === newContent) return;
+			const transaction = new TransactionBuilder()
+				.updateContent(index, block.content, newContent)
+				.withSelectionBefore(s.selection)
+				.withSelectionAfter(
+					createCollapsedSelection({
+						blockIndex: index,
+						offset: newContent.length,
+					}),
+				)
+				.withDescription("Update content")
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+		},
+
+		updateBlockType: (index: number, newType: BlockType, language?: string) => {
+			const s = get();
+			const block = s.document.blocks[index];
+			if (block.type === newType && getBlockLanguage(block) === language)
+				return;
+			const transaction = new TransactionBuilder()
+				.updateType(
+					index,
+					block.type,
+					newType,
+					getBlockLanguage(block),
+					language,
+				)
+				.withSelectionBefore(s.selection)
+				.withSelectionAfter(s.selection)
+				.withDescription("Change block type")
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+		},
+
+		updateBlockListLevel: (index: number, newLevel: number) => {
+			const s = get();
+			const block = s.document.blocks[index];
+			if (getListLevel(block) === newLevel) return;
+			const oldAttrs = { ...block.attributes };
+			const newAttrs = { ...block.attributes, listLevel: newLevel };
+			const transaction = new TransactionBuilder()
+				.updateBlockAttributes(index, oldAttrs, newAttrs)
+				.withDescription("Update list level")
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+		},
+
+		toggleCheckbox: (index: number) => {
+			const s = get();
+			const block = s.document.blocks[index];
+			if (block.type !== BlockType.checkboxList) return;
+			const oldAttrs = block.attributes ?? {};
+			const checked = !!oldAttrs.checked;
+			const newAttrs = { ...oldAttrs, checked: !checked };
+			const transaction = new TransactionBuilder()
+				.updateBlockAttributes(index, oldAttrs, newAttrs)
+				.withDescription("Toggle checkbox")
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+		},
+
+		insertBlockAfter: (index: number, block: BlockNode) => {
+			const s = get();
+			const transaction = new TransactionBuilder()
+				.insertBlock(index + 1, block)
+				.withSelectionBefore(s.selection)
+				.withSelectionAfter(
+					createCollapsedSelection({
+						blockIndex: index + 1,
+						offset: 0,
+					}),
+				)
+				.withDescription("Insert block")
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+		},
+
+		deleteBlock: (index: number) => {
+			const s = get();
+			if (s.document.blocks.length <= 1) {
+				dispatch({ type: "SET_DOCUMENT", document: createEmptyDocument() });
+				return;
+			}
+			const block = s.document.blocks[index];
+			const newFocusIndex = index > 0 ? index - 1 : 0;
+			const newFocusBlock =
+				index > 0 ? s.document.blocks[index - 1] : s.document.blocks[1];
+			const transaction = new TransactionBuilder()
+				.deleteBlock(index, block)
+				.withSelectionBefore(s.selection)
+				.withSelectionAfter(
+					createCollapsedSelection({
+						blockIndex: newFocusIndex,
+						offset: newFocusBlock.content.length,
+					}),
+				)
+				.withDescription("Delete block")
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+			dispatch({
+				type: "SET_SELECTION",
+				selection: createCollapsedSelection({
+					blockIndex: newFocusIndex,
+					offset: newFocusBlock.content.length,
+				}),
+			});
+		},
+
+		splitBlock: (index: number, offset: number) => {
+			const s = get();
+			const block = s.document.blocks[index];
+			const beforeContent = block.content.substring(0, offset);
+			const afterContent = block.content.substring(offset);
+			const newBlockType =
+				block.type === BlockType.bulletList ||
+				block.type === BlockType.numberedList ||
+				block.type === BlockType.checkboxList
+					? block.type
+					: BlockType.paragraph;
+			const listLevel = getListLevel(block);
+			const newBlock: BlockNode = {
+				id: `block_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+				type: newBlockType,
+				content: afterContent,
+				attributes:
+					block.type === BlockType.checkboxList
+						? { listLevel, checked: false }
+						: newBlockType !== BlockType.paragraph
+							? { listLevel }
+							: {},
+			};
+			const transaction = new TransactionBuilder()
+				.updateContent(index, block.content, beforeContent)
+				.insertBlock(index + 1, newBlock)
+				.withSelectionBefore(s.selection)
+				.withSelectionAfter(
+					createCollapsedSelection({
+						blockIndex: index + 1,
+						offset: 0,
+					}),
+				)
+				.withDescription("Split block")
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+		},
+
+		mergeWithPrevious: (index: number) => {
+			if (index <= 0) return;
+			const s = get();
+			const currentBlock = s.document.blocks[index];
+			const previousBlock = s.document.blocks[index - 1];
+			if (
+				currentBlock.type === BlockType.codeBlock ||
+				previousBlock.type === BlockType.codeBlock ||
+				previousBlock.type === BlockType.image
+			)
+				return;
+			const mergedContent = previousBlock.content + currentBlock.content;
+			const cursorOffset = previousBlock.content.length;
+			const transaction = new TransactionBuilder()
+				.updateContent(index - 1, previousBlock.content, mergedContent)
+				.deleteBlock(index, currentBlock)
+				.withSelectionBefore(s.selection)
+				.withSelectionAfter(
+					createCollapsedSelection({
+						blockIndex: index - 1,
+						offset: cursorOffset,
+					}),
+				)
+				.withDescription("Merge blocks")
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+		},
+
+		loadMarkdown: (markdown: string) => {
+			dispatch({
+				type: "SET_DOCUMENT",
+				document: createDocumentFromMarkdown(markdown),
+			});
+		},
+
+		toMarkdown: () => documentToMarkdown(get().document),
+
+		getCanUndo: () => history.canUndo,
+		getCanRedo: () => history.canRedo,
+		getFocusedBlockIndex: () => get().selection?.focus.blockIndex ?? null,
+		getFocusedBlock: () => {
+			const state = get();
+			const index = state.selection?.focus.blockIndex ?? null;
+			return index !== null ? state.document.blocks[index] : null;
+		},
+		getHasBlockSelection: () => get().blockSelection !== null,
+		};
+		},
+		{ name: "EditorStore", enabled: typeof __DEV__ !== "undefined" && __DEV__ },
+	),
+);
+
+export function useEditorDocument(): Document {
+	return useEditorState((s) => s.document);
+}
+
+export function useEditorSelection(): EditorStateSlice["selection"] {
+	return useEditorState((s) => s.selection);
+}
+
+export function useEditorBlockSelection(): EditorStateSlice["blockSelection"] {
+	return useEditorState((s) => s.blockSelection);
+}

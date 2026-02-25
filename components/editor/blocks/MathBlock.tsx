@@ -1,4 +1,4 @@
-import { useEditorState } from "@/contexts/EditorContext";
+import { useEditorDocument } from "@/stores/editorStore";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -35,7 +35,7 @@ export function MathBlock({
 		end: 0,
 	});
 	const [renderError, setRenderError] = useState<string | null>(null);
-	const editorState = useEditorState();
+	const document = useEditorDocument();
 	const { focusBlock, blurBlock } = useFocusBlock();
 	const theme = useExtendedTheme();
 
@@ -81,7 +81,6 @@ export function MathBlock({
 			const currentLineIndex = textBeforeCursor.split("\n").length - 1;
 
 			if (currentLineIndex === lines.length - 1) {
-				const document = editorState.document;
 				if (index < document.blocks.length - 1) {
 					focusBlock(index + 1);
 					return;
