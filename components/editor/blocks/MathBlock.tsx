@@ -1,6 +1,6 @@
-import { useEditorDocument } from "@/stores/editorStore";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { useEditorDocument } from "@/stores/editorStore";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
 	type NativeSyntheticEvent,
@@ -47,15 +47,15 @@ export function MathBlock({
 	}, [block.content, value]);
 
 	useEffect(() => {
-		onContentChange(value);
-	}, [onContentChange, value]);
+		onContentChange(index, value);
+	}, [onContentChange, index, value]);
 
 	const handleSelectionChange = (
 		e: NativeSyntheticEvent<TextInputSelectionChangeEventData>,
 	) => {
 		const sel = e.nativeEvent.selection;
 		setSelection(sel);
-		onSelectionChange?.(sel.start, sel.end);
+		onSelectionChange(index, sel.start, sel.end);
 	};
 
 	const handleKeyPress = (
@@ -98,7 +98,7 @@ export function MathBlock({
 			selection.end === 0 &&
 			value === ""
 		) {
-			onBackspaceAtStart?.();
+			onBackspaceAtStart(index);
 			return;
 		}
 	};

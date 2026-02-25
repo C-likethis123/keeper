@@ -52,8 +52,8 @@ export function CodeBlock({
 	}, [languageConfig]);
 
 	useEffect(() => {
-		onContentChange(value);
-	}, [onContentChange, value]);
+		onContentChange(index, value);
+	}, [onContentChange, index, value]);
 
 	const handleScroll = (e: NativeSyntheticEvent<TextInputScrollEventData>) => {
 		const y = e.nativeEvent.contentOffset.y;
@@ -99,8 +99,7 @@ export function CodeBlock({
 					// Insert extra newline and indentation after the first newline
 					const beforeExtra = result.newText.substring(0, newlineIndex + 1);
 					const afterExtra = result.newText.substring(newlineIndex + 1);
-					const extraIndentation =
-						`\n${Indentation.createIndentString(addedIndentionSize)}`;
+					const extraIndentation = `\n${Indentation.createIndentString(addedIndentionSize)}`;
 					const finalText = beforeExtra + extraIndentation + afterExtra;
 
 					// Adjust cursor position to account for the extra content
@@ -158,7 +157,7 @@ export function CodeBlock({
 	) => {
 		const sel = e.nativeEvent.selection;
 		setSelection(sel);
-		onSelectionChange?.(sel.start, sel.end);
+		onSelectionChange?.(index, sel.start, sel.end);
 	};
 	const handleKeyPress = (
 		e: NativeSyntheticEvent<TextInputKeyPressEventData>,
@@ -222,7 +221,7 @@ export function CodeBlock({
 					onBlockTypeChange?.(index, BlockType.codeBlock, language);
 				}}
 				onCopyPressed={handleCopy}
-				onDelete={onDelete ?? (() => {})}
+				onDelete={() => onDelete(index)}
 			/>
 			<View>
 				<SyntaxHighlighter

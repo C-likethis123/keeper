@@ -6,9 +6,8 @@ import {
 	useEditorState,
 } from "@/stores/editorStore";
 import { flip, shift, useFloating } from "@floating-ui/react-native";
-import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useRef } from "react";
-import { Alert, Platform, Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { type BlockConfig, blockRegistry } from "./blocks/BlockRegistry";
 import {
 	type BlockNode,
@@ -71,33 +70,6 @@ export function HybridEditor({
 	// Focus management
 	const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
 
-	const handleLinkPress = useCallback(
-		(index: number) => (urlOrWikiTitle: string) => {
-			const isUrl =
-				urlOrWikiTitle.startsWith("http://") ||
-				urlOrWikiTitle.startsWith("https://");
-			if (isUrl) {
-				Alert.alert("Link", urlOrWikiTitle, [
-					{
-						text: "Open",
-						onPress: () => {
-							if (Platform.OS === "web") {
-								window.open(urlOrWikiTitle, "_blank");
-							} else {
-								WebBrowser.openBrowserAsync(urlOrWikiTitle).catch(() => {});
-							}
-						},
-					},
-					{ text: "Edit", onPress: () => focusBlock(index) },
-					{ text: "Cancel", style: "cancel" },
-				]);
-			} else {
-				focusBlock(index);
-			}
-		},
-		[focusBlock],
-	);
-
 	// Track if a selection is in progress to prevent blur from ending session
 	const wikiLinkSelectionInProgressRef = useRef(false);
 
@@ -133,7 +105,7 @@ export function HybridEditor({
 	}, [initialContent, toMarkdown, loadMarkdown]);
 
 	const handleContentChange = useCallback(
-		(index: number) => (content: string) => {
+		(index: number, content: string) => {
 			if (ignoreNextContentChangeRef.current === index) {
 				ignoreNextContentChangeRef.current = null;
 				return;
@@ -216,7 +188,7 @@ export function HybridEditor({
 	);
 
 	const handleSpace = useCallback(
-		(index: number) => () => {
+		(index: number) => {
 			const block = getFocusedBlock();
 			if (!block) {
 				return;
@@ -236,7 +208,7 @@ export function HybridEditor({
 	);
 
 	const handleBackspaceAtStart = useCallback(
-		(index: number) => () => {
+		(index: number) => {
 			const block = getFocusedBlock();
 			if (!block) {
 				return;
@@ -341,7 +313,7 @@ export function HybridEditor({
 	);
 
 	const handleSelectionChange = useCallback(
-		(index: number) => (start: number, end: number) => {
+		(index: number, start: number, end: number) => {
 			if (Date.now() < ignoreSelectionChangeUntilRef.current) {
 				return;
 			}
@@ -363,10 +335,7 @@ export function HybridEditor({
 
 	const calculateListItemNumber = useCallback(
 		(index: number): number | undefined => {
-			const block = getFocusedBlock();
-			if (!block) {
-				return undefined;
-			}
+			const block = document.blocks[index];
 			if (block.type !== BlockType.numberedList) {
 				return undefined;
 			}
@@ -390,7 +359,7 @@ export function HybridEditor({
 			}
 			return number;
 		},
-		[document.blocks, getFocusedBlock],
+		[document.blocks],
 	);
 
 	const renderBlock = useCallback(
@@ -400,23 +369,15 @@ export function HybridEditor({
 				block,
 				index,
 				isFocused: focusBlockIndex === index,
-				onContentChange: handleContentChange(index),
-				onBlockTypeChange: (
-					blockIndex: number,
-					newType: BlockType,
-					language?: string,
-				) => {
-					if (blockIndex === index) {
-						handleBlockTypeChange(index, newType, language);
-					}
-				},
-				onBackspaceAtStart: handleBackspaceAtStart(index),
-				onSpace: handleSpace(index),
-				onEnter: (cursorOffset) => handleEnter(index, cursorOffset),
-				onSelectionChange: handleSelectionChange(index),
-				onDelete: () => handleDelete(index),
+				onContentChange: handleContentChange,
+				onBlockTypeChange: handleBlockTypeChange,
+				onBackspaceAtStart: handleBackspaceAtStart,
+				onSpace: handleSpace,
+				onEnter: handleEnter,
+				onSelectionChange: handleSelectionChange,
+				onDelete: handleDelete,
 				listItemNumber,
-				onCheckboxToggle: (blockIndex) => toggleCheckbox(blockIndex),
+				onCheckboxToggle: toggleCheckbox,
 				onWikiLinkTriggerStart: wikiLinks.handleTriggerStart,
 				onWikiLinkQueryUpdate: wikiLinks.handleQueryUpdate,
 				onWikiLinkTriggerEnd: wikiLinks.handleTriggerEnd,
@@ -522,10 +483,10 @@ const styles = StyleSheet.create({
 		position: "relative",
 	},
 	overlayWrapper: {
-		position: "absolute",
-		zIndex: 1000,
-		elevation: 10,
-		top: 0,
+		// position: "absolute",
+		// zIndex: 1000,
+		// elevation: 10,
+		// top: 0,
 	},
 	scrollView: {
 		flex: 1,

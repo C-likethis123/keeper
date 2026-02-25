@@ -45,26 +45,27 @@ export function ImageBlock({
 		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
 			const key = e.nativeEvent.key;
 			if (key === "Enter" && selection.start === selection.end) {
-				onEnter(selection.start);
+				onEnter(index, selection.start);
 			}
 
 			if (key === "Backspace" && selection.start === 0 && selection.end === 0) {
-				onBackspaceAtStart();
+				onBackspaceAtStart(index);
 				return;
 			}
 		},
-		[onBackspaceAtStart, selection, onEnter],
+		[onBackspaceAtStart, onEnter, index, selection],
 	);
 
 	const handleSelectionChange = useCallback(
 		(e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
 			setSelection(e.nativeEvent.selection);
 			onSelectionChange(
+				index,
 				e.nativeEvent.selection.start,
 				e.nativeEvent.selection.end,
 			);
 		},
-		[onSelectionChange],
+		[onSelectionChange, index],
 	);
 	return (
 		<Pressable
@@ -84,7 +85,7 @@ export function ImageBlock({
 					isFocused ? styles.inputVisible : styles.inputHidden,
 				]}
 				value={block.content}
-				onChangeText={onContentChange}
+				onChangeText={(text) => onContentChange(index, text)}
 				onKeyPress={handleKeyPress}
 				onSelectionChange={handleSelectionChange}
 			/>

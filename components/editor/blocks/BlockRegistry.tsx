@@ -10,23 +10,23 @@ export interface BlockConfig {
 	block: BlockNode;
 	index: number;
 	isFocused: boolean;
-	onContentChange: (content: string) => void;
+	onContentChange: (index: number, content: string) => void;
 	onBlockTypeChange?: (
 		index: number,
 		newType: BlockType,
 		language?: string,
 	) => void;
-	onBackspaceAtStart: () => void;
-	onSpace?: () => void;
-	onEnter: (cursorOffset: number) => void;
-	onSelectionChange: (start: number, end: number) => void;
-	onDelete?: () => void;
+	onBackspaceAtStart: (index: number) => void;
+	onSpace: (index: number) => void;
+	onEnter: (index: number, cursorOffset: number) => void;
+	onSelectionChange: (index: number, start: number, end: number) => void;
+	onDelete: (index: number) => void;
 	listItemNumber?: number; // For numbered list items
 	onCheckboxToggle: (index: number) => void;
 	// Wiki link callbacks
 	onWikiLinkTriggerStart: () => void;
 	onWikiLinkQueryUpdate?: (query: string, caretOffset: number) => void;
-	onWikiLinkTriggerEnd?: () => void;
+	onWikiLinkTriggerEnd: () => void;
 }
 
 export interface BlockBuilder {

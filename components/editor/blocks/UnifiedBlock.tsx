@@ -1,6 +1,6 @@
-import { useEditorSelection } from "@/stores/editorStore";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { useEditorSelection } from "@/stores/editorStore";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
 	type NativeSyntheticEvent,
@@ -71,14 +71,8 @@ export function UnifiedBlock({
 			return;
 		if (block.content === prevContentRef.current) return;
 		prevContentRef.current = block.content;
-		const start = Math.min(
-			selection.anchor.offset,
-			selection.focus.offset,
-		);
-		const end = Math.max(
-			selection.anchor.offset,
-			selection.focus.offset,
-		);
+		const start = Math.min(selection.anchor.offset, selection.focus.offset);
+		const end = Math.max(selection.anchor.offset, selection.focus.offset);
 		const len = block.content.length;
 		const sel = {
 			start: Math.min(start, len),
@@ -110,7 +104,7 @@ export function UnifiedBlock({
 				end: e.nativeEvent.selection.end,
 			};
 			// setSelection(newSelection);
-			onSelectionChange(newSelection.start, newSelection.end);
+			onSelectionChange(index, newSelection.start, newSelection.end);
 
 			if (isFocused && newSelection.start === newSelection.end) {
 				const caret = newSelection.start;
@@ -128,6 +122,7 @@ export function UnifiedBlock({
 			}
 		},
 		[
+			index,
 			isFocused,
 			block.content,
 			onSelectionChange,
@@ -148,7 +143,7 @@ export function UnifiedBlock({
 				return;
 			}
 
-			onContentChange(newText);
+			onContentChange(index, newText);
 
 			// Detect wiki link triggers after content change. Use newText.length as caret
 			// because selection is not updated yet when onChangeText fires.
@@ -165,6 +160,7 @@ export function UnifiedBlock({
 			}
 		},
 		[
+			index,
 			onContentChange,
 			isFocused,
 			onWikiLinkTriggerStart,
@@ -179,7 +175,7 @@ export function UnifiedBlock({
 
 			// Handle space key - trigger block type detection for paragraph blocks
 			if (key === " " && block.type === BlockType.paragraph) {
-				onSpace?.();
+			onSpace?.(index);
 				return;
 			}
 
@@ -192,7 +188,7 @@ export function UnifiedBlock({
 					// Mark the next onChangeText as ignorable so the stray newline doesn't
 					// get written back into the original block after we split.
 					ignoreNextChangeRef.current = true;
-					onEnter?.(selection?.focus.offset ?? 0);
+					onEnter?.(index, selection?.focus.offset ?? 0);
 				}
 				return;
 			}
@@ -205,24 +201,18 @@ export function UnifiedBlock({
 			) {
 				// Paragraph blocks: delegate to editor-level handler (empty = delete, non-empty = merge or focus previous)
 				if (block.type === BlockType.paragraph) {
-					onBackspaceAtStart?.();
+					onBackspaceAtStart?.(index);
 					return;
 				}
 
 				// Non-paragraph, non-code blocks (e.g., headings): convert to paragraph
 				if (block.type !== BlockType.codeBlock) {
-					onBackspaceAtStart?.();
+					onBackspaceAtStart?.(index);
 				}
 				return;
 			}
 		},
-		[
-			onSpace,
-			onEnter,
-			onBackspaceAtStart,
-			selection,
-			block.type,
-		],
+		[index, onSpace, onEnter, onBackspaceAtStart, selection, block.type],
 	);
 
 	const theme = useExtendedTheme();
@@ -243,9 +233,7 @@ export function UnifiedBlock({
 	}, [block.type, theme.typography]);
 
 	const selectionProp =
-		isFocused &&
-		selection &&
-		selection.focus.blockIndex === index
+		isFocused && selection && selection.focus.blockIndex === index
 			? (() => {
 					const sel = selection;
 					if (!sel) return undefined;
@@ -344,11 +332,13 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			alignItems: "flex-start",
 		},
 		overlay: {
-			position: "absolute",
-			left: 0,
-			right: 0,
-			top: 0,
-			pointerEvents: "none",
+			// position: "absolute",
+			alignItems: "flex-start",
+			// left: 0,
+			// right: 0,
+			// top: 0,
+			flex: 1,
+			// pointerEvents: "none",
 			zIndex: 1,
 		},
 		overlayContent: {
