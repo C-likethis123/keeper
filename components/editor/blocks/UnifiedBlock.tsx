@@ -95,7 +95,7 @@ export function UnifiedBlock({
 		// End wiki link session on blur, but with a delay to allow overlay selection
 		// The delay gives the overlay's onPress time to fire before ending the session
 		setTimeout(() => {
-			onWikiLinkTriggerEnd?.();
+			onWikiLinkTriggerEnd();
 		}, 150);
 	}, [blurBlock, onWikiLinkTriggerEnd]);
 
@@ -105,7 +105,6 @@ export function UnifiedBlock({
 				start: e.nativeEvent.selection.start,
 				end: e.nativeEvent.selection.end,
 			};
-			// setSelection(newSelection);
 			onSelectionChange(index, newSelection.start, newSelection.end);
 
 			if (isFocused && newSelection.start === newSelection.end) {
@@ -117,9 +116,9 @@ export function UnifiedBlock({
 				if (triggerStart !== null) {
 					onWikiLinkTriggerStart();
 					const query = block.content.substring(triggerStart + 2, caret);
-					onWikiLinkQueryUpdate?.(query, caret);
+					onWikiLinkQueryUpdate(query, caret);
 				} else {
-					onWikiLinkTriggerEnd?.();
+					onWikiLinkTriggerEnd();
 				}
 			}
 		},
@@ -155,9 +154,9 @@ export function UnifiedBlock({
 				if (start !== null) {
 					onWikiLinkTriggerStart();
 					const query = newText.substring(start + 2, caret);
-					onWikiLinkQueryUpdate?.(query, caret);
+					onWikiLinkQueryUpdate(query, caret);
 				} else {
-					onWikiLinkTriggerEnd?.();
+					onWikiLinkTriggerEnd();
 				}
 			}
 		},
@@ -177,7 +176,7 @@ export function UnifiedBlock({
 
 			// Handle space key - trigger block type detection for paragraph blocks
 			if (key === " " && block.type === BlockType.paragraph) {
-				onSpace?.(index);
+				onSpace(index);
 				return;
 			}
 
@@ -190,7 +189,7 @@ export function UnifiedBlock({
 					// Mark the next onChangeText as ignorable so the stray newline doesn't
 					// get written back into the original block after we split.
 					ignoreNextChangeRef.current = true;
-					onEnter?.(index, selection?.focus.offset ?? 0);
+					onEnter(index, selection?.focus.offset ?? 0);
 				}
 				return;
 			}
@@ -203,13 +202,13 @@ export function UnifiedBlock({
 			) {
 				// Paragraph blocks: delegate to editor-level handler (empty = delete, non-empty = merge or focus previous)
 				if (block.type === BlockType.paragraph) {
-					onBackspaceAtStart?.(index);
+					onBackspaceAtStart(index);
 					return;
 				}
 
 				// Non-paragraph, non-code blocks (e.g., headings): convert to paragraph
 				if (block.type !== BlockType.codeBlock) {
-					onBackspaceAtStart?.(index);
+					onBackspaceAtStart(index);
 				}
 				return;
 			}

@@ -5,7 +5,6 @@ import {
 	useEditorSelection,
 	useEditorState,
 } from "@/stores/editorStore";
-import { flip, shift, useFloating } from "@floating-ui/react-native";
 import React, { useCallback, useEffect, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { type BlockConfig, blockRegistry } from "./blocks/BlockRegistry";
@@ -16,6 +15,7 @@ import {
 	getListLevel,
 } from "./core/BlockNode";
 import { WikiLinkOverlay } from "./wikilinks/WikiLinkOverlay";
+import { useWikiLinkPositioning } from "./wikilinks/useWikiLinkPositioning";
 import { useWikiLinks } from "./wikilinks/useWikiLinks";
 
 export interface HybridEditorProps {
@@ -55,17 +55,9 @@ export function HybridEditor({
 
 	// Wiki link management via hook
 	const wikiLinks = useWikiLinks();
-
-	const {
-		refs,
-		floatingStyles,
-		scrollProps,
-		update: updateFloatingPosition,
-	} = useFloating({
-		placement: "bottom",
-		middleware: [flip(), shift()],
-		sameScrollView: false,
-	});
+	const showWikiLinkOverlay = wikiLinks.isActive;
+	const { refs, scrollProps, containerRef, overlayStyle } =
+		useWikiLinkPositioning(showWikiLinkOverlay);
 
 	// Focus management
 	const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
@@ -401,19 +393,8 @@ export function HybridEditor({
 		],
 	);
 
-	const showWikiLinkOverlay = wikiLinks.isActive;
-	const overlayWrapperRef = useRef<View>(null);
-
-	useEffect(() => {
-		if (!showWikiLinkOverlay) return;
-		const id = requestAnimationFrame(() => {
-			updateFloatingPosition();
-		});
-		return () => cancelAnimationFrame(id);
-	}, [showWikiLinkOverlay, updateFloatingPosition]);
-
 	return (
-		<View style={styles.container}>
+		<View ref={containerRef} style={styles.container}>
 			<ScrollView contentContainerStyle={styles.scrollContent} {...scrollProps}>
 				<Pressable
 					style={styles.pressableArea}
@@ -429,7 +410,7 @@ export function HybridEditor({
 								key={block.id}
 								style={styles.blockWrapper}
 								ref={isFocusedBlock ? refs.setReference : undefined}
-								collapsable={isFocusedBlock ? false : undefined}
+								collapsable={false}
 							>
 								{renderBlock(block, index)}
 							</View>
@@ -440,14 +421,14 @@ export function HybridEditor({
 			{/* Render overlay outside ScrollView to prevent touch conflicts */}
 			{showWikiLinkOverlay && (
 				<View
-					ref={overlayWrapperRef}
 					style={styles.overlayWrapper}
 					pointerEvents="box-none"
 					collapsable={false}
+					ref={refs.setOffsetParent}
 				>
 					<View
 						ref={refs.setFloating}
-						style={floatingStyles}
+						style={overlayStyle}
 						collapsable={false}
 						pointerEvents="auto"
 					>
@@ -478,10 +459,10 @@ const styles = StyleSheet.create({
 		position: "relative",
 	},
 	overlayWrapper: {
-		// position: "absolute",
-		// zIndex: 1000,
-		// elevation: 10,
-		// top: 0,
+		position: "absolute",
+		zIndex: 1000,
+		elevation: 10,
+		top: 0,
 	},
 	scrollView: {
 		flex: 1,
