@@ -36,6 +36,7 @@ export function UnifiedBlock({
 	const inputRef = useRef<TextInput>(null);
 	const ignoreNextChangeRef = useRef(false);
 	const lastBlockContentRef = useRef(block.content);
+	const prevIsFocusedRef = useRef(false);
 	const selection = useEditorSelection();
 
 	// Sync TextInput when block content changes externally (e.g., from wiki link selection)
@@ -54,9 +55,10 @@ export function UnifiedBlock({
 		}
 	}, [block.content]);
 	useEffect(() => {
-		if (isFocused && inputRef.current) {
+		if (isFocused && !prevIsFocusedRef.current && inputRef.current) {
 			inputRef.current.focus();
 		}
+		prevIsFocusedRef.current = isFocused;
 	}, [isFocused]);
 
 	// Re-apply selection after native value update so cursor at end doesn't jump (native often resets selection when value prop changes)
@@ -175,7 +177,7 @@ export function UnifiedBlock({
 
 			// Handle space key - trigger block type detection for paragraph blocks
 			if (key === " " && block.type === BlockType.paragraph) {
-			onSpace?.(index);
+				onSpace?.(index);
 				return;
 			}
 

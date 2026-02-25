@@ -382,11 +382,7 @@ export function HybridEditor({
 				onWikiLinkQueryUpdate: wikiLinks.handleQueryUpdate,
 				onWikiLinkTriggerEnd: wikiLinks.handleTriggerEnd,
 			};
-			return (
-				<View key={block.id} style={styles.blockWrapper}>
-					{blockRegistry.build(config)}
-				</View>
-			);
+			return blockRegistry.build(config);
 		},
 		[
 			focusBlockIndex,
@@ -427,7 +423,6 @@ export function HybridEditor({
 					}}
 				>
 					{document.blocks.map((block, index) => {
-						const blockElement = renderBlock(block, index);
 						const isFocusedBlock = index === focusBlockIndex;
 						return (
 							<View
@@ -436,7 +431,7 @@ export function HybridEditor({
 								ref={isFocusedBlock ? refs.setReference : undefined}
 								collapsable={isFocusedBlock ? false : undefined}
 							>
-								{blockElement}
+								{renderBlock(block, index)}
 							</View>
 						);
 					})}
