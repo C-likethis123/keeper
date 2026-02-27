@@ -1,6 +1,6 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import { useEditorSelection } from "@/stores/editorStore";
+import { useEditorSelection, useEditorState } from "@/stores/editorStore";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
 	type NativeSyntheticEvent,
@@ -38,20 +38,20 @@ export function UnifiedBlock({
 	const lastBlockContentRef = useRef(block.content);
 	const prevIsFocusedRef = useRef(false);
 	const selection = useEditorSelection();
+	const getFocusedBlockIndex = useEditorState(
+		(state) => state.getFocusedBlockIndex,
+	);
 
-	// Sync TextInput when block content changes externally (e.g., from wiki link selection)
+	// Sync TextInput when block content changes externally (e.g., from wiki link selection).
+	// setNativeProps queues after the value-prop bridge message, so its onSelectionChange(N)
+	// fires last and the cursor ends up at the correct position.
 	useEffect(() => {
 		if (block.content !== lastBlockContentRef.current && inputRef.current) {
-			// Block content changed externally - update TextInput
 			lastBlockContentRef.current = block.content;
-			// Force update by setting native props
-			if (inputRef.current) {
-				inputRef.current.setNativeProps({ text: block.content });
-				// Also update selection to end of new content
-				inputRef.current.setNativeProps({
-					selection: { start: block.content.length, end: block.content.length },
-				});
-			}
+			inputRef.current.setNativeProps({
+				text: block.content,
+				selection: { start: block.content.length, end: block.content.length },
+			});
 		}
 	}, [block.content]);
 	useEffect(() => {
@@ -61,76 +61,28 @@ export function UnifiedBlock({
 		prevIsFocusedRef.current = isFocused;
 	}, [isFocused]);
 
-	// Re-apply selection after native value update so cursor at end doesn't jump (native often resets selection when value prop changes)
-	const prevContentRef = useRef(block.content);
-	useEffect(() => {
-		if (
-			!isFocused ||
-			!inputRef.current ||
-			!selection ||
-			selection.focus.blockIndex !== index
-		)
-			return;
-		if (block.content === prevContentRef.current) return;
-		prevContentRef.current = block.content;
-		const start = Math.min(selection.anchor.offset, selection.focus.offset);
-		const end = Math.max(selection.anchor.offset, selection.focus.offset);
-		const len = block.content.length;
-		const sel = {
-			start: Math.min(start, len),
-			end: Math.min(end, len),
-		};
-		const id = requestAnimationFrame(() => {
-			inputRef.current?.setNativeProps({ selection: sel });
-		});
-		return () => cancelAnimationFrame(id);
-	}, [block.content, index, isFocused, selection]);
-
 	const handleFocus = useCallback(() => {
 		focusBlock(index);
 	}, [focusBlock, index]);
 
 	const handleBlur = useCallback(() => {
-		blurBlock();
+		const currentFocus = getFocusedBlockIndex();
+		if (currentFocus === index) {
+			blurBlock();
+		}
 		// End wiki link session on blur, but with a delay to allow overlay selection
 		// The delay gives the overlay's onPress time to fire before ending the session
 		setTimeout(() => {
 			onWikiLinkTriggerEnd();
 		}, 150);
-	}, [blurBlock, onWikiLinkTriggerEnd]);
+	}, [blurBlock, onWikiLinkTriggerEnd, getFocusedBlockIndex, index]);
 
 	const handleSelectionChange = useCallback(
 		(e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
-			const newSelection = {
-				start: e.nativeEvent.selection.start,
-				end: e.nativeEvent.selection.end,
-			};
-			onSelectionChange(index, newSelection.start, newSelection.end);
-
-			if (isFocused && newSelection.start === newSelection.end) {
-				const caret = newSelection.start;
-				if (caret > block.content.length) {
-					return;
-				}
-				const triggerStart = findWikiLinkTriggerStart(block.content, caret);
-				if (triggerStart !== null) {
-					onWikiLinkTriggerStart();
-					const query = block.content.substring(triggerStart + 2, caret);
-					onWikiLinkQueryUpdate(query, caret);
-				} else {
-					onWikiLinkTriggerEnd();
-				}
-			}
+			const { start, end } = e.nativeEvent.selection;
+			onSelectionChange(index, start, end);
 		},
-		[
-			index,
-			isFocused,
-			block.content,
-			onSelectionChange,
-			onWikiLinkTriggerStart,
-			onWikiLinkQueryUpdate,
-			onWikiLinkTriggerEnd,
-		],
+		[index, onSelectionChange],
 	);
 
 	const handleContentChange = useCallback(
@@ -154,7 +106,7 @@ export function UnifiedBlock({
 				if (start !== null) {
 					onWikiLinkTriggerStart();
 					const query = newText.substring(start + 2, caret);
-					onWikiLinkQueryUpdate(query, caret);
+					onWikiLinkQueryUpdate(query);
 				} else {
 					onWikiLinkTriggerEnd();
 				}

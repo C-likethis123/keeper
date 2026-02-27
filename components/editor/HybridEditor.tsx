@@ -261,6 +261,7 @@ export function HybridEditor({
 			if (wikiLinks.isActive) {
 				const selected = wikiLinks.getSelectedResult();
 				if (selected) {
+					ignoreSelectionChangeUntilRef.current = Date.now() + 150;
 					wikiLinks.handleSelect(selected, index, updateBlockContent);
 					return;
 				}
@@ -287,8 +288,6 @@ export function HybridEditor({
 				return;
 			}
 
-			// Set ignore flag before splitting to prevent TextInput from updating old block
-			ignoreNextContentChangeRef.current = index;
 			ignoreSelectionChangeUntilRef.current = Date.now() + 150;
 			splitBlock(index, cursorOffset);
 			focusBlock(index + 1);
