@@ -159,35 +159,70 @@ export async function notesIndexDbListAll(
 	limit: number,
 	offset?: number,
 	query?: string,
-	titleOnly?: boolean,
 ): Promise<ListNotesResult> {
 	const database = await getDb();
-	let sql = `SELECT * FROM ${TABLE}`;
-	const params: (string | number)[] = [];
-	if (query?.trim()) {
-		const q = `%${query.trim()}%`;
-		if (titleOnly) {
-			sql += " WHERE title IS NOT NULL AND title LIKE ?";
-			params.push(q);
-		} else {
-			sql += " WHERE (title IS NOT NULL AND title LIKE ?) OR summary LIKE ?";
-			params.push(q, q);
-		}
-	}
-	sql += " ORDER BY is_pinned DESC, updated_at DESC";
 	const offsetVal = offset ?? 0;
-	sql += " LIMIT ? OFFSET ?";
-	params.push(limit + 1, offsetVal);
+
+	if (query?.trim()) {
+		const q = query.trim();
+		// FTS5 prefix query: wrap in double-quotes (escaping any literal quotes),
+		// append * for prefix matching. E.g. "app"* matches words starting with "app".
+		const ftsQuery = `"${q.replace(/"/g, '""')}"*`;
+		const startsWith = `${q}%`;
+		const contains = `%${q}%`;
+
+		const sql = `
+			SELECT * FROM ${TABLE}
+			WHERE rowid IN (
+				SELECT rowid FROM ${FTS_TABLE} WHERE ${FTS_TABLE} MATCH ?
+			)
+			ORDER BY
+				CASE
+					WHEN title LIKE ? THEN 0
+					WHEN title LIKE ? THEN 1
+					ELSE 2
+				END ASC,
+				updated_at DESC
+			LIMIT ? OFFSET ?
+		`;
+
+		const rows = await database.getAllAsync<{
+			id: string;
+			title: string;
+			summary: string;
+			is_pinned: number;
+			updated_at: number;
+		}>(sql, ftsQuery, startsWith, contains, limit + 1, offsetVal);
+
+		const items: NoteIndexItem[] = rows.slice(0, limit).map((row) => ({
+			noteId: row.id,
+			title: row.title,
+			summary: row.summary,
+			isPinned: row.is_pinned !== 0,
+			updatedAt: row.updated_at,
+		}));
+		const nextCursor =
+			rows.length > limit ? { offset: offsetVal + limit } : undefined;
+		return { items, cursor: nextCursor };
+	}
+
+	// No query: sort by pinned then recency
+	const sql = `
+		SELECT * FROM ${TABLE}
+		ORDER BY is_pinned DESC, updated_at DESC
+		LIMIT ? OFFSET ?
+	`;
 	const rows = await database.getAllAsync<{
 		id: string;
-		title: string | null;
+		title: string;
 		summary: string;
 		is_pinned: number;
 		updated_at: number;
-	}>(sql, ...params);
+	}>(sql, limit + 1, offsetVal);
+
 	const items: NoteIndexItem[] = rows.slice(0, limit).map((row) => ({
 		noteId: row.id,
-		title: row.title ?? "",
+		title: row.title,
 		summary: row.summary,
 		isPinned: row.is_pinned !== 0,
 		updatedAt: row.updated_at,
