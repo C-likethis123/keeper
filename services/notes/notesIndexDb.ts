@@ -1,3 +1,4 @@
+import { MIGRATIONS } from "@/migrations/migrations";
 import { Directory, File } from "expo-file-system";
 import type { SQLiteDatabase } from "expo-sqlite";
 import * as SQLite from "expo-sqlite";
@@ -22,79 +23,11 @@ async function migrateDbIfNeeded(database: SQLiteDatabase): Promise<void> {
 		return;
 	}
 
-	if (currentDbVersion === 0) {
-		await database.withTransactionAsync(async () => {
-			await database.execAsync(`
-				CREATE TABLE ${TABLE} (
-					id TEXT PRIMARY KEY NOT NULL,
-					title TEXT NOT NULL DEFAULT '',
-					summary TEXT NOT NULL,
-					is_pinned INTEGER NOT NULL DEFAULT 0,
-					updated_at INTEGER NOT NULL
-				)
-			`);
-			await database.execAsync("PRAGMA user_version = 1");
-		});
-		currentDbVersion = 1;
-	}
-
-	if (currentDbVersion === 1) {
-		await database.withTransactionAsync(async () => {
-			// Rebuild table: enforce title NOT NULL (existing rows may have NULL titles)
-			await database.execAsync(`
-				CREATE TABLE ${TABLE}_v2 (
-					id TEXT PRIMARY KEY NOT NULL,
-					title TEXT NOT NULL DEFAULT '',
-					summary TEXT NOT NULL,
-					is_pinned INTEGER NOT NULL DEFAULT 0,
-					updated_at INTEGER NOT NULL
-				)
-			`);
-			await database.execAsync(`
-				INSERT INTO ${TABLE}_v2 (id, title, summary, is_pinned, updated_at)
-				SELECT id, COALESCE(title, ''), summary, is_pinned, updated_at
-				FROM ${TABLE}
-			`);
-			await database.execAsync(`DROP TABLE ${TABLE}`);
-			await database.execAsync(`ALTER TABLE ${TABLE}_v2 RENAME TO ${TABLE}`);
-
-			// Create FTS5 virtual table as a content table over note_index
-			await database.execAsync(`
-				CREATE VIRTUAL TABLE ${FTS_TABLE}
-				USING fts5(title, summary, content='${TABLE}', content_rowid='rowid')
-			`);
-
-			// Populate FTS from existing rows
-			await database.execAsync(`
-				INSERT INTO ${FTS_TABLE}(rowid, title, summary)
-				SELECT rowid, title, summary FROM ${TABLE}
-			`);
-
-			// Triggers to keep FTS in sync with note_index
-			await database.execAsync(`
-				CREATE TRIGGER ${TABLE}_ai AFTER INSERT ON ${TABLE} BEGIN
-					INSERT INTO ${FTS_TABLE}(rowid, title, summary)
-					VALUES (new.rowid, new.title, new.summary);
-				END
-			`);
-			await database.execAsync(`
-				CREATE TRIGGER ${TABLE}_ad AFTER DELETE ON ${TABLE} BEGIN
-					INSERT INTO ${FTS_TABLE}(${FTS_TABLE}, rowid, title, summary)
-					VALUES ('delete', old.rowid, old.title, old.summary);
-				END
-			`);
-			await database.execAsync(`
-				CREATE TRIGGER ${TABLE}_au AFTER UPDATE ON ${TABLE} BEGIN
-					INSERT INTO ${FTS_TABLE}(${FTS_TABLE}, rowid, title, summary)
-					VALUES ('delete', old.rowid, old.title, old.summary);
-					INSERT INTO ${FTS_TABLE}(rowid, title, summary)
-					VALUES (new.rowid, new.title, new.summary);
-				END
-			`);
-
-			await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
-		});
-		currentDbVersion = 2;
+	for (const migration of MIGRATIONS) {
+		if (migration.version > currentDbVersion) {
+			await migration.migrate(database);
+			currentDbVersion = migration.version;
+		}
 	}
 }
 

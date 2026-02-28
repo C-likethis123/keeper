@@ -41,9 +41,12 @@
 					}
 				}
 			],
-			["expo-sqlite", {
-				"enableFTS": true
-			}
+			[
+				"expo-sqlite",
+				{
+					"enableFTS": true
+				}
+			]
 		],
 		"experiments": {
 			"typedRoutes": true,
