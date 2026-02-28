@@ -1,7 +1,6 @@
 import {
 	type ListNotesResult,
 	notesIndexDbDelete,
-	notesIndexDbGet,
 	notesIndexDbListAll,
 	notesIndexDbUpsert,
 } from "./notesIndexDb";
@@ -21,10 +20,6 @@ export class NotesIndexService {
 
 	private constructor() {}
 
-	async getNote(noteId: string): Promise<NoteIndexItem | null> {
-		return notesIndexDbGet(noteId);
-	}
-
 	static async upsertNote(item: NoteIndexItem): Promise<void> {
 		await notesIndexDbUpsert(item);
 	}
@@ -34,11 +29,11 @@ export class NotesIndexService {
 	}
 
 	static async listNotes(
+		query: string,
 		limit = 20,
 		offset?: number,
-		query?: string,
 	): Promise<ListNotesResult> {
-		return notesIndexDbListAll(limit, offset, query);
+		return notesIndexDbListAll(query, limit, offset);
 	}
 }
 

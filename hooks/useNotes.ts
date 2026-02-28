@@ -1,14 +1,10 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import {
-	NotesIndexService,
 	type NoteIndexItem,
+	NotesIndexService,
 } from "@/services/notes/notesIndex";
 import type { Note } from "@/services/notes/types";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-function listKeyFromQuery(query: string): string {
-	return query.trim();
-}
 
 function toNote(item: NoteIndexItem): Note {
 	return {
@@ -22,7 +18,6 @@ function toNote(item: NoteIndexItem): Note {
 
 export default function useNotes() {
 	const [query, setQuery] = useState("");
-	const listKey = listKeyFromQuery(query);
 	const [notes, setNotes] = useState<Note[]>([]);
 	const [hasMore, setHasMore] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -38,11 +33,11 @@ export default function useNotes() {
 			loadingRef.current = true;
 			setIsLoading(true);
 			try {
-				const offset = append ? nextOffsetRef.current ?? 0 : 0;
+				const offset = append ? (nextOffsetRef.current ?? 0) : 0;
 				const results = await NotesIndexService.listNotes(
+					query,
 					PAGE_SIZE,
 					offset,
-					listKey,
 				);
 				nextOffsetRef.current = results.cursor?.offset;
 				const newNotes = results.items.map(toNote);
@@ -61,7 +56,7 @@ export default function useNotes() {
 				setIsLoading(false);
 			}
 		},
-		[listKey],
+		[query],
 	);
 
 	const loadMoreNotes = useCallback(async () => {

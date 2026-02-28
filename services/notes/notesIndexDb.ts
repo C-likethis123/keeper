@@ -1,4 +1,6 @@
+import { MIGRATIONS } from "@/migrations/migrations";
 import { Directory, File } from "expo-file-system";
+import type { SQLiteDatabase } from "expo-sqlite";
 import * as SQLite from "expo-sqlite";
 import matter from "gray-matter";
 import { NOTES_ROOT } from "./Notes";
@@ -7,48 +9,33 @@ import { extractSummary } from "./notesIndex";
 
 const DB_NAME = "notes-index.db";
 const TABLE = "note_index";
-const SCHEMA_VERSION = 1;
+const FTS_TABLE = "note_index_fts";
+const DATABASE_VERSION = 2;
 
 let db: SQLite.SQLiteDatabase | null = null;
+
+async function migrateDbIfNeeded(database: SQLiteDatabase): Promise<void> {
+	const row = await database.getFirstAsync<{ user_version: number }>(
+		"PRAGMA user_version",
+	);
+	let currentDbVersion = row?.user_version ?? 0;
+	if (currentDbVersion >= DATABASE_VERSION) {
+		return;
+	}
+
+	for (const migration of MIGRATIONS) {
+		if (migration.version > currentDbVersion) {
+			await migration.migrate(database);
+			currentDbVersion = migration.version;
+		}
+	}
+}
 
 async function getDb(): Promise<SQLite.SQLiteDatabase> {
 	if (db) return db;
 	db = await SQLite.openDatabaseAsync(DB_NAME);
 	await db.execAsync("PRAGMA journal_mode = WAL");
-	const row = await db.getFirstAsync<{ user_version: number }>(
-		"PRAGMA user_version",
-	);
-	const version = row?.user_version ?? 0;
-	if (version < SCHEMA_VERSION) {
-		if (version === 0) {
-			await db.execAsync(`
-				CREATE TABLE IF NOT EXISTS ${TABLE} (
-					id TEXT PRIMARY KEY NOT NULL,
-					title TEXT,
-					summary TEXT NOT NULL,
-					is_pinned INTEGER NOT NULL DEFAULT 0,
-					updated_at INTEGER NOT NULL
-				)
-			`);
-		} else {
-			await db.execAsync(`
-				CREATE TABLE IF NOT EXISTS ${TABLE}_new (
-					id TEXT PRIMARY KEY NOT NULL,
-					title TEXT,
-					summary TEXT NOT NULL,
-					is_pinned INTEGER NOT NULL DEFAULT 0,
-					updated_at INTEGER NOT NULL
-				)
-			`);
-			await db.execAsync(`
-				INSERT INTO ${TABLE}_new (id, title, summary, is_pinned, updated_at)
-				SELECT id, title, summary, is_pinned, updated_at FROM ${TABLE}
-			`);
-			await db.execAsync(`DROP TABLE ${TABLE}`);
-			await db.execAsync(`ALTER TABLE ${TABLE}_new RENAME TO ${TABLE}`);
-		}
-		await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
-	}
+	await migrateDbIfNeeded(db);
 	return db;
 }
 
@@ -68,7 +55,7 @@ export async function notesIndexDbUpsert(item: NoteIndexItem): Promise<void> {
 		   is_pinned = excluded.is_pinned,
 		   updated_at = excluded.updated_at`,
 		item.noteId,
-		item.title ?? null,
+		item.title ?? "",
 		item.summary,
 		item.isPinned ? 1 : 0,
 		item.updatedAt,
@@ -80,54 +67,68 @@ export async function notesIndexDbDelete(noteId: string): Promise<void> {
 	await database.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, noteId);
 }
 
-export async function notesIndexDbGet(
-	noteId: string,
-): Promise<NoteIndexItem | null> {
-	const database = await getDb();
-	const row = await database.getFirstAsync<{
-		id: string;
-		title: string | null;
-		summary: string;
-		is_pinned: number;
-		updated_at: number;
-	}>(`SELECT * FROM ${TABLE} WHERE id = ?`, noteId);
-	if (!row) return null;
-	return {
-		noteId: row.id,
-		title: row.title ?? "",
-		summary: row.summary,
-		isPinned: row.is_pinned !== 0,
-		updatedAt: row.updated_at,
-	};
-}
-
 export async function notesIndexDbListAll(
+	query: string,
 	limit: number,
 	offset?: number,
-	query?: string,
 ): Promise<ListNotesResult> {
 	const database = await getDb();
-	let sql = `SELECT * FROM ${TABLE}`;
-	const params: (string | number)[] = [];
-	if (query?.trim()) {
-		sql += " WHERE (title IS NOT NULL AND title LIKE ?) OR summary LIKE ?";
-		const q = `%${query.trim()}%`;
-		params.push(q, q);
-	}
-	sql += " ORDER BY is_pinned DESC, updated_at DESC";
 	const offsetVal = offset ?? 0;
-	sql += " LIMIT ? OFFSET ?";
-	params.push(limit + 1, offsetVal);
+
+	if (query.length > 0) {
+		const q = query.trim();
+		const ftsQuery = `${q}*`;
+
+		const sql = `
+			SELECT
+				*,
+				bm25(${FTS_TABLE}, 1.0, 0.2) AS score
+			FROM ${TABLE}
+			JOIN ${FTS_TABLE} ON ${TABLE}.rowid = ${FTS_TABLE}.rowid
+			WHERE ${FTS_TABLE} MATCH ?
+			ORDER BY
+				is_pinned DESC,
+				score,
+				updated_at DESC
+			LIMIT ? OFFSET ?
+		`;
+
+		const rows = await database.getAllAsync<{
+			id: string;
+			title: string;
+			summary: string;
+			is_pinned: number;
+			updated_at: number;
+		}>(sql, ftsQuery, limit + 1, offsetVal);
+
+		const items: NoteIndexItem[] = rows.slice(0, limit).map((row) => ({
+			noteId: row.id,
+			title: row.title,
+			summary: row.summary,
+			isPinned: row.is_pinned !== 0,
+			updatedAt: row.updated_at,
+		}));
+		const nextCursor =
+			rows.length > limit ? { offset: offsetVal + limit } : undefined;
+		return { items, cursor: nextCursor };
+	}
+
+	const sql = `
+		SELECT * FROM ${TABLE}
+		ORDER BY is_pinned DESC, updated_at DESC
+		LIMIT ? OFFSET ?
+	`;
 	const rows = await database.getAllAsync<{
 		id: string;
-		title: string | null;
+		title: string;
 		summary: string;
 		is_pinned: number;
 		updated_at: number;
-	}>(sql, ...params);
+	}>(sql, limit + 1, offsetVal);
+
 	const items: NoteIndexItem[] = rows.slice(0, limit).map((row) => ({
 		noteId: row.id,
-		title: row.title ?? "",
+		title: row.title,
 		summary: row.summary,
 		isPinned: row.is_pinned !== 0,
 		updatedAt: row.updated_at,

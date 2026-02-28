@@ -25,7 +25,7 @@ export interface BlockConfig {
 	onCheckboxToggle: (index: number) => void;
 	// Wiki link callbacks
 	onWikiLinkTriggerStart: () => void;
-	onWikiLinkQueryUpdate: (query: string, caretOffset: number) => void;
+	onWikiLinkQueryUpdate: (query: string) => void;
 	onWikiLinkTriggerEnd: () => void;
 }
 
