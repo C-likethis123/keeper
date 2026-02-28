@@ -134,54 +134,28 @@ export async function notesIndexDbDelete(noteId: string): Promise<void> {
 	await database.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, noteId);
 }
 
-export async function notesIndexDbGet(
-	noteId: string,
-): Promise<NoteIndexItem | null> {
-	const database = await getDb();
-	const row = await database.getFirstAsync<{
-		id: string;
-		title: string | null;
-		summary: string;
-		is_pinned: number;
-		updated_at: number;
-	}>(`SELECT * FROM ${TABLE} WHERE id = ?`, noteId);
-	if (!row) return null;
-	return {
-		noteId: row.id,
-		title: row.title ?? "",
-		summary: row.summary,
-		isPinned: row.is_pinned !== 0,
-		updatedAt: row.updated_at,
-	};
-}
-
 export async function notesIndexDbListAll(
+	query: string,
 	limit: number,
 	offset?: number,
-	query?: string,
 ): Promise<ListNotesResult> {
 	const database = await getDb();
 	const offsetVal = offset ?? 0;
 
-	if (query?.trim()) {
+	if (query.length > 0) {
 		const q = query.trim();
-		// FTS5 prefix query: wrap in double-quotes (escaping any literal quotes),
-		// append * for prefix matching. E.g. "app"* matches words starting with "app".
-		const ftsQuery = `"${q.replace(/"/g, '""')}"*`;
-		const startsWith = `${q}%`;
-		const contains = `%${q}%`;
+		const ftsQuery = `${q}*`;
 
 		const sql = `
-			SELECT * FROM ${TABLE}
-			WHERE rowid IN (
-				SELECT rowid FROM ${FTS_TABLE} WHERE ${FTS_TABLE} MATCH ?
-			)
+			SELECT
+				*,
+				bm25(${FTS_TABLE}, 1.0, 0.2) AS score
+			FROM ${TABLE}
+			JOIN ${FTS_TABLE} ON ${TABLE}.rowid = ${FTS_TABLE}.rowid
+			WHERE ${FTS_TABLE} MATCH ?
 			ORDER BY
-				CASE
-					WHEN title LIKE ? THEN 0
-					WHEN title LIKE ? THEN 1
-					ELSE 2
-				END ASC,
+				is_pinned DESC,
+				score,
 				updated_at DESC
 			LIMIT ? OFFSET ?
 		`;
@@ -192,7 +166,7 @@ export async function notesIndexDbListAll(
 			summary: string;
 			is_pinned: number;
 			updated_at: number;
-		}>(sql, ftsQuery, startsWith, contains, limit + 1, offsetVal);
+		}>(sql, ftsQuery, limit + 1, offsetVal);
 
 		const items: NoteIndexItem[] = rows.slice(0, limit).map((row) => ({
 			noteId: row.id,
@@ -206,7 +180,6 @@ export async function notesIndexDbListAll(
 		return { items, cursor: nextCursor };
 	}
 
-	// No query: sort by pinned then recency
 	const sql = `
 		SELECT * FROM ${TABLE}
 		ORDER BY is_pinned DESC, updated_at DESC
