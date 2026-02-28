@@ -52,6 +52,7 @@ export function HybridEditor({
 	const isInitializedRef = useRef(false);
 	const ignoreNextContentChangeRef = useRef<number | null>(null);
 	const ignoreSelectionChangeUntilRef = useRef(0);
+	const lastSelectionOffsetRef = useRef(0);
 
 	// Wiki link management via hook
 	const wikiLinks = useWikiLinks();
@@ -262,7 +263,12 @@ export function HybridEditor({
 				const selected = wikiLinks.getSelectedResult();
 				if (selected) {
 					ignoreSelectionChangeUntilRef.current = Date.now() + 150;
-					wikiLinks.handleSelect(selected, index, updateBlockContent);
+					wikiLinks.handleSelect(
+						selected,
+						index,
+						lastSelectionOffsetRef.current,
+						updateBlockContent,
+					);
 					return;
 				}
 			}
@@ -305,6 +311,7 @@ export function HybridEditor({
 
 	const handleSelectionChange = useCallback(
 		(index: number, start: number, end: number) => {
+			lastSelectionOffsetRef.current = end;
 			if (Date.now() < ignoreSelectionChangeUntilRef.current) {
 				return;
 			}
@@ -441,6 +448,7 @@ export function HybridEditor({
 								wikiLinks.handleSelect(
 									title,
 									focusBlockIndex ?? 0,
+									lastSelectionOffsetRef.current,
 									updateBlockContent,
 								);
 							}}

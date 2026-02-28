@@ -1,12 +1,12 @@
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { HybridEditor } from "@/components/editor/HybridEditor";
+import type { EditorState } from "@/components/editor/core/EditorState";
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
-import type { EditorState } from "@/components/editor/core/EditorState";
 import { useEditorState } from "@/stores/editorStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";

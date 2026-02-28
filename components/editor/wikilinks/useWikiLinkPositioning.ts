@@ -1,4 +1,4 @@
-import { flip, shift, useFloating } from "@floating-ui/react-native";
+import { autoPlacement, shift, useFloating } from "@floating-ui/react-native";
 import { useEffect, useRef, useState } from "react";
 import type { View } from "react-native";
 
@@ -18,7 +18,13 @@ export function useWikiLinkPositioning(
 ): UseWikiLinkPositioningReturn {
 	const { refs, floatingStyles, scrollProps } = useFloating({
 		placement: "bottom",
-		middleware: [flip(), shift()],
+		middleware: [
+			autoPlacement({
+				padding: { bottom: 100 },
+				allowedPlacements: ["bottom", "top"],
+			}),
+			shift(),
+		],
 		sameScrollView: false,
 	});
 

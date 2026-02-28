@@ -40,8 +40,6 @@ export function useWikiLinks(): UseWikiLinksReturn {
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const document = useEditorDocument();
-	// Use ref to track if search is in progress to avoid race conditions
-	// const searchInProgressRef = useRef(false);
 
 	/// End the wiki link session
 	const handleTriggerEnd = useCallback(() => {
@@ -74,9 +72,9 @@ export function useWikiLinks(): UseWikiLinksReturn {
 		const fetchResults = async () => {
 			try {
 				const result = await NotesIndexService.listNotes(
+					debouncedQuery,
 					PAGE_SIZE,
-					undefined,
-					debouncedQuery.length > 0 ? debouncedQuery : undefined,
+					0,
 				);
 				const titles: string[] = [];
 				const seenTitles = new Set<string>();

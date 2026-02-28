@@ -26,7 +26,6 @@ export function WikiLinkOverlay({
 
 	const styles = createStyles(theme);
 	const needsScrolling = results.length * ITEM_HEIGHT > MAX_HEIGHT;
-
 	return (
 		<View style={styles.container}>
 			{isLoading ? (
@@ -35,7 +34,8 @@ export function WikiLinkOverlay({
 				<ScrollView
 					style={styles.scrollView}
 					contentContainerStyle={styles.scrollContent}
-					scrollEnabled={needsScrolling}
+					keyboardShouldPersistTaps="handled"
+					scrollToOverflowEnabled
 					nestedScrollEnabled
 					showsVerticalScrollIndicator={needsScrolling}
 				>
@@ -57,8 +57,6 @@ export function WikiLinkOverlay({
 										styles.itemText,
 										isSelected && styles.itemTextSelected,
 									]}
-									numberOfLines={1}
-									ellipsizeMode="tail"
 								>
 									{item}
 								</Text>
@@ -79,7 +77,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		container: {
 			maxHeight: MAX_HEIGHT,
-			maxWidth: 200,
 			backgroundColor: theme.colors.card,
 			borderRadius: 8,
 			shadowColor: theme.colors.shadow,
