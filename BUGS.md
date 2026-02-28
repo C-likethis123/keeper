@@ -18,3 +18,7 @@ Goal: Find a solution so that it can support:
 
 - keyboard avoiding view
     - extremely problematic, blocks randomly goes missing
+
+## Persistence
+
+After reloading or going back, content is gone
