@@ -251,6 +251,7 @@ export function UnifiedBlock({
 				)}
 				<View
 					style={[
+						{ flex: 0 },
 						!isFocused
 							? applyListStyles
 								? styles.overlayContent
@@ -285,14 +286,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			alignItems: "flex-start",
 		},
 		overlay: {
-			// position: "absolute",
 			alignItems: "flex-start",
-			// left: 0,
-			// right: 0,
-			// top: 0,
-			flex: 1,
-			// pointerEvents: "none",
-			zIndex: 1,
 		},
 		overlayContent: {
 			alignItems: "flex-start",

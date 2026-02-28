@@ -1,11 +1,7 @@
 # issues
-- cursor back and forth: when going to a new line within the same text input, there's a flicker
 
 - fix expo over the air updates
 
-- keyboard avoiding view
-
-- Autocomplete from keyboard not pasted correctly, theres a flicker
 
 - debug desktop tauri app
 
@@ -38,7 +34,9 @@ Types of notes:
 
 ## Phase 2: Wikilink overlay
 - doesn't always trigger on typing....
-- totally fix it!!!! figure out how to position it properly in mobile
+- in other editors, the exact width does not matter.
+    - it's either positioned to the left or to the right
+    - knowing the exact line matters.
 Figure out how to make wikilinks clickable
 
 ## Phase 2: Image blocks (web)
