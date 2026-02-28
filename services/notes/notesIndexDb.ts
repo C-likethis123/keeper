@@ -1,4 +1,5 @@
 import { Directory, File } from "expo-file-system";
+import type { SQLiteDatabase } from "expo-sqlite";
 import * as SQLite from "expo-sqlite";
 import matter from "gray-matter";
 import { NOTES_ROOT } from "./Notes";
@@ -7,48 +8,97 @@ import { extractSummary } from "./notesIndex";
 
 const DB_NAME = "notes-index.db";
 const TABLE = "note_index";
-const SCHEMA_VERSION = 1;
+const FTS_TABLE = "note_index_fts";
+const DATABASE_VERSION = 2;
 
 let db: SQLite.SQLiteDatabase | null = null;
+
+async function migrateDbIfNeeded(database: SQLiteDatabase): Promise<void> {
+	const row = await database.getFirstAsync<{ user_version: number }>(
+		"PRAGMA user_version",
+	);
+	let currentDbVersion = row?.user_version ?? 0;
+	if (currentDbVersion >= DATABASE_VERSION) {
+		return;
+	}
+
+	if (currentDbVersion === 0) {
+		await database.execAsync(`
+			CREATE TABLE IF NOT EXISTS ${TABLE} (
+				id TEXT PRIMARY KEY NOT NULL,
+				title TEXT NOT NULL DEFAULT '',
+				summary TEXT NOT NULL,
+				is_pinned INTEGER NOT NULL DEFAULT 0,
+				updated_at INTEGER NOT NULL
+			)
+		`);
+		currentDbVersion = 1;
+	}
+
+	if (currentDbVersion === 1) {
+		// Rebuild table: enforce title NOT NULL (existing rows may have NULL titles)
+		await database.execAsync(`
+			CREATE TABLE ${TABLE}_v2 (
+				id TEXT PRIMARY KEY NOT NULL,
+				title TEXT NOT NULL DEFAULT '',
+				summary TEXT NOT NULL,
+				is_pinned INTEGER NOT NULL DEFAULT 0,
+				updated_at INTEGER NOT NULL
+			)
+		`);
+		await database.execAsync(`
+			INSERT INTO ${TABLE}_v2 (id, title, summary, is_pinned, updated_at)
+			SELECT id, COALESCE(title, ''), summary, is_pinned, updated_at
+			FROM ${TABLE}
+		`);
+		await database.execAsync(`DROP TABLE ${TABLE}`);
+		await database.execAsync(`ALTER TABLE ${TABLE}_v2 RENAME TO ${TABLE}`);
+
+		// Create FTS5 virtual table as a content table over note_index
+		await database.execAsync(`
+			CREATE VIRTUAL TABLE ${FTS_TABLE}
+			USING fts5(title, summary, content='${TABLE}', content_rowid='rowid')
+		`);
+
+		// Populate FTS from existing rows
+		await database.execAsync(`
+			INSERT INTO ${FTS_TABLE}(rowid, title, summary)
+			SELECT rowid, title, summary FROM ${TABLE}
+		`);
+
+		// Triggers to keep FTS in sync with note_index
+		await database.execAsync(`
+			CREATE TRIGGER ${TABLE}_ai AFTER INSERT ON ${TABLE} BEGIN
+				INSERT INTO ${FTS_TABLE}(rowid, title, summary)
+				VALUES (new.rowid, new.title, new.summary);
+			END
+		`);
+		await database.execAsync(`
+			CREATE TRIGGER ${TABLE}_ad AFTER DELETE ON ${TABLE} BEGIN
+				INSERT INTO ${FTS_TABLE}(${FTS_TABLE}, rowid, title, summary)
+				VALUES ('delete', old.rowid, old.title, old.summary);
+			END
+		`);
+		await database.execAsync(`
+			CREATE TRIGGER ${TABLE}_au AFTER UPDATE ON ${TABLE} BEGIN
+				INSERT INTO ${FTS_TABLE}(${FTS_TABLE}, rowid, title, summary)
+				VALUES ('delete', old.rowid, old.title, old.summary);
+				INSERT INTO ${FTS_TABLE}(rowid, title, summary)
+				VALUES (new.rowid, new.title, new.summary);
+			END
+		`);
+
+		currentDbVersion = 2;
+	}
+
+	await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
+}
 
 async function getDb(): Promise<SQLite.SQLiteDatabase> {
 	if (db) return db;
 	db = await SQLite.openDatabaseAsync(DB_NAME);
 	await db.execAsync("PRAGMA journal_mode = WAL");
-	const row = await db.getFirstAsync<{ user_version: number }>(
-		"PRAGMA user_version",
-	);
-	const version = row?.user_version ?? 0;
-	if (version < SCHEMA_VERSION) {
-		if (version === 0) {
-			await db.execAsync(`
-				CREATE TABLE IF NOT EXISTS ${TABLE} (
-					id TEXT PRIMARY KEY NOT NULL,
-					title TEXT,
-					summary TEXT NOT NULL,
-					is_pinned INTEGER NOT NULL DEFAULT 0,
-					updated_at INTEGER NOT NULL
-				)
-			`);
-		} else {
-			await db.execAsync(`
-				CREATE TABLE IF NOT EXISTS ${TABLE}_new (
-					id TEXT PRIMARY KEY NOT NULL,
-					title TEXT,
-					summary TEXT NOT NULL,
-					is_pinned INTEGER NOT NULL DEFAULT 0,
-					updated_at INTEGER NOT NULL
-				)
-			`);
-			await db.execAsync(`
-				INSERT INTO ${TABLE}_new (id, title, summary, is_pinned, updated_at)
-				SELECT id, title, summary, is_pinned, updated_at FROM ${TABLE}
-			`);
-			await db.execAsync(`DROP TABLE ${TABLE}`);
-			await db.execAsync(`ALTER TABLE ${TABLE}_new RENAME TO ${TABLE}`);
-		}
-		await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
-	}
+	await migrateDbIfNeeded(db);
 	return db;
 }
 
@@ -105,14 +155,20 @@ export async function notesIndexDbListAll(
 	limit: number,
 	offset?: number,
 	query?: string,
+	titleOnly?: boolean,
 ): Promise<ListNotesResult> {
 	const database = await getDb();
 	let sql = `SELECT * FROM ${TABLE}`;
 	const params: (string | number)[] = [];
 	if (query?.trim()) {
-		sql += " WHERE (title IS NOT NULL AND title LIKE ?) OR summary LIKE ?";
 		const q = `%${query.trim()}%`;
-		params.push(q, q);
+		if (titleOnly) {
+			sql += " WHERE title IS NOT NULL AND title LIKE ?";
+			params.push(q);
+		} else {
+			sql += " WHERE (title IS NOT NULL AND title LIKE ?) OR summary LIKE ?";
+			params.push(q, q);
+		}
 	}
 	sql += " ORDER BY is_pinned DESC, updated_at DESC";
 	const offsetVal = offset ?? 0;
