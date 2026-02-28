@@ -122,7 +122,7 @@ export async function notesIndexDbUpsert(item: NoteIndexItem): Promise<void> {
 		   is_pinned = excluded.is_pinned,
 		   updated_at = excluded.updated_at`,
 		item.noteId,
-		item.title ?? null,
+		item.title ?? "",
 		item.summary,
 		item.isPinned ? 1 : 0,
 		item.updatedAt,
