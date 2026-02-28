@@ -1,7 +1,7 @@
 {
-  "warmup_command": "npm install",
-  "workspace_dir": "/tmp/grove/keeper",
-  "max_workspaces": 10,
-  "exclude": [],
-  "clone_backend": "cp"
+	"warmup_command": "npm install",
+	"workspace_dir": "/tmp/grove/keeper",
+	"max_workspaces": 10,
+	"exclude": [],
+	"clone_backend": "cp"
 }

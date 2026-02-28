@@ -1,7 +1,27 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(git commit:*)"
-    ]
-  }
+	"permissions": {
+		"allow": [
+			"Bash(git add:*)",
+			"Bash(git commit:*)",
+			"Bash(git checkout:*)",
+			"Bash(git switch:*)",
+			"Bash(git branch:*)",
+			"Bash(npm run:*)",
+			"Bash(grove create:*)",
+			"Bash(node:*)",
+			"Bash(python3:*)",
+			"mcp__ide__getDiagnostics"
+		],
+		"deny": [
+			"Bash(rm:*)",
+			"Bash(sudo:*)",
+			"Bash(chmod:*)",
+			"Bash(chown:*)",
+			"Bash(curl:*)",
+			"Bash(wget:*)",
+			"Bash(brew:*)",
+			"Bash(docker:*)",
+			"Bash(kubectl:*)"
+		]
+	}
 }
