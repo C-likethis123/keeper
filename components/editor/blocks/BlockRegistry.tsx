@@ -23,10 +23,6 @@ export interface BlockConfig {
 	onDelete: (index: number) => void;
 	listItemNumber?: number; // For numbered list items
 	onCheckboxToggle: (index: number) => void;
-	// Wiki link callbacks
-	onWikiLinkTriggerStart: () => void;
-	onWikiLinkQueryUpdate: (query: string) => void;
-	onWikiLinkTriggerEnd: () => void;
 }
 
 export interface BlockBuilder {

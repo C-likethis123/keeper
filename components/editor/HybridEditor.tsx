@@ -7,9 +7,8 @@ import { BlockRow } from "./BlockRow";
 import { DocumentSync } from "./DocumentSync";
 import { blockRegistry } from "./blocks/BlockRegistry";
 import { BlockType, createParagraphBlock } from "./core/BlockNode";
-import { WikiLinkOverlay } from "./wikilinks/WikiLinkOverlay";
-import { useWikiLinkPositioning } from "./wikilinks/useWikiLinkPositioning";
-import { useWikiLinks } from "./wikilinks/useWikiLinks";
+import { WikiLinkProvider } from "./wikilinks/WikiLinkContext";
+import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
 
 export interface HybridEditorProps {
 	initialContent?: string;
@@ -46,17 +45,7 @@ export function HybridEditor({
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
 
-	// Wiki link management via hook
-	const wikiLinks = useWikiLinks();
-	const showWikiLinkOverlay = wikiLinks.isActive;
-	const { refs, scrollProps, containerRef, overlayStyle } =
-		useWikiLinkPositioning(showWikiLinkOverlay);
-
-	// Focus management
-	const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
-
-	// Track if a selection is in progress to prevent blur from ending session
-	const wikiLinkSelectionInProgressRef = useRef(false);
+	const { focusBlock, focusBlockIndex } = useFocusBlock();
 
 	// Initialize document from markdown when initialContent changes (only from outside, not from our own updates).
 	// Depends only on initialContent so we do not re-run after our own loadMarkdown (which would change editorState and cause an update loop).
@@ -241,20 +230,6 @@ export function HybridEditor({
 			if ([BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
 				return;
 			}
-			// Handle wiki link selection if active
-			if (wikiLinks.isActive) {
-				const selected = wikiLinks.getSelectedResult();
-				if (selected) {
-					ignoreSelectionChangeUntilRef.current = Date.now() + 150;
-					wikiLinks.handleSelect(
-						selected,
-						index,
-						lastSelectionOffsetRef.current,
-						updateBlockContent,
-					);
-					return;
-				}
-			}
 			if (
 				handleBlockTypeDetection(index, block.content, {
 					onlyIfTypeChanges: true,
@@ -282,8 +257,6 @@ export function HybridEditor({
 			focusBlock(index + 1);
 		},
 		[
-			wikiLinks,
-			updateBlockContent,
 			handleBlockTypeDetection,
 			focusBlock,
 			updateBlockType,
@@ -324,9 +297,6 @@ export function HybridEditor({
 			onSelectionChange: handleSelectionChange,
 			onDelete: handleDelete,
 			onCheckboxToggle: toggleCheckbox,
-			onWikiLinkTriggerStart: wikiLinks.handleTriggerStart,
-			onWikiLinkQueryUpdate: wikiLinks.handleQueryUpdate,
-			onWikiLinkTriggerEnd: wikiLinks.handleTriggerEnd,
 		}),
 		[
 			handleContentChange,
@@ -337,73 +307,34 @@ export function HybridEditor({
 			handleSelectionChange,
 			handleDelete,
 			toggleCheckbox,
-			wikiLinks.handleTriggerStart,
-			wikiLinks.handleQueryUpdate,
-			wikiLinks.handleTriggerEnd,
 		],
 	);
 
 	return (
-		<View ref={containerRef} style={styles.container}>
-			<DocumentSync
-				onChanged={onChanged}
-				lastInitialContentRef={lastInitialContentRef}
-				lastEmittedMarkdownRef={lastEmittedMarkdownRef}
-			/>
-			<ScrollView contentContainerStyle={styles.scrollContent} {...scrollProps}>
-				<Pressable
-					style={styles.pressableArea}
-					onPress={() => {
-						const blocks = useEditorState.getState().document.blocks;
-						const lastIndex = Math.max(0, blocks.length - 1);
-						focusBlock(lastIndex);
-					}}
-				>
-					{blockIds.map((id, index) => (
-						<BlockRow
-							key={id}
-							index={index}
-							handlers={handlers}
-							setReference={
-								index === focusBlockIndex ? refs.setReference : undefined
-							}
-						/>
-					))}
-				</Pressable>
-			</ScrollView>
-			{/* Render overlay outside ScrollView to prevent touch conflicts */}
-			{showWikiLinkOverlay && (
-				<View
-					style={styles.overlayWrapper}
-					pointerEvents="box-none"
-					collapsable={false}
-					ref={refs.setOffsetParent}
-				>
-					<View
-						ref={refs.setFloating}
-						style={overlayStyle}
-						collapsable={false}
-						pointerEvents="auto"
+		<WikiLinkProvider>
+			<View style={styles.container}>
+				<DocumentSync
+					onChanged={onChanged}
+					lastInitialContentRef={lastInitialContentRef}
+					lastEmittedMarkdownRef={lastEmittedMarkdownRef}
+				/>
+				<ScrollView contentContainerStyle={styles.scrollContent}>
+					<Pressable
+						style={styles.pressableArea}
+						onPress={() => {
+							const blocks = useEditorState.getState().document.blocks;
+							const lastIndex = Math.max(0, blocks.length - 1);
+							focusBlock(lastIndex);
+						}}
 					>
-						<WikiLinkOverlay
-							results={wikiLinks.results}
-							selectedIndex={wikiLinks.selectedIndex}
-							isLoading={wikiLinks.isLoading}
-							query={wikiLinks.query}
-							onSelect={(title) => {
-								wikiLinkSelectionInProgressRef.current = true;
-								wikiLinks.handleSelect(
-									title,
-									focusBlockIndex ?? 0,
-									lastSelectionOffsetRef.current,
-									updateBlockContent,
-								);
-							}}
-						/>
-					</View>
-				</View>
-			)}
-		</View>
+						{blockIds.map((id, index) => (
+							<BlockRow key={id} index={index} handlers={handlers} />
+						))}
+					</Pressable>
+				</ScrollView>
+				<WikiLinkModal />
+			</View>
+		</WikiLinkProvider>
 	);
 }
 
@@ -411,12 +342,6 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		position: "relative",
-	},
-	overlayWrapper: {
-		position: "absolute",
-		zIndex: 1000,
-		elevation: 10,
-		top: 0,
 	},
 	scrollView: {
 		flex: 1,
@@ -429,7 +354,3 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 });
-
-// Enable why-did-you-render tracking for debugging
-HybridEditor.displayName = "HybridEditor";
-HybridEditor.whyDidYouRender = true;

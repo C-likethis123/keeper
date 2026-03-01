@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { BlockType, getListLevel, isListItem } from "../core/BlockNode";
 import { InlineMarkdown } from "../rendering/InlineMarkdown";
+import { useWikiLinkContext } from "../wikilinks/WikiLinkContext";
 import { findWikiLinkTriggerStart } from "../wikilinks/WikiLinkTrigger";
 import type { BlockConfig } from "./BlockRegistry";
 import { ListMarker } from "./ListMarker";
@@ -28,9 +29,6 @@ export function UnifiedBlock({
 	onSelectionChange,
 	listItemNumber,
 	onCheckboxToggle,
-	onWikiLinkTriggerStart,
-	onWikiLinkQueryUpdate,
-	onWikiLinkTriggerEnd,
 }: BlockConfig) {
 	const { focusBlock, blurBlock } = useFocusBlock();
 	const inputRef = useRef<TextInput>(null);
@@ -41,6 +39,7 @@ export function UnifiedBlock({
 	const getFocusedBlockIndex = useEditorState(
 		(state) => state.getFocusedBlockIndex,
 	);
+	const wikiLinks = useWikiLinkContext();
 
 	// Sync TextInput when block content changes externally (e.g., from wiki link selection).
 	// setNativeProps queues after the value-prop bridge message, so its onSelectionChange(N)
@@ -70,12 +69,7 @@ export function UnifiedBlock({
 		if (currentFocus === index) {
 			blurBlock();
 		}
-		// End wiki link session on blur, but with a delay to allow overlay selection
-		// The delay gives the overlay's onPress time to fire before ending the session
-		setTimeout(() => {
-			onWikiLinkTriggerEnd();
-		}, 150);
-	}, [blurBlock, onWikiLinkTriggerEnd, getFocusedBlockIndex, index]);
+	}, [blurBlock, getFocusedBlockIndex, index]);
 
 	const handleSelectionChange = useCallback(
 		(e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
@@ -97,18 +91,13 @@ export function UnifiedBlock({
 			}
 
 			onContentChange(index, newText);
-
-			// Detect wiki link triggers after content change. Use newText.length as caret
-			// because selection is not updated yet when onChangeText fires.
 			if (isFocused && inputRef.current) {
 				const caret = newText.length;
 				const start = findWikiLinkTriggerStart(newText, caret);
 				if (start !== null) {
-					onWikiLinkTriggerStart();
-					const query = newText.substring(start + 2, caret);
-					onWikiLinkQueryUpdate(query);
+					wikiLinks.handleTriggerStart(index, start);
 				} else {
-					onWikiLinkTriggerEnd();
+					wikiLinks.handleCancel();
 				}
 			}
 		},
@@ -116,9 +105,8 @@ export function UnifiedBlock({
 			index,
 			onContentChange,
 			isFocused,
-			onWikiLinkTriggerStart,
-			onWikiLinkQueryUpdate,
-			onWikiLinkTriggerEnd,
+			wikiLinks.handleTriggerStart,
+			wikiLinks.handleCancel,
 		],
 	);
 

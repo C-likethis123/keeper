@@ -1,6 +1,9 @@
-import { getListItemNumber } from "@/components/editor/core/Document";
+import {
+	type BlockConfig,
+	blockRegistry,
+} from "@/components/editor/blocks/BlockRegistry";
 import { BlockType } from "@/components/editor/core/BlockNode";
-import { type BlockConfig, blockRegistry } from "@/components/editor/blocks/BlockRegistry";
+import { getListItemNumber } from "@/components/editor/core/Document";
 import { useEditorBlock, useEditorState } from "@/stores/editorStore";
 import React from "react";
 import { StyleSheet, View } from "react-native";
@@ -18,21 +21,16 @@ export interface BlockRowHandlers {
 	onSelectionChange: (index: number, start: number, end: number) => void;
 	onDelete: (index: number) => void;
 	onCheckboxToggle: (index: number) => void;
-	onWikiLinkTriggerStart: () => void;
-	onWikiLinkQueryUpdate: (query: string) => void;
-	onWikiLinkTriggerEnd: () => void;
 }
 
 export interface BlockRowProps {
 	index: number;
 	handlers: BlockRowHandlers;
-	setReference?: (ref: View | null) => void;
 }
 
 export const BlockRow = React.memo(function BlockRow({
 	index,
 	handlers,
-	setReference,
 }: BlockRowProps) {
 	const block = useEditorBlock(index);
 	const isFocused = useEditorState(
@@ -62,17 +60,10 @@ export const BlockRow = React.memo(function BlockRow({
 		onDelete: handlers.onDelete,
 		listItemNumber,
 		onCheckboxToggle: handlers.onCheckboxToggle,
-		onWikiLinkTriggerStart: handlers.onWikiLinkTriggerStart,
-		onWikiLinkQueryUpdate: handlers.onWikiLinkQueryUpdate,
-		onWikiLinkTriggerEnd: handlers.onWikiLinkTriggerEnd,
 	};
 
 	return (
-		<View
-			style={styles.blockWrapper}
-			ref={isFocused ? setReference : undefined}
-			collapsable={false}
-		>
+		<View style={styles.blockWrapper} collapsable={false}>
 			{blockRegistry.build(config)}
 		</View>
 	);
