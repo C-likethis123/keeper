@@ -1,9 +1,5 @@
-# issues
+# Features to add
 
-- fix expo over the air updates
-
-
-- debug desktop tauri app
 
 - I need a system that tracks asks, figures out what is priority, and time spent on X issue
 Llm stats - how to be more environmentally friendly?
@@ -32,21 +28,12 @@ Types of notes:
 - Use a ref for the handler so the listener stays correct; ensure the editor or wrapper is focusable so key events fire.
 - Avoid handling when a modal or native text field has focus.
 
-## Phase 2: Wikilink overlay
-- doesn't always trigger on typing....
-- in other editors, the exact width does not matter.
-    - it's either positioned to the left or to the right
-    - knowing the exact line matters.
-Figure out how to make wikilinks clickable
 
 ## Phase 2: Image blocks (web)
 - it only makes sense to implement this when I am on desktop. I rarely attach screenshots on mobile.
 
-- fix code block issues!
+- fix code block type issues!
 
-- figure out how to export it! Especially - the over the air updates. Should work for desktop and web.
-
-- on web: keyboard shortcuts
 
 
 - fix focus issues!

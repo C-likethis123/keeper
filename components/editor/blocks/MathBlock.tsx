@@ -1,6 +1,6 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import { useEditorDocument } from "@/stores/editorStore";
+import { useEditorState } from "@/stores/editorStore";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
 	type NativeSyntheticEvent,
@@ -35,7 +35,7 @@ export function MathBlock({
 		end: 0,
 	});
 	const [renderError, setRenderError] = useState<string | null>(null);
-	const document = useEditorDocument();
+	const blockCount = useEditorState((s) => s.document.blocks.length);
 	const { focusBlock, blurBlock } = useFocusBlock();
 	const theme = useExtendedTheme();
 
@@ -81,7 +81,7 @@ export function MathBlock({
 			const currentLineIndex = textBeforeCursor.split("\n").length - 1;
 
 			if (currentLineIndex === lines.length - 1) {
-				if (index < document.blocks.length - 1) {
+				if (index < blockCount - 1) {
 					focusBlock(index + 1);
 					return;
 				}

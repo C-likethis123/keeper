@@ -1,19 +1,12 @@
 import { ScrollView } from "@/components/shared/ScrollView";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import {
-	useEditorDocument,
-	useEditorSelection,
-	useEditorState,
-} from "@/stores/editorStore";
+import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
 import React, { useCallback, useEffect, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { type BlockConfig, blockRegistry } from "./blocks/BlockRegistry";
-import {
-	type BlockNode,
-	BlockType,
-	createParagraphBlock,
-	getListLevel,
-} from "./core/BlockNode";
+import { BlockRow } from "./BlockRow";
+import { DocumentSync } from "./DocumentSync";
+import { blockRegistry } from "./blocks/BlockRegistry";
+import { BlockType, createParagraphBlock } from "./core/BlockNode";
 import { WikiLinkOverlay } from "./wikilinks/WikiLinkOverlay";
 import { useWikiLinkPositioning } from "./wikilinks/useWikiLinkPositioning";
 import { useWikiLinks } from "./wikilinks/useWikiLinks";
@@ -34,8 +27,7 @@ export function HybridEditor({
 	initialContent = "",
 	onChanged,
 }: HybridEditorProps) {
-	const document = useEditorDocument();
-	const selection = useEditorSelection();
+	const blockIds = useEditorBlockIds();
 	const toMarkdown = useEditorState((s) => s.toMarkdown);
 	const loadMarkdown = useEditorState((s) => s.loadMarkdown);
 	const setSelection = useEditorState((s) => s.setSelection);
@@ -65,15 +57,6 @@ export function HybridEditor({
 
 	// Track if a selection is in progress to prevent blur from ending session
 	const wikiLinkSelectionInProgressRef = useRef(false);
-
-	// Notify parent of changes. Only after we've applied initialContent (lastInitialContentRef set by init effect), so we never emit the initial empty document and overwrite the parent's note.
-	useEffect(() => {
-		if (onChanged && lastInitialContentRef.current !== undefined) {
-			const markdown = toMarkdown();
-			lastEmittedMarkdownRef.current = markdown;
-			onChanged(markdown);
-		}
-	}, [onChanged, toMarkdown]);
 
 	// Initialize document from markdown when initialContent changes (only from outside, not from our own updates).
 	// Depends only on initialContent so we do not re-run after our own loadMarkdown (which would change editorState and cause an update loop).
@@ -206,7 +189,8 @@ export function HybridEditor({
 			if (!block) {
 				return;
 			}
-			const prevBlock = index > 0 ? document.blocks[index - 1] : null;
+			const doc = useEditorState.getState().document;
+			const prevBlock = index > 0 ? doc.blocks[index - 1] : null;
 
 			// If it's a non-paragraph block (except code block and math block), convert to paragraph
 			if (
@@ -243,7 +227,6 @@ export function HybridEditor({
 			focusBlock,
 			deleteBlock,
 			getFocusedBlock,
-			document,
 			mergeWithPrevious,
 			updateBlockType,
 		],
@@ -315,7 +298,7 @@ export function HybridEditor({
 			if (Date.now() < ignoreSelectionChangeUntilRef.current) {
 				return;
 			}
-			const cur = selection;
+			const cur = useEditorState.getState().selection;
 			if (
 				cur?.focus.blockIndex === index &&
 				cur.anchor.offset === start &&
@@ -328,71 +311,32 @@ export function HybridEditor({
 				focus: { blockIndex: index, offset: end },
 			});
 		},
-		[setSelection, selection],
+		[setSelection],
 	);
 
-	const calculateListItemNumber = useCallback(
-		(index: number): number | undefined => {
-			const block = document.blocks[index];
-			if (block.type !== BlockType.numberedList) {
-				return undefined;
-			}
-
-			const listLevel = getListLevel(block);
-			let number = 1;
-			for (let i = index - 1; i >= 0; i--) {
-				const prevBlock = document.blocks[i];
-				if (
-					prevBlock.type !== BlockType.numberedList ||
-					getListLevel(prevBlock) < listLevel
-				) {
-					break;
-				}
-				if (
-					prevBlock.type === BlockType.numberedList &&
-					getListLevel(prevBlock) === listLevel
-				) {
-					number++;
-				}
-			}
-			return number;
-		},
-		[document.blocks],
-	);
-
-	const renderBlock = useCallback(
-		(block: BlockNode, index: number) => {
-			const listItemNumber = calculateListItemNumber(index);
-			const config: BlockConfig = {
-				block,
-				index,
-				isFocused: focusBlockIndex === index,
-				onContentChange: handleContentChange,
-				onBlockTypeChange: handleBlockTypeChange,
-				onBackspaceAtStart: handleBackspaceAtStart,
-				onSpace: handleSpace,
-				onEnter: handleEnter,
-				onSelectionChange: handleSelectionChange,
-				onDelete: handleDelete,
-				listItemNumber,
-				onCheckboxToggle: toggleCheckbox,
-				onWikiLinkTriggerStart: wikiLinks.handleTriggerStart,
-				onWikiLinkQueryUpdate: wikiLinks.handleQueryUpdate,
-				onWikiLinkTriggerEnd: wikiLinks.handleTriggerEnd,
-			};
-			return blockRegistry.build(config);
-		},
+	const handlers = React.useMemo(
+		() => ({
+			onContentChange: handleContentChange,
+			onBlockTypeChange: handleBlockTypeChange,
+			onBackspaceAtStart: handleBackspaceAtStart,
+			onSpace: handleSpace,
+			onEnter: handleEnter,
+			onSelectionChange: handleSelectionChange,
+			onDelete: handleDelete,
+			onCheckboxToggle: toggleCheckbox,
+			onWikiLinkTriggerStart: wikiLinks.handleTriggerStart,
+			onWikiLinkQueryUpdate: wikiLinks.handleQueryUpdate,
+			onWikiLinkTriggerEnd: wikiLinks.handleTriggerEnd,
+		}),
 		[
-			focusBlockIndex,
-			toggleCheckbox,
 			handleContentChange,
 			handleBlockTypeChange,
 			handleBackspaceAtStart,
 			handleSpace,
-			handleSelectionChange,
 			handleEnter,
+			handleSelectionChange,
 			handleDelete,
-			calculateListItemNumber,
+			toggleCheckbox,
 			wikiLinks.handleTriggerStart,
 			wikiLinks.handleQueryUpdate,
 			wikiLinks.handleTriggerEnd,
@@ -401,27 +345,30 @@ export function HybridEditor({
 
 	return (
 		<View ref={containerRef} style={styles.container}>
+			<DocumentSync
+				onChanged={onChanged}
+				lastInitialContentRef={lastInitialContentRef}
+				lastEmittedMarkdownRef={lastEmittedMarkdownRef}
+			/>
 			<ScrollView contentContainerStyle={styles.scrollContent} {...scrollProps}>
 				<Pressable
 					style={styles.pressableArea}
 					onPress={() => {
-						const lastIndex = document.blocks.length - 1;
+						const blocks = useEditorState.getState().document.blocks;
+						const lastIndex = Math.max(0, blocks.length - 1);
 						focusBlock(lastIndex);
 					}}
 				>
-					{document.blocks.map((block, index) => {
-						const isFocusedBlock = index === focusBlockIndex;
-						return (
-							<View
-								key={block.id}
-								style={styles.blockWrapper}
-								ref={isFocusedBlock ? refs.setReference : undefined}
-								collapsable={false}
-							>
-								{renderBlock(block, index)}
-							</View>
-						);
-					})}
+					{blockIds.map((id, index) => (
+						<BlockRow
+							key={id}
+							index={index}
+							handlers={handlers}
+							setReference={
+								index === focusBlockIndex ? refs.setReference : undefined
+							}
+						/>
+					))}
 				</Pressable>
 			</ScrollView>
 			{/* Render overlay outside ScrollView to prevent touch conflicts */}
@@ -480,9 +427,6 @@ const styles = StyleSheet.create({
 	},
 	pressableArea: {
 		flex: 1,
-	},
-	blockWrapper: {
-		width: "100%",
 	},
 });
 

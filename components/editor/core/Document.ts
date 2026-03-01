@@ -258,7 +258,7 @@ export function replaceBlocks(
 	};
 }
 
-function calculateListItemNumber(
+export function getListItemNumber(
 	document: Document,
 	index: number,
 ): number | undefined {
@@ -292,7 +292,7 @@ export function documentToMarkdown(document: Document): string {
 	const buffer: string[] = [];
 	for (let i = 0; i < document.blocks.length; i++) {
 		buffer.push(
-			blockToMarkdown(document.blocks[i], calculateListItemNumber(document, i)),
+			blockToMarkdown(document.blocks[i], getListItemNumber(document, i)),
 		);
 		if (i < document.blocks.length - 1) {
 			buffer.push("\n");

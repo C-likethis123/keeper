@@ -1,7 +1,7 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
 import { NotesIndexService } from "@/services/notes/notesIndex";
-import { useEditorDocument } from "@/stores/editorStore";
+import { useEditorState } from "@/stores/editorStore";
 import { useCallback, useEffect, useState } from "react";
 import { findWikiLinkTriggerStart } from "./WikiLinkTrigger";
 
@@ -39,7 +39,6 @@ export function useWikiLinks(): UseWikiLinksReturn {
 	const [results, setResults] = useState<string[]>([]);
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [isLoading, setIsLoading] = useState<boolean>(false);
-	const document = useEditorDocument();
 
 	/// End the wiki link session
 	const handleTriggerEnd = useCallback(() => {
@@ -119,6 +118,7 @@ export function useWikiLinks(): UseWikiLinksReturn {
 				return;
 			}
 
+			const document = useEditorState.getState().document;
 			const block = document.blocks[blockIndex];
 			if (!block) return;
 
@@ -135,7 +135,7 @@ export function useWikiLinks(): UseWikiLinksReturn {
 			onUpdateContent(blockIndex, newText);
 			handleTriggerEnd();
 		},
-		[query, document, handleTriggerEnd, isActive],
+		[query, handleTriggerEnd, isActive],
 	);
 
 	/// Navigate to next result

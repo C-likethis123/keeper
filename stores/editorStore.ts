@@ -298,3 +298,16 @@ export function useEditorSelection(): EditorStateSlice["selection"] {
 export function useEditorBlockSelection(): EditorStateSlice["blockSelection"] {
 	return useEditorState((s) => s.blockSelection);
 }
+
+export function useEditorBlock(index: number): BlockNode | undefined {
+	return useEditorState((s) => s.document.blocks[index]);
+}
+
+const BLOCK_ID_SEPARATOR = "\x01";
+
+export function useEditorBlockIds(): string[] {
+	const idsString = useEditorState((s) =>
+		s.document.blocks.map((b) => b.id).join(BLOCK_ID_SEPARATOR),
+	);
+	return idsString ? idsString.split(BLOCK_ID_SEPARATOR) : [];
+}
