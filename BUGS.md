@@ -1,3 +1,8 @@
+# Persistence
+
+After pulling in new files from remote, they do not get indexed properly.
+
+
 # Scroll view
 
 - keyboard avoiding view
@@ -7,8 +12,9 @@
 
 # Slowness
 
-When the app starts, it's very slow...
-There's also no visibility
+Somehow I need to checkout in order for things to work.
+Whenever there's a new change from another source, it will go to the error branch, cannot do fast forward merges.
+Currently it starts at 5-7 seconds.
 
 # App updates
 - fix expo over the air updates

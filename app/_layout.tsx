@@ -30,6 +30,8 @@ export default function RootLayout() {
 	const themeMode = useColorScheme();
 	const [isHydrated, setIsHydrated] = useState(false);
 	useEffect(() => {
+		const appStartTime = performance.now();
+
 		if (!__DEV__) {
 			checkForUpdates();
 		}
@@ -39,11 +41,14 @@ export default function RootLayout() {
 				if (result.success) {
 					console.log("[App] Git initialization succeeded:", {
 						wasCloned: result.wasCloned,
-						branch: result.status?.currentBranch,
 					});
 					if (result.wasCloned) {
 						console.log("[App] Git repository was cloned, indexing notes...");
+						const tIndex = performance.now();
 						await notesIndexDbRebuildFromDisk();
+						console.log(
+							`[App] notesIndexDbRebuildFromDisk: ${Math.round(performance.now() - tIndex)}ms`,
+						);
 					}
 				} else {
 					console.error("[App] Git initialization failed:", result.error);
@@ -53,6 +58,8 @@ export default function RootLayout() {
 			}
 		})();
 		Promise.allSettled([gitP]).then(() => {
+			const totalMs = Math.round(performance.now() - appStartTime);
+			console.log(`[App] Startup: complete, total ${totalMs}ms`);
 			setIsHydrated(true);
 		});
 	}, []);
