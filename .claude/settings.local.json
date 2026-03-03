@@ -1,19 +1,28 @@
 {
 	"permissions": {
 		"allow": [
+			"Bash(cat:*)",
+			"Bash(ls:*)",
+			"Bash(npm run:*)",
 			"Bash(git add:*)",
+			"Bash(git status:*)",
 			"Bash(git commit:*)",
 			"Bash(git checkout:*)",
 			"Bash(git switch:*)",
 			"Bash(git branch:*)",
-			"Bash(npm run:*)",
+			"Bash(git diff:*)",
 			"Bash(grove create:*)",
-			"Bash(node:*)",
-			"Bash(python3:*)",
+			"Bash(grove update:*)",
+			"Bash(grove list:*)",
+			"Edit(/src/**)",
 			"mcp__ide__getDiagnostics"
 		],
 		"deny": [
+			"Bash(npm install:*)",
+			"Bash(npm uninstall:*)",
+			"Bash(pip install:*)",
 			"Bash(rm:*)",
+			"Bash(rmdir:*)",
 			"Bash(sudo:*)",
 			"Bash(chmod:*)",
 			"Bash(chown:*)",
@@ -21,7 +30,9 @@
 			"Bash(wget:*)",
 			"Bash(brew:*)",
 			"Bash(docker:*)",
-			"Bash(kubectl:*)"
+			"Bash(kubectl:*)",
+			"Bash(ssh:*)",
+			"Bash(scp:*)"
 		]
 	}
 }
