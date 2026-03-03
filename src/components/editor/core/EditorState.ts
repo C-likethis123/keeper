@@ -1,16 +1,9 @@
-import { type BlockNode, createParagraphBlock } from "./BlockNode";
-import type { BlockType } from "./BlockNode";
-import {
-	type Document,
-	createDocumentFromMarkdown,
-	createEmptyDocument,
-	documentToMarkdown,
-} from "./Document";
+import type { BlockNode, BlockType } from "./BlockNode";
+import { type Document, createEmptyDocument } from "./Document";
 import type { History } from "./History";
-import { type DocumentSelection, createCollapsedSelection } from "./Selection";
+import type { DocumentSelection } from "./Selection";
 import {
 	type Transaction,
-	TransactionBuilder,
 	applyTransaction,
 	isTransactionEmpty,
 } from "./Transaction";
@@ -57,6 +50,7 @@ export interface EditorState extends EditorStateSlice {
 	getFocusedBlockIndex: () => number | null;
 	getFocusedBlock: () => BlockNode | null;
 	getHasBlockSelection: () => boolean;
+	getContent: () => string;
 }
 
 export const initialEditorStateSlice: EditorStateSlice = {
