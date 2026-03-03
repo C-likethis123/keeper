@@ -19,33 +19,32 @@ import {
 	View,
 } from "react-native";
 
-// TODO: assert that the note is present
-export default function NoteEditorView(props: { note: Note }) {
+export default function NoteEditorView({ note }: { note: Note }) {
 	const router = useRouter();
 	const theme = useExtendedTheme();
-	const [note, setNote] = useState<Note>(props.note);
+	const id = note.id;
+	const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
+	const [title, setTitle] = useState<string>(note.title);
 
 	const togglePin = useCallback(async () => {
-		const next = !note?.isPinned;
-		const newNote = { ...note, isPinned: next };
+		const newNote = {
+			content: getContent(),
+			title,
+			isPinned: !isPinned,
+			lastUpdated: Date.now(),
+			id,
+		};
 		await NoteService.saveNote(newNote);
-		setNote(newNote);
-	}, [note]);
+		setIsPinned((prev) => !prev);
+	}, [id, title, isPinned]);
 
 	const { status } = useAutoSave(note);
 
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
-	// Reset editor when switching to a different note; omit note.content so we don't run on every keystroke
-	// biome-ignore lint/correctness/useExhaustiveDependencies: note.id only — loading note.content on id change
+	const getContent = useEditorState((s: EditorState) => s.getContent);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: only load this when starting
 	useEffect(() => {
 		loadMarkdown(note.content);
-	}, [note.id, loadMarkdown]);
-
-	const handleContentChange = useCallback(async (markdown: string) => {
-		setNote((prev) => {
-			const next = { ...prev, content: markdown };
-			return next;
-		});
 	}, []);
 
 	const styles = useMemo(() => createStyles(theme), [theme]);
@@ -58,13 +57,11 @@ export default function NoteEditorView(props: { note: Note }) {
 					headerLeft: () => (
 						<TouchableOpacity
 							onPress={async () => {
-								const title = note.title;
-								const content = note.content;
 								await NoteService.saveNote({
-									id: note.id,
+									id,
 									title,
-									content,
-									isPinned: note?.isPinned ?? false,
+									content: getContent(),
+									isPinned: isPinned,
 									lastUpdated: Date.now(),
 								});
 								router.back();
@@ -85,15 +82,13 @@ export default function NoteEditorView(props: { note: Note }) {
 									name="push-pin"
 									size={24}
 									color={
-										note?.isPinned
-											? theme.colors.primary
-											: theme.colors.textMuted
+										isPinned ? theme.colors.primary : theme.colors.textMuted
 									}
 								/>
 							</TouchableOpacity>
 							<TouchableOpacity
 								onPress={async () => {
-									await NoteService.deleteNote(note.id as string);
+									await NoteService.deleteNote(id as string);
 									router.back();
 								}}
 								style={{ marginRight: 8 }}
@@ -114,19 +109,14 @@ export default function NoteEditorView(props: { note: Note }) {
 			<View style={styles.content}>
 				<TextInput
 					style={styles.titleInput}
-					value={note.title}
-					onChangeText={(text) => {
-						setNote((prev) => ({ ...prev, title: text }));
-					}}
+					value={title}
+					onChangeText={setTitle}
 					placeholder="Title"
 					placeholderTextColor={theme.custom.editor.placeholder}
 				/>
 
 				<EditorToolbar />
-				<HybridEditor
-					initialContent={note.content}
-					onChanged={handleContentChange}
-				/>
+				<HybridEditor />
 			</View>
 		</View>
 	);

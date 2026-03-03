@@ -1,19 +1,13 @@
 import { ScrollView } from "@/components/shared/ScrollView";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { BlockRow } from "./BlockRow";
-import { DocumentSync } from "./DocumentSync";
 import { blockRegistry } from "./blocks/BlockRegistry";
 import { BlockType, createParagraphBlock } from "./core/BlockNode";
 import { WikiLinkProvider } from "./wikilinks/WikiLinkContext";
 import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
-
-export interface HybridEditorProps {
-	initialContent?: string;
-	onChanged?: (markdown: string) => void;
-}
 
 /// A hybrid markdown/code editor widget
 ///
@@ -22,13 +16,8 @@ export interface HybridEditorProps {
 /// - Inline markdown formatting (bold, italic, code, links)
 /// - Keyboard shortcuts
 /// - Undo/redo support
-export function HybridEditor({
-	initialContent = "",
-	onChanged,
-}: HybridEditorProps) {
+export function HybridEditor() {
 	const blockIds = useEditorBlockIds();
-	const toMarkdown = useEditorState((s) => s.toMarkdown);
-	const loadMarkdown = useEditorState((s) => s.loadMarkdown);
 	const setSelection = useEditorState((s) => s.setSelection);
 	const updateBlockType = useEditorState((s) => s.updateBlockType);
 	const splitBlock = useEditorState((s) => s.splitBlock);
@@ -38,36 +27,11 @@ export function HybridEditor({
 	const getFocusedBlock = useEditorState((s) => s.getFocusedBlock);
 	const insertBlockAfter = useEditorState((s) => s.insertBlockAfter);
 	const updateBlockContent = useEditorState((s) => s.updateBlockContent);
-	const lastInitialContentRef = useRef<string | undefined>(undefined);
-	const lastEmittedMarkdownRef = useRef<string | undefined>(undefined);
-	const isInitializedRef = useRef(false);
 	const ignoreNextContentChangeRef = useRef<number | null>(null);
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
 
 	const { focusBlock, focusBlockIndex } = useFocusBlock();
-
-	// Initialize document from markdown when initialContent changes (only from outside, not from our own updates).
-	// Depends only on initialContent so we do not re-run after our own loadMarkdown (which would change editorState and cause an update loop).
-	useEffect(() => {
-		// Do not run when initialContent is unchanged (effect ran only due to editorState/typing); avoids loading stale content and flicker.
-		if (initialContent === lastInitialContentRef.current) {
-			return;
-		}
-		// Skip reload when initialContent came from our own onChanged (parent echoed back)
-		if (initialContent === lastEmittedMarkdownRef.current) {
-			lastInitialContentRef.current = initialContent;
-			return;
-		}
-		if (initialContent !== undefined) {
-			const currentMarkdown = toMarkdown();
-			if (currentMarkdown !== initialContent) {
-				loadMarkdown(initialContent);
-				isInitializedRef.current = true;
-			}
-			lastInitialContentRef.current = initialContent;
-		}
-	}, [initialContent, toMarkdown, loadMarkdown]);
 
 	const handleContentChange = useCallback(
 		(index: number, content: string) => {
@@ -313,11 +277,6 @@ export function HybridEditor({
 	return (
 		<WikiLinkProvider>
 			<View style={styles.container}>
-				<DocumentSync
-					onChanged={onChanged}
-					lastInitialContentRef={lastInitialContentRef}
-					lastEmittedMarkdownRef={lastEmittedMarkdownRef}
-				/>
 				<ScrollView contentContainerStyle={styles.scrollContent}>
 					<Pressable
 						style={styles.pressableArea}

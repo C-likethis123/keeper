@@ -1,6 +1,7 @@
 import type { SaveStatus } from "@/components/SaveIndicator";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
+import { useEditorState } from "@/stores/editorStore";
 import { useEffect, useRef, useState } from "react";
 
 type AutoSaveInput = {
@@ -10,16 +11,17 @@ type AutoSaveInput = {
 	isPinned: boolean;
 };
 
-export function useAutoSave({ id, title, content, isPinned }: AutoSaveInput) {
+export function useAutoSave({ id, title, isPinned }: AutoSaveInput) {
 	const timerRef = useRef<number | null>(null);
 	const lastSavedRef = useRef<Note | null>(null);
 	const [status, setStatus] = useState<SaveStatus>("idle");
+	const getContent = useEditorState((s) => s.getContent);
 
 	useEffect(() => {
 		setStatus("idle");
 
 		if (timerRef.current) {
-			clearTimeout(timerRef.current);
+			clearInterval(timerRef.current);
 		}
 
 		const runSave = async () => {
@@ -27,6 +29,7 @@ export function useAutoSave({ id, title, content, isPinned }: AutoSaveInput) {
 			const previousTitle = lastSavedRef.current?.title;
 			const previousContent = lastSavedRef.current?.content;
 			const previousIsPinned = lastSavedRef.current?.isPinned;
+			const content = getContent();
 			if (
 				id !== previousId ||
 				title !== previousTitle ||
@@ -49,17 +52,20 @@ export function useAutoSave({ id, title, content, isPinned }: AutoSaveInput) {
 					lastUpdated: Date.now(),
 				};
 				setStatus("saved");
+				setTimeout(() => {
+					setStatus("idle");
+				}, 1000);
 			}
 		};
 
-		timerRef.current = setTimeout(runSave, 2000);
+		timerRef.current = setInterval(runSave, 10000);
 
 		return () => {
 			if (timerRef.current) {
-				clearTimeout(timerRef.current);
+				clearInterval(timerRef.current);
 			}
 		};
-	}, [id, title, content, isPinned]);
+	}, [id, title, getContent, isPinned]);
 
 	return { status };
 }
