@@ -49,3 +49,6 @@ src-tauri/target/
 
 # cursor debug
 .cursor/debug*.log
+
+# grove
+.grove/workspace.json
