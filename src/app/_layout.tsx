@@ -23,7 +23,7 @@ global.Buffer = Buffer;
 globalThis.Buffer = Buffer;
 
 if (__DEV__) {
-	require("../wdyr");
+	require("../../wdyr");
 }
 
 export default function RootLayout() {
