@@ -1,8 +1,8 @@
-import { ScrollView } from "@/components/shared/ScrollView";
+import { EditorScrollContext } from "@/components/editor/EditorScrollContext";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
-import React, { useCallback, useRef } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import React, { useCallback, useMemo, useRef } from "react";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { BlockRow } from "./BlockRow";
 import { blockRegistry } from "./blocks/BlockRegistry";
 import { BlockType, createParagraphBlock } from "./core/BlockNode";
@@ -31,7 +31,10 @@ export function HybridEditor() {
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
 
-	const { focusBlock, focusBlockIndex } = useFocusBlock();
+	const scrollViewRef = useRef<ScrollView>(null);
+	const scrollYRef = useRef(0);
+	const viewHeightRef = useRef(0);
+	const { focusBlock } = useFocusBlock();
 
 	const handleContentChange = useCallback(
 		(index: number, content: string) => {
@@ -273,27 +276,49 @@ export function HybridEditor() {
 			toggleCheckbox,
 		],
 	);
+	const value = useMemo(
+		() => ({
+			scrollViewRef,
+			scrollYRef,
+			viewHeightRef,
+		}),
+		[],
+	);
 
 	return (
-		<WikiLinkProvider>
-			<View style={styles.container}>
-				<ScrollView contentContainerStyle={styles.scrollContent}>
-					<Pressable
-						style={styles.pressableArea}
-						onPress={() => {
-							const blocks = useEditorState.getState().document.blocks;
-							const lastIndex = Math.max(0, blocks.length - 1);
-							focusBlock(lastIndex);
+		<EditorScrollContext.Provider value={value}>
+			<WikiLinkProvider>
+				<View style={styles.container}>
+					<ScrollView
+						style={styles.scrollView}
+						contentContainerStyle={styles.scrollContent}
+						ref={scrollViewRef}
+						keyboardShouldPersistTaps="handled"
+						scrollEventThrottle={16}
+						onScroll={(e) => {
+							scrollYRef.current = e.nativeEvent.contentOffset.y;
+						}}
+						onLayout={(e) => {
+							viewHeightRef.current = e.nativeEvent.layout.height;
 						}}
 					>
-						{blockIds.map((id, index) => (
-							<BlockRow key={id} index={index} handlers={handlers} />
-						))}
-					</Pressable>
-				</ScrollView>
-				<WikiLinkModal />
-			</View>
-		</WikiLinkProvider>
+						<Pressable
+							style={styles.pressableArea}
+							onPress={() => {
+								const blocks = useEditorState.getState().document.blocks;
+								const lastIndex = Math.max(0, blocks.length - 1);
+								focusBlock(lastIndex);
+							}}
+						>
+							{blockIds.map((id, index) => (
+								<BlockRow key={id} index={index} handlers={handlers} />
+							))}
+						</Pressable>
+					</ScrollView>
+					<WikiLinkModal />
+				</View>
+			</WikiLinkProvider>
+		</EditorScrollContext.Provider>
 	);
 }
 

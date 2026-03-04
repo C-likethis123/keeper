@@ -1,9 +1,11 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorSelection, useEditorState } from "@/stores/editorStore";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import {
+	type NativeMethods,
 	type NativeSyntheticEvent,
+	Platform,
 	Pressable,
 	StyleSheet,
 	TextInput,
@@ -12,6 +14,7 @@ import {
 	type TextStyle,
 	View,
 } from "react-native";
+import { useEditorScrollView } from "../EditorScrollContext";
 import { BlockType, getListLevel, isListItem } from "../core/BlockNode";
 import { InlineMarkdown } from "../rendering/InlineMarkdown";
 import { useWikiLinkContext } from "../wikilinks/WikiLinkContext";
@@ -31,34 +34,49 @@ export function UnifiedBlock({
 	onCheckboxToggle,
 }: BlockConfig) {
 	const { focusBlock, blurBlock } = useFocusBlock();
+	const { scrollViewRef, scrollYRef, viewHeightRef } =
+		useEditorScrollView() ?? {
+			scrollViewRef: { current: null },
+			scrollYRef: { current: 0 },
+			viewHeightRef: { current: 0 },
+		};
 	const inputRef = useRef<TextInput>(null);
 	const ignoreNextChangeRef = useRef(false);
-	const lastBlockContentRef = useRef(block.content);
 	const prevIsFocusedRef = useRef(false);
 	const selection = useEditorSelection();
 	const getFocusedBlockIndex = useEditorState(
 		(state) => state.getFocusedBlockIndex,
 	);
-	const wikiLinks = useWikiLinkContext();
 
-	// Sync TextInput when block content changes externally (e.g., from wiki link selection).
-	// setNativeProps queues after the value-prop bridge message, so its onSelectionChange(N)
-	// fires last and the cursor ends up at the correct position.
-	useEffect(() => {
-		if (block.content !== lastBlockContentRef.current && inputRef.current) {
-			lastBlockContentRef.current = block.content;
-			inputRef.current.setNativeProps({
-				text: block.content,
-				selection: { start: block.content.length, end: block.content.length },
-			});
-		}
-	}, [block.content]);
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (isFocused && !prevIsFocusedRef.current && inputRef.current) {
 			inputRef.current.focus();
+			if (Platform.OS !== "web") {
+				requestAnimationFrame(() => {
+					const scrollView = scrollViewRef?.current;
+					if (!inputRef.current || !scrollView) return;
+					inputRef.current.measureLayout(
+						// RN types lag behind runtime: cast needed for newer measureLayout API
+						scrollView as unknown as NativeMethods,
+						(_x: number, y: number, _w: number, h: number) => {
+							const scrollY = scrollYRef.current;
+							const viewHeight = viewHeightRef.current;
+							if (y < scrollY) {
+								scrollView.scrollTo({ y: Math.max(0, y - 20), animated: true });
+							} else if (y + h > scrollY + viewHeight) {
+								scrollView.scrollTo({
+									y: y + h - viewHeight + 20,
+									animated: true,
+								});
+							}
+						},
+						() => {},
+					);
+				});
+			}
 		}
 		prevIsFocusedRef.current = isFocused;
-	}, [isFocused]);
+	}, [isFocused, scrollViewRef, scrollYRef, viewHeightRef]);
 
 	const handleFocus = useCallback(() => {
 		focusBlock(index);
@@ -78,10 +96,9 @@ export function UnifiedBlock({
 		},
 		[index, onSelectionChange],
 	);
-
+	const wikiLinks = useWikiLinkContext();
 	const handleContentChange = useCallback(
 		(newText: string) => {
-			lastBlockContentRef.current = newText;
 			// When we handle Enter to split the block, React Native's TextInput will still
 			// emit an onChangeText with a newline. We want to ignore that one change,
 			// because the actual split is handled via EditorState.splitBlock.

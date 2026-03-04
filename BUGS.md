@@ -5,10 +5,9 @@ After pulling in new files from remote, they do not get indexed properly.
 
 # Scroll view
 
-- keyboard avoiding view
-    - extremely problematic, blocks randomly goes missing
-    - wikilink dropdown not positioned within view
-    - when scrolling down, cannot see editor bar
+1. Press on a text input, it scrolls up
+2. Press enter to split block, we scroll to new block but it's down
+Bug still persist, manually debug!
 
 # Slowness
 
