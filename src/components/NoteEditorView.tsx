@@ -18,6 +18,7 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+import { EditorScrollProvider } from "./editor/EditorScrollContext";
 
 export default function NoteEditorView({ note }: { note: Note }) {
 	const router = useRouter();
@@ -116,7 +117,9 @@ export default function NoteEditorView({ note }: { note: Note }) {
 				/>
 
 				<EditorToolbar />
-				<HybridEditor />
+				<EditorScrollProvider>
+					<HybridEditor />
+				</EditorScrollProvider>
 			</View>
 		</View>
 	);

@@ -34,12 +34,7 @@ export function UnifiedBlock({
 	onCheckboxToggle,
 }: BlockConfig) {
 	const { focusBlock, blurBlock } = useFocusBlock();
-	const { scrollViewRef, scrollYRef, viewHeightRef } =
-		useEditorScrollView() ?? {
-			scrollViewRef: { current: null },
-			scrollYRef: { current: 0 },
-			viewHeightRef: { current: 0 },
-		};
+	const { scrollViewRef, scrollYRef, viewHeightRef } = useEditorScrollView();
 	const inputRef = useRef<TextInput>(null);
 	const ignoreNextChangeRef = useRef(false);
 	const prevIsFocusedRef = useRef(false);

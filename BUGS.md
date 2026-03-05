@@ -2,13 +2,6 @@
 
 After pulling in new files from remote, they do not get indexed properly.
 
-
-# Scroll view
-
-1. Press on a text input, it scrolls up
-2. Press enter to split block, we scroll to new block but it's down
-Bug still persist, manually debug!
-
 # Slowness
 
 Somehow I need to checkout in order for things to work.
