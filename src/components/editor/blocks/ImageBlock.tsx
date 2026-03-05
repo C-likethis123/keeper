@@ -1,9 +1,11 @@
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { useStyles } from "@/hooks/useStyles";
 import { NOTES_ROOT } from "@/services/notes/Notes";
+import { useEditorSelection } from "@/stores/editorStore";
 import { Paths } from "expo-file-system";
 import { Image } from "expo-image";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useRef } from "react";
 import {
 	type NativeSyntheticEvent,
 	Pressable,
@@ -36,19 +38,25 @@ export function ImageBlock({
 	onSelectionChange,
 }: BlockConfig) {
 	const { focusBlock } = useFocusBlock();
-	const [selection, setSelection] = useState({ start: 0, end: 0 });
-
-	const theme = useExtendedTheme();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const inputRef = useRef<TextInput | null>(null);
+	const selection = useEditorSelection();
+	const styles = useStyles(createStyles);
 	const uri = resolveImageUri(block.content);
 	const handleKeyPress = useCallback(
 		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
 			const key = e.nativeEvent.key;
-			if (key === "Enter" && selection.start === selection.end) {
-				onEnter(index, selection.start);
+			if (
+				key === "Enter" &&
+				selection?.anchor.offset === selection?.focus.offset
+			) {
+				onEnter(index, selection?.focus.offset ?? 0);
 			}
 
-			if (key === "Backspace" && selection.start === 0 && selection.end === 0) {
+			if (
+				key === "Backspace" &&
+				selection?.anchor.offset === 0 &&
+				selection?.focus.offset === 0
+			) {
 				onBackspaceAtStart(index);
 				return;
 			}
@@ -58,7 +66,6 @@ export function ImageBlock({
 
 	const handleSelectionChange = useCallback(
 		(e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
-			setSelection(e.nativeEvent.selection);
 			onSelectionChange(
 				index,
 				e.nativeEvent.selection.start,
@@ -80,6 +87,7 @@ export function ImageBlock({
 				<Image source={{ uri }} style={styles.image} contentFit="contain" />
 			)}
 			<TextInput
+				ref={inputRef}
 				style={[
 					styles.input,
 					isFocused ? styles.inputVisible : styles.inputHidden,

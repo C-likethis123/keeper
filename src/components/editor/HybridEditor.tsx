@@ -1,8 +1,8 @@
-import { ScrollView } from "@/components/shared/ScrollView";
+import { useEditorScrollView } from "@/components/editor/EditorScrollContext";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
 import React, { useCallback, useRef } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { BlockRow } from "./BlockRow";
 import { blockRegistry } from "./blocks/BlockRegistry";
 import { BlockType, createParagraphBlock } from "./core/BlockNode";
@@ -30,8 +30,8 @@ export function HybridEditor() {
 	const ignoreNextContentChangeRef = useRef<number | null>(null);
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
-
-	const { focusBlock, focusBlockIndex } = useFocusBlock();
+	const { scrollViewRef, scrollYRef, viewHeightRef } = useEditorScrollView();
+	const { focusBlock } = useFocusBlock();
 
 	const handleContentChange = useCallback(
 		(index: number, content: string) => {
@@ -277,7 +277,19 @@ export function HybridEditor() {
 	return (
 		<WikiLinkProvider>
 			<View style={styles.container}>
-				<ScrollView contentContainerStyle={styles.scrollContent}>
+				<ScrollView
+					style={styles.scrollView}
+					contentContainerStyle={styles.scrollContent}
+					ref={scrollViewRef}
+					keyboardShouldPersistTaps="handled"
+					scrollEventThrottle={16}
+					onScroll={(e) => {
+						scrollYRef.current = e.nativeEvent.contentOffset.y;
+					}}
+					onLayout={(e) => {
+						viewHeightRef.current = e.nativeEvent.layout.height;
+					}}
+				>
 					<Pressable
 						style={styles.pressableArea}
 						onPress={() => {

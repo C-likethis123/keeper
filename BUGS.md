@@ -2,14 +2,6 @@
 
 After pulling in new files from remote, they do not get indexed properly.
 
-
-# Scroll view
-
-- keyboard avoiding view
-    - extremely problematic, blocks randomly goes missing
-    - wikilink dropdown not positioned within view
-    - when scrolling down, cannot see editor bar
-
 # Slowness
 
 Somehow I need to checkout in order for things to work.
