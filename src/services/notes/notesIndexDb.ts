@@ -138,6 +138,75 @@ export async function notesIndexDbListAll(
 	return { items, cursor: nextCursor };
 }
 
+const SYNC_BATCH_SIZE = 20;
+
+export async function notesIndexDbSyncChanges(changedPaths: {
+	added: string[];
+	modified: string[];
+	deleted: string[];
+}): Promise<void> {
+	const database = await getDb();
+
+	// Read all file data before opening the transaction
+	const upsertItems: {
+		id: string;
+		title: string;
+		summary: string;
+		isPinned: number;
+		mtime: number;
+	}[] = [];
+	for (const path of [...changedPaths.added, ...changedPaths.modified]) {
+		if (!path.endsWith(".md")) continue;
+		const file = new File(NOTES_ROOT, path);
+		if (!file.exists) continue;
+		const { content, data } = matter(await file.text());
+		upsertItems.push({
+			id: path.replace(/\.md$/, ""),
+			title: data.title ?? "",
+			summary: extractSummary(content),
+			isPinned: data.pinned ? 1 : 0,
+			mtime: file.modificationTime ?? 0,
+		});
+	}
+
+	const deleteIds = changedPaths.deleted
+		.filter((path) => path.endsWith(".md"))
+		.map((path) => path.replace(/\.md$/, ""));
+
+	await database.withTransactionAsync(async () => {
+		for (let i = 0; i < upsertItems.length; i += SYNC_BATCH_SIZE) {
+			const batch = upsertItems.slice(i, i + SYNC_BATCH_SIZE);
+			const placeholders = batch.map(() => "(?, ?, ?, ?, ?)").join(", ");
+			const values = batch.flatMap((item) => [
+				item.id,
+				item.title,
+				item.summary,
+				item.isPinned,
+				item.mtime,
+			]);
+			await database.runAsync(
+				`INSERT INTO ${TABLE} (id, title, summary, is_pinned, updated_at)
+				 VALUES ${placeholders}
+				 ON CONFLICT(id) DO UPDATE SET
+				   title = excluded.title,
+				   summary = excluded.summary,
+				   is_pinned = excluded.is_pinned,
+				   updated_at = excluded.updated_at`,
+				...values,
+			);
+		}
+
+		for (let i = 0; i < deleteIds.length; i += SYNC_BATCH_SIZE) {
+			const batch = deleteIds.slice(i, i + SYNC_BATCH_SIZE);
+			const placeholders = batch.map(() => "?").join(", ");
+			await database.runAsync(
+				`DELETE FROM ${TABLE} WHERE id IN (${placeholders})`,
+				...batch,
+			);
+		}
+	});
+}
+
 export async function notesIndexDbRebuildFromDisk(): Promise<void> {
 	const dir = new Directory(NOTES_ROOT);
 	if (!dir.exists) return;
