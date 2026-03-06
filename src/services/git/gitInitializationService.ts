@@ -1,9 +1,78 @@
 import { NOTES_ROOT } from "@/services/notes/Notes";
+import {
+	notesIndexDbRebuildFromDisk,
+	notesIndexDbSyncChanges,
+} from "@/services/notes/notesIndexDb";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Directory, File } from "expo-file-system";
 import * as git from "isomorphic-git";
 import http from "isomorphic-git/http/web";
 import { createExpoFileSystemAdapter } from "./expoFileSystemAdapter";
 import "./patch-FileReader";
+
+const LAST_SYNCED_OID_KEY = "git:lastSyncedOid";
+
+async function readLastSyncedOid(): Promise<string | undefined> {
+	try {
+		const val = await AsyncStorage.getItem(LAST_SYNCED_OID_KEY);
+		return val ?? undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+async function writeLastSyncedOid(oid: string): Promise<void> {
+	try {
+		await AsyncStorage.setItem(LAST_SYNCED_OID_KEY, oid);
+	} catch (err) {
+		console.warn(
+			"[GitInitializationService] Failed to persist lastSyncedOid:",
+			err,
+		);
+	}
+}
+
+async function getChangedPathsSinceLastSync(
+	dir: string,
+	fsAdapter: ReturnType<typeof createExpoFileSystemAdapter>,
+	lastSyncedOid: string,
+	currentOid: string,
+): Promise<{ added: string[]; modified: string[]; deleted: string[] }> {
+	const added: string[] = [];
+	const modified: string[] = [];
+	const deleted: string[] = [];
+
+	const results: Array<{
+		path: string;
+		change: "added" | "modified" | "deleted";
+	} | null> = await git.walk({
+		fs: fsAdapter,
+		dir,
+		trees: [git.TREE({ ref: lastSyncedOid }), git.TREE({ ref: currentOid })],
+		map: async (filepath, [A, B]) => {
+			// Return undefined (not null) for non-md paths so the walk recurses into directories.
+			// In isomorphic-git, null stops recursion; undefined skips the entry but recurses.
+			if (!filepath.endsWith(".md")) return undefined;
+			const aType = await A?.type();
+			const bType = await B?.type();
+			if (aType === "tree" || bType === "tree") return undefined;
+			if (!A && B) return { path: filepath, change: "added" as const };
+			if (A && !B) return { path: filepath, change: "deleted" as const };
+			const aOid = await A?.oid();
+			const bOid = await B?.oid();
+			if (aOid !== bOid) return { path: filepath, change: "modified" as const };
+			return null;
+		},
+	});
+
+	for (const result of results ?? []) {
+		if (!result) continue;
+		if (result.change === "added") added.push(result.path);
+		else if (result.change === "modified") modified.push(result.path);
+		else if (result.change === "deleted") deleted.push(result.path);
+	}
+	return { added, modified, deleted };
+}
 
 const fs = createExpoFileSystemAdapter();
 
@@ -280,31 +349,6 @@ export class GitInitializationService {
 			console.log(
 				"[GitInitializationService] Clone and checkout completed, verifying repository...",
 			);
-
-			// Verify that key files exist after clone
-			const headFile = new File(NOTES_ROOT, ".git/HEAD");
-			const configFile = new File(NOTES_ROOT, ".git/config");
-
-			// Wait a bit for file system operations to complete
-			await new Promise((resolve) => setTimeout(resolve, 200));
-
-			if (!headFile.exists) {
-				console.error(
-					"[GitInitializationService] HEAD file not found after clone - clone may have failed",
-				);
-				return false;
-			}
-
-			if (!configFile.exists) {
-				console.error(
-					"[GitInitializationService] Config file not found after clone - clone may have failed",
-				);
-				return false;
-			}
-
-			console.log(
-				"[GitInitializationService] Repository verified successfully",
-			);
 			return true;
 		} catch (error) {
 			// Log all clone errors for debugging
@@ -435,6 +479,7 @@ export class GitInitializationService {
 					noUpdateHead: true,
 					force: true,
 				});
+				await this.syncDbAfterPull();
 				return { success: true };
 				// if I pull changes from remote and remote was more updated, I will face this error.
 				// I think this was because I was attempting a fast-forward merge
@@ -470,6 +515,7 @@ export class GitInitializationService {
 					console.log(
 						`[GitInitializationService] syncWithRemote git.checkout: ${Math.round(performance.now() - tCheckout)}ms`,
 					);
+					await this.syncDbAfterPull();
 					return { success: true };
 				} catch (mergeError) {
 					const errorMsg =
@@ -484,6 +530,58 @@ export class GitInitializationService {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			console.error("[GitInitializationService] Sync failed:", errorMsg);
 			return { success: false, error: errorMsg };
+		}
+	}
+
+	private async syncDbAfterPull(): Promise<void> {
+		try {
+			const currentOid = await git.resolveRef({
+				fs,
+				dir: NOTES_ROOT,
+				ref: "HEAD",
+			});
+			const lastSyncedOid = await readLastSyncedOid();
+
+			if (!lastSyncedOid) {
+				console.log(
+					"[GitInitializationService] No lastSyncedOid — rebuilding DB from disk",
+				);
+				await notesIndexDbRebuildFromDisk();
+			} else if (lastSyncedOid !== currentOid) {
+				console.log(
+					`[GitInitializationService] Incremental DB sync from ${lastSyncedOid.slice(0, 7)} to ${currentOid.slice(0, 7)}`,
+				);
+				const tSync = performance.now();
+				try {
+					const changedPaths = await getChangedPathsSinceLastSync(
+						NOTES_ROOT,
+						fs,
+						lastSyncedOid,
+						currentOid,
+					);
+					console.log(
+						`[GitInitializationService] Changed paths: +${changedPaths.added.length} ~${changedPaths.modified.length} -${changedPaths.deleted.length}`,
+					);
+					await notesIndexDbSyncChanges(changedPaths);
+				} catch (err) {
+					console.warn(
+						"[GitInitializationService] Incremental sync failed, falling back to full rebuild:",
+						err,
+					);
+					await notesIndexDbRebuildFromDisk();
+				}
+				console.log(
+					`[GitInitializationService] syncDbAfterPull: ${Math.round(performance.now() - tSync)}ms`,
+				);
+			} else {
+				console.log(
+					"[GitInitializationService] No new commits since last sync, skipping DB sync",
+				);
+			}
+
+			await writeLastSyncedOid(currentOid);
+		} catch (err) {
+			console.warn("[GitInitializationService] syncDbAfterPull failed:", err);
 		}
 	}
 }

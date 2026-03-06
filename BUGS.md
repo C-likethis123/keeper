@@ -1,7 +1,3 @@
-# Persistence
-
-After pulling in new files from remote, they do not get indexed properly.
-
 # Slowness
 
 Somehow I need to checkout in order for things to work.
