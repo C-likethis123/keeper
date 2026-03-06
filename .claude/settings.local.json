@@ -15,6 +15,7 @@
 			"Bash(grove update:*)",
 			"Bash(grove list:*)",
 			"Edit(/src/**)",
+			"Edit(docs/**)",
 			"mcp__ide__getDiagnostics"
 		],
 		"deny": [

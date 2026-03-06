@@ -58,6 +58,10 @@ An **immutable, transaction-based** document model:
 2. **SQLite** via `expo-sqlite` — full-text search index (title, summary, pinned, timestamp); rebuilt on git clone detection
 3. **Git** via `isomorphic-git` — batched, debounced commits; optional push to GitHub
 
+## Scroll management
+
+This note editor manages scrolling via EditorScrollContext.
+
 ### Environment Variables
 
 ```
