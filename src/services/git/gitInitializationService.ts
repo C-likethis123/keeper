@@ -3,14 +3,13 @@ import {
 	notesIndexDbRebuildFromDisk,
 	notesIndexDbSyncChanges,
 } from "@/services/notes/notesIndexDb";
+import type { GitEngine } from "@/services/git/engines/GitEngine";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Directory, File } from "expo-file-system";
-import * as git from "isomorphic-git";
-import http from "isomorphic-git/http/web";
-import { createExpoFileSystemAdapter } from "./expoFileSystemAdapter";
-import "./patch-FileReader";
+import { getGitEngine } from "./gitEngine";
 
 const LAST_SYNCED_OID_KEY = "git:lastSyncedOid";
+const TLS_CERT_ERROR_PREFIX = "tls_cert_invalid";
 
 async function readLastSyncedOid(): Promise<string | undefined> {
 	try {
@@ -31,50 +30,6 @@ async function writeLastSyncedOid(oid: string): Promise<void> {
 		);
 	}
 }
-
-async function getChangedPathsSinceLastSync(
-	dir: string,
-	fsAdapter: ReturnType<typeof createExpoFileSystemAdapter>,
-	lastSyncedOid: string,
-	currentOid: string,
-): Promise<{ added: string[]; modified: string[]; deleted: string[] }> {
-	const added: string[] = [];
-	const modified: string[] = [];
-	const deleted: string[] = [];
-
-	const results: Array<{
-		path: string;
-		change: "added" | "modified" | "deleted";
-	} | null> = await git.walk({
-		fs: fsAdapter,
-		dir,
-		trees: [git.TREE({ ref: lastSyncedOid }), git.TREE({ ref: currentOid })],
-		map: async (filepath, [A, B]) => {
-			// Return undefined (not null) for non-md paths so the walk recurses into directories.
-			// In isomorphic-git, null stops recursion; undefined skips the entry but recurses.
-			if (!filepath.endsWith(".md")) return undefined;
-			const aType = await A?.type();
-			const bType = await B?.type();
-			if (aType === "tree" || bType === "tree") return undefined;
-			if (!A && B) return { path: filepath, change: "added" as const };
-			if (A && !B) return { path: filepath, change: "deleted" as const };
-			const aOid = await A?.oid();
-			const bOid = await B?.oid();
-			if (aOid !== bOid) return { path: filepath, change: "modified" as const };
-			return null;
-		},
-	});
-
-	for (const result of results ?? []) {
-		if (!result) continue;
-		if (result.change === "added") added.push(result.path);
-		else if (result.change === "modified") modified.push(result.path);
-		else if (result.change === "deleted") deleted.push(result.path);
-	}
-	return { added, modified, deleted };
-}
-
-const fs = createExpoFileSystemAdapter();
 
 export interface GitHubConfig {
 	owner: string;
@@ -105,19 +60,117 @@ export interface InitializationResult {
 	error?: string;
 }
 
+interface StartupMetrics {
+	validateRepoMs: number;
+	fetchMs: number;
+	branchResolveMs: number;
+	mergeMs: number;
+	checkoutMs: number;
+	dbSyncMs: number;
+	totalMs: number;
+	usedFastForward: boolean;
+	didHeadChange: boolean;
+	didDbSync: boolean;
+}
+
+interface SyncWithRemoteResult {
+	success: boolean;
+	error?: string;
+	metrics: Omit<StartupMetrics, "validateRepoMs" | "totalMs">;
+}
+
+interface SyncDbAfterPullResult {
+	didDbSync: boolean;
+	dbSyncMs: number;
+}
+
+function createEmptyStartupMetrics(): StartupMetrics {
+	return {
+		validateRepoMs: 0,
+		fetchMs: 0,
+		branchResolveMs: 0,
+		mergeMs: 0,
+		checkoutMs: 0,
+		dbSyncMs: 0,
+		totalMs: 0,
+		usedFastForward: false,
+		didHeadChange: false,
+		didDbSync: false,
+	};
+}
+
 export class GitInitializationService {
 	static readonly instance = new GitInitializationService();
 	private readonly config = assertGitHubConfig();
+	private gitEngine: GitEngine | null = null;
+	private lastCloneFailureMessage: string | undefined;
 
 	private constructor() {}
+
+	private ensureGitEngine(): GitEngine {
+		if (this.gitEngine) {
+			return this.gitEngine;
+		}
+		this.gitEngine = getGitEngine();
+		return this.gitEngine;
+	}
+
+	private pickPreferredBranch(branches: string[]): string | undefined {
+		if (branches.includes("main")) return "main";
+		if (branches.includes("master")) return "master";
+		return branches[0];
+	}
+
+	private isCertificateFailure(message: string): boolean {
+		const normalized = message.toLowerCase();
+		return (
+			normalized.includes(TLS_CERT_ERROR_PREFIX) ||
+			normalized.includes("ssl certificate is invalid") ||
+			normalized.includes("certificate validation failed") ||
+			normalized.includes("certificate verify failed")
+		);
+	}
+
+	private buildCertificateFailureMessage(errorMessage: string): string {
+		return [
+			"TLS certificate validation failed while cloning from GitHub.",
+			`Error detail: ${errorMessage}`,
+			"Verify automatic date/time on the device, update the device trust store, and confirm https://github.com opens in the device browser before retrying.",
+		].join(" ");
+	}
+
+	private async resolveCurrentBranch(): Promise<string | undefined> {
+		const gitEngine = this.ensureGitEngine();
+		const current = await gitEngine.currentBranch(NOTES_ROOT);
+		if (current) return current;
+
+		const localBranches = await gitEngine.listBranches(NOTES_ROOT);
+		return this.pickPreferredBranch(localBranches);
+	}
+
 	async initialize(): Promise<InitializationResult> {
 		const initStart = performance.now();
+		const metrics = createEmptyStartupMetrics();
 		console.log("[GitInitializationService] Starting initialization...");
 		try {
+			try {
+				this.ensureGitEngine();
+			} catch (error) {
+				const errorMsg =
+					error instanceof Error ? error.message : "Unknown engine error";
+				return {
+					success: false,
+					wasCloned: false,
+					error: `Rust git unavailable: ${errorMsg}`,
+				};
+			}
+
 			console.log(
 				"[GitInitializationService] Checking if local repository exists and is valid...",
 			);
+			const tValidate = performance.now();
 			const repoValidation = await this.validateRepository();
+			metrics.validateRepoMs = Math.round(performance.now() - tValidate);
 			console.log(
 				`[GitInitializationService] Repository validation: ${repoValidation.isValid ? "VALID" : "INVALID"}`,
 			);
@@ -144,6 +197,7 @@ export class GitInitializationService {
 				const cloned = await this.cloneRepository();
 				if (!cloned) {
 					const error =
+						this.lastCloneFailureMessage ??
 						"Failed to clone repository. Check network connection and repository access permissions";
 					console.error(`[GitInitializationService] ${error}`);
 					return {
@@ -161,6 +215,14 @@ export class GitInitializationService {
 				"[GitInitializationService] Valid repository already exists, skipping clone",
 			);
 			const syncResult = await this.syncWithRemote();
+			metrics.fetchMs = syncResult.metrics.fetchMs;
+			metrics.branchResolveMs = syncResult.metrics.branchResolveMs;
+			metrics.mergeMs = syncResult.metrics.mergeMs;
+			metrics.checkoutMs = syncResult.metrics.checkoutMs;
+			metrics.dbSyncMs = syncResult.metrics.dbSyncMs;
+			metrics.usedFastForward = syncResult.metrics.usedFastForward;
+			metrics.didHeadChange = syncResult.metrics.didHeadChange;
+			metrics.didDbSync = syncResult.metrics.didDbSync;
 			if (syncResult.success) {
 				console.log(
 					"[GitInitializationService] Successfully synced with remote",
@@ -185,9 +247,8 @@ export class GitInitializationService {
 				error: error instanceof Error ? error.message : String(error),
 			};
 		} finally {
-			console.log(
-				`[GitInitializationService] Initialisation completed in: ${Math.round(performance.now() - initStart)}ms`,
-			);
+			metrics.totalMs = Math.round(performance.now() - initStart);
+			console.log("[GitInitializationService] Startup metrics", metrics);
 		}
 	}
 
@@ -236,42 +297,10 @@ export class GitInitializationService {
 				};
 			}
 
-			// Try to verify the repository is actually usable by checking if we can read basic info
-			try {
-				// Try to list branches - this will fail if the repository is corrupted
-				await git.listBranches({
-					fs: fs,
-					dir: NOTES_ROOT,
-				});
-
-				console.log("[GitInitializationService] Valid git repository found");
-				return { exists: true, isValid: true };
-			} catch (gitError) {
-				const errorMsg =
-					gitError instanceof Error ? gitError.message : String(gitError);
-				console.warn(
-					`[GitInitializationService] Repository appears corrupted: ${errorMsg}`,
-				);
-
-				// Check for specific error types that indicate corruption
-				if (
-					errorMsg.includes("CommitNotFetchedError") ||
-					errorMsg.includes("not available locally") ||
-					errorMsg.includes("NotFoundError")
-				) {
-					return {
-						exists: true,
-						isValid: false,
-						reason: `Repository corrupted: ${errorMsg}`,
-					};
-				}
-
-				return {
-					exists: true,
-					isValid: false,
-					reason: `Repository validation failed: ${errorMsg}`,
-				};
-			}
+			console.log(
+				"[GitInitializationService] Repository structure looks valid",
+			);
+			return { exists: true, isValid: true };
 		} catch (error) {
 			console.warn(
 				"[GitInitializationService] Error validating repository:",
@@ -292,7 +321,9 @@ export class GitInitializationService {
 
 	private async cloneRepository(): Promise<boolean> {
 		try {
-			const { token, owner, repo } = this.config;
+			this.lastCloneFailureMessage = undefined;
+			const gitEngine = this.ensureGitEngine();
+			const { owner, repo } = this.config;
 
 			const url = `https://github.com/${owner}/${repo}.git`;
 
@@ -300,40 +331,20 @@ export class GitInitializationService {
 
 			// Clone without checking out to avoid CommitNotFetchedError
 			// We'll checkout manually after the clone completes
-			await git.clone({
-				fs: fs,
-				dir: NOTES_ROOT,
-				url,
-				onAuth: () => ({ username: owner, password: token }),
-				onPostCheckout: () => {
-					console.log("[GitInitializationService] Checkout completed");
-				},
-				http,
-				depth: 1,
-				singleBranch: true,
-				noCheckout: true,
-			});
+			await gitEngine.clone(url, NOTES_ROOT);
 
 			// Now checkout the branch manually after clone completes
 			try {
 				console.log(
 					"[GitInitializationService] Clone completed, checking out branch...",
 				);
+				const branches = await gitEngine.listBranches(NOTES_ROOT);
+				const branchToCheckout = this.pickPreferredBranch(branches) ?? "main";
 				// Checkout the branch
-				await git.checkout({
-					fs: fs,
-					dir: NOTES_ROOT,
-					ref: "main",
-					onProgress: (progress) => {
-						console.log(
-							"[GitInitializationService] Checkout progress:",
-							progress,
-						);
-					},
-				});
+				await gitEngine.checkout(NOTES_ROOT, branchToCheckout);
 
 				console.log(
-					"[GitInitializationService] Successfully checked out branch: main",
+					`[GitInitializationService] Successfully checked out branch: ${branchToCheckout}`,
 				);
 			} catch (checkoutError) {
 				console.error(
@@ -372,7 +383,10 @@ export class GitInitializationService {
 						"[GitInitializationService] Attempting to clean up corrupted repository...",
 					);
 
-					await fs.promises.rmdir(NOTES_ROOT);
+					const notesRootDir = new Directory(NOTES_ROOT);
+					if (notesRootDir.exists) {
+						await Promise.resolve(notesRootDir.delete());
+					}
 					return false;
 				}
 
@@ -386,6 +400,25 @@ export class GitInitializationService {
 						"[GitInitializationService] Authentication error details:",
 					);
 					console.error("  - Error:", error.message);
+					return false;
+				}
+
+				if (this.isCertificateFailure(errorMessage)) {
+					const detailed = this.buildCertificateFailureMessage(error.message);
+					this.lastCloneFailureMessage = detailed;
+					console.error("[GitInitializationService] TLS certificate error:");
+					console.error(
+						"[GitInitializationService] 1) Verify device automatic date/time is enabled",
+					);
+					console.error(
+						"[GitInitializationService] 2) Update device trust store / system certificates",
+					);
+					console.error(
+						"[GitInitializationService] 3) Confirm https://github.com opens in the same device browser",
+					);
+					console.error(
+						"[GitInitializationService] 4) Retry clone after the above checks",
+					);
 					return false;
 				}
 
@@ -424,6 +457,8 @@ export class GitInitializationService {
 				}
 			}
 
+			this.lastCloneFailureMessage =
+				"Failed to clone repository. Check network connection and repository access permissions";
 			return false;
 		}
 	}
@@ -432,29 +467,56 @@ export class GitInitializationService {
 	 * Syncs the local repository with the remote by pulling the latest changes.
 	 * Uses fast-forward merge if possible, otherwise attempts a merge.
 	 */
-	private async syncWithRemote(): Promise<{
-		success: boolean;
-		error?: string;
-	}> {
+	private async syncWithRemote(): Promise<SyncWithRemoteResult> {
+		const metrics: SyncWithRemoteResult["metrics"] = {
+			fetchMs: 0,
+			branchResolveMs: 0,
+			mergeMs: 0,
+			checkoutMs: 0,
+			dbSyncMs: 0,
+			usedFastForward: false,
+			didHeadChange: false,
+			didDbSync: false,
+		};
 		try {
-			const { token, owner } = this.config;
-
+			const gitEngine = this.ensureGitEngine();
 			console.log(
 				"[GitInitializationService] Fetching latest changes from remote...",
 			);
 			const tFetch = performance.now();
-			await git.fetch({
-				fs: fs,
-				dir: NOTES_ROOT,
-				onAuth: () => ({ username: owner, password: token }),
-				http,
-				remote: "origin",
-			});
-			console.log(
-				`[GitInitializationService] syncWithRemote git.fetch: ${Math.round(performance.now() - tFetch)}ms`,
-			);
+			await gitEngine.fetch(NOTES_ROOT);
+			metrics.fetchMs = Math.round(performance.now() - tFetch);
 
-			const currentBranch = "main";
+			const headBeforeSync = await gitEngine.resolveHeadOid(NOTES_ROOT);
+
+			const tBranchResolve = performance.now();
+			const remoteBranches = await gitEngine.listBranches(NOTES_ROOT, "origin");
+			if (remoteBranches.length === 0) {
+				return {
+					success: false,
+					error: "Remote has no branches",
+					metrics,
+				};
+			}
+
+			let currentBranch =
+				(await this.resolveCurrentBranch()) ??
+				this.pickPreferredBranch(remoteBranches) ??
+				"main";
+			if (!remoteBranches.includes(currentBranch)) {
+				const fallbackBranch = this.pickPreferredBranch(remoteBranches);
+				if (fallbackBranch) {
+					console.log(
+						`[GitInitializationService] Local branch '${currentBranch}' not found on remote; switching to '${fallbackBranch}'`,
+					);
+					currentBranch = fallbackBranch;
+					const tCheckout = performance.now();
+					await gitEngine.checkout(NOTES_ROOT, currentBranch);
+					metrics.checkoutMs += Math.round(performance.now() - tCheckout);
+				}
+			}
+			metrics.branchResolveMs = Math.round(performance.now() - tBranchResolve);
+
 			const remoteBranch = `origin/${currentBranch}`;
 
 			console.log(
@@ -463,35 +525,20 @@ export class GitInitializationService {
 
 			try {
 				const tMerge = performance.now();
-				await git.merge({
-					fs: fs,
-					dir: NOTES_ROOT,
+				await gitEngine.merge(NOTES_ROOT, {
 					ours: currentBranch,
 					theirs: remoteBranch,
 					fastForwardOnly: true,
 				});
-				console.log("[GitInitializationService] Fast-forward merge successful");
-				// leaving this here for a while, if fast forward merges doesn't work then
-				await git.checkout({
-					fs,
-					dir: NOTES_ROOT,
-					ref: "HEAD",
-					noUpdateHead: true,
-					force: true,
-				});
-				await this.syncDbAfterPull();
-				return { success: true };
-				// if I pull changes from remote and remote was more updated, I will face this error.
-				// I think this was because I was attempting a fast-forward merge
-			} catch (fastForwardError) {
+				metrics.usedFastForward = true;
+				metrics.mergeMs = Math.round(performance.now() - tMerge);
+			} catch {
 				console.log(
 					"[GitInitializationService] Fast-forward not possible, attempting regular merge...",
 				);
 				try {
 					const tMerge = performance.now();
-					await git.merge({
-						fs: fs,
-						dir: NOTES_ROOT,
+					await gitEngine.merge(NOTES_ROOT, {
 						ours: currentBranch,
 						theirs: remoteBranch,
 						author: {
@@ -500,46 +547,52 @@ export class GitInitializationService {
 						},
 						message: "Merge remote changes",
 					});
-					console.log(
-						`[GitInitializationService] syncWithRemote git.merge (regular): ${Math.round(performance.now() - tMerge)}ms`,
-					);
-					console.log("[GitInitializationService] Merge successful");
-					const tCheckout = performance.now();
-					await git.checkout({
-						fs,
-						dir: NOTES_ROOT,
-						ref: "HEAD",
-						noUpdateHead: true,
-						force: true,
-					});
-					console.log(
-						`[GitInitializationService] syncWithRemote git.checkout: ${Math.round(performance.now() - tCheckout)}ms`,
-					);
-					await this.syncDbAfterPull();
-					return { success: true };
+					metrics.mergeMs = Math.round(performance.now() - tMerge);
 				} catch (mergeError) {
 					const errorMsg =
 						mergeError instanceof Error
 							? mergeError.message
 							: String(mergeError);
 					console.error("[GitInitializationService] Merge failed:", errorMsg);
-					return { success: false, error: errorMsg };
+					return { success: false, error: errorMsg, metrics };
 				}
 			}
+
+			const headAfterMerge = await gitEngine.resolveHeadOid(NOTES_ROOT);
+			metrics.didHeadChange = headBeforeSync !== headAfterMerge;
+			if (!metrics.didHeadChange) {
+				const lastSyncedOid = await readLastSyncedOid();
+				if (!lastSyncedOid) {
+					await writeLastSyncedOid(headAfterMerge);
+				}
+				return { success: true, metrics };
+			}
+
+			const tCheckout = performance.now();
+			await gitEngine.checkout(NOTES_ROOT, "HEAD", {
+				noUpdateHead: true,
+				force: true,
+			});
+			metrics.checkoutMs += Math.round(performance.now() - tCheckout);
+
+			const dbResult = await this.syncDbAfterPull(headAfterMerge);
+			metrics.dbSyncMs = dbResult.dbSyncMs;
+			metrics.didDbSync = dbResult.didDbSync;
+			return { success: true, metrics };
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			console.error("[GitInitializationService] Sync failed:", errorMsg);
-			return { success: false, error: errorMsg };
+			return { success: false, error: errorMsg, metrics };
 		}
 	}
 
-	private async syncDbAfterPull(): Promise<void> {
+	private async syncDbAfterPull(currentOid?: string): Promise<SyncDbAfterPullResult> {
+		const tSync = performance.now();
+		let didDbSync = false;
 		try {
-			const currentOid = await git.resolveRef({
-				fs,
-				dir: NOTES_ROOT,
-				ref: "HEAD",
-			});
+			const gitEngine = this.ensureGitEngine();
+			const resolvedCurrentOid =
+				currentOid ?? (await gitEngine.resolveHeadOid(NOTES_ROOT));
 			const lastSyncedOid = await readLastSyncedOid();
 
 			if (!lastSyncedOid) {
@@ -547,41 +600,53 @@ export class GitInitializationService {
 					"[GitInitializationService] No lastSyncedOid — rebuilding DB from disk",
 				);
 				await notesIndexDbRebuildFromDisk();
-			} else if (lastSyncedOid !== currentOid) {
+				didDbSync = true;
+			} else if (lastSyncedOid !== resolvedCurrentOid) {
 				console.log(
-					`[GitInitializationService] Incremental DB sync from ${lastSyncedOid.slice(0, 7)} to ${currentOid.slice(0, 7)}`,
+					`[GitInitializationService] Incremental DB sync from ${lastSyncedOid.slice(0, 7)} to ${resolvedCurrentOid.slice(0, 7)}`,
 				);
-				const tSync = performance.now();
 				try {
-					const changedPaths = await getChangedPathsSinceLastSync(
+					const changedPaths = await gitEngine.changedMarkdownPaths(
 						NOTES_ROOT,
-						fs,
 						lastSyncedOid,
-						currentOid,
+						resolvedCurrentOid,
 					);
+					const markdownChangeCount =
+						changedPaths.added.length +
+						changedPaths.modified.length +
+						changedPaths.deleted.length;
 					console.log(
 						`[GitInitializationService] Changed paths: +${changedPaths.added.length} ~${changedPaths.modified.length} -${changedPaths.deleted.length}`,
 					);
-					await notesIndexDbSyncChanges(changedPaths);
+					if (markdownChangeCount > 0) {
+						await notesIndexDbSyncChanges(changedPaths);
+						didDbSync = true;
+					}
 				} catch (err) {
 					console.warn(
 						"[GitInitializationService] Incremental sync failed, falling back to full rebuild:",
 						err,
 					);
 					await notesIndexDbRebuildFromDisk();
+					didDbSync = true;
 				}
-				console.log(
-					`[GitInitializationService] syncDbAfterPull: ${Math.round(performance.now() - tSync)}ms`,
-				);
 			} else {
 				console.log(
 					"[GitInitializationService] No new commits since last sync, skipping DB sync",
 				);
+				return {
+					didDbSync: false,
+					dbSyncMs: 0,
+				};
 			}
 
-			await writeLastSyncedOid(currentOid);
+			await writeLastSyncedOid(resolvedCurrentOid);
 		} catch (err) {
 			console.warn("[GitInitializationService] syncDbAfterPull failed:", err);
 		}
+		return {
+			didDbSync,
+			dbSyncMs: Math.round(performance.now() - tSync),
+		};
 	}
 }

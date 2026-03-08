@@ -6,7 +6,7 @@ This is a cross-platform rich-text editor, built on both mobile and desktop.
 
 1. [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app)
 2. React Native
-3. Git libraries (isomorphic-git for handling local git repositories, Octokit for the Github API)
+3. Git libraries (Rust `git_core` via Tauri/native bridge for local repositories, Octokit for the GitHub API)
 
 ## Get started
 
@@ -14,12 +14,20 @@ This is a cross-platform rich-text editor, built on both mobile and desktop.
 
    ```bash
    npm install
+
+   rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+   cargo install cargo-ndk
    ```
+
 
 2. Start the app
 
    ```bash
-   npx expo start
+cd [project root]
+cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
+  -o android/app/src/main/jniLibs \
+  build --manifest-path src-tauri/git_core/Cargo.toml --release
+
    ```
 
 In the output, you'll find options to open the app in a
@@ -47,6 +55,17 @@ The editor can send file change batches to a backend git service. Configure the 
 ```bash
 EXPO_PUBLIC_GIT_API_URL=https://your-backend.example.com/api
 ```
+
+### Git runtime support
+
+Git sync is Rust-only. Supported runtimes:
+- Tauri desktop
+- Android native build
+- iOS native build
+
+Unsupported runtimes fail initialization at startup:
+- Web
+- Expo Go
 
 ## Tooling
 - Install the Biome VS Code extension and enable it for linting/formatting.
