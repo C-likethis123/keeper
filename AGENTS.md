@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ## Commands
 
@@ -57,33 +57,6 @@ An **immutable, transaction-based** document model:
 1. **File system** via `expo-file-system` — notes as `{id}.md` with YAML frontmatter (gray-matter)
 2. **SQLite** via `expo-sqlite` — full-text search index (title, summary, pinned, timestamp); rebuilt on git clone detection
 3. **Git** via Rust `git_core` bridge — batched, debounced commits; optional push to GitHub
-
-## Rust Git Runtime
-
-Keeper uses a shared Rust git core in `src-tauri/git_core` (`git2`/libgit2 bindings).
-
-- Rust core API: `clone_repo`, `fetch`, `checkout`, `current_branch`, `list_branches`, `merge`, `commit`, `push`, `status`, `head_oid`, `changed_markdown_paths`
-- C ABI for native bridges: `git_*` functions including JSON helpers for branch/status/head/diff payloads
-- Tauri commands in `src-tauri/src/lib.rs`: `git_*_repo` including `git_head_oid_repo` and `git_changed_markdown_paths_repo`
-
-TypeScript git abstraction:
-- `src/services/git/engines/GitEngine.ts`
-- `src/services/git/engines/RustGitEngine.ts`
-- `src/services/git/gitEngine.ts`
-
-Mobile native bridge:
-- Android bridge integrated:
-  - `android/app/src/main/java/com/clikethis123/keeper/KeeperGitBridgeModule.kt`
-  - `android/app/src/main/java/com/clikethis123/keeper/KeeperGitBridgePackage.kt`
-  - `MainApplication.kt` package registration
-- iOS bridge integrated:
-  - `ios/native/KeeperGitBridge.swift`
-  - `ios/native/KeeperGitBridge.m`
-  - `ios/native.xcodeproj/project.pbxproj` includes bridge sources and `native/libgit_core.a` linkage
-
-Runtime support policy:
-- Supported: Tauri desktop, Android native build, iOS native build
-- Unsupported (startup failure by design): web, Expo Go
 
 ## Scroll management
 

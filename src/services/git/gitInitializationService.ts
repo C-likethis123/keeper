@@ -3,14 +3,13 @@ import {
 	notesIndexDbRebuildFromDisk,
 	notesIndexDbSyncChanges,
 } from "@/services/notes/notesIndexDb";
+import type { GitEngine } from "@/services/git/engines/GitEngine";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Directory, File } from "expo-file-system";
-import * as git from "isomorphic-git";
-import http from "isomorphic-git/http/web";
-import { createExpoFileSystemAdapter } from "./expoFileSystemAdapter";
-import "./patch-FileReader";
+import { getGitEngine } from "./gitEngine";
 
 const LAST_SYNCED_OID_KEY = "git:lastSyncedOid";
+const TLS_CERT_ERROR_PREFIX = "tls_cert_invalid";
 
 async function readLastSyncedOid(): Promise<string | undefined> {
 	try {
@@ -31,50 +30,6 @@ async function writeLastSyncedOid(oid: string): Promise<void> {
 		);
 	}
 }
-
-async function getChangedPathsSinceLastSync(
-	dir: string,
-	fsAdapter: ReturnType<typeof createExpoFileSystemAdapter>,
-	lastSyncedOid: string,
-	currentOid: string,
-): Promise<{ added: string[]; modified: string[]; deleted: string[] }> {
-	const added: string[] = [];
-	const modified: string[] = [];
-	const deleted: string[] = [];
-
-	const results: Array<{
-		path: string;
-		change: "added" | "modified" | "deleted";
-	} | null> = await git.walk({
-		fs: fsAdapter,
-		dir,
-		trees: [git.TREE({ ref: lastSyncedOid }), git.TREE({ ref: currentOid })],
-		map: async (filepath, [A, B]) => {
-			// Return undefined (not null) for non-md paths so the walk recurses into directories.
-			// In isomorphic-git, null stops recursion; undefined skips the entry but recurses.
-			if (!filepath.endsWith(".md")) return undefined;
-			const aType = await A?.type();
-			const bType = await B?.type();
-			if (aType === "tree" || bType === "tree") return undefined;
-			if (!A && B) return { path: filepath, change: "added" as const };
-			if (A && !B) return { path: filepath, change: "deleted" as const };
-			const aOid = await A?.oid();
-			const bOid = await B?.oid();
-			if (aOid !== bOid) return { path: filepath, change: "modified" as const };
-			return null;
-		},
-	});
-
-	for (const result of results ?? []) {
-		if (!result) continue;
-		if (result.change === "added") added.push(result.path);
-		else if (result.change === "modified") modified.push(result.path);
-		else if (result.change === "deleted") deleted.push(result.path);
-	}
-	return { added, modified, deleted };
-}
-
-const fs = createExpoFileSystemAdapter();
 
 export interface GitHubConfig {
 	owner: string;
@@ -108,12 +63,68 @@ export interface InitializationResult {
 export class GitInitializationService {
 	static readonly instance = new GitInitializationService();
 	private readonly config = assertGitHubConfig();
+	private gitEngine: GitEngine | null = null;
+	private lastCloneFailureMessage: string | undefined;
 
 	private constructor() {}
+
+	private ensureGitEngine(): GitEngine {
+		if (this.gitEngine) {
+			return this.gitEngine;
+		}
+		this.gitEngine = getGitEngine();
+		return this.gitEngine;
+	}
+
+	private pickPreferredBranch(branches: string[]): string | undefined {
+		if (branches.includes("main")) return "main";
+		if (branches.includes("master")) return "master";
+		return branches[0];
+	}
+
+	private isCertificateFailure(message: string): boolean {
+		const normalized = message.toLowerCase();
+		return (
+			normalized.includes(TLS_CERT_ERROR_PREFIX) ||
+			normalized.includes("ssl certificate is invalid") ||
+			normalized.includes("certificate validation failed") ||
+			normalized.includes("certificate verify failed")
+		);
+	}
+
+	private buildCertificateFailureMessage(errorMessage: string): string {
+		return [
+			"TLS certificate validation failed while cloning from GitHub.",
+			`Error detail: ${errorMessage}`,
+			"Verify automatic date/time on the device, update the device trust store, and confirm https://github.com opens in the device browser before retrying.",
+		].join(" ");
+	}
+
+	private async resolveCurrentBranch(): Promise<string | undefined> {
+		const gitEngine = this.ensureGitEngine();
+		const current = await gitEngine.currentBranch(NOTES_ROOT);
+		if (current) return current;
+
+		const localBranches = await gitEngine.listBranches(NOTES_ROOT);
+		return this.pickPreferredBranch(localBranches);
+	}
+
 	async initialize(): Promise<InitializationResult> {
 		const initStart = performance.now();
 		console.log("[GitInitializationService] Starting initialization...");
 		try {
+			try {
+				this.ensureGitEngine();
+			} catch (error) {
+				const errorMsg =
+					error instanceof Error ? error.message : "Unknown engine error";
+				return {
+					success: false,
+					wasCloned: false,
+					error: `Rust git unavailable: ${errorMsg}`,
+				};
+			}
+
 			console.log(
 				"[GitInitializationService] Checking if local repository exists and is valid...",
 			);
@@ -144,6 +155,7 @@ export class GitInitializationService {
 				const cloned = await this.cloneRepository();
 				if (!cloned) {
 					const error =
+						this.lastCloneFailureMessage ??
 						"Failed to clone repository. Check network connection and repository access permissions";
 					console.error(`[GitInitializationService] ${error}`);
 					return {
@@ -238,11 +250,9 @@ export class GitInitializationService {
 
 			// Try to verify the repository is actually usable by checking if we can read basic info
 			try {
+				const gitEngine = this.ensureGitEngine();
 				// Try to list branches - this will fail if the repository is corrupted
-				await git.listBranches({
-					fs: fs,
-					dir: NOTES_ROOT,
-				});
+				await gitEngine.listBranches(NOTES_ROOT);
 
 				console.log("[GitInitializationService] Valid git repository found");
 				return { exists: true, isValid: true };
@@ -257,7 +267,8 @@ export class GitInitializationService {
 				if (
 					errorMsg.includes("CommitNotFetchedError") ||
 					errorMsg.includes("not available locally") ||
-					errorMsg.includes("NotFoundError")
+					errorMsg.includes("NotFoundError") ||
+					errorMsg.includes("Rust git unavailable")
 				) {
 					return {
 						exists: true,
@@ -292,7 +303,9 @@ export class GitInitializationService {
 
 	private async cloneRepository(): Promise<boolean> {
 		try {
-			const { token, owner, repo } = this.config;
+			this.lastCloneFailureMessage = undefined;
+			const gitEngine = this.ensureGitEngine();
+			const { owner, repo } = this.config;
 
 			const url = `https://github.com/${owner}/${repo}.git`;
 
@@ -300,40 +313,20 @@ export class GitInitializationService {
 
 			// Clone without checking out to avoid CommitNotFetchedError
 			// We'll checkout manually after the clone completes
-			await git.clone({
-				fs: fs,
-				dir: NOTES_ROOT,
-				url,
-				onAuth: () => ({ username: owner, password: token }),
-				onPostCheckout: () => {
-					console.log("[GitInitializationService] Checkout completed");
-				},
-				http,
-				depth: 1,
-				singleBranch: true,
-				noCheckout: true,
-			});
+			await gitEngine.clone(url, NOTES_ROOT);
 
 			// Now checkout the branch manually after clone completes
 			try {
 				console.log(
 					"[GitInitializationService] Clone completed, checking out branch...",
 				);
+				const branches = await gitEngine.listBranches(NOTES_ROOT);
+				const branchToCheckout = this.pickPreferredBranch(branches) ?? "main";
 				// Checkout the branch
-				await git.checkout({
-					fs: fs,
-					dir: NOTES_ROOT,
-					ref: "main",
-					onProgress: (progress) => {
-						console.log(
-							"[GitInitializationService] Checkout progress:",
-							progress,
-						);
-					},
-				});
+				await gitEngine.checkout(NOTES_ROOT, branchToCheckout);
 
 				console.log(
-					"[GitInitializationService] Successfully checked out branch: main",
+					`[GitInitializationService] Successfully checked out branch: ${branchToCheckout}`,
 				);
 			} catch (checkoutError) {
 				console.error(
@@ -372,7 +365,10 @@ export class GitInitializationService {
 						"[GitInitializationService] Attempting to clean up corrupted repository...",
 					);
 
-					await fs.promises.rmdir(NOTES_ROOT);
+					const notesRootDir = new Directory(NOTES_ROOT);
+					if (notesRootDir.exists) {
+						await Promise.resolve(notesRootDir.delete());
+					}
 					return false;
 				}
 
@@ -386,6 +382,25 @@ export class GitInitializationService {
 						"[GitInitializationService] Authentication error details:",
 					);
 					console.error("  - Error:", error.message);
+					return false;
+				}
+
+				if (this.isCertificateFailure(errorMessage)) {
+					const detailed = this.buildCertificateFailureMessage(error.message);
+					this.lastCloneFailureMessage = detailed;
+					console.error("[GitInitializationService] TLS certificate error:");
+					console.error(
+						"[GitInitializationService] 1) Verify device automatic date/time is enabled",
+					);
+					console.error(
+						"[GitInitializationService] 2) Update device trust store / system certificates",
+					);
+					console.error(
+						"[GitInitializationService] 3) Confirm https://github.com opens in the same device browser",
+					);
+					console.error(
+						"[GitInitializationService] 4) Retry clone after the above checks",
+					);
 					return false;
 				}
 
@@ -424,6 +439,8 @@ export class GitInitializationService {
 				}
 			}
 
+			this.lastCloneFailureMessage =
+				"Failed to clone repository. Check network connection and repository access permissions";
 			return false;
 		}
 	}
@@ -437,24 +454,37 @@ export class GitInitializationService {
 		error?: string;
 	}> {
 		try {
-			const { token, owner } = this.config;
-
+			const gitEngine = this.ensureGitEngine();
 			console.log(
 				"[GitInitializationService] Fetching latest changes from remote...",
 			);
 			const tFetch = performance.now();
-			await git.fetch({
-				fs: fs,
-				dir: NOTES_ROOT,
-				onAuth: () => ({ username: owner, password: token }),
-				http,
-				remote: "origin",
-			});
+			await gitEngine.fetch(NOTES_ROOT);
 			console.log(
 				`[GitInitializationService] syncWithRemote git.fetch: ${Math.round(performance.now() - tFetch)}ms`,
 			);
 
-			const currentBranch = "main";
+			let currentBranch =
+				(await this.resolveCurrentBranch()) ??
+				this.pickPreferredBranch(await gitEngine.listBranches(NOTES_ROOT, "origin")) ??
+				"main";
+			const remoteBranches = await gitEngine.listBranches(NOTES_ROOT, "origin");
+			if (remoteBranches.length === 0) {
+				return {
+					success: false,
+					error: "Remote has no branches",
+				};
+			}
+			if (!remoteBranches.includes(currentBranch)) {
+				const fallbackBranch = this.pickPreferredBranch(remoteBranches);
+				if (fallbackBranch) {
+					console.log(
+						`[GitInitializationService] Local branch '${currentBranch}' not found on remote; switching to '${fallbackBranch}'`,
+					);
+					currentBranch = fallbackBranch;
+					await gitEngine.checkout(NOTES_ROOT, currentBranch);
+				}
+			}
 			const remoteBranch = `origin/${currentBranch}`;
 
 			console.log(
@@ -463,19 +493,14 @@ export class GitInitializationService {
 
 			try {
 				const tMerge = performance.now();
-				await git.merge({
-					fs: fs,
-					dir: NOTES_ROOT,
+				await gitEngine.merge(NOTES_ROOT, {
 					ours: currentBranch,
 					theirs: remoteBranch,
 					fastForwardOnly: true,
 				});
 				console.log("[GitInitializationService] Fast-forward merge successful");
 				// leaving this here for a while, if fast forward merges doesn't work then
-				await git.checkout({
-					fs,
-					dir: NOTES_ROOT,
-					ref: "HEAD",
+				await gitEngine.checkout(NOTES_ROOT, "HEAD", {
 					noUpdateHead: true,
 					force: true,
 				});
@@ -489,9 +514,7 @@ export class GitInitializationService {
 				);
 				try {
 					const tMerge = performance.now();
-					await git.merge({
-						fs: fs,
-						dir: NOTES_ROOT,
+					await gitEngine.merge(NOTES_ROOT, {
 						ours: currentBranch,
 						theirs: remoteBranch,
 						author: {
@@ -505,10 +528,7 @@ export class GitInitializationService {
 					);
 					console.log("[GitInitializationService] Merge successful");
 					const tCheckout = performance.now();
-					await git.checkout({
-						fs,
-						dir: NOTES_ROOT,
-						ref: "HEAD",
+					await gitEngine.checkout(NOTES_ROOT, "HEAD", {
 						noUpdateHead: true,
 						force: true,
 					});
@@ -535,11 +555,8 @@ export class GitInitializationService {
 
 	private async syncDbAfterPull(): Promise<void> {
 		try {
-			const currentOid = await git.resolveRef({
-				fs,
-				dir: NOTES_ROOT,
-				ref: "HEAD",
-			});
+			const gitEngine = this.ensureGitEngine();
+			const currentOid = await gitEngine.resolveHeadOid(NOTES_ROOT);
 			const lastSyncedOid = await readLastSyncedOid();
 
 			if (!lastSyncedOid) {
@@ -553,9 +570,8 @@ export class GitInitializationService {
 				);
 				const tSync = performance.now();
 				try {
-					const changedPaths = await getChangedPathsSinceLastSync(
+					const changedPaths = await gitEngine.changedMarkdownPaths(
 						NOTES_ROOT,
-						fs,
 						lastSyncedOid,
 						currentOid,
 					);

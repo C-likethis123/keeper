@@ -3,7 +3,11 @@ import {
 	type AppStateStatus,
 	type NativeEventSubscription,
 } from "react-native";
-import { type GitChangeOperation, commitChanges } from "./gitApi";
+import { NOTES_ROOT } from "@/services/notes/Notes";
+import type { GitEngine } from "./engines/GitEngine";
+import { getGitEngine } from "./gitEngine";
+
+export type GitChangeOperation = "add" | "modify" | "delete";
 
 interface QueuedChange {
 	filePath: string;
@@ -14,6 +18,7 @@ export class GitService {
 	static readonly instance = new GitService();
 
 	private static readonly queue = new Map<string, GitChangeOperation>();
+	private static gitEngine: GitEngine | null = null;
 
 	private appStateSubscription: NativeEventSubscription | null = null;
 	private static isCommitting = false;
@@ -23,6 +28,14 @@ export class GitService {
 			"change",
 			this.handleAppStateChange,
 		);
+	}
+
+	private static ensureGitEngine(): GitEngine {
+		if (GitService.gitEngine) {
+			return GitService.gitEngine;
+		}
+		GitService.gitEngine = getGitEngine();
+		return GitService.gitEngine;
 	}
 
 	static queueChange(filePath: string, operation: GitChangeOperation): void {
@@ -69,12 +82,18 @@ export class GitService {
 		GitService.queue.clear();
 
 		try {
-			const result = await commitChanges(snapshot, message);
-			if (!result.success) {
-				console.warn("[GitService] Commit failed:", result.error);
+			const gitEngine = GitService.ensureGitEngine();
+			const status = await gitEngine.status(NOTES_ROOT);
+			if (status.length > 0) {
+				const commitMessage = message || `Update ${snapshot.length} file(s)`;
+				await gitEngine.commit(NOTES_ROOT, commitMessage);
 			}
+			await gitEngine.push(NOTES_ROOT);
 		} catch (error) {
-			console.warn("[GitService] Commit batch threw:", error);
+			for (const change of snapshot) {
+				GitService.queueChange(change.filePath, change.operation);
+			}
+			console.warn("[GitService] Commit/push batch failed:", error);
 		} finally {
 			GitService.isCommitting = false;
 		}

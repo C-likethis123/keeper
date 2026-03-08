@@ -1,5 +1,4 @@
 import { Buffer } from "buffer";
-// Import Buffer polyfill for isomorphic-git
 import { ToastOverlay } from "@/components/shared/Toast";
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
@@ -29,6 +28,7 @@ if (__DEV__) {
 export default function RootLayout() {
 	const themeMode = useColorScheme();
 	const [isHydrated, setIsHydrated] = useState(false);
+	const [initError, setInitError] = useState<string | null>(null);
 	useEffect(() => {
 		const appStartTime = performance.now();
 
@@ -52,9 +52,18 @@ export default function RootLayout() {
 					}
 				} else {
 					console.error("[App] Git initialization failed:", result.error);
+					setInitError(
+						result.error ??
+							"Rust git initialization failed. This runtime is unsupported.",
+					);
 				}
 			} catch (error) {
 				console.error("[App] Git initialization error:", error);
+				setInitError(
+					error instanceof Error
+						? error.message
+						: "Rust git initialization failed unexpectedly.",
+				);
 			}
 		})();
 		Promise.allSettled([gitP]).then(() => {
@@ -66,18 +75,29 @@ export default function RootLayout() {
 
 	return (
 		<ThemeProvider value={themeMode === "light" ? lightTheme : darkTheme}>
-			<App isHydrated={isHydrated} />
+			<App isHydrated={isHydrated} initError={initError} />
 		</ThemeProvider>
 	);
 }
 
-const App = ({ isHydrated }: { isHydrated: boolean }) => {
+const App = ({
+	isHydrated,
+	initError,
+}: { isHydrated: boolean; initError: string | null }) => {
 	const styles = useStyles(createStyles);
 	if (!isHydrated) {
 		return (
 			<View style={styles.splash}>
 				<Text style={styles.title}>Keeper</Text>
 				<ActivityIndicator size="large" style={styles.activityIndicator} />
+			</View>
+		);
+	}
+	if (initError) {
+		return (
+			<View style={styles.splash}>
+				<Text style={styles.title}>Keeper</Text>
+				<Text style={styles.errorText}>{initError}</Text>
 			</View>
 		);
 	}
@@ -105,6 +125,12 @@ function createStyles(theme: ExtendedTheme) {
 		activityIndicator: {
 			marginTop: 16,
 			color: theme.colors.primary,
+		},
+		errorText: {
+			marginTop: 16,
+			paddingHorizontal: 24,
+			textAlign: "center",
+			color: theme.colors.text,
 		},
 	});
 }

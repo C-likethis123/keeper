@@ -9,6 +9,7 @@ dist/
 web-build/
 expo-env.d.ts
 *.apk
+*.so
 
 # Native
 .kotlin/
@@ -46,6 +47,8 @@ app-example
 
 # Tauri
 src-tauri/target/
+src-tauri/git_core/target/
+src-tauri/git_core/target/
 
 # cursor debug
 .cursor/debug*.log
