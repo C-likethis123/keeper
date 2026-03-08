@@ -2,7 +2,6 @@ import { MIGRATIONS } from "@/migrations/migrations";
 import { Directory, File } from "expo-file-system";
 import type { SQLiteDatabase } from "expo-sqlite";
 import * as SQLite from "expo-sqlite";
-import matter from "gray-matter";
 import { NOTES_ROOT } from "./Notes";
 import type { NoteIndexItem } from "./notesIndex";
 import { extractSummary } from "./notesIndex";
@@ -139,6 +138,8 @@ export async function notesIndexDbListAll(
 }
 
 const SYNC_BATCH_SIZE = 20;
+const SYNC_PARSE_CONCURRENCY = 8;
+const SYNC_PARSE_CHUNK_SIZE = 100;
 const REBUILD_PARSE_CONCURRENCY = 8;
 const REBUILD_PARSE_CHUNK_SIZE = 200;
 const REBUILD_SQL_BATCH_SIZE = 100;
@@ -149,6 +150,12 @@ interface RebuildRow {
 	summary: string;
 	isPinned: number;
 	updatedAt: number;
+}
+
+interface ParsedFrontmatter {
+	title: string;
+	isPinned: boolean;
+	content: string;
 }
 
 export interface NotesIndexRebuildMetrics {
@@ -185,6 +192,54 @@ async function mapWithConcurrency<T, R>(
 
 function getInsertPlaceholders(count: number): string {
 	return Array.from({ length: count }, () => "(?, ?, ?, ?, ?)").join(", ");
+}
+
+function parseYamlScalar(raw: string): string {
+	const trimmed = raw.trim();
+	if (
+		(trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+		(trimmed.startsWith("'") && trimmed.endsWith("'"))
+	) {
+		return trimmed.slice(1, -1);
+	}
+	return trimmed;
+}
+
+function parseFrontmatterForIndex(markdown: string): ParsedFrontmatter {
+	const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(markdown);
+	if (!match) {
+		return {
+			title: "",
+			isPinned: false,
+			content: markdown,
+		};
+	}
+
+	let title = "";
+	let isPinned = false;
+	const frontmatter = match[1];
+	const content = markdown.slice(match[0].length);
+
+	for (const rawLine of frontmatter.split(/\r?\n/)) {
+		const line = rawLine.trim();
+		if (line.length === 0 || line.startsWith("#")) continue;
+		const separator = line.indexOf(":");
+		if (separator < 0) continue;
+
+		const key = line.slice(0, separator).trim();
+		const value = parseYamlScalar(line.slice(separator + 1));
+		if (key === "title") {
+			title = value;
+		} else if (key === "pinned") {
+			isPinned = value.toLowerCase() === "true";
+		}
+	}
+
+	return {
+		title,
+		isPinned,
+		content,
+	};
 }
 
 async function dropFtsTriggers(database: SQLite.SQLiteDatabase): Promise<void> {
@@ -224,6 +279,9 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 	const database = await getDb();
 
 	// Read all file data before opening the transaction
+	const markdownPaths = [...changedPaths.added, ...changedPaths.modified].filter(
+		(path) => path.endsWith(".md"),
+	);
 	const upsertItems: {
 		id: string;
 		title: string;
@@ -231,18 +289,34 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 		isPinned: number;
 		mtime: number;
 	}[] = [];
-	for (const path of [...changedPaths.added, ...changedPaths.modified]) {
-		if (!path.endsWith(".md")) continue;
-		const file = new File(NOTES_ROOT, path);
-		if (!file.exists) continue;
-		const { content, data } = matter(await file.text());
-		upsertItems.push({
-			id: path.replace(/\.md$/, ""),
-			title: data.title ?? "",
-			summary: extractSummary(content),
-			isPinned: data.pinned ? 1 : 0,
-			mtime: file.modificationTime ?? 0,
-		});
+	for (
+		let chunkStart = 0;
+		chunkStart < markdownPaths.length;
+		chunkStart += SYNC_PARSE_CHUNK_SIZE
+	) {
+		const chunk = markdownPaths.slice(
+			chunkStart,
+			chunkStart + SYNC_PARSE_CHUNK_SIZE,
+		);
+		const parsedChunk = await mapWithConcurrency(
+			chunk,
+			SYNC_PARSE_CONCURRENCY,
+			async (path) => {
+				const file = new File(NOTES_ROOT, path);
+				if (!file.exists) return null;
+				const parsed = parseFrontmatterForIndex(await file.text());
+				return {
+					id: path.replace(/\.md$/, ""),
+					title: parsed.title,
+					summary: extractSummary(parsed.content),
+					isPinned: parsed.isPinned ? 1 : 0,
+					mtime: file.modificationTime ?? 0,
+				};
+			},
+		);
+		for (const item of parsedChunk) {
+			if (item) upsertItems.push(item);
+		}
 	}
 
 	const deleteIds = changedPaths.deleted
@@ -321,12 +395,12 @@ export async function notesIndexDbRebuildFromDisk(): Promise<NotesIndexRebuildMe
 			REBUILD_PARSE_CONCURRENCY,
 			async (entry) => {
 				const id = entry.name.replace(/\.md$/, "");
-				const { content, data } = matter(await entry.text());
+				const parsed = parseFrontmatterForIndex(await entry.text());
 				return {
 					id,
-					title: data.title ?? "",
-					summary: extractSummary(content),
-					isPinned: data.pinned ? 1 : 0,
+					title: parsed.title,
+					summary: extractSummary(parsed.content),
+					isPinned: parsed.isPinned ? 1 : 0,
 					updatedAt: entry.modificationTime ?? 0,
 				};
 			},
