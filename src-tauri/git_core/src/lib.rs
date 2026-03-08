@@ -1054,7 +1054,10 @@ pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule
         Ok(value) => value,
         Err(_) => return std::ptr::null_mut(),
     };
-    android_json_result(&mut env, current_branch(&repo_path).ok().flatten())
+    let payload = current_branch(&repo_path)
+        .ok()
+        .and_then(|branch| serde_json::to_string(&branch).ok());
+    android_json_result(&mut env, payload)
 }
 
 #[cfg(target_os = "android")]
@@ -1195,7 +1198,10 @@ pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule
         Ok(value) => value,
         Err(_) => return std::ptr::null_mut(),
     };
-    android_json_result(&mut env, head_oid(&repo_path).ok())
+    let payload = head_oid(&repo_path)
+        .ok()
+        .and_then(|oid| serde_json::to_string(&oid).ok());
+    android_json_result(&mut env, payload)
 }
 
 #[cfg(target_os = "android")]

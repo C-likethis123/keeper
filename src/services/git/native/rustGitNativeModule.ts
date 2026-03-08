@@ -33,7 +33,26 @@ const nativeBridgeRaw =
 
 function parseMaybeJson<T>(payload: unknown): T {
 	if (typeof payload === "string") {
-		return JSON.parse(payload) as T;
+		const trimmed = payload.trim();
+		// Some native bridge methods return plain strings (e.g. branch name "main").
+		// Only attempt JSON parsing when the payload looks like JSON.
+		const looksLikeJson =
+			trimmed.startsWith("{") ||
+			trimmed.startsWith("[") ||
+			trimmed.startsWith('"') ||
+			trimmed === "true" ||
+			trimmed === "false" ||
+			trimmed === "null" ||
+			trimmed === "" ||
+			/^-?\d/.test(trimmed);
+		if (looksLikeJson) {
+			try {
+				return JSON.parse(trimmed) as T;
+			} catch {
+				// Fall through to raw string when parsing fails.
+			}
+		}
+		return payload as T;
 	}
 	return payload as T;
 }

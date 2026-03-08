@@ -139,6 +139,82 @@ export async function notesIndexDbListAll(
 }
 
 const SYNC_BATCH_SIZE = 20;
+const REBUILD_PARSE_CONCURRENCY = 8;
+const REBUILD_PARSE_CHUNK_SIZE = 200;
+const REBUILD_SQL_BATCH_SIZE = 100;
+
+interface RebuildRow {
+	id: string;
+	title: string;
+	summary: string;
+	isPinned: number;
+	updatedAt: number;
+}
+
+export interface NotesIndexRebuildMetrics {
+	noteCount: number;
+	listMs: number;
+	readParseMs: number;
+	sqlInsertMs: number;
+	ftsRebuildMs: number;
+	totalMs: number;
+}
+
+async function mapWithConcurrency<T, R>(
+	items: T[],
+	concurrency: number,
+	mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+	if (items.length === 0) return [];
+	const maxConcurrency = Math.max(1, Math.min(concurrency, items.length));
+	const results = new Array<R>(items.length);
+	let nextIndex = 0;
+
+	const workers = Array.from({ length: maxConcurrency }, async () => {
+		while (true) {
+			const current = nextIndex;
+			nextIndex += 1;
+			if (current >= items.length) return;
+			results[current] = await mapper(items[current], current);
+		}
+	});
+
+	await Promise.all(workers);
+	return results;
+}
+
+function getInsertPlaceholders(count: number): string {
+	return Array.from({ length: count }, () => "(?, ?, ?, ?, ?)").join(", ");
+}
+
+async function dropFtsTriggers(database: SQLite.SQLiteDatabase): Promise<void> {
+	await database.execAsync("DROP TRIGGER IF EXISTS note_index_ai");
+	await database.execAsync("DROP TRIGGER IF EXISTS note_index_ad");
+	await database.execAsync("DROP TRIGGER IF EXISTS note_index_au");
+}
+
+async function createFtsTriggers(database: SQLite.SQLiteDatabase): Promise<void> {
+	await database.execAsync(`
+		CREATE TRIGGER IF NOT EXISTS note_index_ai AFTER INSERT ON note_index BEGIN
+			INSERT INTO note_index_fts(rowid, title, summary)
+			VALUES (new.rowid, new.title, new.summary);
+		END
+	`);
+	await database.execAsync(`
+		CREATE TRIGGER IF NOT EXISTS note_index_ad AFTER DELETE ON note_index BEGIN
+			INSERT INTO note_index_fts(note_index_fts, rowid, title, summary)
+			VALUES ('delete', old.rowid, old.title, old.summary);
+		END
+	`);
+	await database.execAsync(`
+		CREATE TRIGGER IF NOT EXISTS note_index_au AFTER UPDATE ON note_index BEGIN
+			INSERT INTO note_index_fts(note_index_fts, rowid, title, summary)
+			VALUES ('delete', old.rowid, old.title, old.summary);
+			INSERT INTO note_index_fts(rowid, title, summary)
+			VALUES (new.rowid, new.title, new.summary);
+		END
+	`);
+}
 
 export async function notesIndexDbSyncChanges(changedPaths: {
 	added: string[];
@@ -207,33 +283,101 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 	});
 }
 
-export async function notesIndexDbRebuildFromDisk(): Promise<void> {
+export async function notesIndexDbRebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
+	const rebuildStart = performance.now();
 	const dir = new Directory(NOTES_ROOT);
-	if (!dir.exists) return;
+	if (!dir.exists) {
+		return {
+			noteCount: 0,
+			listMs: 0,
+			readParseMs: 0,
+			sqlInsertMs: 0,
+			ftsRebuildMs: 0,
+			totalMs: Math.round(performance.now() - rebuildStart),
+		};
+	}
+
+	const tList = performance.now();
 	const entries = dir.list();
+	const markdownFiles = entries.filter(
+		(entry): entry is File =>
+			entry instanceof File && entry.name.endsWith(".md"),
+	);
+	const listMs = Math.round(performance.now() - tList);
+
+	const tReadParse = performance.now();
+	const rows: RebuildRow[] = [];
+	for (
+		let chunkStart = 0;
+		chunkStart < markdownFiles.length;
+		chunkStart += REBUILD_PARSE_CHUNK_SIZE
+	) {
+		const chunk = markdownFiles.slice(
+			chunkStart,
+			chunkStart + REBUILD_PARSE_CHUNK_SIZE,
+		);
+		const chunkRows = await mapWithConcurrency(
+			chunk,
+			REBUILD_PARSE_CONCURRENCY,
+			async (entry) => {
+				const id = entry.name.replace(/\.md$/, "");
+				const { content, data } = matter(await entry.text());
+				return {
+					id,
+					title: data.title ?? "",
+					summary: extractSummary(content),
+					isPinned: data.pinned ? 1 : 0,
+					updatedAt: entry.modificationTime ?? 0,
+				};
+			},
+		);
+		rows.push(...chunkRows);
+	}
+	const readParseMs = Math.round(performance.now() - tReadParse);
+
 	const database = await getDb();
-	await database.runAsync(`DELETE FROM ${TABLE}`);
+	let sqlInsertMs = 0;
+	let ftsRebuildMs = 0;
 	await database.withTransactionAsync(async () => {
-		for (const entry of entries) {
-			if (!(entry instanceof File) || !entry.name.endsWith(".md")) continue;
-			const id = entry.name.replace(/\.md$/, "");
-			const { content, data } = matter(await entry.text());
-			const mtime = entry.modificationTime ?? 0;
-			const title = data.title ?? "";
+		const tSql = performance.now();
+		await dropFtsTriggers(database);
+		await database.runAsync(`DELETE FROM ${TABLE}`);
+
+		for (let i = 0; i < rows.length; i += REBUILD_SQL_BATCH_SIZE) {
+			const batch = rows.slice(i, i + REBUILD_SQL_BATCH_SIZE);
+			const placeholders = getInsertPlaceholders(batch.length);
+			const values = batch.flatMap((row) => [
+				row.id,
+				row.title,
+				row.summary,
+				row.isPinned,
+				row.updatedAt,
+			]);
 			await database.runAsync(
 				`INSERT INTO ${TABLE} (id, title, summary, is_pinned, updated_at)
-				 VALUES (?, ?, ?, ?, ?)
-				 ON CONFLICT(id) DO UPDATE SET
-				   title = excluded.title,
-				   summary = excluded.summary,
-				   is_pinned = excluded.is_pinned,
-				   updated_at = excluded.updated_at`,
-				id,
-				title,
-				extractSummary(content),
-				data.pinned ? 1 : 0,
-				mtime,
+				 VALUES ${placeholders}`,
+				...values,
 			);
 		}
+
+		sqlInsertMs = Math.round(performance.now() - tSql);
+
+		const tFts = performance.now();
+		await database.execAsync(
+			`INSERT INTO ${FTS_TABLE}(${FTS_TABLE}) VALUES('rebuild')`,
+		);
+		await createFtsTriggers(database);
+		ftsRebuildMs = Math.round(performance.now() - tFts);
 	});
+
+	const metrics: NotesIndexRebuildMetrics = {
+		noteCount: rows.length,
+		listMs,
+		readParseMs,
+		sqlInsertMs,
+		ftsRebuildMs,
+		totalMs: Math.round(performance.now() - rebuildStart),
+	};
+	console.log("[notesIndexDb] rebuildFromDisk metrics", metrics);
+	return metrics;
 }

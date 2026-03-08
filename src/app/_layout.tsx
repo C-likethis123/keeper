@@ -44,11 +44,8 @@ export default function RootLayout() {
 					});
 					if (result.wasCloned) {
 						console.log("[App] Git repository was cloned, indexing notes...");
-						const tIndex = performance.now();
-						await notesIndexDbRebuildFromDisk();
-						console.log(
-							`[App] notesIndexDbRebuildFromDisk: ${Math.round(performance.now() - tIndex)}ms`,
-						);
+						const metrics = await notesIndexDbRebuildFromDisk();
+						console.log("[App] notesIndexDbRebuildFromDisk", metrics);
 					}
 				} else {
 					console.error("[App] Git initialization failed:", result.error);
