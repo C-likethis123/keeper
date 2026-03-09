@@ -1,3 +1,7 @@
 import { Paths } from "expo-file-system";
 
-export const NOTES_ROOT = Paths.join(Paths.cache.uri, "notes");
+export let NOTES_ROOT = Paths.join(Paths.cache.uri, "notes");
+
+export function setNotesRoot(path: string): void {
+	NOTES_ROOT = path;
+}

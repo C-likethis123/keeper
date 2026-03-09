@@ -2,6 +2,7 @@ import type { SaveStatus } from "@/components/SaveIndicator";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
+import { useStorageStore } from "@/stores/storageStore";
 import { useEffect, useRef, useState } from "react";
 
 type AutoSaveInput = {
@@ -12,6 +13,7 @@ type AutoSaveInput = {
 };
 
 export function useAutoSave({ id, title, isPinned }: AutoSaveInput) {
+	const canWrite = useStorageStore((s) => s.capabilities.canWrite);
 	const timerRef = useRef<number | null>(null);
 	const lastSavedRef = useRef<Note | null>(null);
 	const [status, setStatus] = useState<SaveStatus>("idle");
@@ -25,6 +27,7 @@ export function useAutoSave({ id, title, isPinned }: AutoSaveInput) {
 		}
 
 		const runSave = async () => {
+			if (!canWrite) return;
 			const previousId = lastSavedRef.current?.id;
 			const previousTitle = lastSavedRef.current?.title;
 			const previousContent = lastSavedRef.current?.content;
@@ -37,13 +40,18 @@ export function useAutoSave({ id, title, isPinned }: AutoSaveInput) {
 				isPinned !== previousIsPinned
 			) {
 				setStatus("saving");
-				await NoteService.saveNote({
-					id,
-					title: title.trim(),
-					content,
-					isPinned,
-					lastUpdated: Date.now(),
-				});
+				try {
+					await NoteService.saveNote({
+						id,
+						title: title.trim(),
+						content,
+						isPinned,
+						lastUpdated: Date.now(),
+					});
+				} catch {
+					setStatus("idle");
+					return;
+				}
 				lastSavedRef.current = {
 					id,
 					content,
@@ -65,7 +73,7 @@ export function useAutoSave({ id, title, isPinned }: AutoSaveInput) {
 				clearInterval(timerRef.current);
 			}
 		};
-	}, [id, title, getContent, isPinned]);
+	}, [id, title, getContent, isPinned, canWrite]);
 
 	return { status };
 }

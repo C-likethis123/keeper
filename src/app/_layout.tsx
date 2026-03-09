@@ -5,8 +5,11 @@ import { lightTheme } from "@/constants/themes/lightTheme";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import { GitInitializationService } from "@/services/git/gitInitializationService";
-import { notesIndexDbRebuildFromDisk } from "@/services/notes/notesIndexDb";
+import { NotesIndexService } from "@/services/notes/notesIndex";
+import { isTauriRuntime } from "@/services/storage/runtime";
+import { StorageInitializationService } from "@/services/storage/storageInitializationService";
 import { checkForUpdates } from "@/utils/checkForUpdates";
+import { useToastStore } from "@/stores/toastStore";
 import { ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
@@ -29,13 +32,27 @@ export default function RootLayout() {
 	const themeMode = useColorScheme();
 	const [isHydrated, setIsHydrated] = useState(false);
 	const [initError, setInitError] = useState<string | null>(null);
+	const showToast = useToastStore((state) => state.showToast);
 	useEffect(() => {
 		const appStartTime = performance.now();
 
 		if (!__DEV__) {
 			checkForUpdates();
 		}
-		const gitP = (async () => {
+		const initializeStorage = async () => {
+			const result = await StorageInitializationService.instance.initialize();
+			if (result.success && result.needsRebuild) {
+				await NotesIndexService.rebuildFromDisk();
+			}
+			if (!result.success && result.readOnlyReason) {
+				showToast(
+					`Read-only mode: ${result.readOnlyReason}`,
+					6000,
+				);
+			}
+		};
+
+		const initializeGit = async (backgroundMode: boolean) => {
 			try {
 				const result = await GitInitializationService.instance.initialize();
 				if (result.success) {
@@ -44,31 +61,61 @@ export default function RootLayout() {
 					});
 					if (result.wasCloned) {
 						console.log("[App] Git repository was cloned, indexing notes...");
-						const metrics = await notesIndexDbRebuildFromDisk();
+						const metrics = await NotesIndexService.rebuildFromDisk();
 						console.log("[App] notesIndexDbRebuildFromDisk", metrics);
 					}
 				} else {
 					console.error("[App] Git initialization failed:", result.error);
-					setInitError(
-						result.error ??
-							"Rust git initialization failed. This runtime is unsupported.",
-					);
+					if (backgroundMode) {
+						showToast(
+							result.error ?? "Git sync failed",
+							6000,
+						);
+					} else {
+						setInitError(
+							result.error ??
+								"Rust git initialization failed. This runtime is unsupported.",
+						);
+					}
 				}
 			} catch (error) {
 				console.error("[App] Git initialization error:", error);
-				setInitError(
-					error instanceof Error
-						? error.message
-						: "Rust git initialization failed unexpectedly.",
-				);
+				if (backgroundMode) {
+					showToast(
+						error instanceof Error ? error.message : "Git sync failed",
+						6000,
+					);
+				} else {
+					setInitError(
+						error instanceof Error
+							? error.message
+							: "Rust git initialization failed unexpectedly.",
+					);
+				}
 			}
-		})();
-		Promise.allSettled([gitP]).then(() => {
-			const totalMs = Math.round(performance.now() - appStartTime);
-			console.log(`[App] Startup: complete, total ${totalMs}ms`);
+		};
+		(async () => {
+			if (isTauriRuntime()) {
+				// On Tauri desktop, hydrate immediately so the UI is never blocked
+				// by IPC calls (storage init, git sync) that may stall indefinitely.
+				// Both run after hydration; notes re-fetch once the backend is ready.
+				setIsHydrated(true);
+				await initializeStorage();
+				void initializeGit(true);
+			} else {
+				// On non-desktop runtimes (Expo Go, plain web) git is unsupported;
+				// run init blocking so errors are shown immediately as error screens.
+				await initializeStorage();
+				const totalMs = Math.round(performance.now() - appStartTime);
+				await initializeGit(false);
+				console.log(`[App] Startup: complete, total ${totalMs}ms`);
+				setIsHydrated(true);
+			}
+		})().catch((err) => {
+			console.error("[App] Startup error:", err);
 			setIsHydrated(true);
 		});
-	}, []);
+	}, [showToast]);
 
 	return (
 		<ThemeProvider value={themeMode === "light" ? lightTheme : darkTheme}>

@@ -43,6 +43,14 @@ export interface ListNotesResult {
 	cursor?: { offset: number };
 }
 
+export async function notesIndexDbHasRows(): Promise<boolean> {
+	const database = await getDb();
+	const row = await database.getFirstAsync<{ count: number }>(
+		`SELECT COUNT(1) as count FROM ${TABLE}`,
+	);
+	return (row?.count ?? 0) > 0;
+}
+
 export async function notesIndexDbUpsert(item: NoteIndexItem): Promise<void> {
 	const database = await getDb();
 	await database.runAsync(

@@ -8,6 +8,8 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
+import { useStorageStore } from "@/stores/storageStore";
+import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -26,8 +28,14 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const id = note.id;
 	const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
 	const [title, setTitle] = useState<string>(note.title);
+	const capabilities = useStorageStore((s) => s.capabilities);
+	const showToast = useToastStore((s) => s.showToast);
 
 	const togglePin = useCallback(async () => {
+		if (!capabilities.canWrite) {
+			showToast(capabilities.reason ?? "Read-only mode");
+			return;
+		}
 		const newNote = {
 			content: getContent(),
 			title,
@@ -37,7 +45,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		};
 		await NoteService.saveNote(newNote);
 		setIsPinned((prev) => !prev);
-	}, [id, title, isPinned]);
+	}, [id, title, isPinned, capabilities.canWrite, capabilities.reason, showToast]);
 
 	const { status } = useAutoSave(note);
 
@@ -58,6 +66,10 @@ export default function NoteEditorView({ note }: { note: Note }) {
 					headerLeft: () => (
 						<TouchableOpacity
 							onPress={async () => {
+								if (!capabilities.canWrite) {
+									router.back();
+									return;
+								}
 								await NoteService.saveNote({
 									id,
 									title,
@@ -78,7 +90,11 @@ export default function NoteEditorView({ note }: { note: Note }) {
 					),
 					headerRight: () => (
 						<>
-							<TouchableOpacity onPress={togglePin} style={{ marginRight: 8 }}>
+							<TouchableOpacity
+								onPress={togglePin}
+								style={{ marginRight: 8 }}
+								disabled={!capabilities.canWrite}
+							>
 								<MaterialIcons
 									name="push-pin"
 									size={24}
@@ -89,10 +105,15 @@ export default function NoteEditorView({ note }: { note: Note }) {
 							</TouchableOpacity>
 							<TouchableOpacity
 								onPress={async () => {
+									if (!capabilities.canWrite) {
+										showToast(capabilities.reason ?? "Read-only mode");
+										return;
+									}
 									await NoteService.deleteNote(id as string);
 									router.back();
 								}}
 								style={{ marginRight: 8 }}
+								disabled={!capabilities.canWrite}
 							>
 								<MaterialIcons
 									name="delete"
@@ -111,12 +132,13 @@ export default function NoteEditorView({ note }: { note: Note }) {
 				<TextInput
 					style={styles.titleInput}
 					value={title}
-					onChangeText={setTitle}
+					onChangeText={capabilities.canWrite ? setTitle : undefined}
+					editable={capabilities.canWrite}
 					placeholder="Title"
 					placeholderTextColor={theme.custom.editor.placeholder}
 				/>
 
-				<EditorToolbar />
+				<EditorToolbar disabled={!capabilities.canWrite} />
 				<EditorScrollProvider>
 					<HybridEditor />
 				</EditorScrollProvider>

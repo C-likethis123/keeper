@@ -3,7 +3,9 @@ import {
 	type NoteIndexItem,
 	NotesIndexService,
 } from "@/services/notes/notesIndex";
+import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
+import { useStorageStore } from "@/stores/storageStore";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 function toNote(item: NoteIndexItem): Note {
@@ -17,6 +19,7 @@ function toNote(item: NoteIndexItem): Note {
 }
 
 export default function useNotes() {
+	const capabilities = useStorageStore((s) => s.capabilities);
 	const [query, setQuery] = useState("");
 	const [notes, setNotes] = useState<Note[]>([]);
 	const [hasMore, setHasMore] = useState(true);
@@ -34,11 +37,10 @@ export default function useNotes() {
 			setIsLoading(true);
 			try {
 				const offset = append ? (nextOffsetRef.current ?? 0) : 0;
-				const results = await NotesIndexService.listNotes(
-					query,
-					PAGE_SIZE,
-					offset,
-				);
+				const searchQuery = capabilities.canSearch ? query : "";
+				const results = capabilities.canSearch
+					? await NotesIndexService.listNotes(searchQuery, PAGE_SIZE, offset)
+					: await NoteService.listNotesFallback(searchQuery, PAGE_SIZE, offset);
 				nextOffsetRef.current = results.cursor?.offset;
 				const newNotes = results.items.map(toNote);
 				if (append) {
@@ -56,7 +58,7 @@ export default function useNotes() {
 				setIsLoading(false);
 			}
 		},
-		[query],
+		[query, capabilities.canSearch],
 	);
 
 	const loadMoreNotes = useCallback(async () => {
@@ -74,6 +76,7 @@ export default function useNotes() {
 		let cancelled = false;
 		const isQueryChange = prevQueryRef.current !== query;
 		if (isQueryChange) {
+			if (!capabilities.canSearch) return;
 			prevQueryRef.current = query;
 		}
 		const timeoutId = isQueryChange
@@ -88,7 +91,7 @@ export default function useNotes() {
 			cancelled = true;
 			if (timeoutId != null) clearTimeout(timeoutId);
 		};
-	}, [fetchNotes, query]);
+	}, [fetchNotes, query, capabilities.canSearch]);
 
 	return {
 		notes,

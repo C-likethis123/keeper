@@ -1,9 +1,9 @@
 import { GitService } from "@/services/git/gitService";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
-import { Directory, File } from "expo-file-system";
-import matter from "gray-matter";
-import { NOTES_ROOT } from "./Notes";
+import { getStorageEngine } from "@/services/storage/storageEngine";
 import type { Note } from "./types";
+import { useStorageStore } from "@/stores/storageStore";
+import type { ListNotesResult } from "./notesIndex";
 
 // Persists notes to the file system
 
@@ -17,53 +17,34 @@ export class NoteService {
 	static instance = new NoteService();
 
 	private constructor() {
-		this.ensureNotesRoot();
+		// desktop path setup is done by StorageInitializationService
+		// mobile/web will lazily create notes root through expo-file-system on write.
 	}
 
-	private async ensureNotesRoot(): Promise<void> {
-		try {
-			const dir = new Directory(NOTES_ROOT);
-			if (!dir.exists) {
-				dir.create({ intermediates: true });
-			}
-		} catch (e) {
-			console.warn("Failed to ensure notes root:", e);
+	private static assertCanWrite(): void {
+		const capabilities = useStorageStore.getState().capabilities;
+		if (!capabilities.canWrite) {
+			throw new Error(
+				capabilities.reason ?? "Storage is unavailable in read-only mode",
+			);
 		}
 	}
 
 	static async loadNote(id: string): Promise<Note | null> {
-		try {
-			const file = new File(NOTES_ROOT, `${id}.md`);
-			if (file.exists) {
-				const result = matter(await file.text());
-				const { data, content } = result;
-				const mtime = file.modificationTime ?? 0;
-				return {
-					id,
-					title: data.title ?? "",
-					content,
-					lastUpdated: mtime,
-					isPinned: data.pinned ?? false,
-				};
-			}
-		} catch (localError) {
-			console.warn("Failed to load note:", localError);
-			return null;
-		}
-		return null;
+		return getStorageEngine().loadNote(id);
 	}
 
 	static async saveNote(note: Note, isNewNote = false): Promise<Note> {
-		const id = note.id;
+		NoteService.assertCanWrite();
+		const id = note.id.trim();
 		const pinnedState = !!note.isPinned;
 		const title = (note.title ?? "").trim();
-		const file = new File(NOTES_ROOT, `${id}.md`);
-		const content = matter.stringify(note.content, {
-			pinned: pinnedState,
+		const saved = await getStorageEngine().saveNote({
+			...note,
+			id,
+			isPinned: pinnedState,
 			title,
-			id: note.id,
 		});
-		await file.write(content);
 		const summary = extractSummary(note.content);
 
 		await NotesIndexService.upsertNote({
@@ -71,27 +52,20 @@ export class NoteService {
 			summary,
 			title,
 			isPinned: pinnedState,
-			updatedAt: note.lastUpdated,
+			updatedAt: saved.lastUpdated,
 		});
 
 		GitService.queueChange(`${id}.md`, isNewNote ? "add" : "modify");
 		void GitService.commitBatch();
 
-		return {
-			id,
-			title,
-			content: note.content,
-			lastUpdated: note.lastUpdated,
-			isPinned: pinnedState,
-		};
+		return saved;
 	}
 
 	static async deleteNote(id: string): Promise<boolean> {
-		try {
-			const file = new File(NOTES_ROOT, `${id}.md`);
-			if (!file.exists) return false;
-
-			file.delete();
+		NoteService.assertCanWrite();
+			try {
+				const deleted = await getStorageEngine().deleteNote(id);
+				if (!deleted) return false;
 			try {
 				await NotesIndexService.deleteNote(id);
 			} catch (err) {
@@ -104,5 +78,49 @@ export class NoteService {
 			console.warn("Failed to delete note:", e);
 			return false;
 		}
+	}
+
+	static async listNotesFallback(
+		query: string,
+		limit: number,
+		offset?: number,
+	): Promise<ListNotesResult> {
+		const files = await getStorageEngine().listNoteFiles();
+		const normalizedQuery = query.trim().toLowerCase();
+		const filtered: Note[] = [];
+		for (const file of files) {
+			const loaded = await getStorageEngine().loadNote(file.id);
+			if (!loaded) continue;
+			const matches =
+				normalizedQuery.length === 0 ||
+				loaded.title.toLowerCase().includes(normalizedQuery) ||
+				loaded.content.toLowerCase().includes(normalizedQuery);
+			if (!matches) continue;
+			filtered.push({
+				...loaded,
+				content: extractSummary(loaded.content),
+			});
+		}
+		filtered.sort((a, b) => {
+			if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+			return b.lastUpdated - a.lastUpdated;
+		});
+		const from = Math.max(0, offset ?? 0);
+		const page = filtered.slice(from, from + limit);
+		return {
+			items: page.map((note) => ({
+				noteId: note.id,
+				title: note.title,
+				summary: note.content,
+				updatedAt: note.lastUpdated,
+				isPinned: note.isPinned,
+			})),
+			cursor:
+				from + limit < filtered.length
+					? {
+							offset: from + limit,
+						}
+					: undefined,
+		};
 	}
 }

@@ -7,6 +7,7 @@ import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
+import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
@@ -27,9 +28,14 @@ export default function Index() {
 	} = useNotes();
 	const theme = useExtendedTheme();
 	const showToast = useToastStore((state) => state.showToast);
+	const capabilities = useStorageStore((s) => s.capabilities);
 
 	const handleDeleteNote = useCallback(
 		async (note: Note) => {
+			if (!capabilities.canWrite) {
+				showToast(capabilities.reason ?? "Read-only mode");
+				return;
+			}
 			try {
 				const success = await NoteService.deleteNote(note.id);
 				if (!success) throw new Error("Failed to delete note");
@@ -39,12 +45,16 @@ export default function Index() {
 				showToast("Failed to delete note");
 			}
 		},
-		[showToast],
+		[showToast, capabilities.canWrite, capabilities.reason],
 	);
 
 	const handlePinToggle = useCallback(async (updated: Note) => {
+		if (!capabilities.canWrite) {
+			showToast(capabilities.reason ?? "Read-only mode");
+			return;
+		}
 		await NoteService.saveNote(updated);
-	}, []);
+	}, [capabilities.canWrite, capabilities.reason, showToast]);
 
 	const styles = useStyles(createStyles);
 
@@ -64,7 +74,11 @@ export default function Index() {
 
 	return (
 		<View style={styles.container}>
-			<SearchBar searchQuery={query} setSearchQuery={setQuery} />
+			<SearchBar
+				searchQuery={query}
+				setSearchQuery={setQuery}
+				editable={capabilities.canSearch}
+			/>
 			<NoteGrid
 				notes={notes}
 				onDelete={handleDeleteNote}
@@ -77,8 +91,15 @@ export default function Index() {
 			/>
 			<TouchableOpacity
 				activeOpacity={0.8}
-				style={styles.fab}
+				style={[
+					styles.fab,
+					!capabilities.canWrite && { opacity: 0.5 },
+				]}
 				onPress={async () => {
+					if (!capabilities.canWrite) {
+						showToast(capabilities.reason ?? "Read-only mode");
+						return;
+					}
 					const newNote = {
 						id: nanoid(),
 						title: "",
@@ -89,6 +110,7 @@ export default function Index() {
 					await NoteService.saveNote(newNote, true);
 					router.push(`/editor?id=${newNote.id}`);
 				}}
+				disabled={!capabilities.canWrite}
 			>
 				<MaterialIcons
 					name="add"

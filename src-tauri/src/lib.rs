@@ -1,8 +1,8 @@
 use git_core::{GitChangedPaths, GitMergeAuthor, GitMergeOptionsInput, GitStatusItem};
+mod storage;
 
 #[tauri::command]
 fn git_clone_repo(url: String, path: String) -> Result<(), String> {
-    println!("git_clone called");
     git_core::clone_repo(&url, &path)
 }
 
@@ -114,7 +114,18 @@ pub fn run() {
             git_push_repo,
             git_status_repo,
             git_head_oid_repo,
-            git_changed_markdown_paths_repo
+            git_changed_markdown_paths_repo,
+            storage::storage_initialize,
+            storage::read_note,
+            storage::write_note,
+            storage::delete_note,
+            storage::list_note_files,
+            storage::stat_note,
+            storage::index_upsert,
+            storage::index_delete,
+            storage::index_list,
+            storage::index_rebuild_from_disk,
+            storage::notes_root_path_command
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
