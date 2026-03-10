@@ -1,6 +1,5 @@
 import type { BlockNode } from "../BlockNode";
 import { type Document, removeBlock } from "../Document";
-import { InsertBlockOperation } from "./InsertBlockOperation";
 import { type Operation, OperationType } from "./Operation";
 
 /// Operation to delete a block
@@ -17,6 +16,8 @@ export class DeleteBlockOperation implements Operation {
 	}
 
 	inverse(document: Document): Operation {
+		// Lazy require to break circular dependency
+		const { InsertBlockOperation } = require("./InsertBlockOperation");
 		return new InsertBlockOperation(this.blockIndex, this.block);
 	}
 }
