@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Planning & Roadmap
+
+**Refer to `ROADMAP.md`** before starting any new work. It contains:
+- Critical issues (P1, P2) requiring fixes
+- Development phases (Phase 1–3)
+- Known issues and improvements
+- Feature backlog
+
+Brief summaries also in `TODO.md` and `BUGS.md`.
+
 ## Commands
 
 ```bash
