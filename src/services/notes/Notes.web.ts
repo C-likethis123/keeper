@@ -1,1 +1,5 @@
-export const NOTES_ROOT = "web-notes://";
+export let NOTES_ROOT = "web-notes://";
+
+export function setNotesRoot(path: string): void {
+	NOTES_ROOT = path;
+}

@@ -24,14 +24,11 @@ import {
 	TransactionBuilder,
 } from "@/components/editor/core/Transaction";
 import { create } from "zustand";
-import { devtools } from "zustand/middleware";
 
 type EditorAction = Parameters<typeof editorReducer>[1];
 
 const history = new History();
-export const useEditorState = create<EditorState>()(
-	devtools(
-		(set, get) => {
+export const useEditorState = create<EditorState>()((set, get) => {
 			const dispatch = (action: EditorAction) =>
 				set((state) => editorReducer(state, action, history));
 
@@ -286,10 +283,7 @@ export const useEditorState = create<EditorState>()(
 				},
 				getHasBlockSelection: () => get().blockSelection !== null,
 			};
-		},
-		{ name: "EditorStore", enabled: typeof __DEV__ !== "undefined" && __DEV__ },
-	),
-);
+		});
 
 export function useEditorDocument(): Document {
 	return useEditorState((s) => s.document);

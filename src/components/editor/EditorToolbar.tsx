@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { BlockType, getListLevel, isListItem } from "./core/BlockNode";
 
-export function EditorToolbar() {
+export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 	const theme = useExtendedTheme();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const getCanUndo = useEditorState((s) => s.getCanUndo);
@@ -32,12 +32,12 @@ export function EditorToolbar() {
 
 	const isListBlock = isListItem(blockType);
 
-	const canOutdent = isListBlock;
-	const canIndent = isListBlock && listLevel >= 0 && listLevel < 10;
+	const canOutdent = !disabled && isListBlock;
+	const canIndent = !disabled && isListBlock && listLevel >= 0 && listLevel < 10;
 	const canConvertToCheckbox =
-		blockType != null && blockType !== BlockType.checkboxList;
-	const canUndo = getCanUndo();
-	const canRedo = getCanRedo();
+		!disabled && blockType != null && blockType !== BlockType.checkboxList;
+	const canUndo = !disabled && getCanUndo();
+	const canRedo = !disabled && getCanRedo();
 
 	return (
 		<View style={styles.toolbar}>
@@ -74,7 +74,7 @@ export function EditorToolbar() {
 				<MaterialIcons
 					name="format-indent-increase"
 					size={24}
-					color={theme.colors.text}
+					color={canIndent ? theme.colors.text : theme.colors.textDisabled}
 				/>
 			</TouchableOpacity>
 			<TouchableOpacity
@@ -86,7 +86,7 @@ export function EditorToolbar() {
 				<MaterialIcons
 					name="format-indent-decrease"
 					size={24}
-					color={theme.colors.text}
+					color={canOutdent ? theme.colors.text : theme.colors.textDisabled}
 				/>
 			</TouchableOpacity>
 			<TouchableOpacity
@@ -98,7 +98,9 @@ export function EditorToolbar() {
 				<MaterialIcons
 					name="check-box-outline-blank"
 					size={24}
-					color={theme.colors.text}
+					color={
+						canConvertToCheckbox ? theme.colors.text : theme.colors.textDisabled
+					}
 				/>
 			</TouchableOpacity>
 			{Platform.OS !== "web" ? (
@@ -106,11 +108,12 @@ export function EditorToolbar() {
 					style={styles.button}
 					onPress={handleInsertImage}
 					activeOpacity={0.7}
+					disabled={disabled}
 				>
 					<MaterialIcons
 						name="add-photo-alternate"
 						size={24}
-						color={theme.colors.text}
+						color={disabled ? theme.colors.textDisabled : theme.colors.text}
 					/>
 				</TouchableOpacity>
 			) : (

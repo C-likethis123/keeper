@@ -35,21 +35,15 @@ Place `cargo-ndk` output under Android JNI libs path for each ABI, for example:
 - `android/app/src/main/jniLibs/armeabi-v7a/libgit_core.so`
 - `android/app/src/main/jniLibs/x86_64/libgit_core.so`
 
-## iOS scaffold templates
-
-Templates are included at:
-- `src/services/git/native/ios/KeeperGitBridge.swift`
-- `src/services/git/native/ios/KeeperGitBridge.m`
-
 ## iOS integration (implemented in this repo)
 
 Files are integrated into the app target:
 - `ios/native/KeeperGitBridge.swift`
 - `ios/native/KeeperGitBridge.m`
-- `ios/native.xcodeproj/project.pbxproj` includes both source files and `native/libgit_core.a` linkage.
+- `ios/native.xcodeproj/project.pbxproj` includes both source files, links `native/libgit_core.a`, and copies the correct prebuilt Rust archive into place during Xcode builds.
 
-Before building iOS, place/link the Rust static library at:
-- `ios/native/libgit_core.a`
+Build native artifacts with:
+- `npm run build:mobile-git`
 
 Bridge methods include:
 - `clone`, `fetch`, `checkout`, `currentBranch`, `listBranches`, `merge`, `commit`, `push`, `status`

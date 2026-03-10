@@ -1,12 +1,11 @@
 import { NOTES_ROOT } from "@/services/notes/Notes";
-import {
-	notesIndexDbRebuildFromDisk,
-	notesIndexDbSyncChanges,
-} from "@/services/notes/notesIndexDb";
+import { NotesIndexService } from "@/services/notes/notesIndex";
+import { useStorageStore } from "@/stores/storageStore";
 import type { GitEngine } from "@/services/git/engines/GitEngine";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Directory, File } from "expo-file-system";
+import { Directory } from "expo-file-system";
 import { getGitEngine } from "./gitEngine";
+import { getGitRuntimeSupport } from "./runtime";
 
 const LAST_SYNCED_OID_KEY = "git:lastSyncedOid";
 const TLS_CERT_ERROR_PREFIX = "tls_cert_invalid";
@@ -57,7 +56,9 @@ function assertGitHubConfig(): GitHubConfig {
 export interface InitializationResult {
 	success: boolean;
 	wasCloned: boolean;
+	supported: boolean;
 	error?: string;
+	reason?: string;
 }
 
 interface StartupMetrics {
@@ -153,6 +154,16 @@ export class GitInitializationService {
 		const metrics = createEmptyStartupMetrics();
 		console.log("[GitInitializationService] Starting initialization...");
 		try {
+			const runtimeSupport = getGitRuntimeSupport();
+			if (!runtimeSupport.supported) {
+				return {
+					success: true,
+					wasCloned: false,
+					supported: false,
+					reason: runtimeSupport.reason,
+				};
+			}
+
 			try {
 				this.ensureGitEngine();
 			} catch (error) {
@@ -161,6 +172,7 @@ export class GitInitializationService {
 				return {
 					success: false,
 					wasCloned: false,
+					supported: true,
 					error: `Rust git unavailable: ${errorMsg}`,
 				};
 			}
@@ -188,6 +200,7 @@ export class GitInitializationService {
 					return {
 						success: false,
 						wasCloned: true,
+						supported: true,
 						error:
 							"Invalid repository detected, please clear your cache manually and try again",
 					};
@@ -203,12 +216,14 @@ export class GitInitializationService {
 					return {
 						success: false,
 						wasCloned: false,
+						supported: true,
 						error,
 					};
 				}
 				return {
 					success: true,
 					wasCloned: true,
+					supported: true,
 				};
 			}
 			console.log(
@@ -230,6 +245,7 @@ export class GitInitializationService {
 				return {
 					success: true,
 					wasCloned: false,
+					supported: true,
 				};
 			}
 			console.warn(
@@ -239,11 +255,13 @@ export class GitInitializationService {
 			return {
 				success: true,
 				wasCloned: false,
+				supported: true,
 			};
 		} catch (error) {
 			return {
 				success: false,
 				wasCloned: false,
+				supported: true,
 				error: error instanceof Error ? error.message : String(error),
 			};
 		} finally {
@@ -262,44 +280,8 @@ export class GitInitializationService {
 		reason?: string;
 	}> {
 		try {
-			const gitDir = new Directory(NOTES_ROOT, ".git");
-			const dirExists = gitDir.exists;
-			console.log(
-				`[GitInitializationService] Checking ${gitDir.uri}: ${dirExists ? "EXISTS" : "NOT FOUND"}`,
-			);
-
-			// If directory doesn't exist, repo doesn't exist
-			if (!dirExists) {
-				return {
-					exists: false,
-					isValid: false,
-					reason: "Directory does not exist",
-				};
-			}
-
-			// Directory exists, verify it's a valid git repository
-			const headFile = new File(gitDir, "HEAD");
-			const configFile = new File(gitDir, "config");
-
-			if (!headFile.exists) {
-				return {
-					exists: true,
-					isValid: false,
-					reason: "HEAD file not found - repository is incomplete",
-				};
-			}
-
-			if (!configFile.exists) {
-				return {
-					exists: true,
-					isValid: false,
-					reason: "Config file not found - repository is incomplete",
-				};
-			}
-
-			console.log(
-				"[GitInitializationService] Repository structure looks valid",
-			);
+			const gitEngine = this.ensureGitEngine();
+			await gitEngine.resolveHeadOid(NOTES_ROOT);
 			return { exists: true, isValid: true };
 		} catch (error) {
 			console.warn(
@@ -314,7 +296,8 @@ export class GitInitializationService {
 			return {
 				exists: false,
 				isValid: false,
-				reason: error instanceof Error ? error.message : "Unknown error",
+				reason:
+					error instanceof Error ? error.message : "Repository not initialized",
 			};
 		}
 	}
@@ -383,9 +366,12 @@ export class GitInitializationService {
 						"[GitInitializationService] Attempting to clean up corrupted repository...",
 					);
 
-					const notesRootDir = new Directory(NOTES_ROOT);
-					if (notesRootDir.exists) {
-						await Promise.resolve(notesRootDir.delete());
+					const capabilities = useStorageStore.getState().capabilities;
+					if (capabilities.backend === "mobile-native") {
+						const notesRootDir = new Directory(NOTES_ROOT);
+						if (notesRootDir.exists) {
+							await Promise.resolve(notesRootDir.delete());
+						}
 					}
 					return false;
 				}
@@ -599,37 +585,14 @@ export class GitInitializationService {
 				console.log(
 					"[GitInitializationService] No lastSyncedOid — rebuilding DB from disk",
 				);
-				await notesIndexDbRebuildFromDisk();
+				await NotesIndexService.rebuildFromDisk();
 				didDbSync = true;
 			} else if (lastSyncedOid !== resolvedCurrentOid) {
 				console.log(
-					`[GitInitializationService] Incremental DB sync from ${lastSyncedOid.slice(0, 7)} to ${resolvedCurrentOid.slice(0, 7)}`,
+					`[GitInitializationService] Head changed from ${lastSyncedOid.slice(0, 7)} to ${resolvedCurrentOid.slice(0, 7)}, rebuilding index`,
 				);
-				try {
-					const changedPaths = await gitEngine.changedMarkdownPaths(
-						NOTES_ROOT,
-						lastSyncedOid,
-						resolvedCurrentOid,
-					);
-					const markdownChangeCount =
-						changedPaths.added.length +
-						changedPaths.modified.length +
-						changedPaths.deleted.length;
-					console.log(
-						`[GitInitializationService] Changed paths: +${changedPaths.added.length} ~${changedPaths.modified.length} -${changedPaths.deleted.length}`,
-					);
-					if (markdownChangeCount > 0) {
-						await notesIndexDbSyncChanges(changedPaths);
-						didDbSync = true;
-					}
-				} catch (err) {
-					console.warn(
-						"[GitInitializationService] Incremental sync failed, falling back to full rebuild:",
-						err,
-					);
-					await notesIndexDbRebuildFromDisk();
-					didDbSync = true;
-				}
+				await NotesIndexService.rebuildFromDisk();
+				didDbSync = true;
 			} else {
 				console.log(
 					"[GitInitializationService] No new commits since last sync, skipping DB sync",

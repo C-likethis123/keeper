@@ -5,7 +5,12 @@ import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 export function SearchBar({
 	searchQuery,
 	setSearchQuery,
-}: { searchQuery: string; setSearchQuery: (query: string) => void }) {
+	editable = true,
+}: {
+	searchQuery: string;
+	setSearchQuery: (query: string) => void;
+	editable?: boolean;
+}) {
 	const theme = useExtendedTheme();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -20,14 +25,15 @@ export function SearchBar({
 				/>
 				<TextInput
 					style={styles.searchInput}
-					placeholder="Search"
+					placeholder={editable ? "Search" : "Search unavailable in read-only mode"}
 					placeholderTextColor={theme.colors.textFaded}
 					value={searchQuery}
 					onChangeText={setSearchQuery}
+					editable={editable}
 					autoCapitalize="none"
 					autoCorrect={false}
 				/>
-				{searchQuery.length > 0 && (
+				{editable && searchQuery.length > 0 && (
 					<TouchableOpacity
 						onPress={() => setSearchQuery("")}
 						style={styles.clearButton}

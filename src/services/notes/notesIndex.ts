@@ -1,9 +1,5 @@
-import {
-	type ListNotesResult,
-	notesIndexDbDelete,
-	notesIndexDbListAll,
-	notesIndexDbUpsert,
-} from "./notesIndexDb";
+import type { ListNotesResult } from "./notesIndexDb";
+import { getStorageEngine } from "@/services/storage/storageEngine";
 
 export interface NoteIndexItem {
 	noteId: string;
@@ -21,11 +17,11 @@ export class NotesIndexService {
 	private constructor() {}
 
 	static async upsertNote(item: NoteIndexItem): Promise<void> {
-		await notesIndexDbUpsert(item);
+		await getStorageEngine().indexUpsert(item);
 	}
 
 	static async deleteNote(noteId: string): Promise<void> {
-		await notesIndexDbDelete(noteId);
+		await getStorageEngine().indexDelete(noteId);
 	}
 
 	static async listNotes(
@@ -33,7 +29,11 @@ export class NotesIndexService {
 		limit = 20,
 		offset?: number,
 	): Promise<ListNotesResult> {
-		return notesIndexDbListAll(query, limit, offset);
+		return getStorageEngine().indexList(query, limit, offset);
+	}
+
+	static async rebuildFromDisk(): Promise<{ noteCount: number }> {
+		return getStorageEngine().indexRebuildFromDisk();
 	}
 }
 

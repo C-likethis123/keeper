@@ -45,6 +45,14 @@ app-example
 /ios
 /android
 
+!/android/app/src/main/java/com/clikethis123/keeper/MainApplication.kt
+!/android/app/src/main/java/com/clikethis123/keeper/KeeperGitBridgeModule.kt
+!/android/app/src/main/java/com/clikethis123/keeper/KeeperGitBridgePackage.kt
+!/ios/native/KeeperGitBridge.m
+!/ios/native/KeeperGitBridge.swift
+!/ios/native.xcodeproj/project.pbxproj
+
+
 # Tauri
 src-tauri/target/
 src-tauri/git_core/target/

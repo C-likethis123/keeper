@@ -47,6 +47,7 @@ Types of notes:
 - drawings (lower priority)
 - look at logseq toolbar, it's all a the bottom
 - implement flashcards
+- Add backlinks, maybe it's useful?
 
 
 ---

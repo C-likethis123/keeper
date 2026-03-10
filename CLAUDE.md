@@ -98,6 +98,10 @@ EXPO_PUBLIC_GITHUB_TOKEN=<token>
 EXPO_PUBLIC_GIT_API_URL=<backend-url>   # optional remote backend
 ```
 
+## Key Conventions for Claude
+
+- **Expo CLI**: Before suggesting flags or options, verify them against the Expo docs or by running `npx expo <command> --help`. Prefer idiomatic solutions (e.g., `BROWSER=none` env var to suppress browser auto-open) over unverified flags.
+
 ## Key Conventions
 
 - **Immutability**: `Document`, `BlockNode`, `Transaction` are frozen. Never mutate them directly.
