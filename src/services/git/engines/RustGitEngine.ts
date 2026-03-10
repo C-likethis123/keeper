@@ -9,6 +9,7 @@ import {
 	getRustGitNativeBridge,
 	hasRustGitNativeBridge,
 } from "@/services/git/native/rustGitNativeModule";
+import { uriToGitPath } from "@/services/git/expoFileSystemAdapter";
 
 type TauriInvoke = <T = unknown>(
 	command: string,
@@ -95,15 +96,15 @@ export class RustGitEngine implements GitEngine {
 		if (this.bridge.kind === "tauri") {
 			return this.bridge.invoke("git_clone_repo", { url, path: dir });
 		}
-		// it uses rust's native bridge
-		return this.bridge.module.clone(url, dir);
+		// Convert file:// URI to absolute path for Rust git bridge
+		return this.bridge.module.clone(url, uriToGitPath(dir));
 	}
 
 	fetch(dir: string): Promise<void> {
 		if (this.bridge.kind === "tauri") {
 			return this.bridge.invoke("git_fetch_repo", { repoPath: dir });
 		}
-		return this.bridge.module.fetch(dir);
+		return this.bridge.module.fetch(uriToGitPath(dir));
 	}
 
 	checkout(
@@ -119,7 +120,7 @@ export class RustGitEngine implements GitEngine {
 				noUpdateHead: options?.noUpdateHead,
 			});
 		}
-		return this.bridge.module.checkout(dir, ref, options);
+		return this.bridge.module.checkout(uriToGitPath(dir), ref, options);
 	}
 
 	currentBranch(dir: string): Promise<string | undefined> {
@@ -128,7 +129,7 @@ export class RustGitEngine implements GitEngine {
 				repoPath: dir,
 			});
 		}
-		return this.bridge.module.currentBranch(dir);
+		return this.bridge.module.currentBranch(uriToGitPath(dir));
 	}
 
 	listBranches(dir: string, remote?: string): Promise<string[]> {
@@ -138,7 +139,7 @@ export class RustGitEngine implements GitEngine {
 				remote,
 			});
 		}
-		return this.bridge.module.listBranches(dir, remote);
+		return this.bridge.module.listBranches(uriToGitPath(dir), remote);
 	}
 
 	merge(dir: string, options: GitMergeOptions): Promise<void> {
@@ -153,21 +154,21 @@ export class RustGitEngine implements GitEngine {
 				message: options.message,
 			});
 		}
-		return this.bridge.module.merge(dir, options);
+		return this.bridge.module.merge(uriToGitPath(dir), options);
 	}
 
 	commit(dir: string, message: string): Promise<void> {
 		if (this.bridge.kind === "tauri") {
 			return this.bridge.invoke("git_commit_repo", { repoPath: dir, message });
 		}
-		return this.bridge.module.commit(dir, message);
+		return this.bridge.module.commit(uriToGitPath(dir), message);
 	}
 
 	push(dir: string): Promise<void> {
 		if (this.bridge.kind === "tauri") {
 			return this.bridge.invoke("git_push_repo", { repoPath: dir });
 		}
-		return this.bridge.module.push(dir);
+		return this.bridge.module.push(uriToGitPath(dir));
 	}
 
 	status(dir: string): Promise<GitStatusItem[]> {
@@ -176,7 +177,7 @@ export class RustGitEngine implements GitEngine {
 				repoPath: dir,
 			});
 		}
-		return this.bridge.module.status(dir);
+		return this.bridge.module.status(uriToGitPath(dir));
 	}
 
 	resolveHeadOid(dir: string): Promise<string> {
@@ -185,7 +186,7 @@ export class RustGitEngine implements GitEngine {
 				repoPath: dir,
 			});
 		}
-		return this.bridge.module.resolveHeadOid(dir);
+		return this.bridge.module.resolveHeadOid(uriToGitPath(dir));
 	}
 
 	changedMarkdownPaths(
@@ -203,6 +204,6 @@ export class RustGitEngine implements GitEngine {
 				},
 			);
 		}
-		return this.bridge.module.changedMarkdownPaths(dir, fromOid, toOid);
+		return this.bridge.module.changedMarkdownPaths(uriToGitPath(dir), fromOid, toOid);
 	}
 }

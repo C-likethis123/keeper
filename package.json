@@ -5,8 +5,11 @@
 	"scripts": {
 		"start": "expo start",
 		"reset-project": "node ./scripts/reset-project.js",
-		"android": "expo run:android",
+		"android": "./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installDebug",
 		"ios": "expo run:ios",
+		"build:mobile-git": "./scripts/build-mobile-git.sh",
+		"build:mobile-git:android": "./scripts/build-mobile-git.sh android",
+		"build:mobile-git:ios": "./scripts/build-mobile-git.sh ios",
 		"web": "expo start --web",
 		"web:desktop": "BROWSER=none expo start --web --port 8082",
 		"build:web": "expo export --platform web",

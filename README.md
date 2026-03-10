@@ -16,21 +16,25 @@ This is a cross-platform rich-text editor, built on both mobile and desktop.
    npm install
 
    rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+   rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
    cargo install cargo-ndk
    ```
 
 
-2. Start the app
+2. Build the Rust git artifacts used by native mobile builds
 
    ```bash
-cd [project root]
-cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
-  -o android/app/src/main/jniLibs \
-  build --manifest-path src-tauri/git_core/Cargo.toml --release
-
+   npm run build:mobile-git
    ```
 
-In the output, you'll find options to open the app in a
+3. Start the app
+
+   ```bash
+   npm run android
+   npm start
+   ```
+
+   `npm run android` now builds the Rust Android libraries, assembles the native debug app, and installs it on a connected device via Gradle/ADB. `npm start` runs the Metro dev server that the debug build connects to.
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
 - [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
@@ -63,7 +67,7 @@ Git sync is Rust-only. Supported runtimes:
 - Android native build
 - iOS native build
 
-Unsupported runtimes fail initialization at startup:
+Unsupported runtimes fall back to local-only mode:
 - Web
 - Expo Go
 

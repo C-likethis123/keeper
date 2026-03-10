@@ -5,6 +5,7 @@ import type { GitEngine } from "@/services/git/engines/GitEngine";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Directory } from "expo-file-system";
 import { getGitEngine } from "./gitEngine";
+import { getGitRuntimeSupport } from "./runtime";
 
 const LAST_SYNCED_OID_KEY = "git:lastSyncedOid";
 const TLS_CERT_ERROR_PREFIX = "tls_cert_invalid";
@@ -55,7 +56,9 @@ function assertGitHubConfig(): GitHubConfig {
 export interface InitializationResult {
 	success: boolean;
 	wasCloned: boolean;
+	supported: boolean;
 	error?: string;
+	reason?: string;
 }
 
 interface StartupMetrics {
@@ -151,6 +154,16 @@ export class GitInitializationService {
 		const metrics = createEmptyStartupMetrics();
 		console.log("[GitInitializationService] Starting initialization...");
 		try {
+			const runtimeSupport = getGitRuntimeSupport();
+			if (!runtimeSupport.supported) {
+				return {
+					success: true,
+					wasCloned: false,
+					supported: false,
+					reason: runtimeSupport.reason,
+				};
+			}
+
 			try {
 				this.ensureGitEngine();
 			} catch (error) {
@@ -159,6 +172,7 @@ export class GitInitializationService {
 				return {
 					success: false,
 					wasCloned: false,
+					supported: true,
 					error: `Rust git unavailable: ${errorMsg}`,
 				};
 			}
@@ -186,6 +200,7 @@ export class GitInitializationService {
 					return {
 						success: false,
 						wasCloned: true,
+						supported: true,
 						error:
 							"Invalid repository detected, please clear your cache manually and try again",
 					};
@@ -201,12 +216,14 @@ export class GitInitializationService {
 					return {
 						success: false,
 						wasCloned: false,
+						supported: true,
 						error,
 					};
 				}
 				return {
 					success: true,
 					wasCloned: true,
+					supported: true,
 				};
 			}
 			console.log(
@@ -228,6 +245,7 @@ export class GitInitializationService {
 				return {
 					success: true,
 					wasCloned: false,
+					supported: true,
 				};
 			}
 			console.warn(
@@ -237,11 +255,13 @@ export class GitInitializationService {
 			return {
 				success: true,
 				wasCloned: false,
+				supported: true,
 			};
 		} catch (error) {
 			return {
 				success: false,
 				wasCloned: false,
+				supported: true,
 				error: error instanceof Error ? error.message : String(error),
 			};
 		} finally {

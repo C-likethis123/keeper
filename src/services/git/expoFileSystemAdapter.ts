@@ -1,5 +1,3 @@
-const MODE_FILE = 0o644;
-
 /** Normalizes a path to a valid file URI (encodes |, spaces, etc.). Use before passing to expo-file-system File/Directory. */
 export function normalizePath(path: string): string {
 	let pathPart = path.replace(/^file:\/\/?\/?/, "") || "/";
@@ -8,8 +6,15 @@ export function normalizePath(path: string): string {
 	return `file://${encodeURI(decoded)}`;
 }
 
-function errWithCode(message: string, code: string): Error {
-	const e = new Error(message);
-	(e as Error & { code: string }).code = code;
-	return e;
+/** Converts a file:// URI to an absolute filesystem path for Rust git bridge operations.
+ * Rust git_core (libgit2) expects absolute paths, not file:// URIs.
+ */
+export function uriToGitPath(uri: string): string {
+	// Remove file:// or file:/// prefix
+	let path = uri.replace(/^file:\/\//, "");
+	// Ensure leading slash for absolute paths
+	if (!path.startsWith("/")) {
+		path = `/${path}`;
+	}
+	return path;
 }

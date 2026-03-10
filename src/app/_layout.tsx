@@ -5,8 +5,8 @@ import { lightTheme } from "@/constants/themes/lightTheme";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import { GitInitializationService } from "@/services/git/gitInitializationService";
+import { getGitRuntimeSupport } from "@/services/git/runtime";
 import { NotesIndexService } from "@/services/notes/notesIndex";
-import { isTauriRuntime } from "@/services/storage/runtime";
 import { StorageInitializationService } from "@/services/storage/storageInitializationService";
 import { checkForUpdates } from "@/utils/checkForUpdates";
 import { useToastStore } from "@/stores/toastStore";
@@ -55,6 +55,12 @@ export default function RootLayout() {
 		const initializeGit = async (backgroundMode: boolean) => {
 			try {
 				const result = await GitInitializationService.instance.initialize();
+				if (!result.supported) {
+					if (result.reason) {
+						showToast(result.reason, 6000);
+					}
+					return;
+				}
 				if (result.success) {
 					console.log("[App] Git initialization succeeded:", {
 						wasCloned: result.wasCloned,
@@ -95,19 +101,27 @@ export default function RootLayout() {
 			}
 		};
 		(async () => {
-			if (isTauriRuntime()) {
+			const runtimeSupport = getGitRuntimeSupport();
+			if (runtimeSupport.runtime === "desktop-tauri") {
 				// On Tauri desktop, hydrate immediately so the UI is never blocked
 				// by IPC calls (storage init, git sync) that may stall indefinitely.
 				// Both run after hydration; notes re-fetch once the backend is ready.
 				setIsHydrated(true);
 				await initializeStorage();
 				void initializeGit(true);
+			} else if (runtimeSupport.runtime === "mobile-native") {
+				await initializeStorage();
+				await initializeGit(false);
+				const totalMs = Math.round(performance.now() - appStartTime);
+				console.log(`[App] Startup: complete, total ${totalMs}ms`);
+				setIsHydrated(true);
 			} else {
-				// On non-desktop runtimes (Expo Go, plain web) git is unsupported;
-				// run init blocking so errors are shown immediately as error screens.
+				// Unsupported runtimes still launch in local-only mode.
 				await initializeStorage();
 				const totalMs = Math.round(performance.now() - appStartTime);
-				await initializeGit(false);
+				if (runtimeSupport.reason) {
+					showToast(runtimeSupport.reason, 6000);
+				}
 				console.log(`[App] Startup: complete, total ${totalMs}ms`);
 				setIsHydrated(true);
 			}

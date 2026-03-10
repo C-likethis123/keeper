@@ -3,11 +3,14 @@ import {
 	isRustGitEngineAvailable,
 	RustGitEngine,
 } from "@/services/git/engines/RustGitEngine";
+import { getGitRuntimeSupport } from "@/services/git/runtime";
 
 export function getGitEngine(): GitEngine {
 	if (!isRustGitEngineAvailable()) {
+		const support = getGitRuntimeSupport();
 		throw new Error(
-			"Rust git engine unavailable. This runtime does not support git sync.",
+			support.reason ??
+				"Rust git engine unavailable. This runtime does not support git sync.",
 		);
 	}
 
