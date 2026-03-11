@@ -104,7 +104,11 @@ Move old journal entries out of active workspace.
 ---
 
 ## iOS Support
-To support iOS in the future: `eas build:configure`
+iOS native bridge is already integrated (`ios/native/KeeperGitBridge.swift`). To build:
+- Dev: `npm run ios` (requires Xcode + valid signing)
+- Prod: `eas build --platform ios --profile production`
+
+Dev/prod variants use the same `APP_VARIANT` pattern as Android (`com.clikethis123.keeper.dev` vs `com.clikethis123.keeper`).
 
 ---
 

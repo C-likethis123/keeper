@@ -15,17 +15,39 @@ Brief summaries also in `TODO.md` and `BUGS.md`.
 ## Commands
 
 ```bash
-npm install          # Install dependencies
-npm start            # Start Expo dev server (interactive: press w for web, i for iOS, a for Android)
-npm run web          # Run web on port 8081
-npm run desktop      # Start Tauri desktop window (requires Rust + Xcode CLT)
-npm run lint         # Biome linter
-npm run lint:fix     # Auto-fix lint issues
-npm run build:web    # Export web bundle
+npm install           # Install dependencies
+npm start             # Start Expo/metro dev server
+
+# Mobile
+npm run android       # Prod Android: prebuild → Rust bridge → release APK → install
+npm run android:dev   # Dev Android: prebuild (dev variant) → Rust bridge → debug APK → install → metro
+npm run ios           # Run iOS via Expo CLI
+
+# Desktop (requires Rust + Xcode CLT)
+npm run desktop       # Start Tauri desktop window
 npm run build:desktop # Build production desktop app → src-tauri/target/release/
+
+# Utilities
+npm run build:mobile-git  # Rebuild Rust git bridge (all platforms)
+npm run lint              # Biome linter
+npm run lint:fix          # Auto-fix lint issues
 ```
 
 No automated test suite. Use `npm run lint` for CI checks.
+
+### Android Build Variants
+
+Two separate apps with distinct bundle IDs coexist on the same device:
+
+| | Dev | Prod |
+|--|-----|------|
+| **Script** | `npm run android:dev` | `npm run android` |
+| **App name** | Keeper (Dev) | Keeper |
+| **Bundle ID** | `com.clikethis123.keeper.dev` | `com.clikethis123.keeper` |
+| **JS source** | Metro server (hot reload) | Bundled in APK |
+
+The `APP_VARIANT=development` env var in `app.config.js` controls which variant is built.
+After running `android:dev` once, daily dev workflow is just `npm start`.
 
 ## Architecture
 
