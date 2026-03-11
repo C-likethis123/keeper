@@ -478,7 +478,9 @@ pub fn push(repo_path: &str) -> Result<(), String> {
         push_options.remote_callbacks(build_callbacks());
 
         let refspec = format!("refs/heads/{0}:refs/heads/{0}", branch_name);
-        remote.connect(Direction::Push).map_err(format_git_error)?;
+        remote
+            .connect_auth(Direction::Push, Some(build_callbacks()), None)
+            .map_err(format_git_error)?;
         remote
             .push(&[&refspec], Some(&mut push_options))
             .map_err(format_git_error)

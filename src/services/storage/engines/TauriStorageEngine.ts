@@ -1,8 +1,8 @@
 import type { Note } from "@/services/notes/types";
+import { parseFrontmatter, stringifyFrontmatter } from "@/services/notes/frontmatter";
 import { getTauriInvoke } from "@/services/storage/runtime";
 import type { NoteFileEntry, StorageEngine, StorageInitializeResult } from "@/services/storage/engines/StorageEngine";
 import type { NoteIndexListResult, NoteIndexPersistenceItem } from "@/services/storage/types";
-import matter from "gray-matter";
 
 function tauriInvoke() {
 	const invoke = getTauriInvoke();
@@ -10,27 +10,6 @@ function tauriInvoke() {
 		throw new Error("Tauri invoke is unavailable in this runtime");
 	}
 	return invoke;
-}
-
-function parseFrontmatter(markdown: string): { title: string; isPinned: boolean; content: string } {
-	try {
-		const parsed = matter(markdown);
-		return {
-			title: typeof parsed.data.title === "string" ? parsed.data.title : "",
-			isPinned: parsed.data.pinned === true,
-			content: parsed.content,
-		};
-	} catch {
-		return { title: "", isPinned: false, content: markdown };
-	}
-}
-
-function toFrontmatter(note: Note): string {
-	return matter.stringify(note.content, {
-		pinned: !!note.isPinned,
-		title: note.title ?? "",
-		id: note.id,
-	});
 }
 
 export class TauriStorageEngine implements StorageEngine {
@@ -54,7 +33,7 @@ export class TauriStorageEngine implements StorageEngine {
 
 	async saveNote(note: Note): Promise<Note> {
 		const updatedAt = await tauriInvoke()<number>("write_note", {
-			input: { id: note.id, content: toFrontmatter(note) },
+			input: { id: note.id, content: stringifyFrontmatter(note) },
 		});
 		return {
 			...note,

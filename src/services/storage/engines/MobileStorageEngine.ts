@@ -1,10 +1,10 @@
+import { parseFrontmatter, stringifyFrontmatter } from "@/services/notes/frontmatter";
 import { notesIndexDbDelete, notesIndexDbHasRows, notesIndexDbListAll, notesIndexDbRebuildFromDisk, notesIndexDbUpsert } from "@/services/notes/notesIndexDb";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import type { Note } from "@/services/notes/types";
 import type { NoteFileEntry, StorageEngine, StorageInitializeResult } from "@/services/storage/engines/StorageEngine";
 import type { NoteIndexListResult, NoteIndexPersistenceItem } from "@/services/storage/types";
 import { Directory, File } from "expo-file-system";
-import matter from "gray-matter";
 
 function extractSummary(markdown: string, maxLines = 6): string {
 	const lines: string[] = [];
@@ -39,13 +39,13 @@ export class MobileStorageEngine implements StorageEngine {
 		try {
 			const file = new File(NOTES_ROOT, `${id}.md`);
 			if (!file.exists) return null;
-			const parsed = matter(await file.text());
+			const parsed = parseFrontmatter(await file.text());
 			return {
 				id,
-				title: parsed.data.title ?? "",
+				title: parsed.title,
 				content: parsed.content,
 				lastUpdated: file.modificationTime ?? 0,
-				isPinned: parsed.data.pinned ?? false,
+				isPinned: parsed.isPinned,
 			};
 		} catch {
 			return null;
@@ -58,11 +58,7 @@ export class MobileStorageEngine implements StorageEngine {
 			dir.create({ intermediates: true });
 		}
 		const file = new File(NOTES_ROOT, `${note.id}.md`);
-		const content = matter.stringify(note.content, {
-			pinned: !!note.isPinned,
-			title: (note.title ?? "").trim(),
-			id: note.id,
-		});
+		const content = stringifyFrontmatter(note);
 		await file.write(content);
 		const updatedAt = file.modificationTime ?? note.lastUpdated;
 		return {

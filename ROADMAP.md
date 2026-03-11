@@ -74,6 +74,9 @@ Add Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z support for web editor.
 **Issue**: Expo OTA (Over-The-Air) updates not working
 **Impact**: Desktop/mobile app updates require full rebuild
 
+### Android Prebuild Git Bridge
+**TODO**: Evaluate replacing the current Android prebuild Git bridge wiring with a local Expo module so native registration survives `expo prebuild --clean` via autolinking instead of app-level generated source patches.
+
 ### Note Organization & Relevance
 **Goals**:
 - Sort notes by theme, priority, or relevance
