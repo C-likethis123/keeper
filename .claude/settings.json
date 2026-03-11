@@ -1,0 +1,15 @@
+{
+	"hooks": {
+		"PostToolUse": [
+			{
+				"matcher": "Edit|Write",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash ~/keeper/scripts/remind-update-docs.sh"
+					}
+				]
+			}
+		]
+	}
+}
