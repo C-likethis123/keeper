@@ -9,7 +9,6 @@ import {
 	getRustGitNativeBridge,
 	hasRustGitNativeBridge,
 } from "@/services/git/native/rustGitNativeModule";
-import { uriToGitPath } from "@/services/git/expoFileSystemAdapter";
 
 type TauriInvoke = <T = unknown>(
 	command: string,
@@ -66,6 +65,16 @@ function getTauriInvoke(): TauriInvoke | null {
 
 export function isRustGitEngineAvailable(): boolean {
 	return getTauriInvoke() !== null || hasRustGitNativeBridge();
+}
+
+function uriToGitPath(uri: string): string {
+	// Remove file:// or file:/// prefix
+	let path = uri.replace(/^file:\/\//, "");
+	// Ensure leading slash for absolute paths
+	if (!path.startsWith("/")) {
+		path = `/${path}`;
+	}
+	return path;
 }
 
 export class RustGitEngine implements GitEngine {
@@ -204,6 +213,10 @@ export class RustGitEngine implements GitEngine {
 				},
 			);
 		}
-		return this.bridge.module.changedMarkdownPaths(uriToGitPath(dir), fromOid, toOid);
+		return this.bridge.module.changedMarkdownPaths(
+			uriToGitPath(dir),
+			fromOid,
+			toOid,
+		);
 	}
 }

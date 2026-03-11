@@ -13,7 +13,7 @@ import {
 	useState,
 } from "react";
 
-export interface WikiLinkContextValue {
+interface WikiLinkContextValue {
 	results: string[];
 	selectedIndex: number;
 	isActive: boolean;

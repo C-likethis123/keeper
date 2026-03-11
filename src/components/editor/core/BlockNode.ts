@@ -183,12 +183,3 @@ export function isListItem(
 		type === BlockType.checkboxList
 	);
 }
-
-/// Whether this block is a heading
-export function isHeading(block: BlockNode): boolean {
-	return (
-		block.type === BlockType.heading1 ||
-		block.type === BlockType.heading2 ||
-		block.type === BlockType.heading3
-	);
-}

@@ -2,15 +2,11 @@ import type { Document } from "../Document";
 
 /// Types of operations that can be performed on the document
 export enum OperationType {
-	insertText = "insertText",
-	deleteText = "deleteText",
 	insertBlock = "insertBlock",
 	deleteBlock = "deleteBlock",
 	updateBlock = "updateBlock",
 	updateBlockAttributes = "updateBlockAttributes",
 	replaceBlocks = "replaceBlocks",
-	setSelection = "setSelection",
-	composite = "composite",
 }
 
 /// Represents a single atomic operation on the document.
