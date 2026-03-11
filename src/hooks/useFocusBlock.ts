@@ -2,7 +2,7 @@ import { createCollapsedSelection } from "@/components/editor/core/Selection";
 import { useEditorSelection, useEditorState } from "@/stores/editorStore";
 import { useCallback } from "react";
 
-export interface UseFocusBlockReturn {
+interface UseFocusBlockReturn {
 	focusBlockIndex: number | null;
 	focusBlock: (index: number) => void;
 	blurBlock: () => void;

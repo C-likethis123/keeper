@@ -1,7 +1,7 @@
 import { type LanguageConfig, LanguageRegistry } from "./LanguageRegistry";
 
 /// Result of a smart edit operation
-export interface SmartEditResult {
+interface SmartEditResult {
 	newText: string;
 	newCursorOffset: number;
 	handled: boolean;

@@ -164,4 +164,4 @@ export function editorReducer(
 	}
 }
 
-export type EditorActionType = EditorAction["type"];
+type EditorActionType = EditorAction["type"];

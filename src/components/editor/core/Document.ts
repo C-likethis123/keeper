@@ -31,7 +31,7 @@ export function createEmptyDocument(): Document {
 }
 
 /// Creates a document from a list of blocks
-export function createDocumentFromBlocks(blocks: BlockNode[]): Document {
+function createDocumentFromBlocks(blocks: BlockNode[]): Document {
 	if (blocks.length === 0) {
 		return createEmptyDocument();
 	}
@@ -152,12 +152,12 @@ export function createDocumentFromMarkdown(markdown: string): Document {
 }
 
 /// Number of blocks in the document
-export function getDocumentLength(document: Document): number {
+function getDocumentLength(document: Document): number {
 	return document.blocks.length;
 }
 
 /// Whether the document is empty (only has one empty paragraph)
-export function isDocumentEmpty(document: Document): boolean {
+function isDocumentEmpty(document: Document): boolean {
 	return (
 		document.blocks.length === 1 &&
 		document.blocks[0].type === BlockType.paragraph &&
@@ -166,7 +166,7 @@ export function isDocumentEmpty(document: Document): boolean {
 }
 
 /// Gets a block by index
-export function getBlock(document: Document, index: number): BlockNode {
+function getBlock(document: Document, index: number): BlockNode {
 	return document.blocks[index];
 }
 
@@ -307,12 +307,12 @@ export function documentToMarkdown(document: Document): string {
 }
 
 /// Gets the total character count of the document
-export function getCharacterCount(document: Document): number {
+function getCharacterCount(document: Document): number {
 	return document.blocks.reduce((sum, block) => sum + block.content.length, 0);
 }
 
 /// Gets the word count of the document
-export function getWordCount(document: Document): number {
+function getWordCount(document: Document): number {
 	return document.blocks.reduce((sum, block) => {
 		if (block.content.trim().length === 0) {
 			return sum;

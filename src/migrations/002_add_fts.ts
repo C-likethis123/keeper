@@ -1,7 +1,5 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
-export const version = 1;
-
 export async function migrate(db: SQLiteDatabase) {
 	await db.withTransactionAsync(async () => {
 		// Create FTS5 virtual table as a content table over note_index

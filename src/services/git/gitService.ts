@@ -7,7 +7,7 @@ import { NOTES_ROOT } from "@/services/notes/Notes";
 import type { GitEngine } from "./engines/GitEngine";
 import { getGitEngine } from "./gitEngine";
 
-export type GitChangeOperation = "add" | "modify" | "delete";
+type GitChangeOperation = "add" | "modify" | "delete";
 
 interface QueuedChange {
 	filePath: string;

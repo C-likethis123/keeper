@@ -1,4 +1,3 @@
-import { Buffer } from "buffer";
 import { ToastOverlay } from "@/components/shared/Toast";
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
@@ -8,8 +7,8 @@ import { GitInitializationService } from "@/services/git/gitInitializationServic
 import { getGitRuntimeSupport } from "@/services/git/runtime";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { StorageInitializationService } from "@/services/storage/storageInitializationService";
-import { checkForUpdates } from "@/utils/checkForUpdates";
 import { useToastStore } from "@/stores/toastStore";
+import { checkForUpdates } from "@/utils/checkForUpdates";
 import { ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
@@ -21,12 +20,6 @@ import {
 	useColorScheme,
 } from "react-native";
 import "react-native-get-random-values";
-global.Buffer = Buffer;
-globalThis.Buffer = Buffer;
-
-if (__DEV__) {
-	require("../../wdyr");
-}
 
 export default function RootLayout() {
 	const themeMode = useColorScheme();
@@ -45,10 +38,7 @@ export default function RootLayout() {
 				await NotesIndexService.rebuildFromDisk();
 			}
 			if (!result.success && result.readOnlyReason) {
-				showToast(
-					`Read-only mode: ${result.readOnlyReason}`,
-					6000,
-				);
+				showToast(`Read-only mode: ${result.readOnlyReason}`, 6000);
 			}
 		};
 
@@ -73,10 +63,7 @@ export default function RootLayout() {
 				} else {
 					console.error("[App] Git initialization failed:", result.error);
 					if (backgroundMode) {
-						showToast(
-							result.error ?? "Git sync failed",
-							6000,
-						);
+						showToast(result.error ?? "Git sync failed", 6000);
 					} else {
 						setInitError(
 							result.error ??

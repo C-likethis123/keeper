@@ -195,7 +195,7 @@ interface ParsedFrontmatter {
 	content: string;
 }
 
-export interface NotesIndexRebuildMetrics {
+interface NotesIndexRebuildMetrics {
 	noteCount: number;
 	listMs: number;
 	readParseMs: number;

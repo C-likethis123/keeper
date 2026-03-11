@@ -8,7 +8,7 @@ import { useEditorBlock, useEditorState } from "@/stores/editorStore";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 
-export interface BlockRowHandlers {
+interface BlockRowHandlers {
 	onContentChange: (index: number, content: string) => void;
 	onBlockTypeChange?: (
 		index: number,
@@ -23,7 +23,7 @@ export interface BlockRowHandlers {
 	onCheckboxToggle: (index: number) => void;
 }
 
-export interface BlockRowProps {
+interface BlockRowProps {
 	index: number;
 	handlers: BlockRowHandlers;
 }

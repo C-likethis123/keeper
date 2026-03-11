@@ -8,12 +8,12 @@ export interface DocumentPosition {
 }
 
 /// Creates a position at the start of the document
-export function createStartPosition(): DocumentPosition {
+function createStartPosition(): DocumentPosition {
 	return { blockIndex: 0, offset: 0 };
 }
 
 /// Creates a copy with updated fields
-export function copyPosition(
+function copyPosition(
 	position: DocumentPosition,
 	updates: Partial<DocumentPosition>,
 ): DocumentPosition {
@@ -24,7 +24,7 @@ export function copyPosition(
 }
 
 /// Whether this position is before another position
-export function isBefore(
+function isBefore(
 	position: DocumentPosition,
 	other: DocumentPosition,
 ): boolean {
@@ -32,7 +32,7 @@ export function isBefore(
 }
 
 /// Whether this position is after another position
-export function isAfter(
+function isAfter(
 	position: DocumentPosition,
 	other: DocumentPosition,
 ): boolean {
@@ -40,7 +40,7 @@ export function isAfter(
 }
 
 /// Compares two positions
-export function comparePositions(
+function comparePositions(
 	a: DocumentPosition,
 	b: DocumentPosition,
 ): number {
@@ -71,13 +71,13 @@ export function createCollapsedSelection(
 }
 
 /// Creates a collapsed selection at the start of the document
-export function createStartSelection(): DocumentSelection {
+function createStartSelection(): DocumentSelection {
 	const start = createStartPosition();
 	return createCollapsedSelection(start);
 }
 
 /// Whether this is a collapsed selection (cursor with no range)
-export function isCollapsed(selection: DocumentSelection): boolean {
+function isCollapsed(selection: DocumentSelection): boolean {
 	return (
 		selection.anchor.blockIndex === selection.focus.blockIndex &&
 		selection.anchor.offset === selection.focus.offset
@@ -85,7 +85,7 @@ export function isCollapsed(selection: DocumentSelection): boolean {
 }
 
 /// Gets the start position (earlier of anchor/focus)
-export function getSelectionStart(
+function getSelectionStart(
 	selection: DocumentSelection,
 ): DocumentPosition {
 	return isBefore(selection.anchor, selection.focus)
@@ -94,7 +94,7 @@ export function getSelectionStart(
 }
 
 /// Gets the end position (later of anchor/focus)
-export function getSelectionEnd(
+function getSelectionEnd(
 	selection: DocumentSelection,
 ): DocumentPosition {
 	return isAfter(selection.anchor, selection.focus)
@@ -103,27 +103,27 @@ export function getSelectionEnd(
 }
 
 /// Whether the selection is backwards (focus before anchor)
-export function isBackward(selection: DocumentSelection): boolean {
+function isBackward(selection: DocumentSelection): boolean {
 	return isBefore(selection.focus, selection.anchor);
 }
 
 /// Gets the block index where the selection starts
-export function getStartBlockIndex(selection: DocumentSelection): number {
+function getStartBlockIndex(selection: DocumentSelection): number {
 	return getSelectionStart(selection).blockIndex;
 }
 
 /// Gets the block index where the selection ends
-export function getEndBlockIndex(selection: DocumentSelection): number {
+function getEndBlockIndex(selection: DocumentSelection): number {
 	return getSelectionEnd(selection).blockIndex;
 }
 
 /// Whether the selection spans multiple blocks
-export function spansMultipleBlocks(selection: DocumentSelection): boolean {
+function spansMultipleBlocks(selection: DocumentSelection): boolean {
 	return getStartBlockIndex(selection) !== getEndBlockIndex(selection);
 }
 
 /// Creates a copy with updated fields
-export function copySelection(
+function copySelection(
 	selection: DocumentSelection,
 	updates: Partial<DocumentSelection>,
 ): DocumentSelection {
@@ -134,7 +134,7 @@ export function copySelection(
 }
 
 /// Creates a collapsed selection at the focus position
-export function collapseSelection(
+function collapseSelection(
 	selection: DocumentSelection,
 	toStart = false,
 ): DocumentSelection {
@@ -145,7 +145,7 @@ export function collapseSelection(
 }
 
 /// Extends the selection to a new focus position
-export function extendSelection(
+function extendSelection(
 	selection: DocumentSelection,
 	newFocus: DocumentPosition,
 ): DocumentSelection {

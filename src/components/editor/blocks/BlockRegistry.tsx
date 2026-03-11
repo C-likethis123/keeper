@@ -25,7 +25,7 @@ export interface BlockConfig {
 	onCheckboxToggle: (index: number) => void;
 }
 
-export interface BlockBuilder {
+interface BlockBuilder {
 	type: BlockType;
 	triggerPrefix?: RegExp;
 	markdownPrefix: string;

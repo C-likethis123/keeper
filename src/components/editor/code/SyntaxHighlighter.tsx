@@ -33,7 +33,7 @@ type RendererParams = {
 	stylesheet: StyleSheet;
 };
 
-export type SyntaxHighlighterStyleType = {
+type SyntaxHighlighterStyleType = {
 	/**
 	 * Default is Menlo-Regular (iOS) and Monospace (Android).
 	 */
@@ -76,9 +76,9 @@ export type SyntaxHighlighterStyleType = {
 	highlighterColor?: ColorValue;
 };
 
-export const SyntaxHighlighterSyntaxStyles = HLJSSyntaxStyles;
+const SyntaxHighlighterSyntaxStyles = HLJSSyntaxStyles;
 
-export type SyntaxHighlighterProps = HighlighterProps & {
+type SyntaxHighlighterProps = HighlighterProps & {
 	/**
 	 * Code to display.
 	 */

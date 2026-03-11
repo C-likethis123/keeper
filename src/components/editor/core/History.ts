@@ -7,7 +7,7 @@ import {
 } from "./Transaction";
 
 /// Configuration for the history system
-export interface HistoryConfig {
+interface HistoryConfig {
 	readonly maxUndoLevels: number;
 	readonly groupingDelay: number; // in milliseconds
 }

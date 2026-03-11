@@ -2,7 +2,7 @@ import { getStorageCapabilities, getStorageEngine } from "@/services/storage/sto
 import { setNotesRoot } from "@/services/notes/Notes";
 import { useStorageStore } from "@/stores/storageStore";
 
-export interface StorageInitializationResult {
+interface StorageInitializationResult {
 	success: boolean;
 	needsRebuild: boolean;
 	readOnlyReason?: string;

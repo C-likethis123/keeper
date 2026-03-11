@@ -6,12 +6,12 @@ import {
 	useRef,
 } from "react";
 import type { ScrollView } from "react-native";
-export interface EditorScrollContextValue {
+interface EditorScrollContextValue {
 	scrollViewRef: RefObject<ScrollView | null>;
 	scrollYRef: RefObject<number>;
 	viewHeightRef: RefObject<number>;
 }
-export const EditorScrollContext = createContext<EditorScrollContextValue>({
+const EditorScrollContext = createContext<EditorScrollContextValue>({
 	scrollViewRef: {
 		current: null,
 	},

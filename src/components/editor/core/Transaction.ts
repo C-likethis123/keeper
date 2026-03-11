@@ -21,7 +21,7 @@ export interface Transaction {
 }
 
 /// Creates an empty transaction
-export function createEmptyTransaction(): Transaction {
+function createEmptyTransaction(): Transaction {
 	return {
 		operations: [],
 		timestamp: new Date(),
@@ -34,7 +34,7 @@ export function isTransactionEmpty(transaction: Transaction): boolean {
 }
 
 /// Whether this transaction has operations
-export function isTransactionNotEmpty(transaction: Transaction): boolean {
+function isTransactionNotEmpty(transaction: Transaction): boolean {
 	return transaction.operations.length > 0;
 }
 

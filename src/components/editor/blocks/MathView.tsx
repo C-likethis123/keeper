@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { MathJaxSvg } from "react-native-mathjax-html-to-svg";
 
-export interface MathViewProps {
+interface MathViewProps {
 	expression: string;
 	displayMode?: boolean;
 	onError?: (error: string) => void;

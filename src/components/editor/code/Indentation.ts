@@ -1,14 +1,14 @@
 import * as Braces from "./Braces";
 
 export const INDENT_SIZE = 2; // Better for small screens
-export const INDENT_SYMBOL = " "; // Spaces over tabs
+const INDENT_SYMBOL = " "; // Spaces over tabs
 
 /**
  * Gets the indentation size of the given line of code.
  * @param line Line of code.
  * @returns number.
  */
-export const getIndentSize = (line: string): number => {
+const getIndentSize = (line: string): number => {
 	for (let i = 0; i < line.length; i++) {
 		if (line[i] !== INDENT_SYMBOL) {
 			const trimmed = line.trimEnd();

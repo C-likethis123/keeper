@@ -1,8 +1,14 @@
-import type { ListNotesResult, NoteIndexItem, extractSummary } from "./notesIndexDb";
+import type { GitChangedPaths } from "@/services/git/engines/GitEngine";
+import { getRuntimeStorageBackend } from "@/services/storage/runtime";
 import { getStorageEngine } from "@/services/storage/storageEngine";
+import {
+	type ListNotesResult,
+	type NoteIndexItem,
+	notesIndexDbSyncChanges,
+} from "./notesIndexDb";
 
-export type { ListNotesResult, NoteIndexItem };
 export { extractSummary } from "./notesIndexDb";
+export type { ListNotesResult, NoteIndexItem };
 
 export class NotesIndexService {
 	static instance = new NotesIndexService();
@@ -27,5 +33,14 @@ export class NotesIndexService {
 
 	static async rebuildFromDisk(): Promise<{ noteCount: number }> {
 		return getStorageEngine().indexRebuildFromDisk();
+	}
+
+	static async syncChangedPaths(changedPaths: GitChangedPaths): Promise<void> {
+		if (getRuntimeStorageBackend() === "mobile-native") {
+			await notesIndexDbSyncChanges(changedPaths);
+			return;
+		}
+
+		await NotesIndexService.rebuildFromDisk();
 	}
 }

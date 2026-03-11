@@ -11,7 +11,7 @@ import { useCallback } from "react";
 import { Platform } from "react-native";
 import { useFocusBlock } from "./useFocusBlock";
 
-export interface UseToolbarActions {
+interface UseToolbarActions {
 	handleOutdent: () => void;
 	handleIndent: () => void;
 	handleConvertToCheckbox: () => void;

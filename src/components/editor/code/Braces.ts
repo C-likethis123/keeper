@@ -31,7 +31,7 @@ export const isOpenBrace = (
  * @param str Brace to check.
  * @returns boolean
  */
-export const isCloseBrace = (str: string): boolean => {
+const isCloseBrace = (str: string): boolean => {
 	for (const value of braces.values()) {
 		if (str === value) {
 			return true;

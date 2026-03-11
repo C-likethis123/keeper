@@ -3,15 +3,15 @@ import { Platform } from "react-native";
 import { hasRustGitNativeBridge } from "@/services/git/native/rustGitNativeModule";
 import { getTauriInvoke } from "@/services/storage/runtime";
 
-export type GitRuntime = "desktop-tauri" | "mobile-native" | "unsupported";
+type GitRuntime = "desktop-tauri" | "mobile-native" | "unsupported";
 
-export interface GitRuntimeSupport {
+interface GitRuntimeSupport {
 	runtime: GitRuntime;
 	supported: boolean;
 	reason?: string;
 }
 
-export function getGitRuntime(): GitRuntime {
+function getGitRuntime(): GitRuntime {
 	if (getTauriInvoke() !== null) {
 		return "desktop-tauri";
 	}

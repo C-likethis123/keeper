@@ -1,4 +1,5 @@
 import { NOTES_ROOT } from "@/services/notes/Notes";
+import type { GitChangedPaths } from "@/services/git/engines/GitEngine";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { useStorageStore } from "@/stores/storageStore";
 import type { GitEngine } from "@/services/git/engines/GitEngine";
@@ -30,7 +31,7 @@ async function writeLastSyncedOid(oid: string): Promise<void> {
 	}
 }
 
-export interface GitHubConfig {
+interface GitHubConfig {
 	owner: string;
 	repo: string;
 	token: string;
@@ -53,7 +54,7 @@ function assertGitHubConfig(): GitHubConfig {
 	return { owner, repo, token };
 }
 
-export interface InitializationResult {
+interface InitializationResult {
 	success: boolean;
 	wasCloned: boolean;
 	supported: boolean;
@@ -588,10 +589,16 @@ export class GitInitializationService {
 				await NotesIndexService.rebuildFromDisk();
 				didDbSync = true;
 			} else if (lastSyncedOid !== resolvedCurrentOid) {
-				console.log(
-					`[GitInitializationService] Head changed from ${lastSyncedOid.slice(0, 7)} to ${resolvedCurrentOid.slice(0, 7)}, rebuilding index`,
+				const changedPaths = await this.getChangedMarkdownPaths(
+					gitEngine,
+					lastSyncedOid,
+					resolvedCurrentOid,
 				);
-				await NotesIndexService.rebuildFromDisk();
+				console.log(
+					`[GitInitializationService] Head changed from ${lastSyncedOid.slice(0, 7)} to ${resolvedCurrentOid.slice(0, 7)}, syncing index`,
+					changedPaths,
+				);
+				await NotesIndexService.syncChangedPaths(changedPaths);
 				didDbSync = true;
 			} else {
 				console.log(
@@ -611,5 +618,25 @@ export class GitInitializationService {
 			didDbSync,
 			dbSyncMs: Math.round(performance.now() - tSync),
 		};
+	}
+
+	private async getChangedMarkdownPaths(
+		gitEngine: GitEngine,
+		fromOid: string,
+		toOid: string,
+	): Promise<GitChangedPaths> {
+		try {
+			return await gitEngine.changedMarkdownPaths(NOTES_ROOT, fromOid, toOid);
+		} catch (error) {
+			console.warn(
+				"[GitInitializationService] changedMarkdownPaths failed, falling back to full rebuild:",
+				error,
+			);
+			return {
+				added: [],
+				modified: [],
+				deleted: [],
+			};
+		}
 	}
 }
