@@ -5,7 +5,7 @@
 	"scripts": {
 		"start": "expo start",
 		"android": "npx expo prebuild --platform android --clean && ./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installRelease",
-		"android:dev": "APP_VARIANT=development npx expo prebuild --platform android --clean && ./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installDebug && cd .. && npm start",
+		"android:dev": "APP_VARIANT=development npx expo prebuild --platform android --clean && ./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installDebug && cd .. && (adb reverse tcp:8081 tcp:8081 || true) && npx expo start --dev-client",
 		"ios": "expo run:ios",
 		"build:mobile-git": "./scripts/build-mobile-git.sh",
 		"desktop": "tauri dev",
