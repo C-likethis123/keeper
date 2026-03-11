@@ -92,9 +92,20 @@ Add Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z support for web editor.
 ### Archive Old Journals
 Move old journal entries out of active workspace.
 
+### Embedded Video Player
+Watch YouTube (and other videos) while editing notes, without leaving the app.
+
+**Layout**:
+- Mobile: video panel above the note editor (stacked vertically)
+- Desktop: video panel to the side of the editor (split view, horizontal)
+
+**Scope**:
+- YouTube URL detection or manual paste to open video panel
+- Resizable/dismissible panel
+- Playback controls visible while editing
+
 ### Future Ideas from Google Keep
 - Drawings (low priority)
-- Video embedding
 - PDF viewer (Zotero-like)
 - Fix code editor issues
 - Logseq-style bottom toolbar
