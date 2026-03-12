@@ -303,6 +303,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			padding: 0,
 			paddingHorizontal: 2,
 			color: theme.colors.text,
+			outline: "none",
 		},
 		inputVisible: {
 			opacity: 1,
