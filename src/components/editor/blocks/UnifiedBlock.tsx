@@ -251,7 +251,7 @@ export function UnifiedBlock({
 				)}
 				<View
 					style={[
-						{ flex: 0 },
+						{ flex: 1 },
 						!isFocused
 							? applyListStyles
 								? styles.overlayContent
