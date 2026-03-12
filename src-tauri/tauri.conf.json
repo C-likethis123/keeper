@@ -6,7 +6,7 @@
 	"build": {
 		"frontendDist": "../dist",
 		"devUrl": "http://localhost:8081",
-		"beforeDevCommand": "npm run web:desktop",
+		"beforeDevCommand": "lsof -ti:8081 > /dev/null 2>&1 || npm run web:desktop",
 		"beforeBuildCommand": "npm run build:web"
 	},
 	"app": {
