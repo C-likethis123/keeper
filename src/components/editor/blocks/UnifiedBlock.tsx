@@ -138,9 +138,16 @@ export function UnifiedBlock({
 				selection?.anchor.offset === selection?.focus.offset
 			) {
 				if (block.type !== BlockType.codeBlock) {
-					// Mark the next onChangeText as ignorable so the stray newline doesn't
-					// get written back into the original block after we split.
-					ignoreNextChangeRef.current = true;
+					if (Platform.OS === "web") {
+						// On web, React re-renders and moves focus to the new block before
+						// the browser fires its default action (inserting \n). Preventing
+						// the default stops the \n from landing in the new block's textarea.
+						e.preventDefault();
+					} else {
+						// On native, focus stays on the current textarea when the default
+						// action fires, so we can safely ignore that one onChangeText.
+						ignoreNextChangeRef.current = true;
+					}
 					onEnter(index, selection?.focus.offset ?? 0);
 				}
 				return;
