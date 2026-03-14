@@ -18,7 +18,6 @@ export function useAutoSave({ id, title, isPinned }: AutoSaveInput) {
 	const lastSavedRef = useRef<Note | null>(null);
 	const [status, setStatus] = useState<SaveStatus>("idle");
 	const getContent = useEditorState((s) => s.getContent);
-
 	useEffect(() => {
 		setStatus("idle");
 
@@ -73,7 +72,7 @@ export function useAutoSave({ id, title, isPinned }: AutoSaveInput) {
 				clearInterval(timerRef.current);
 			}
 		};
-	}, [id, title, getContent, isPinned, canWrite]);
+	}, [id, title, isPinned, canWrite, getContent]);
 
 	return { status };
 }

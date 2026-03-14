@@ -30,6 +30,8 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const [title, setTitle] = useState<string>(note.title);
 	const capabilities = useStorageStore((s) => s.capabilities);
 	const showToast = useToastStore((s) => s.showToast);
+	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
+	const getContent = useEditorState((s: EditorState) => s.getContent);
 
 	const togglePin = useCallback(async () => {
 		if (!capabilities.canWrite) {
@@ -45,12 +47,9 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		};
 		await NoteService.saveNote(newNote);
 		setIsPinned((prev) => !prev);
-	}, [id, title, isPinned, capabilities.canWrite, capabilities.reason, showToast]);
+	}, [id, title, isPinned, capabilities.canWrite, capabilities.reason, showToast, getContent]);
 
 	const { status } = useAutoSave(note);
-
-	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
-	const getContent = useEditorState((s: EditorState) => s.getContent);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: only load this when starting
 	useEffect(() => {
 		loadMarkdown(note.content);

@@ -263,10 +263,7 @@ export const useEditorState = create<EditorState>()((set, get) => {
 		},
 
 		toMarkdown: () => documentToMarkdown(get().document),
-		getContent: () =>
-			get()
-				.document.blocks.map((b) => b.content)
-				.join("\n"),
+		getContent: () => documentToMarkdown(get().document),
 
 		getCanUndo: () => history.canUndo,
 		getCanRedo: () => history.canRedo,

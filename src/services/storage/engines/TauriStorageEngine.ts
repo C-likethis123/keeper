@@ -1,39 +1,45 @@
 import type { Note } from "@/services/notes/types";
-import { parseFrontmatter, stringifyFrontmatter } from "@/services/notes/frontmatter";
 import { getTauriInvoke } from "@/services/storage/runtime";
 import type { NoteFileEntry, StorageEngine, StorageInitializeResult } from "@/services/storage/engines/StorageEngine";
 import type { NoteIndexListResult, NoteIndexPersistenceItem } from "@/services/storage/types";
 
-function tauriInvoke() {
-	const invoke = getTauriInvoke();
-	if (!invoke) {
-		throw new Error("Tauri invoke is unavailable in this runtime");
-	}
-	return invoke;
-}
+type ReadNoteResult = {
+	id: string;
+	title: string;
+	content: string;
+	isPinned: boolean;
+	lastUpdated: number;
+};
+
+type TauriInvoke = NonNullable<ReturnType<typeof getTauriInvoke>>;
 
 export class TauriStorageEngine implements StorageEngine {
+	private readonly invoke: TauriInvoke;
+
+	constructor() {
+		const invoke = getTauriInvoke();
+		if (!invoke) {
+			throw new Error("Tauri invoke is unavailable in this runtime");
+		}
+		this.invoke = invoke;
+	}
+
 	async initialize(): Promise<StorageInitializeResult> {
-		return tauriInvoke()<StorageInitializeResult>("storage_initialize");
+		return this.invoke<StorageInitializeResult>("storage_initialize");
 	}
 
 	async loadNote(id: string): Promise<Note | null> {
-		const markdown = await tauriInvoke()<string | null>("read_note", { id });
-		if (!markdown) return null;
-		const parsed = parseFrontmatter(markdown);
-		const mtime = await this.statNote(id);
-		return {
-			id,
-			title: parsed.title,
-			content: parsed.content,
-			isPinned: parsed.isPinned,
-			lastUpdated: mtime ?? 0,
-		};
+		return this.invoke<ReadNoteResult | null>("read_note", { id });
 	}
 
 	async saveNote(note: Note): Promise<Note> {
-		const updatedAt = await tauriInvoke()<number>("write_note", {
-			input: { id: note.id, content: stringifyFrontmatter(note) },
+		const updatedAt = await this.invoke<number>("write_note", {
+			input: {
+				id: note.id,
+				title: note.title,
+				content: note.content,
+				isPinned: note.isPinned,
+			},
 		});
 		return {
 			...note,
@@ -42,19 +48,19 @@ export class TauriStorageEngine implements StorageEngine {
 	}
 
 	async deleteNote(id: string): Promise<boolean> {
-		return tauriInvoke()<boolean>("delete_note", { id });
+		return this.invoke<boolean>("delete_note", { id });
 	}
 
 	async listNoteFiles(): Promise<NoteFileEntry[]> {
-		return tauriInvoke()<NoteFileEntry[]>("list_note_files");
+		return this.invoke<NoteFileEntry[]>("list_note_files");
 	}
 
 	async statNote(id: string): Promise<number | null> {
-		return tauriInvoke()<number | null>("stat_note", { id });
+		return this.invoke<number | null>("stat_note", { id });
 	}
 
 	async indexUpsert(item: NoteIndexPersistenceItem): Promise<void> {
-		await tauriInvoke()("index_upsert", {
+		await this.invoke("index_upsert", {
 			input: {
 				noteId: item.noteId,
 				title: item.title ?? "",
@@ -66,7 +72,7 @@ export class TauriStorageEngine implements StorageEngine {
 	}
 
 	async indexDelete(noteId: string): Promise<void> {
-		await tauriInvoke()("index_delete", { noteId });
+		await this.invoke("index_delete", { noteId });
 	}
 
 	async indexList(
@@ -74,7 +80,7 @@ export class TauriStorageEngine implements StorageEngine {
 		limit: number,
 		offset?: number,
 	): Promise<NoteIndexListResult> {
-		return tauriInvoke()<NoteIndexListResult>("index_list", {
+		return this.invoke<NoteIndexListResult>("index_list", {
 			input: {
 				query,
 				limit,
@@ -84,6 +90,6 @@ export class TauriStorageEngine implements StorageEngine {
 	}
 
 	async indexRebuildFromDisk(): Promise<{ noteCount: number }> {
-		return tauriInvoke()<{ noteCount: number }>("index_rebuild_from_disk");
+		return this.invoke<{ noteCount: number }>("index_rebuild_from_disk");
 	}
 }
