@@ -20,11 +20,12 @@ function toNote(item: NoteIndexItem): Note {
 
 export default function useNotes() {
 	const capabilities = useStorageStore((s) => s.capabilities);
+	const initializationStatus = useStorageStore((s) => s.initializationStatus);
 	const [query, setQuery] = useState("");
 	const [notes, setNotes] = useState<Note[]>([]);
 	const [hasMore, setHasMore] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [isLoading, setIsLoading] = useState(false);
+	const [isLoading, setIsLoading] = useState(true);
 
 	const loadingRef = useRef(false);
 	const nextOffsetRef = useRef<number | undefined>(undefined);
@@ -32,6 +33,7 @@ export default function useNotes() {
 
 	const fetchNotes = useCallback(
 		async (append: boolean) => {
+			if (initializationStatus !== "ready") return;
 			if (loadingRef.current) return;
 			loadingRef.current = true;
 			setIsLoading(true);
@@ -58,7 +60,7 @@ export default function useNotes() {
 				setIsLoading(false);
 			}
 		},
-		[query, capabilities.canSearch],
+		[query, capabilities.canSearch, initializationStatus],
 	);
 
 	const loadMoreNotes = useCallback(async () => {
@@ -73,6 +75,19 @@ export default function useNotes() {
 	}, [fetchNotes]);
 
 	useEffect(() => {
+		if (initializationStatus === "pending") {
+			setIsLoading(true);
+			return;
+		}
+
+		if (initializationStatus === "failed") {
+			setIsLoading(false);
+			setNotes([]);
+			setHasMore(false);
+			setError(capabilities.reason ?? "Storage is unavailable");
+			return;
+		}
+
 		let cancelled = false;
 		const isQueryChange = prevQueryRef.current !== query;
 		if (isQueryChange) {
@@ -91,7 +106,13 @@ export default function useNotes() {
 			cancelled = true;
 			if (timeoutId != null) clearTimeout(timeoutId);
 		};
-	}, [fetchNotes, query, capabilities.canSearch]);
+	}, [
+		fetchNotes,
+		query,
+		capabilities.canSearch,
+		capabilities.reason,
+		initializationStatus,
+	]);
 
 	return {
 		notes,
