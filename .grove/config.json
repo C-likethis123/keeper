@@ -1,6 +1,6 @@
 {
 	"warmup_command": "npm install",
-	"workspace_dir": "/tmp/grove/keeper",
+	"workspace_dir": "/Users/chowjiaying/grove-workspaces/keeper",
 	"max_workspaces": 10,
 	"exclude": [],
 	"clone_backend": "cp"
