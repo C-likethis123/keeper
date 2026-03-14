@@ -4,10 +4,10 @@
 	"version": "1.0.0",
 	"scripts": {
 		"start": "expo start",
-		"web:desktop": "BROWSER=none expo start --web --port 8081",
+		"web:desktop": "BROWSER=none expo start --web --port 8082",
 		"build:web": "expo export --platform web",
 		"android": "npx expo prebuild --platform android --clean && ./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installRelease",
-		"android:dev": "APP_VARIANT=development npx expo prebuild --platform android --clean && ./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installDebug && cd .. && (adb reverse tcp:8081 tcp:8081 || true) && npx expo start --dev-client",
+		"android:dev": "APP_VARIANT=development npx expo prebuild --platform android --clean && ./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installDebug && cd .. && (adb reverse tcp:8082 tcp:8082 || true) && npx expo start --dev-client",
 		"ios": "expo run:ios",
 		"build:mobile-git": "./scripts/build-mobile-git.sh",
 		"desktop": "tauri dev",
