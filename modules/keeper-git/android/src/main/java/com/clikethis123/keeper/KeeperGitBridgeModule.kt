@@ -14,7 +14,7 @@ class KeeperGitBridgeModule : Module() {
     }
   }
 
-  private external fun clone_git(url: String, path: String): Int
+  private external fun git_clone(url: String, path: String): Int
   private external fun git_last_error_message(): String?
   private external fun git_fetch(repoPath: String): Int
   private external fun git_checkout_ex(
@@ -40,7 +40,7 @@ class KeeperGitBridgeModule : Module() {
     Name("KeeperGitBridge")
 
     AsyncFunction("clone") { url: String, path: String, promise: Promise ->
-      settleCode("clone", clone_git(url, path), promise)
+      settleCode("clone", git_clone(url, path), promise)
     }
 
     AsyncFunction("fetch") { repoPath: String, promise: Promise ->
