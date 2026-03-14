@@ -39,7 +39,14 @@ export function HybridEditor() {
 				ignoreNextContentChangeRef.current = null;
 				return;
 			}
-			updateBlockContent(index, content);
+			const oldContent =
+				useEditorState.getState().document.blocks[index]?.content ?? "";
+			const delta = content.length - oldContent.length;
+			const newCursor = Math.max(
+				0,
+				Math.min(content.length, lastSelectionOffsetRef.current + delta),
+			);
+			updateBlockContent(index, content, newCursor);
 		},
 		[updateBlockContent],
 	);
