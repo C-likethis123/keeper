@@ -51,3 +51,7 @@ cargo install cargo-ndk
 cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
   build --manifest-path src-tauri/git_core/Cargo.toml --release
 ```
+
+When developing mobile and desktop together, set `CARGO_TARGET_DIR` for the
+mobile bridge build so Android artifacts do not land in
+`src-tauri/git_core/target` and trigger `tauri dev` rebuilds.

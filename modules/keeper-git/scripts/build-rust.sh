@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_ROOT="$(cd "$ROOT_DIR/../.." && pwd)"
 GIT_CORE_MANIFEST="$REPO_ROOT/src-tauri/git_core/Cargo.toml"
 GIT_CORE_DIR="$REPO_ROOT/src-tauri/git_core"
+MOBILE_CARGO_TARGET_ROOT="$ROOT_DIR/.cargo-target"
 
 MODE="${1:-}"
 OUTPUT_DIR="${2:-}"
@@ -26,6 +27,7 @@ ensure_rust_target() {
 
 build_android() {
   local output_dir="$1"
+  local cargo_target_dir="$MOBILE_CARGO_TARGET_ROOT/android"
 
   require_cmd cargo
   require_cmd rustup
@@ -38,7 +40,9 @@ build_android() {
   mkdir -p "$output_dir"
   (
     cd "$GIT_CORE_DIR"
-    cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
+    # Keep mobile artifacts out of src-tauri/git_core/target so tauri dev
+    # doesn't rebuild when the Android bridge recompiles.
+    CARGO_TARGET_DIR="$cargo_target_dir" cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
       -o "$output_dir" \
       build --release
   )
@@ -48,10 +52,11 @@ copy_ios_artifact() {
   local rust_target="$1"
   local platform_dir="$2"
   local arch_dir="$3"
+  local cargo_target_dir="$MOBILE_CARGO_TARGET_ROOT/ios"
 
-  cargo build --manifest-path "$GIT_CORE_MANIFEST" --release --target "$rust_target"
+  CARGO_TARGET_DIR="$cargo_target_dir" cargo build --manifest-path "$GIT_CORE_MANIFEST" --release --target "$rust_target"
   mkdir -p "$OUTPUT_DIR/$platform_dir-$arch_dir"
-  cp "$GIT_CORE_DIR/target/$rust_target/release/libgit_core.a" \
+  cp "$cargo_target_dir/$rust_target/release/libgit_core.a" \
     "$OUTPUT_DIR/$platform_dir-$arch_dir/libgit_core.a"
 }
 

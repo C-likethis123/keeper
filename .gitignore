@@ -46,6 +46,7 @@ app-example
 /android
 modules/keeper-git/ios/rust/
 modules/keeper-git/android/build/
+modules/keeper-git/.cargo-target/
 
 # Tauri
 src-tauri/target/

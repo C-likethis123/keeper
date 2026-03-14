@@ -51,6 +51,7 @@ You can start developing by editing the files inside the **app** directory. This
 The web app can run in a desktop window via [Tauri](https://tauri.app/). Prerequisites: [Rust](https://rustup.rs/) and Xcode Command Line Tools (macOS: `xcode-select --install`).
 
 - **Dev**: `npm run desktop` — starts the Expo web server on `http://localhost:8082` and opens the Tauri window.
+- **Concurrent mobile + desktop dev**: desktop uses Expo web on `8082`, while mobile dev keeps Metro on `8081`. Mobile Rust artifacts are built under `modules/keeper-git/.cargo-target/` so Tauri does not rebuild on Android bridge output changes.
 - **Production build**: `npm run build:desktop` — exports the web bundle then builds the desktop app. Outputs are in `src-tauri/target/release/` (and bundle artifacts for your OS).
 
 The first run may prompt for system permissions (e.g. macOS).

@@ -1,0 +1,5 @@
+modules/keeper-git/.cargo-target
+modules/keeper-git/android/build
+modules/keeper-git/ios/rust
+android
+ios
