@@ -10,7 +10,6 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 - **Desktop Experience**: Major style issues making it difficult to make edits.
 - cannot enter from the title input to the note
 - cursor cannot type based on selection
-- no save indicator
 - cannot indent in desktop?
 
 ## Performance Issues
