@@ -68,7 +68,7 @@ export function HybridEditor() {
 
 			// Update block type and content
 			updateBlockType(index, detection.type, detection.language);
-			updateBlockContent(index, detection.remainingContent);
+			updateBlockContent(index, detection.remainingContent, 0);
 
 			if (
 				detection.type === BlockType.mathBlock ||
@@ -130,7 +130,7 @@ export function HybridEditor() {
 					ignoreContentChange: true,
 				})
 			) {
-				updateBlockContent(index, newContent);
+				updateBlockContent(index, newContent, newContent.length);
 			}
 		},
 		[updateBlockContent, handleBlockTypeDetection, getFocusedBlock],
