@@ -77,24 +77,24 @@ export const useEditorState = create<EditorState>()((set, get) => {
 			return true;
 		},
 
-		updateBlockContent: (index: number, newContent: string) => {
+		updateBlockContent: (index: number, newContent: string, selectionOffset?: number) => {
 			const s = get();
 			const block = s.document.blocks[index];
 			if (block.content === newContent) return;
-			const transaction = new TransactionBuilder()
+			let builder = new TransactionBuilder()
 				.updateContent(index, block.content, newContent)
 				.withSelectionBefore(s.selection)
-				.withSelectionAfter(
+				.withDescription("Update content");
+			if (selectionOffset !== undefined) {
+				builder = builder.withSelectionAfter(
 					createCollapsedSelection({
 						blockIndex: index,
-						offset: newContent.length,
+						offset: selectionOffset,
 					}),
-				)
-				.withDescription("Update content")
-				.build();
-			dispatch({ type: "APPLY_TRANSACTION", transaction });
+				);
+			}
+			dispatch({ type: "APPLY_TRANSACTION", transaction: builder.build() });
 		},
-
 		updateBlockType: (index: number, newType: BlockType, language?: string) => {
 			const s = get();
 			const block = s.document.blocks[index];

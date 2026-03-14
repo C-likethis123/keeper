@@ -31,7 +31,7 @@ export interface EditorState extends EditorStateSlice {
 	applyTransaction: (transaction: Transaction) => void;
 	undo: () => boolean;
 	redo: () => boolean;
-	updateBlockContent: (index: number, newContent: string) => void;
+	updateBlockContent: (index: number, newContent: string, selectionOffset?: number) => void;
 	updateBlockType: (
 		index: number,
 		newType: BlockType,
