@@ -1,4 +1,6 @@
 import { useEditorScrollView } from "@/components/editor/EditorScrollContext";
+import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
+import { useEditorKeyboardShortcuts } from "@/components/editor/keyboard/useEditorKeyboardShortcuts";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
 import React, { useCallback, useRef } from "react";
@@ -6,7 +8,7 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { BlockRow } from "./BlockRow";
 import { blockRegistry } from "./blocks/BlockRegistry";
 import { BlockType, createParagraphBlock } from "./core/BlockNode";
-import { WikiLinkProvider } from "./wikilinks/WikiLinkContext";
+import { useWikiLinkContext, WikiLinkProvider } from "./wikilinks/WikiLinkContext";
 import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
 
 /// A hybrid markdown/code editor widget
@@ -16,9 +18,18 @@ import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
 /// - Inline markdown formatting (bold, italic, code, links)
 /// - Keyboard shortcuts
 /// - Undo/redo support
-export function HybridEditor() {
+export function HybridEditor({ readOnly = false }: { readOnly?: boolean }) {
+	return (
+		<WikiLinkProvider>
+			<HybridEditorContent readOnly={readOnly} />
+		</WikiLinkProvider>
+	);
+}
+
+function HybridEditorContent({ readOnly }: { readOnly: boolean }) {
 	const blockIds = useEditorBlockIds();
 	const setSelection = useEditorState((s) => s.setSelection);
+	const selection = useEditorState((s) => s.selection);
 	const updateBlockType = useEditorState((s) => s.updateBlockType);
 	const splitBlock = useEditorState((s) => s.splitBlock);
 	const deleteBlock = useEditorState((s) => s.deleteBlock);
@@ -32,6 +43,18 @@ export function HybridEditor() {
 	const lastSelectionOffsetRef = useRef(0);
 	const { scrollViewRef, scrollYRef, viewHeightRef } = useEditorScrollView();
 	const { focusBlock } = useFocusBlock();
+	const wikiLinks = useWikiLinkContext();
+	const commandContext = useEditorCommandContext({
+		isEditorActive: selection !== null,
+		isReadOnly: readOnly,
+		isWikiLinkModalOpen: wikiLinks.isActive,
+		dismissOverlays: () => {
+			if (!wikiLinks.isActive) return false;
+			wikiLinks.handleCancel();
+			return true;
+		},
+	});
+	useEditorKeyboardShortcuts({ context: commandContext });
 
 	const handleContentChange = useCallback(
 		(index: number, content: string) => {
@@ -282,37 +305,35 @@ export function HybridEditor() {
 	);
 
 	return (
-		<WikiLinkProvider>
-			<View style={styles.container}>
-				<ScrollView
-					style={styles.scrollView}
-					contentContainerStyle={styles.scrollContent}
-					ref={scrollViewRef}
-					keyboardShouldPersistTaps="handled"
-					scrollEventThrottle={16}
-					onScroll={(e) => {
-						scrollYRef.current = e.nativeEvent.contentOffset.y;
-					}}
-					onLayout={(e) => {
-						viewHeightRef.current = e.nativeEvent.layout.height;
+		<View style={styles.container}>
+			<ScrollView
+				style={styles.scrollView}
+				contentContainerStyle={styles.scrollContent}
+				ref={scrollViewRef}
+				keyboardShouldPersistTaps="handled"
+				scrollEventThrottle={16}
+				onScroll={(e) => {
+					scrollYRef.current = e.nativeEvent.contentOffset.y;
+				}}
+				onLayout={(e) => {
+					viewHeightRef.current = e.nativeEvent.layout.height;
+				}}
+			>
+				<Pressable
+					style={styles.pressableArea}
+					onPress={() => {
+						const blocks = useEditorState.getState().document.blocks;
+						const lastIndex = Math.max(0, blocks.length - 1);
+						focusBlock(lastIndex);
 					}}
 				>
-					<Pressable
-						style={styles.pressableArea}
-						onPress={() => {
-							const blocks = useEditorState.getState().document.blocks;
-							const lastIndex = Math.max(0, blocks.length - 1);
-							focusBlock(lastIndex);
-						}}
-					>
-						{blockIds.map((id, index) => (
-							<BlockRow key={id} index={index} handlers={handlers} />
-						))}
-					</Pressable>
-				</ScrollView>
-				<WikiLinkModal />
-			</View>
-		</WikiLinkProvider>
+					{blockIds.map((id, index) => (
+						<BlockRow key={id} index={index} handlers={handlers} />
+					))}
+				</Pressable>
+			</ScrollView>
+			<WikiLinkModal />
+		</View>
 	);
 }
 

@@ -1,5 +1,6 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { getVerticalNavigationTarget } from "@/components/editor/keyboard/verticalNavigation";
 import { useEditorSelection, useEditorState } from "@/stores/editorStore";
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import {
@@ -33,12 +34,13 @@ export function UnifiedBlock({
 	listItemNumber,
 	onCheckboxToggle,
 }: BlockConfig) {
-	const { focusBlock, blurBlock } = useFocusBlock();
+	const { focusBlock, focusBlockAt, blurBlock } = useFocusBlock();
 	const { scrollViewRef, scrollYRef, viewHeightRef } = useEditorScrollView();
 	const inputRef = useRef<TextInput>(null);
 	const ignoreNextChangeRef = useRef(false);
 	const prevIsFocusedRef = useRef(false);
 	const selection = useEditorSelection();
+	const document = useEditorState((state) => state.document);
 	const getFocusedBlockIndex = useEditorState(
 		(state) => state.getFocusedBlockIndex,
 	);
@@ -126,6 +128,19 @@ export function UnifiedBlock({
 		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
 			const key = e.nativeEvent.key;
 
+			if (key === "ArrowUp" || key === "ArrowDown") {
+				const target = getVerticalNavigationTarget({
+					direction: key === "ArrowUp" ? "up" : "down",
+					document,
+					blockIndex: index,
+					selection,
+				});
+				if (target) {
+					focusBlockAt(target.blockIndex, target.offset);
+					return;
+				}
+			}
+
 			// Handle space key - trigger block type detection for paragraph blocks
 			if (key === " " && block.type === BlockType.paragraph) {
 				onSpace(index);
@@ -172,7 +187,16 @@ export function UnifiedBlock({
 				return;
 			}
 		},
-		[index, onSpace, onEnter, onBackspaceAtStart, selection, block.type],
+		[
+			block.type,
+			document,
+			focusBlockAt,
+			index,
+			onBackspaceAtStart,
+			onEnter,
+			onSpace,
+			selection,
+		],
 	);
 
 	const theme = useExtendedTheme();

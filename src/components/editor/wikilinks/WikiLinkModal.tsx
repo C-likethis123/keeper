@@ -34,6 +34,9 @@ export function WikiLinkModal() {
 				wikiLinks.selectPrevious();
 				return;
 			}
+			if (key === "Escape") {
+				wikiLinks.handleCancel();
+			}
 		},
 		[inputValue, wikiLinks.handleCancel, wikiLinks.selectNext, wikiLinks.selectPrevious],
 	);

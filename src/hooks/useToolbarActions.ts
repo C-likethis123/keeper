@@ -1,9 +1,9 @@
 import {
 	BlockType,
 	createImageBlock,
-	getListLevel,
-	isListItem,
 } from "@/components/editor/core/BlockNode";
+import { executeEditorCommand } from "@/components/editor/keyboard/editorCommands";
+import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
 import { copyPickedImageToNotes } from "@/services/notes/imageStorage";
 import { useEditorState } from "@/stores/editorStore";
 import * as DocumentPicker from "expo-document-picker";
@@ -20,40 +20,24 @@ interface UseToolbarActions {
 
 export function useToolbarActions(): UseToolbarActions {
 	const getFocusedBlockIndex = useEditorState((s) => s.getFocusedBlockIndex);
-	const updateBlockListLevel = useEditorState((s) => s.updateBlockListLevel);
 	const updateBlockType = useEditorState((s) => s.updateBlockType);
 	const document = useEditorState((s) => s.document);
 	const insertBlockAfter = useEditorState((s) => s.insertBlockAfter);
 	const { focusBlock } = useFocusBlock();
+	const commandContext = useEditorCommandContext({
+		isEditorActive: true,
+		isReadOnly: false,
+		isWikiLinkModalOpen: false,
+		dismissOverlays: () => false,
+	});
 
 	const handleIndent = useCallback(() => {
-		const index = getFocusedBlockIndex();
-		if (index === null) return;
-		const block = document.blocks[index];
-		if (isListItem(block.type)) {
-			updateBlockListLevel(index, getListLevel(block) + 1);
-		}
-	}, [document, getFocusedBlockIndex, updateBlockListLevel]);
+		executeEditorCommand("indentListItem", commandContext);
+	}, [commandContext]);
 
 	const handleOutdent = useCallback(() => {
-		const index = getFocusedBlockIndex();
-		if (index === null) return;
-		const block = document.blocks[index];
-		const isListBlock = isListItem(block.type);
-		if (!isListBlock) return;
-		if (getListLevel(block) > 0) {
-			updateBlockListLevel(index, getListLevel(block) - 1);
-		} else {
-			updateBlockType(index, BlockType.paragraph);
-			focusBlock(index);
-		}
-	}, [
-		document,
-		getFocusedBlockIndex,
-		updateBlockListLevel,
-		updateBlockType,
-		focusBlock,
-	]);
+		executeEditorCommand("outdentListItem", commandContext);
+	}, [commandContext]);
 
 	const handleConvertToCheckbox = useCallback(() => {
 		const index = getFocusedBlockIndex();

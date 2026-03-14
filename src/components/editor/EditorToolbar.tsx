@@ -1,8 +1,10 @@
+import { executeEditorCommand } from "@/components/editor/keyboard/editorCommands";
+import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useToolbarActions } from "@/hooks/useToolbarActions";
 import { useEditorState } from "@/stores/editorStore";
 import { MaterialIcons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
 	Platform,
 	StyleSheet,
@@ -17,18 +19,28 @@ export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const getCanUndo = useEditorState((s) => s.getCanUndo);
 	const getCanRedo = useEditorState((s) => s.getCanRedo);
-	const undo = useEditorState((s) => s.undo);
-	const redo = useEditorState((s) => s.redo);
 	const getFocusedBlock = useEditorState((s) => s.getFocusedBlock);
 	const block = getFocusedBlock();
 	const blockType = block?.type ?? null;
 	const listLevel = block ? getListLevel(block) : 0;
+	const commandContext = useEditorCommandContext({
+		isEditorActive: true,
+		isReadOnly: disabled,
+		isWikiLinkModalOpen: false,
+		dismissOverlays: () => false,
+	});
 	const {
 		handleOutdent,
 		handleIndent,
 		handleConvertToCheckbox,
 		handleInsertImage,
 	} = useToolbarActions();
+	const handleUndo = useCallback(() => {
+		executeEditorCommand("undo", commandContext);
+	}, [commandContext]);
+	const handleRedo = useCallback(() => {
+		executeEditorCommand("redo", commandContext);
+	}, [commandContext]);
 
 	const isListBlock = isListItem(blockType);
 
@@ -43,7 +55,7 @@ export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 		<View style={styles.toolbar}>
 			<TouchableOpacity
 				style={[styles.button]}
-				onPress={undo}
+				onPress={handleUndo}
 				disabled={!canUndo}
 				activeOpacity={0.7}
 			>
@@ -55,7 +67,7 @@ export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 			</TouchableOpacity>
 			<TouchableOpacity
 				style={[styles.button]}
-				onPress={redo}
+				onPress={handleRedo}
 				disabled={!canRedo}
 				activeOpacity={0.7}
 			>

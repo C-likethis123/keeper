@@ -140,7 +140,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 
 				<EditorToolbar disabled={!capabilities.canWrite} />
 				<EditorScrollProvider>
-					<HybridEditor />
+					<HybridEditor readOnly={!capabilities.canWrite} />
 				</EditorScrollProvider>
 			</View>
 		</View>

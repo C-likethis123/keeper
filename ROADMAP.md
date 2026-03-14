@@ -37,27 +37,51 @@ Migrate to FTS5 full-text search with three-tier relevance ranking for wikilink 
 
 ---
 
-### Phase 2: Image Blocks (Desktop-only)
-Add image attachment support for desktop notes.
+### Phase 2: Image Blocks (Desktop-focused) ✅
+Image attachment support is now available in the editor, including block rendering, attachment storage, and toolbar insertion.
 
-**Rationale**: Image attachments rarely used on mobile; desktop-only feature.
-**Objectives**:
-- Image block type in editor
-- Attachment storage in notes directory
-- Preview rendering in editor
-- Upload/link UI in toolbar
+**Status**: Implemented
+**Notes**:
+- Image blocks exist in the document model and renderer
+- Picked images are copied into note storage and inserted as blocks
+- Web still has a placeholder image-insert toolbar path
 
 ---
 
-### Phase 3: Editor Undo/Redo Keyboard Shortcuts (Web)
-Add Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z support for web editor.
+### Phase 3: Editor Keyboard Shortcut Foundation (Desktop + Web) ✅
+A centralized keyboard shortcut system now exists for the editor instead of scattering shortcuts across individual block components.
 
-**Implementation**:
-- In `HybridEditor`: attach keydown listener for Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z (or Y)
-- Call `editorStore` undo/redo actions
-- Use ref for handler to keep listener current
-- Prevent modal/native text field interference
-- preventDefault to avoid browser defaults
+**Status**: Implemented
+**Shipped in this phase**:
+- Central shortcut registry and command layer under `src/components/editor/keyboard/`
+- Web/desktop `keydown` listener in `HybridEditor`
+- `Cmd/Ctrl+Z` undo
+- `Cmd+Shift+Z` redo on macOS plus `Ctrl+Y` / `Ctrl+Shift+Z` compatibility on non-mac layouts
+- `Cmd/Ctrl+A` select-all-blocks command
+- `Tab` / `Shift+Tab` indent and outdent for list items
+- `Escape` dismissal for wiki link UI
+- `Backspace` / `Delete` for block-selection deletion
+- Cross-block `ArrowUp` / `ArrowDown` navigation for paragraph, heading, list, math, and image blocks
+
+**What remains next for keyboard work**:
+- **Tier 2: Common block-editor shortcuts**
+  - `Shift+Enter` — Soft line break within supported blocks
+  - `Cmd/Ctrl+Enter` — Toggle checkbox state or complete current todo
+  - Better vertical caret preservation in complex blocks such as code blocks
+- **Tier 3: Formatting shortcuts**
+  - `Cmd/Ctrl+B` — Bold
+  - `Cmd/Ctrl+I` — Italic
+  - `Cmd/Ctrl+Alt/Option+1/2/3` — Heading shortcuts
+  - `Cmd/Ctrl+Shift+7/8/9` — List type shortcuts
+- **Tier 4: App-level productivity shortcuts**
+  - `Cmd/Ctrl+K` — Focus search
+  - `Cmd/Ctrl+N` — New note
+  - `Cmd/Ctrl+P` — Quick switcher
+  - `Cmd/Ctrl+S` — Force save / flush autosave
+
+**Recommendation**:
+- Keep editor-scoped shortcuts in the command registry
+- Add future app-wide shortcuts at the app shell / route level rather than inside editor blocks
 
 ---
 
@@ -75,7 +99,7 @@ Add Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z support for web editor.
 **Impact**: Desktop/mobile app updates require full rebuild
 
 ### Android Prebuild Git Bridge
-**TODO**: Evaluate replacing the current Android prebuild Git bridge wiring with a local Expo module so native registration survives `expo prebuild --clean` via autolinking instead of app-level generated source patches.
+**TODO**: Evaluate replacing the current Android prebuild Git bridge wiring with a local Expo module so native registration survives `expo prebuild --clean` via autolinking instead of app-level generated source patches. iOS already uses the local Expo module path.
 
 ### Note Organization & Relevance
 **Goals**:
