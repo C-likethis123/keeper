@@ -21,20 +21,23 @@ This is a cross-platform rich-text editor, built on both mobile and desktop.
    ```
 
 
-2. Build the Rust git artifacts used by native mobile builds
+2. Install Rust prerequisites for native mobile builds
 
    ```bash
-   npm run build:mobile-git
+   rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+   rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
+   cargo install cargo-ndk
    ```
 
-3. Start the app
+3. Generate native projects and start the app
 
    ```bash
+   npx expo prebuild --clean
    npm run android
    npm start
    ```
 
-   `npm run android` now builds the Rust Android libraries, assembles the native debug app, and installs it on a connected device via Gradle/ADB. `npm start` runs the Metro dev server that the debug build connects to.
+   The local Expo module in `modules/keeper-git` now owns the Rust bridge wiring for iOS and Android. Fresh native generation recreates the bridge automatically, and native builds compile the Rust library from `src-tauri/git_core` as needed. `npm run build:mobile-git` remains available as a convenience rebuild command.
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
 - [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
@@ -47,7 +50,8 @@ You can start developing by editing the files inside the **app** directory. This
 
 The web app can run in a desktop window via [Tauri](https://tauri.app/). Prerequisites: [Rust](https://rustup.rs/) and Xcode Command Line Tools (macOS: `xcode-select --install`).
 
-- **Dev**: `npm run desktop` — starts the Expo web server and opens the Tauri window (loads from `http://localhost:8081`).
+- **Dev**: `npm run desktop` — starts the Expo web server on `http://localhost:8082` and opens the Tauri window.
+- **Concurrent mobile + desktop dev**: desktop uses Expo web on `8082`, while mobile dev keeps Metro on `8081`. Mobile Rust artifacts are built under `modules/keeper-git/.cargo-target/` so Tauri does not rebuild on Android bridge output changes.
 - **Production build**: `npm run build:desktop` — exports the web bundle then builds the desktop app. Outputs are in `src-tauri/target/release/` (and bundle artifacts for your OS).
 
 The first run may prompt for system permissions (e.g. macOS).

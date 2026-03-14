@@ -118,7 +118,7 @@ Watch YouTube (and other videos) while editing notes, without leaving the app.
 ---
 
 ## iOS Support
-iOS native bridge is already integrated (`ios/native/KeeperGitBridge.swift`). To build:
+iOS native support now comes from the local Expo module in `modules/keeper-git`. To build:
 - Dev: `npm run ios` (requires Xcode + valid signing)
 - Prod: `eas build --platform ios --profile production`
 

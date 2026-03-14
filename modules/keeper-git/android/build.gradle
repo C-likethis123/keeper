@@ -1,0 +1,29 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.clikethis123.keeper'
+version = '1.0.0'
+
+def rustOutputDir = new File(buildDir, "generated/rust/jniLibs")
+
+tasks.register("buildRustGitAndroid", Exec) {
+  workingDir projectDir
+  commandLine "bash", new File(projectDir, "../scripts/build-rust.sh").absolutePath, "android", rustOutputDir.absolutePath
+}
+
+android {
+  namespace "com.clikethis123.keeper"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+  sourceSets {
+    main {
+      jniLibs.srcDirs += [rustOutputDir.absolutePath]
+    }
+  }
+}
+
+preBuild.dependsOn("buildRustGitAndroid")
