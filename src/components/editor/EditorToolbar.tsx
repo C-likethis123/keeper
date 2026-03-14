@@ -1,3 +1,5 @@
+import { executeEditorCommand } from "@/components/editor/keyboard/editorCommands";
+import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useToolbarActions } from "@/hooks/useToolbarActions";
 import { useEditorState } from "@/stores/editorStore";
@@ -17,12 +19,15 @@ export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const getCanUndo = useEditorState((s) => s.getCanUndo);
 	const getCanRedo = useEditorState((s) => s.getCanRedo);
-	const undo = useEditorState((s) => s.undo);
-	const redo = useEditorState((s) => s.redo);
 	const getFocusedBlock = useEditorState((s) => s.getFocusedBlock);
 	const block = getFocusedBlock();
 	const blockType = block?.type ?? null;
 	const listLevel = block ? getListLevel(block) : 0;
+	const commandContext = useEditorCommandContext({
+		isEditorActive: true,
+		isWikiLinkModalOpen: false,
+		dismissOverlays: () => false,
+	});
 	const {
 		handleOutdent,
 		handleIndent,
@@ -43,7 +48,9 @@ export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 		<View style={styles.toolbar}>
 			<TouchableOpacity
 				style={[styles.button]}
-				onPress={undo}
+				onPress={() => {
+					executeEditorCommand("undo", commandContext);
+				}}
 				disabled={!canUndo}
 				activeOpacity={0.7}
 			>
@@ -55,7 +62,9 @@ export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 			</TouchableOpacity>
 			<TouchableOpacity
 				style={[styles.button]}
-				onPress={redo}
+				onPress={() => {
+					executeEditorCommand("redo", commandContext);
+				}}
 				disabled={!canRedo}
 				activeOpacity={0.7}
 			>

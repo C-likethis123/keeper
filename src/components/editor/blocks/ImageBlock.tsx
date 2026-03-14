@@ -1,3 +1,4 @@
+import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useStyles } from "@/hooks/useStyles";
@@ -42,9 +43,13 @@ export function ImageBlock({
 	const selection = useEditorSelection();
 	const styles = useStyles(createStyles);
 	const uri = resolveImageUri(block.content);
+	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
 	const handleKeyPress = useCallback(
 		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
 			const key = e.nativeEvent.key;
+			if (handleVerticalArrow(key)) {
+				return;
+			}
 			if (
 				key === "Enter" &&
 				selection?.anchor.offset === selection?.focus.offset
@@ -61,7 +66,7 @@ export function ImageBlock({
 				return;
 			}
 		},
-		[onBackspaceAtStart, onEnter, index, selection],
+		[handleVerticalArrow, index, onBackspaceAtStart, onEnter, selection],
 	);
 
 	const handleSelectionChange = useCallback(

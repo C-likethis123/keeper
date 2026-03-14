@@ -1,6 +1,6 @@
+import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import { useEditorState } from "@/stores/editorStore";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
 	type NativeSyntheticEvent,
@@ -35,9 +35,9 @@ export function MathBlock({
 		end: 0,
 	});
 	const [renderError, setRenderError] = useState<string | null>(null);
-	const blockCount = useEditorState((s) => s.document.blocks.length);
 	const { focusBlock, blurBlock } = useFocusBlock();
 	const theme = useExtendedTheme();
+	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
 
 	// Sync value with block content when it changes externally
 	useEffect(() => {
@@ -63,29 +63,8 @@ export function MathBlock({
 	) => {
 		const key = e.nativeEvent.key;
 
-		if (key === "ArrowUp") {
-			const cursorOffset = selection.start;
-			const textBeforeCursor = value.substring(0, cursorOffset);
-			const currentLineIndex = textBeforeCursor.split("\n").length - 1;
-
-			if (currentLineIndex === 0 && index > 0) {
-				focusBlock(index - 1);
-				return;
-			}
-		}
-
-		if (key === "ArrowDown") {
-			const lines = value.split("\n");
-			const cursorOffset = selection.start;
-			const textBeforeCursor = value.substring(0, cursorOffset);
-			const currentLineIndex = textBeforeCursor.split("\n").length - 1;
-
-			if (currentLineIndex === lines.length - 1) {
-				if (index < blockCount - 1) {
-					focusBlock(index + 1);
-					return;
-				}
-			}
+		if (handleVerticalArrow(key)) {
+			return;
 		}
 
 		if (key === "Enter" || key === "Return") {

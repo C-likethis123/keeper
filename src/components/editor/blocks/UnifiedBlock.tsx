@@ -1,3 +1,4 @@
+import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorSelection, useEditorState } from "@/stores/editorStore";
@@ -42,6 +43,7 @@ export function UnifiedBlock({
 	const getFocusedBlockIndex = useEditorState(
 		(state) => state.getFocusedBlockIndex,
 	);
+	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
 
 	useLayoutEffect(() => {
 		if (isFocused && !prevIsFocusedRef.current && inputRef.current) {
@@ -126,6 +128,10 @@ export function UnifiedBlock({
 		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
 			const key = e.nativeEvent.key;
 
+			if (handleVerticalArrow(key)) {
+				return;
+			}
+
 			// Handle space key - trigger block type detection for paragraph blocks
 			if (key === " " && block.type === BlockType.paragraph) {
 				onSpace(index);
@@ -172,7 +178,15 @@ export function UnifiedBlock({
 				return;
 			}
 		},
-		[index, onSpace, onEnter, onBackspaceAtStart, selection, block.type],
+		[
+			block.type,
+			handleVerticalArrow,
+			index,
+			onBackspaceAtStart,
+			onEnter,
+			onSpace,
+			selection,
+		],
 	);
 
 	const theme = useExtendedTheme();
