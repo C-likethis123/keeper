@@ -27,6 +27,16 @@ pub struct NoteFileEntry {
     pub updated_at: i64,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadNoteResult {
+    pub id: String,
+    pub title: String,
+    pub content: String,
+    pub is_pinned: bool,
+    pub last_updated: i64,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WriteNoteInput {
@@ -216,13 +226,20 @@ pub fn storage_initialize(app: tauri::AppHandle) -> Result<StorageInitResult, St
 }
 
 #[tauri::command]
-pub fn read_note(app: tauri::AppHandle, id: String) -> Result<Option<String>, String> {
+pub fn read_note(app: tauri::AppHandle, id: String) -> Result<Option<ReadNoteResult>, String> {
     let path = note_path_for_id(&app, &id)?;
     if !path.exists() {
         return Ok(None);
     }
-    let content = fs::read_to_string(path).map_err(|e| format!("failed to read note: {e}"))?;
-    Ok(Some(content))
+    let markdown = fs::read_to_string(&path).map_err(|e| format!("failed to read note: {e}"))?;
+    let (title, is_pinned, content) = parse_frontmatter(&markdown);
+    Ok(Some(ReadNoteResult {
+        id,
+        title,
+        content,
+        is_pinned,
+        last_updated: file_mtime_ms(&path),
+    }))
 }
 
 #[tauri::command]
