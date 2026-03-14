@@ -191,7 +191,6 @@ export function UnifiedBlock({
 				return theme.typography.body;
 		}
 	}, [block.type, theme.typography]);
-
 	const selectionProp =
 		isFocused && selection && selection.focus.blockIndex === index
 			? (() => {
@@ -303,7 +302,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			padding: 0,
 			paddingHorizontal: 2,
 			color: theme.colors.text,
-			outline: "none",
+			...Platform.select({
+				web: { outlineWidth: 0 },
+			}),
 		},
 		inputVisible: {
 			opacity: 1,

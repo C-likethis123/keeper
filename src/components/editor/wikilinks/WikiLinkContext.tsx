@@ -47,6 +47,18 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 		setResults([]);
 		setSelectedIndex(0);
 		setIsLoading(false);
+		// After the modal dismisses, the block TextInput loses native focus.
+		// Cycle selection through null so UnifiedBlock's useLayoutEffect
+		// sees isFocused transition false→true and calls inputRef.focus().
+		const targetSel = useEditorState.getState().selection;
+		if (targetSel) {
+			setTimeout(() => {
+				useEditorState.getState().setSelection(null);
+				requestAnimationFrame(() => {
+					useEditorState.getState().setSelection(targetSel);
+				});
+			}, 0);
+		}
 	}, []);
 
 	const updateBlockContent = useEditorState((s) => s.updateBlockContent);
