@@ -13,13 +13,7 @@ import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-	Platform,
-	StyleSheet,
-	TextInput,
-	TouchableOpacity,
-	View,
-} from "react-native";
+import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { EditorScrollProvider } from "./editor/EditorScrollContext";
 
 export default function NoteEditorView({ note }: { note: Note }) {
@@ -47,7 +41,15 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		};
 		await NoteService.saveNote(newNote);
 		setIsPinned((prev) => !prev);
-	}, [id, title, isPinned, capabilities.canWrite, capabilities.reason, showToast, getContent]);
+	}, [
+		id,
+		title,
+		isPinned,
+		capabilities.canWrite,
+		capabilities.reason,
+		showToast,
+		getContent,
+	]);
 
 	const { status } = useAutoSave(note);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: only load this when starting
@@ -122,8 +124,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 							</TouchableOpacity>
 						</>
 					),
-					headerTitle: () =>
-						Platform.OS === "web" ? null : <SaveIndicator status={status} />,
+					headerTitle: () => <SaveIndicator status={status} />,
 				}}
 			/>
 
