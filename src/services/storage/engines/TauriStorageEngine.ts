@@ -1,5 +1,5 @@
 import type { Note } from "@/services/notes/types";
-import { parseFrontmatter, stringifyFrontmatter } from "@/services/notes/frontmatter";
+import { parseFrontmatter } from "@/services/notes/frontmatter";
 import { getTauriInvoke } from "@/services/storage/runtime";
 import type { NoteFileEntry, StorageEngine, StorageInitializeResult } from "@/services/storage/engines/StorageEngine";
 import type { NoteIndexListResult, NoteIndexPersistenceItem } from "@/services/storage/types";
@@ -33,7 +33,12 @@ export class TauriStorageEngine implements StorageEngine {
 
 	async saveNote(note: Note): Promise<Note> {
 		const updatedAt = await tauriInvoke()<number>("write_note", {
-			input: { id: note.id, content: stringifyFrontmatter(note) },
+			input: {
+				id: note.id,
+				title: note.title,
+				content: note.content,
+				isPinned: note.isPinned,
+			},
 		});
 		return {
 			...note,

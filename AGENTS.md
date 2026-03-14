@@ -75,8 +75,8 @@ An **immutable, transaction-based** document model:
 
 ### Data Persistence (three-tier)
 
-1. **File system** via `expo-file-system` — notes as `{id}.md` with YAML frontmatter (gray-matter)
-2. **SQLite** via `expo-sqlite` — full-text search index (title, summary, pinned, timestamp); rebuilt on git clone detection
+1. **File system** via a Rust bridge that interacts with native file system
+2. **SQLite** via a Rust bridge — full-text search index (title, summary, pinned, timestamp); rebuilt on git clone detection
 3. **Git** via Rust `git_core` bridge — batched, debounced commits; optional push to GitHub
 
 ## Scroll management

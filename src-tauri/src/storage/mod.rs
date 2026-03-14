@@ -31,7 +31,9 @@ pub struct NoteFileEntry {
 #[serde(rename_all = "camelCase")]
 pub struct WriteNoteInput {
     pub id: String,
+    pub title: String,
     pub content: String,
+    pub is_pinned: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -161,6 +163,24 @@ fn parse_frontmatter(markdown: &str) -> (String, bool, String) {
     )
 }
 
+fn stringify_yaml_string(value: &str) -> Result<String, String> {
+    serde_json::to_string(value).map_err(|e| format!("failed to serialize yaml string: {e}"))
+}
+
+fn serialize_note(input: &WriteNoteInput) -> Result<String, String> {
+    let matter = Matter::<YAML>::new();
+    let delimiter = matter.delimiter;
+    let close_delimiter = matter.close_delimiter.unwrap_or_else(|| delimiter.clone());
+    let title = stringify_yaml_string(input.title.trim())?;
+    let id = stringify_yaml_string(input.id.trim())?;
+
+    Ok(format!(
+        "{delimiter}\npinned: {}\ntitle: {title}\nid: {id}\n{close_delimiter}\n{}",
+        if input.is_pinned { "true" } else { "false" },
+        input.content
+    ))
+}
+
 fn extract_summary(markdown_content: &str, max_lines: usize) -> String {
     let mut lines = Vec::new();
     for line in markdown_content.lines() {
@@ -209,7 +229,8 @@ pub fn read_note(app: tauri::AppHandle, id: String) -> Result<Option<String>, St
 pub fn write_note(app: tauri::AppHandle, input: WriteNoteInput) -> Result<i64, String> {
     ensure_storage_dirs(&app)?;
     let path = note_path_for_id(&app, &input.id)?;
-    fs::write(&path, input.content).map_err(|e| format!("failed to write note: {e}"))?;
+    let markdown = serialize_note(&input)?;
+    fs::write(&path, markdown).map_err(|e| format!("failed to write note: {e}"))?;
     Ok(file_mtime_ms(&path))
 }
 
@@ -441,7 +462,7 @@ pub fn notes_root_path_command(app: tauri::AppHandle) -> Result<String, String> 
 
 #[cfg(test)]
 mod tests {
-    use super::parse_frontmatter;
+    use super::{parse_frontmatter, serialize_note, WriteNoteInput};
 
     #[test]
     fn parse_frontmatter_unescapes_quoted_titles() {
@@ -471,5 +492,22 @@ mod tests {
         assert_eq!(title, "");
         assert!(!is_pinned);
         assert_eq!(content, markdown);
+    }
+
+    #[test]
+    fn serialize_note_writes_frontmatter_and_body() {
+        let markdown = serialize_note(&WriteNoteInput {
+            id: "note-1".to_string(),
+            title: "He said \"hi\"".to_string(),
+            content: "# Heading\n- item".to_string(),
+            is_pinned: true,
+        })
+        .expect("note should serialize");
+
+        let (title, is_pinned, content) = parse_frontmatter(&markdown);
+        assert_eq!(title, "He said \"hi\"");
+        assert!(is_pinned);
+        assert_eq!(content, "# Heading\n- item");
+        assert!(markdown.contains("\nid: \"note-1\"\n"));
     }
 }
