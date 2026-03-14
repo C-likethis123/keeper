@@ -4,7 +4,7 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useToolbarActions } from "@/hooks/useToolbarActions";
 import { useEditorState } from "@/stores/editorStore";
 import { MaterialIcons } from "@expo/vector-icons";
-import React, { useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import {
 	Platform,
 	StyleSheet,
@@ -25,7 +25,6 @@ export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 	const listLevel = block ? getListLevel(block) : 0;
 	const commandContext = useEditorCommandContext({
 		isEditorActive: true,
-		isReadOnly: disabled,
 		isWikiLinkModalOpen: false,
 		dismissOverlays: () => false,
 	});
@@ -35,12 +34,6 @@ export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 		handleConvertToCheckbox,
 		handleInsertImage,
 	} = useToolbarActions();
-	const handleUndo = useCallback(() => {
-		executeEditorCommand("undo", commandContext);
-	}, [commandContext]);
-	const handleRedo = useCallback(() => {
-		executeEditorCommand("redo", commandContext);
-	}, [commandContext]);
 
 	const isListBlock = isListItem(blockType);
 
@@ -55,7 +48,9 @@ export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 		<View style={styles.toolbar}>
 			<TouchableOpacity
 				style={[styles.button]}
-				onPress={handleUndo}
+				onPress={() => {
+					executeEditorCommand("undo", commandContext);
+				}}
 				disabled={!canUndo}
 				activeOpacity={0.7}
 			>
@@ -67,7 +62,9 @@ export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 			</TouchableOpacity>
 			<TouchableOpacity
 				style={[styles.button]}
-				onPress={handleRedo}
+				onPress={() => {
+					executeEditorCommand("redo", commandContext);
+				}}
 				disabled={!canRedo}
 				activeOpacity={0.7}
 			>

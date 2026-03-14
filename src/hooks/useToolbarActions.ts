@@ -26,7 +26,6 @@ export function useToolbarActions(): UseToolbarActions {
 	const { focusBlock } = useFocusBlock();
 	const commandContext = useEditorCommandContext({
 		isEditorActive: true,
-		isReadOnly: false,
 		isWikiLinkModalOpen: false,
 		dismissOverlays: () => false,
 	});

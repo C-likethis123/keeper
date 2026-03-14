@@ -14,7 +14,6 @@ export type EditorCommandId =
 
 export interface EditorCommandContext {
 	isEditorActive: boolean;
-	isReadOnly: boolean;
 	isWikiLinkModalOpen: boolean;
 	getDocument: () => Document;
 	getFocusedBlock: () => BlockNode | null;
@@ -22,13 +21,13 @@ export interface EditorCommandContext {
 	getHasBlockSelection: () => boolean;
 	focusBlock: (index: number) => void;
 	focusBlockAt: (index: number, offset: number) => void;
-	undo: () => boolean;
-	redo: () => boolean;
-	indentListItem: () => boolean;
-	outdentListItem: () => boolean;
-	deleteSelectedBlocks: () => boolean;
-	selectAllBlocks: () => boolean;
-	dismissOverlays: () => boolean;
+	runUndo: () => boolean;
+	runRedo: () => boolean;
+	runIndentListItem: () => boolean;
+	runOutdentListItem: () => boolean;
+	runDeleteSelectedBlocks: () => boolean;
+	runSelectAllBlocks: () => boolean;
+	runDismissOverlays: () => boolean;
 }
 
 type EditorCommand = (context: EditorCommandContext) => boolean;
@@ -47,28 +46,16 @@ export const editorCommands: Record<EditorCommandId, EditorCommand> = {
 		context.focusBlock(index + 1);
 		return true;
 	},
-	undo: (context) => {
-		if (context.isReadOnly) return false;
-		return context.undo();
-	},
-	redo: (context) => {
-		if (context.isReadOnly) return false;
-		return context.redo();
-	},
-	indentListItem: (context) => {
-		if (context.isReadOnly) return false;
-		return context.indentListItem();
-	},
-	outdentListItem: (context) => {
-		if (context.isReadOnly) return false;
-		return context.outdentListItem();
-	},
+	undo: (context) => context.runUndo(),
+	redo: (context) => context.runRedo(),
+	indentListItem: (context) => context.runIndentListItem(),
+	outdentListItem: (context) => context.runOutdentListItem(),
 	deleteSelectedBlocks: (context) => {
-		if (context.isReadOnly || !context.getHasBlockSelection()) return false;
-		return context.deleteSelectedBlocks();
+		if (!context.getHasBlockSelection()) return false;
+		return context.runDeleteSelectedBlocks();
 	},
-	selectAllBlocks: (context) => context.selectAllBlocks(),
-	dismissOverlays: (context) => context.dismissOverlays(),
+	selectAllBlocks: (context) => context.runSelectAllBlocks(),
+	dismissOverlays: (context) => context.runDismissOverlays(),
 };
 
 export function executeEditorCommand(

@@ -10,7 +10,6 @@ import type { EditorCommandContext } from "./editorCommands";
 
 interface UseEditorCommandContextOptions {
 	isEditorActive: boolean;
-	isReadOnly: boolean;
 	isWikiLinkModalOpen: boolean;
 	dismissOverlays: () => boolean;
 }
@@ -24,16 +23,19 @@ export function useEditorCommandContext(
 	const getHasBlockSelection = useEditorState((state) => state.getHasBlockSelection);
 	const updateBlockListLevel = useEditorState((state) => state.updateBlockListLevel);
 	const updateBlockType = useEditorState((state) => state.updateBlockType);
-	const deleteSelectedBlocks = useEditorState((state) => state.deleteSelectedBlocks);
-	const selectAllBlocks = useEditorState((state) => state.selectAllBlocks);
-	const undo = useEditorState((state) => state.undo);
-	const redo = useEditorState((state) => state.redo);
+	const deleteSelectedBlocksFromStore = useEditorState(
+		(state) => state.deleteSelectedBlocks,
+	);
+	const selectAllBlocksFromStore = useEditorState(
+		(state) => state.selectAllBlocks,
+	);
+	const undoFromStore = useEditorState((state) => state.undo);
+	const redoFromStore = useEditorState((state) => state.redo);
 	const { focusBlock, focusBlockAt } = useFocusBlock();
 
 	return useMemo(
 		() => ({
 			isEditorActive: options.isEditorActive,
-			isReadOnly: options.isReadOnly,
 			isWikiLinkModalOpen: options.isWikiLinkModalOpen,
 			getDocument: () => document,
 			getFocusedBlock,
@@ -41,9 +43,9 @@ export function useEditorCommandContext(
 			getHasBlockSelection,
 			focusBlock,
 			focusBlockAt,
-			undo,
-			redo,
-			indentListItem: () => {
+			runUndo: () => undoFromStore(),
+			runRedo: () => redoFromStore(),
+			runIndentListItem: () => {
 				const index = getFocusedBlockIndex();
 				if (index === null) return false;
 				const block = document.blocks[index];
@@ -51,7 +53,7 @@ export function useEditorCommandContext(
 				updateBlockListLevel(index, getListLevel(block) + 1);
 				return true;
 			},
-			outdentListItem: () => {
+			runOutdentListItem: () => {
 				const index = getFocusedBlockIndex();
 				if (index === null) return false;
 				const block = document.blocks[index];
@@ -65,19 +67,19 @@ export function useEditorCommandContext(
 				}
 				return true;
 			},
-			deleteSelectedBlocks: () => {
+			runDeleteSelectedBlocks: () => {
 				if (!getHasBlockSelection()) return false;
-				deleteSelectedBlocks();
+				deleteSelectedBlocksFromStore();
 				return true;
 			},
-			selectAllBlocks: () => {
-				selectAllBlocks();
+			runSelectAllBlocks: () => {
+				selectAllBlocksFromStore();
 				return true;
 			},
-			dismissOverlays: options.dismissOverlays,
+			runDismissOverlays: options.dismissOverlays,
 		}),
 		[
-			deleteSelectedBlocks,
+			deleteSelectedBlocksFromStore,
 			document,
 			focusBlock,
 			focusBlockAt,
@@ -86,11 +88,10 @@ export function useEditorCommandContext(
 			getHasBlockSelection,
 			options.dismissOverlays,
 			options.isEditorActive,
-			options.isReadOnly,
 			options.isWikiLinkModalOpen,
-			redo,
-			selectAllBlocks,
-			undo,
+			redoFromStore,
+			selectAllBlocksFromStore,
+			undoFromStore,
 			updateBlockListLevel,
 			updateBlockType,
 		],

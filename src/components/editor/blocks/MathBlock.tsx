@@ -1,7 +1,6 @@
+import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import { getVerticalNavigationTarget } from "@/components/editor/keyboard/verticalNavigation";
-import { useEditorState } from "@/stores/editorStore";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
 	type NativeSyntheticEvent,
@@ -36,9 +35,9 @@ export function MathBlock({
 		end: 0,
 	});
 	const [renderError, setRenderError] = useState<string | null>(null);
-	const document = useEditorState((s) => s.document);
-	const { focusBlock, focusBlockAt, blurBlock } = useFocusBlock();
+	const { focusBlock, blurBlock } = useFocusBlock();
 	const theme = useExtendedTheme();
+	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
 
 	// Sync value with block content when it changes externally
 	useEffect(() => {
@@ -64,20 +63,8 @@ export function MathBlock({
 	) => {
 		const key = e.nativeEvent.key;
 
-		if (key === "ArrowUp" || key === "ArrowDown") {
-			const target = getVerticalNavigationTarget({
-				direction: key === "ArrowUp" ? "up" : "down",
-				document,
-				blockIndex: index,
-				selection: {
-					anchor: { blockIndex: index, offset: selection.start },
-					focus: { blockIndex: index, offset: selection.end },
-				},
-			});
-			if (target) {
-				focusBlockAt(target.blockIndex, target.offset);
-				return;
-			}
+		if (handleVerticalArrow(key)) {
+			return;
 		}
 
 		if (key === "Enter" || key === "Return") {

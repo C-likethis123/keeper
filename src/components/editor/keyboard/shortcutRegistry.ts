@@ -1,16 +1,18 @@
 import type { EditorCommandId } from "./editorCommands";
 
 const shortcutRegistry = new Map<string, EditorCommandId>([
-	["Mod+Z", "undo"],
-	["Mod+Shift+Z", "redo"],
-	["Mod+Y", "redo"],
+	["Meta+Z", "undo"],
+	["Ctrl+Z", "undo"],
+	["Meta+Shift+Z", "redo"],
+	["Ctrl+Shift+Z", "redo"],
 	["Ctrl+Y", "redo"],
 	["Tab", "indentListItem"],
 	["Shift+Tab", "outdentListItem"],
 	["Escape", "dismissOverlays"],
 	["Backspace", "deleteSelectedBlocks"],
 	["Delete", "deleteSelectedBlocks"],
-	["Mod+A", "selectAllBlocks"],
+	["Meta+A", "selectAllBlocks"],
+	["Ctrl+A", "selectAllBlocks"],
 ]);
 
 export function getShortcutCommand(chord: string): EditorCommandId | null {

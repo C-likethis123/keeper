@@ -22,11 +22,8 @@ export function normalizeKeyEvent(event: KeyboardEvent): NormalizedKeyEvent | nu
 	}
 
 	const modifiers: string[] = [];
-	if (event.metaKey) {
-		modifiers.push("Mod");
-	} else if (event.ctrlKey) {
-		modifiers.push(key === "Y" ? "Ctrl" : "Mod");
-	}
+	if (event.metaKey) modifiers.push("Meta");
+	if (event.ctrlKey) modifiers.push("Ctrl");
 	if (event.altKey) modifiers.push("Alt");
 	if (event.shiftKey) modifiers.push("Shift");
 

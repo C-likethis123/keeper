@@ -18,15 +18,15 @@ import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
 /// - Inline markdown formatting (bold, italic, code, links)
 /// - Keyboard shortcuts
 /// - Undo/redo support
-export function HybridEditor({ readOnly = false }: { readOnly?: boolean }) {
+export function HybridEditor() {
 	return (
 		<WikiLinkProvider>
-			<HybridEditorContent readOnly={readOnly} />
+			<HybridEditorContent />
 		</WikiLinkProvider>
 	);
 }
 
-function HybridEditorContent({ readOnly }: { readOnly: boolean }) {
+function HybridEditorContent() {
 	const blockIds = useEditorBlockIds();
 	const setSelection = useEditorState((s) => s.setSelection);
 	const selection = useEditorState((s) => s.selection);
@@ -46,7 +46,6 @@ function HybridEditorContent({ readOnly }: { readOnly: boolean }) {
 	const wikiLinks = useWikiLinkContext();
 	const commandContext = useEditorCommandContext({
 		isEditorActive: selection !== null,
-		isReadOnly: readOnly,
 		isWikiLinkModalOpen: wikiLinks.isActive,
 		dismissOverlays: () => {
 			if (!wikiLinks.isActive) return false;

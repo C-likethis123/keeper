@@ -101,6 +101,7 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 ### Android Prebuild Git Bridge
 **TODO**: Evaluate replacing the current Android prebuild Git bridge wiring with a local Expo module so native registration survives `expo prebuild --clean` via autolinking instead of app-level generated source patches. iOS already uses the local Expo module path.
 
+
 ### Note Organization & Relevance
 **Goals**:
 - Sort notes by theme, priority, or relevance
@@ -130,6 +131,8 @@ Watch YouTube (and other videos) while editing notes, without leaving the app.
 - YouTube URL detection or manual paste to open video panel
 - Resizable/dismissible panel
 - Playback controls visible while editing
+
+**TODO**: Remove read-only view guards
 
 ### Future Ideas from Google Keep
 - Drawings (low priority)

@@ -1,9 +1,9 @@
+import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import { getVerticalNavigationTarget } from "@/components/editor/keyboard/verticalNavigation";
 import { useStyles } from "@/hooks/useStyles";
 import { NOTES_ROOT } from "@/services/notes/Notes";
-import { useEditorSelection, useEditorState } from "@/stores/editorStore";
+import { useEditorSelection } from "@/stores/editorStore";
 import { Paths } from "expo-file-system";
 import { Image } from "expo-image";
 import React, { useCallback, useRef } from "react";
@@ -38,26 +38,17 @@ export function ImageBlock({
 	onBackspaceAtStart,
 	onSelectionChange,
 }: BlockConfig) {
-	const document = useEditorState((state) => state.document);
-	const { focusBlock, focusBlockAt } = useFocusBlock();
+	const { focusBlock } = useFocusBlock();
 	const inputRef = useRef<TextInput | null>(null);
 	const selection = useEditorSelection();
 	const styles = useStyles(createStyles);
 	const uri = resolveImageUri(block.content);
+	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
 	const handleKeyPress = useCallback(
 		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
 			const key = e.nativeEvent.key;
-			if (key === "ArrowUp" || key === "ArrowDown") {
-				const target = getVerticalNavigationTarget({
-					direction: key === "ArrowUp" ? "up" : "down",
-					document,
-					blockIndex: index,
-					selection,
-				});
-				if (target) {
-					focusBlockAt(target.blockIndex, target.offset);
-					return;
-				}
+			if (handleVerticalArrow(key)) {
+				return;
 			}
 			if (
 				key === "Enter" &&
@@ -75,7 +66,7 @@ export function ImageBlock({
 				return;
 			}
 		},
-		[document, focusBlockAt, index, onBackspaceAtStart, onEnter, selection],
+		[handleVerticalArrow, index, onBackspaceAtStart, onEnter, selection],
 	);
 
 	const handleSelectionChange = useCallback(
