@@ -132,8 +132,9 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 
 			const start = triggerStartOffsetRef.current;
 			const newText = `${block.content.substring(0, start)}[[${link}]]${block.content.substring(start + 2)}`;
+			const cursorAfter = start + link.length + 4; // after [[link]]
 
-			updateBlockContent(blockIndexRef.current, newText);
+			updateBlockContent(blockIndexRef.current, newText, cursorAfter);
 			endSession();
 		},
 		[isActive, endSession, updateBlockContent],
