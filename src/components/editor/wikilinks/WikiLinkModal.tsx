@@ -1,6 +1,6 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
 	Modal,
 	type NativeSyntheticEvent,
@@ -18,10 +18,11 @@ export function WikiLinkModal() {
 	const inputRef = useRef<TextInput>(null);
 	const wikiLinks = useWikiLinkContext();
 	const styles = useStyles(createStyles);
+	const [inputValue, setInputValue] = useState("");
 	const handleKeyPress = useCallback(
 		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
 			const key = e.nativeEvent.key;
-			if (key === "Backspace" && inputRef.current?.props.value === "") {
+			if (key === "Backspace" && inputValue === "") {
 				wikiLinks.handleCancel();
 				return;
 			}
@@ -34,7 +35,7 @@ export function WikiLinkModal() {
 				return;
 			}
 		},
-		[wikiLinks.handleCancel, wikiLinks.selectNext, wikiLinks.selectPrevious],
+		[inputValue, wikiLinks.handleCancel, wikiLinks.selectNext, wikiLinks.selectPrevious],
 	);
 
 	const handleSubmitEditing = useCallback(() => {
@@ -49,6 +50,7 @@ export function WikiLinkModal() {
 			animationType="fade"
 			onRequestClose={wikiLinks.handleCancel}
 			onShow={() => {
+				setInputValue("");
 				inputRef.current?.focus();
 			}}
 		>
@@ -63,7 +65,10 @@ export function WikiLinkModal() {
 						onSubmitEditing={handleSubmitEditing}
 						placeholder="Search notes..."
 						placeholderTextColor={theme.custom.editor.placeholder}
-						onChangeText={wikiLinks.handleQueryUpdate}
+						onChangeText={(text) => {
+						setInputValue(text);
+						wikiLinks.handleQueryUpdate(text);
+					}}
 						onKeyPress={handleKeyPress}
 						autoFocus
 						autoCapitalize="none"
