@@ -1,4 +1,4 @@
-import { NativeModules } from "react-native";
+import nativeBridgeModule from "../../../../modules/keeper-git";
 import type {
 	GitChangedPaths,
 	GitCheckoutOptions,
@@ -28,8 +28,7 @@ interface KeeperGitBridgeSpec {
 	): Promise<GitChangedPaths>;
 }
 
-const nativeBridgeRaw =
-	NativeModules.KeeperGitBridge as KeeperGitBridgeSpec | undefined;
+const nativeBridgeRaw = nativeBridgeModule as KeeperGitBridgeSpec | null;
 
 function parseMaybeJson<T>(payload: unknown): T {
 	if (typeof payload === "string") {

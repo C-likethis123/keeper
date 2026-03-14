@@ -44,14 +44,8 @@ app-example
 # generated native folders
 /ios
 /android
-
-!/android/app/src/main/java/com/clikethis123/keeper/MainApplication.kt
-!/android/app/src/main/java/com/clikethis123/keeper/KeeperGitBridgeModule.kt
-!/android/app/src/main/java/com/clikethis123/keeper/KeeperGitBridgePackage.kt
-!/ios/native/KeeperGitBridge.m
-!/ios/native/KeeperGitBridge.swift
-!/ios/native.xcodeproj/project.pbxproj
-
+modules/keeper-git/ios/rust/
+modules/keeper-git/android/build/
 
 # Tauri
 src-tauri/target/

@@ -21,20 +21,23 @@ This is a cross-platform rich-text editor, built on both mobile and desktop.
    ```
 
 
-2. Build the Rust git artifacts used by native mobile builds
+2. Install Rust prerequisites for native mobile builds
 
    ```bash
-   npm run build:mobile-git
+   rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+   rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
+   cargo install cargo-ndk
    ```
 
-3. Start the app
+3. Generate native projects and start the app
 
    ```bash
+   npx expo prebuild --clean
    npm run android
    npm start
    ```
 
-   `npm run android` now builds the Rust Android libraries, assembles the native debug app, and installs it on a connected device via Gradle/ADB. `npm start` runs the Metro dev server that the debug build connects to.
+   The local Expo module in `modules/keeper-git` now owns the Rust bridge wiring for iOS and Android. Fresh native generation recreates the bridge automatically, and native builds compile the Rust library from `src-tauri/git_core` as needed. `npm run build:mobile-git` remains available as a convenience rebuild command.
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
 - [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)

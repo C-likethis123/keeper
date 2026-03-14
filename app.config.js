@@ -37,7 +37,6 @@ export default {
     plugins: [
       "expo-router",
       "expo-dev-client",
-      "./plugins/withKeeperGitBridge",
       [
         "expo-splash-screen",
         {

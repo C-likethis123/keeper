@@ -1,6 +1,6 @@
-# Rust Git Native Bridge Scaffold
+# Rust Git Native Module
 
-This folder contains the React Native bridge scaffold for calling Rust `git_core` C ABI symbols.
+Keeper's mobile Rust bridge now lives in the local Expo module at `modules/keeper-git`.
 
 ## JavaScript surface
 
@@ -20,32 +20,17 @@ Methods exposed:
 - `resolveHeadOid(repoPath)`
 - `changedMarkdownPaths(repoPath, fromOid, toOid)`
 
-## Android wiring (implemented)
+## Source of truth
 
-Files:
-- `android/app/src/main/java/com/clikethis123/keeper/KeeperGitBridgeModule.kt`
-- `android/app/src/main/java/com/clikethis123/keeper/KeeperGitBridgePackage.kt`
-- `android/app/src/main/java/com/clikethis123/keeper/MainApplication.kt` (manual package registration)
+- Expo module package: `modules/keeper-git`
+- Android module class: `modules/keeper-git/android/src/main/java/com/clikethis123/keeper/KeeperGitBridgeModule.kt`
+- iOS module class: `modules/keeper-git/ios/KeeperGitBridgeModule.swift`
+- Rust build hook: `modules/keeper-git/scripts/build-rust.sh`
 
-Expected native library:
-- `libgit_core.so` loaded with `System.loadLibrary("git_core")`
+The generated `ios/` and `android/` app folders are no longer the source of truth for bridge wiring. `expo prebuild --clean` should recreate integration through Expo autolinking.
 
-Place `cargo-ndk` output under Android JNI libs path for each ABI, for example:
-- `android/app/src/main/jniLibs/arm64-v8a/libgit_core.so`
-- `android/app/src/main/jniLibs/armeabi-v7a/libgit_core.so`
-- `android/app/src/main/jniLibs/x86_64/libgit_core.so`
+## Build behavior
 
-## iOS integration (implemented in this repo)
-
-Files are integrated into the app target:
-- `ios/native/KeeperGitBridge.swift`
-- `ios/native/KeeperGitBridge.m`
-- `ios/native.xcodeproj/project.pbxproj` includes both source files, links `native/libgit_core.a`, and copies the correct prebuilt Rust archive into place during Xcode builds.
-
-Build native artifacts with:
-- `npm run build:mobile-git`
-
-Bridge methods include:
-- `clone`, `fetch`, `checkout`, `currentBranch`, `listBranches`, `merge`, `commit`, `push`, `status`
-- `resolveHeadOid`
-- `changedMarkdownPaths`
+- Android builds compile `libgit_core.so` into the module's generated JNI libs directory.
+- iOS builds compile `libgit_core.a` into the module's generated Rust output directory and link it from the module pod target.
+- `npm run build:mobile-git` triggers the same module-owned build script as a convenience command.

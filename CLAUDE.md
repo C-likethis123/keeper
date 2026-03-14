@@ -104,14 +104,11 @@ TypeScript git abstraction:
 - `src/services/git/gitEngine.ts`
 
 Mobile native bridge:
-- Android bridge integrated:
-  - `android/app/src/main/java/com/clikethis123/keeper/KeeperGitBridgeModule.kt`
-  - `android/app/src/main/java/com/clikethis123/keeper/KeeperGitBridgePackage.kt`
-  - `MainApplication.kt` package registration
-- iOS bridge integrated:
-  - `ios/native/KeeperGitBridge.swift`
-  - `ios/native/KeeperGitBridge.m`
-  - `ios/native.xcodeproj/project.pbxproj` includes bridge sources and `native/libgit_core.a` linkage
+- Local Expo module source of truth:
+  - `modules/keeper-git/android/src/main/java/com/clikethis123/keeper/KeeperGitBridgeModule.kt`
+  - `modules/keeper-git/ios/KeeperGitBridgeModule.swift`
+  - `modules/keeper-git/scripts/build-rust.sh`
+- Generated `ios/` and `android/` folders are disposable and should be recreated with Expo prebuild/autolinking
 
 Runtime support policy:
 - Supported: Tauri desktop, Android native build, iOS native build
