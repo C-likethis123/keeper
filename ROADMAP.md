@@ -10,20 +10,14 @@ This is the central planning document for Keeper. It outlines critical issues, d
 **Affected files**: `app/_layout.tsx`, `hooks/useLoadNote.ts`, `services/notes/`
 **Fix**: Ensure storage backend selection completes before editor load, or implement retry logic on storage init completion.
 
-### [P2] Desktop Title Escaping Regression
-**Impact**: Quoted titles don't round-trip correctly
-**Root cause**: `tauriStorage.ts` (line 67) manually escapes `"` as `\"`, but both JS and Rust parsers only strip surrounding quotes without unescaping YAML escapes. Title `He said "hi"` becomes `He said \"hi\"`.
-**Affected files**: `services/storage/tauriStorage.ts`, `src-tauri/src/storage.rs`
-**Fix**: Implement proper YAML unescaping in both JS and Rust parsers.
-
 ---
 
 ## Development Phases
 
-### Phase 1: FTS5 Wikilink Relevance Ranking ✅ (In Progress)
-Migrate to FTS5 full-text search with three-tier relevance ranking for wikilink autocomplete.
+### Phase 1: FTS5 Wikilink Relevance Ranking ✅
+FTS5-backed note search and wikilink autocomplete are now in place on the shared notes index.
 
-**Status**: Implementation underway (Task 1–4 partially complete)
+**Status**: Implemented
 **Objectives**:
 - Migrate SQLite schema from standard search to FTS5 virtual table
 - Implement migration infrastructure with atomicity guarantees
@@ -33,7 +27,7 @@ Migrate to FTS5 full-text search with three-tier relevance ranking for wikilink 
 **Key files**:
 - `services/notes/notesIndexDb.ts` — FTS5 schema and search
 - `services/notes/notesIndex.ts` — Service layer
-- `components/editor/wikilinks/useWikiLinks.ts` — Autocomplete integration
+- `components/editor/wikilinks/WikiLinkContext.tsx` — Autocomplete integration
 
 ---
 
@@ -98,8 +92,12 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 **Issue**: Expo OTA (Over-The-Air) updates not working
 **Impact**: Desktop/mobile app updates require full rebuild
 
-### Android Prebuild Git Bridge
-**TODO**: Evaluate replacing the current Android prebuild Git bridge wiring with a local Expo module so native registration survives `expo prebuild --clean` via autolinking instead of app-level generated source patches. iOS already uses the local Expo module path.
+### Mobile Native Git Bridge
+**Status**: Implemented via the local Expo module in `modules/keeper-git`
+**Notes**:
+- Native registration now survives clean Expo prebuilds through autolinking
+- Android and iOS share the same local module approach
+- `npm run build:mobile-git` remains as a convenience rebuild path for the Rust library
 
 
 ### Note Organization & Relevance

@@ -92,7 +92,7 @@ export default function RootLayout() {
 			if (runtimeSupport.runtime === "desktop-tauri") {
 				// On Tauri desktop, hydrate immediately so the UI is never blocked
 				// by IPC calls (storage init, git sync) that may stall indefinitely.
-				// Both run after hydration; notes re-fetch once the backend is ready.
+				// Screen-level note loading waits for storage readiness before reading.
 				setIsHydrated(true);
 				await initializeStorage();
 				void initializeGit(true);

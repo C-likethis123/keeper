@@ -5,12 +5,9 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 ## Critical Issues (P1)
 
 - **Desktop Hydration**: Editor loads from wrong backend on startup (affects all notes on desktop)
-- **Desktop + mobile dev setup**: Cannot load desktop app and mobile app at the same time
-- **Title Escaping**: Quoted titles don't round-trip correctly on desktop (behavioral regression)
 - **Desktop Experience**: Major style issues making it difficult to make edits.
 - cannot enter from the title input to the note
 - cursor cannot type based on selection
-- cannot indent in desktop?
 
 ## Performance Issues
 

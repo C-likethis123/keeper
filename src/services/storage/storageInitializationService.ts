@@ -14,11 +14,13 @@ export class StorageInitializationService {
 	private constructor() {}
 
 	async initialize(): Promise<StorageInitializationResult> {
+		useStorageStore.getState().setInitializationPending();
 		try {
 			const result = await getStorageEngine().initialize();
 			useStorageStore.getState().setCapabilities(getStorageCapabilities());
 			setNotesRoot(result.notesRoot);
 			useStorageStore.getState().setNotesRoot(result.notesRoot);
+			useStorageStore.getState().setInitializationReady();
 			return {
 				success: true,
 				needsRebuild: result.needsRebuild,

@@ -1,13 +1,29 @@
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
+import { useStorageStore } from "@/stores/storageStore";
 import { useEffect, useState } from "react";
 
 export function useLoadNote(id: string) {
+	const initializationStatus = useStorageStore((s) => s.initializationStatus);
+	const storageReason = useStorageStore((s) => s.capabilities.reason);
 	const [note, setNote] = useState<Note | null>(null);
-	const [isLoading, setIsLoading] = useState(false);
+	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
+		if (initializationStatus === "pending") {
+			setIsLoading(true);
+			setError(null);
+			return;
+		}
+
+		if (initializationStatus === "failed") {
+			setNote(null);
+			setIsLoading(false);
+			setError(storageReason ?? "Storage is unavailable");
+			return;
+		}
+
 		setIsLoading(true);
 		setError(null);
 		NoteService.loadNote(id)
@@ -18,10 +34,11 @@ export function useLoadNote(id: string) {
 				}
 			})
 			.catch((err: unknown) => {
+				setNote(null);
 				setError(err instanceof Error ? err.message : String(err));
 			})
 			.finally(() => setIsLoading(false));
-	}, [id]);
+	}, [id, initializationStatus, storageReason]);
 
 	return {
 		isLoading,
