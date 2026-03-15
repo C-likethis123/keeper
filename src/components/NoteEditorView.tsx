@@ -1,6 +1,4 @@
 import { SaveIndicator } from "@/components/SaveIndicator";
-import { EditorToolbar } from "@/components/editor/EditorToolbar";
-import { HybridEditor } from "@/components/editor/HybridEditor";
 import type { EditorState } from "@/components/editor/core/EditorState";
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import { useAutoSave } from "@/hooks/useAutoSave";
@@ -12,9 +10,28 @@ import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+	Suspense,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { EditorScrollProvider } from "./editor/EditorScrollContext";
+import Loader from "./shared/Loader";
+
+const LazyEditorToolbar = React.lazy(
+	() => import("@/components/editor/EditorToolbar").then((module) => ({
+		default: module.EditorToolbar,
+	})),
+);
+
+const LazyHybridEditor = React.lazy(
+	() => import("@/components/editor/HybridEditor").then((module) => ({
+		default: module.HybridEditor,
+	})),
+);
 
 export default function NoteEditorView({ note }: { note: Note }) {
 	const router = useRouter();
@@ -138,10 +155,12 @@ export default function NoteEditorView({ note }: { note: Note }) {
 					placeholderTextColor={theme.custom.editor.placeholder}
 				/>
 
-				<EditorToolbar disabled={!capabilities.canWrite} />
-				<EditorScrollProvider>
-					<HybridEditor />
-				</EditorScrollProvider>
+				<Suspense fallback={<Loader />}>
+					<LazyEditorToolbar disabled={!capabilities.canWrite} />
+					<EditorScrollProvider>
+						<LazyHybridEditor />
+					</EditorScrollProvider>
+				</Suspense>
 			</View>
 		</View>
 	);
