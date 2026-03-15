@@ -68,6 +68,10 @@ export class GitService {
 		GitService.queue.set(filePath, operation);
 	}
 
+	static clearQueuedChanges(): void {
+		GitService.queue.clear();
+	}
+
 	static async commitBatch(message?: string): Promise<void> {
 		if (GitService.isCommitting || GitService.queue.size === 0) {
 			return;

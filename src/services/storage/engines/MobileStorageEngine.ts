@@ -1,5 +1,13 @@
 import { parseFrontmatter, stringifyFrontmatter } from "@/services/notes/frontmatter";
-import { notesIndexDbDelete, notesIndexDbHasRows, notesIndexDbListAll, notesIndexDbRebuildFromDisk, notesIndexDbUpsert } from "@/services/notes/notesIndexDb";
+import {
+	type NotesIndexRebuildMetrics,
+	notesIndexDbReset,
+	notesIndexDbDelete,
+	notesIndexDbHasRows,
+	notesIndexDbListAll,
+	notesIndexDbRebuildFromDisk,
+	notesIndexDbUpsert,
+} from "@/services/notes/notesIndexDb";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import type { Note } from "@/services/notes/types";
 import type { NoteFileEntry, StorageEngine, StorageInitializeResult } from "@/services/storage/engines/StorageEngine";
@@ -15,6 +23,22 @@ function extractSummary(markdown: string, maxLines = 6): string {
 		if (lines.length >= maxLines) break;
 	}
 	return lines.join("\n");
+}
+
+function deleteDirectoryRecursive(dir: Directory): void {
+	if (!dir.exists) {
+		return;
+	}
+
+	for (const entry of dir.list()) {
+		if (entry instanceof Directory) {
+			deleteDirectoryRecursive(entry);
+			continue;
+		}
+		entry.delete();
+	}
+
+	dir.delete();
 }
 
 export class MobileStorageEngine implements StorageEngine {
@@ -33,6 +57,22 @@ export class MobileStorageEngine implements StorageEngine {
 			notesRoot: NOTES_ROOT,
 			needsRebuild: hasMarkdownFiles && !hasRows,
 		};
+	}
+
+	async resetAllData(): Promise<void> {
+		const dir = new Directory(NOTES_ROOT);
+		if (dir.exists) {
+			deleteDirectoryRecursive(dir);
+		}
+
+		await notesIndexDbReset();
+		dir.create({ intermediates: true, idempotent: true });
+		const remainingFiles = dir
+			.list()
+			.filter((entry): entry is File => entry instanceof File);
+		if (remainingFiles.length > 0) {
+			throw new Error("Failed to clear note storage");
+		}
 	}
 
 	async loadNote(id: string): Promise<Note | null> {
@@ -115,7 +155,7 @@ export class MobileStorageEngine implements StorageEngine {
 		return notesIndexDbListAll(query, limit, offset);
 	}
 
-	async indexRebuildFromDisk(): Promise<{ noteCount: number }> {
+	async indexRebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
 		return notesIndexDbRebuildFromDisk();
 	}
 

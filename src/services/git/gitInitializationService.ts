@@ -1,6 +1,12 @@
+import { FORCE_REPO_RESET_KEY } from "@/services/app/resetAppDataService";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import type { GitChangedPaths } from "@/services/git/engines/GitEngine";
 import { NotesIndexService } from "@/services/notes/notesIndex";
+import { getStorageEngine } from "@/services/storage/storageEngine";
+import {
+	createNoopStartupTelemetry,
+	type StartupTelemetry,
+} from "@/services/startup/startupTelemetry";
 import { useStorageStore } from "@/stores/storageStore";
 import type { GitEngine } from "@/services/git/engines/GitEngine";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -28,6 +34,22 @@ async function writeLastSyncedOid(oid: string): Promise<void> {
 			"[GitInitializationService] Failed to persist lastSyncedOid:",
 			err,
 		);
+	}
+}
+
+async function shouldForceRepoReset(): Promise<boolean> {
+	try {
+		return (await AsyncStorage.getItem(FORCE_REPO_RESET_KEY)) === "1";
+	} catch {
+		return false;
+	}
+}
+
+async function clearForceRepoResetFlag(): Promise<void> {
+	try {
+		await AsyncStorage.removeItem(FORCE_REPO_RESET_KEY);
+	} catch {
+		// ignore marker cleanup failures
 	}
 }
 
@@ -60,15 +82,26 @@ interface InitializationResult {
 	supported: boolean;
 	error?: string;
 	reason?: string;
+	metrics: StartupMetrics;
 }
 
 interface StartupMetrics {
 	validateRepoMs: number;
 	fetchMs: number;
+	resolveHeadBeforeMs: number;
+	resolveHeadAfterMs: number;
 	branchResolveMs: number;
+	remoteBranchListMs: number;
+	currentBranchResolveMs: number;
 	mergeMs: number;
+	fastForwardMergeMs: number;
+	regularMergeMs: number;
 	checkoutMs: number;
 	dbSyncMs: number;
+	readLastSyncedOidMs: number;
+	writeLastSyncedOidMs: number;
+	changedPathsMs: number;
+	indexSyncMs: number;
 	totalMs: number;
 	usedFastForward: boolean;
 	didHeadChange: boolean;
@@ -84,16 +117,34 @@ interface SyncWithRemoteResult {
 interface SyncDbAfterPullResult {
 	didDbSync: boolean;
 	dbSyncMs: number;
+	readLastSyncedOidMs: number;
+	writeLastSyncedOidMs: number;
+	changedPathsMs: number;
+	indexSyncMs: number;
+}
+
+interface InitializeOptions {
+	telemetry?: StartupTelemetry;
 }
 
 function createEmptyStartupMetrics(): StartupMetrics {
 	return {
 		validateRepoMs: 0,
 		fetchMs: 0,
+		resolveHeadBeforeMs: 0,
+		resolveHeadAfterMs: 0,
 		branchResolveMs: 0,
+		remoteBranchListMs: 0,
+		currentBranchResolveMs: 0,
 		mergeMs: 0,
+		fastForwardMergeMs: 0,
+		regularMergeMs: 0,
 		checkoutMs: 0,
 		dbSyncMs: 0,
+		readLastSyncedOidMs: 0,
+		writeLastSyncedOidMs: 0,
+		changedPathsMs: 0,
+		indexSyncMs: 0,
 		totalMs: 0,
 		usedFastForward: false,
 		didHeadChange: false,
@@ -150,18 +201,29 @@ export class GitInitializationService {
 		return this.pickPreferredBranch(localBranches);
 	}
 
-	async initialize(): Promise<InitializationResult> {
+	async initialize(options: InitializeOptions = {}): Promise<InitializationResult> {
 		const initStart = performance.now();
 		const metrics = createEmptyStartupMetrics();
+		const telemetry =
+			options.telemetry ?? createNoopStartupTelemetry("git-initialization");
 		console.log("[GitInitializationService] Starting initialization...");
 		try {
+			if (await shouldForceRepoReset()) {
+				await getStorageEngine().resetAllData();
+				await clearForceRepoResetFlag();
+			}
+
 			const runtimeSupport = getGitRuntimeSupport();
 			if (!runtimeSupport.supported) {
+				telemetry.trace("git.runtime_unsupported", {
+					reason: runtimeSupport.reason,
+				});
 				return {
 					success: true,
 					wasCloned: false,
 					supported: false,
 					reason: runtimeSupport.reason,
+					metrics,
 				};
 			}
 
@@ -175,6 +237,7 @@ export class GitInitializationService {
 					wasCloned: false,
 					supported: true,
 					error: `Rust git unavailable: ${errorMsg}`,
+					metrics,
 				};
 			}
 
@@ -184,6 +247,12 @@ export class GitInitializationService {
 			const tValidate = performance.now();
 			const repoValidation = await this.validateRepository();
 			metrics.validateRepoMs = Math.round(performance.now() - tValidate);
+			telemetry.trace("git.repository_validation", {
+				exists: repoValidation.exists,
+				isValid: repoValidation.isValid,
+				reason: repoValidation.reason,
+				durationMs: metrics.validateRepoMs,
+			});
 			console.log(
 				`[GitInitializationService] Repository validation: ${repoValidation.isValid ? "VALID" : "INVALID"}`,
 			);
@@ -204,11 +273,17 @@ export class GitInitializationService {
 						supported: true,
 						error:
 							"Invalid repository detected, please clear your cache manually and try again",
+						metrics,
 					};
 				}
 
 				console.log("[GitInitializationService] Starting fresh clone...");
+				const cloneStart = performance.now();
 				const cloned = await this.cloneRepository();
+				telemetry.trace("git.clone_completed", {
+					success: cloned,
+					durationMs: Math.round(performance.now() - cloneStart),
+				});
 				if (!cloned) {
 					const error =
 						this.lastCloneFailureMessage ??
@@ -219,23 +294,35 @@ export class GitInitializationService {
 						wasCloned: false,
 						supported: true,
 						error,
+						metrics,
 					};
 				}
 				return {
 					success: true,
 					wasCloned: true,
 					supported: true,
+					metrics,
 				};
 			}
 			console.log(
 				"[GitInitializationService] Valid repository already exists, skipping clone",
 			);
-			const syncResult = await this.syncWithRemote();
+			const syncResult = await this.syncWithRemote(telemetry);
 			metrics.fetchMs = syncResult.metrics.fetchMs;
+			metrics.resolveHeadBeforeMs = syncResult.metrics.resolveHeadBeforeMs;
+			metrics.resolveHeadAfterMs = syncResult.metrics.resolveHeadAfterMs;
 			metrics.branchResolveMs = syncResult.metrics.branchResolveMs;
+			metrics.remoteBranchListMs = syncResult.metrics.remoteBranchListMs;
+			metrics.currentBranchResolveMs = syncResult.metrics.currentBranchResolveMs;
 			metrics.mergeMs = syncResult.metrics.mergeMs;
+			metrics.fastForwardMergeMs = syncResult.metrics.fastForwardMergeMs;
+			metrics.regularMergeMs = syncResult.metrics.regularMergeMs;
 			metrics.checkoutMs = syncResult.metrics.checkoutMs;
 			metrics.dbSyncMs = syncResult.metrics.dbSyncMs;
+			metrics.readLastSyncedOidMs = syncResult.metrics.readLastSyncedOidMs;
+			metrics.writeLastSyncedOidMs = syncResult.metrics.writeLastSyncedOidMs;
+			metrics.changedPathsMs = syncResult.metrics.changedPathsMs;
+			metrics.indexSyncMs = syncResult.metrics.indexSyncMs;
 			metrics.usedFastForward = syncResult.metrics.usedFastForward;
 			metrics.didHeadChange = syncResult.metrics.didHeadChange;
 			metrics.didDbSync = syncResult.metrics.didDbSync;
@@ -247,6 +334,7 @@ export class GitInitializationService {
 					success: true,
 					wasCloned: false,
 					supported: true,
+					metrics,
 				};
 			}
 			console.warn(
@@ -257,6 +345,7 @@ export class GitInitializationService {
 				success: true,
 				wasCloned: false,
 				supported: true,
+				metrics,
 			};
 		} catch (error) {
 			return {
@@ -264,9 +353,11 @@ export class GitInitializationService {
 				wasCloned: false,
 				supported: true,
 				error: error instanceof Error ? error.message : String(error),
+				metrics,
 			};
 		} finally {
 			metrics.totalMs = Math.round(performance.now() - initStart);
+			telemetry.trace("git.initialize_metrics", { ...metrics });
 			console.log("[GitInitializationService] Startup metrics", metrics);
 		}
 	}
@@ -454,13 +545,25 @@ export class GitInitializationService {
 	 * Syncs the local repository with the remote by pulling the latest changes.
 	 * Uses fast-forward merge if possible, otherwise attempts a merge.
 	 */
-	private async syncWithRemote(): Promise<SyncWithRemoteResult> {
+	private async syncWithRemote(
+		telemetry: StartupTelemetry,
+	): Promise<SyncWithRemoteResult> {
 		const metrics: SyncWithRemoteResult["metrics"] = {
 			fetchMs: 0,
+			resolveHeadBeforeMs: 0,
+			resolveHeadAfterMs: 0,
 			branchResolveMs: 0,
+			remoteBranchListMs: 0,
+			currentBranchResolveMs: 0,
 			mergeMs: 0,
+			fastForwardMergeMs: 0,
+			regularMergeMs: 0,
 			checkoutMs: 0,
 			dbSyncMs: 0,
+			readLastSyncedOidMs: 0,
+			writeLastSyncedOidMs: 0,
+			changedPathsMs: 0,
+			indexSyncMs: 0,
 			usedFastForward: false,
 			didHeadChange: false,
 			didDbSync: false,
@@ -473,11 +576,30 @@ export class GitInitializationService {
 			const tFetch = performance.now();
 			await gitEngine.fetch(NOTES_ROOT);
 			metrics.fetchMs = Math.round(performance.now() - tFetch);
+			telemetry.trace("git.fetch_completed", {
+				durationMs: metrics.fetchMs,
+			});
 
+			const tHeadBefore = performance.now();
 			const headBeforeSync = await gitEngine.resolveHeadOid(NOTES_ROOT);
+			metrics.resolveHeadBeforeMs = Math.round(
+				performance.now() - tHeadBefore,
+			);
+			telemetry.trace("git.resolve_head_before_sync_completed", {
+				durationMs: metrics.resolveHeadBeforeMs,
+				headOidPrefix: headBeforeSync.slice(0, 7),
+			});
 
 			const tBranchResolve = performance.now();
+			const tRemoteBranches = performance.now();
 			const remoteBranches = await gitEngine.listBranches(NOTES_ROOT, "origin");
+			metrics.remoteBranchListMs = Math.round(
+				performance.now() - tRemoteBranches,
+			);
+			telemetry.trace("git.remote_branches_listed", {
+				durationMs: metrics.remoteBranchListMs,
+				remoteBranchCount: remoteBranches.length,
+			});
 			if (remoteBranches.length === 0) {
 				return {
 					success: false,
@@ -486,10 +608,18 @@ export class GitInitializationService {
 				};
 			}
 
+			const tCurrentBranchResolve = performance.now();
 			let currentBranch =
 				(await this.resolveCurrentBranch()) ??
 				this.pickPreferredBranch(remoteBranches) ??
 				"main";
+			metrics.currentBranchResolveMs = Math.round(
+				performance.now() - tCurrentBranchResolve,
+			);
+			telemetry.trace("git.current_branch_resolved", {
+				durationMs: metrics.currentBranchResolveMs,
+				currentBranch,
+			});
 			if (!remoteBranches.includes(currentBranch)) {
 				const fallbackBranch = this.pickPreferredBranch(remoteBranches);
 				if (fallbackBranch) {
@@ -500,9 +630,19 @@ export class GitInitializationService {
 					const tCheckout = performance.now();
 					await gitEngine.checkout(NOTES_ROOT, currentBranch);
 					metrics.checkoutMs += Math.round(performance.now() - tCheckout);
+					telemetry.trace("git.branch_checkout_completed", {
+						durationMs: metrics.checkoutMs,
+						branch: currentBranch,
+						reason: "missing_remote_branch",
+					});
 				}
 			}
 			metrics.branchResolveMs = Math.round(performance.now() - tBranchResolve);
+			telemetry.trace("git.branch_resolution_completed", {
+				durationMs: metrics.branchResolveMs,
+				currentBranch,
+				remoteBranch: `origin/${currentBranch}`,
+			});
 
 			const remoteBranch = `origin/${currentBranch}`;
 
@@ -518,11 +658,19 @@ export class GitInitializationService {
 					fastForwardOnly: true,
 				});
 				metrics.usedFastForward = true;
-				metrics.mergeMs = Math.round(performance.now() - tMerge);
+				metrics.fastForwardMergeMs = Math.round(performance.now() - tMerge);
+				metrics.mergeMs = metrics.fastForwardMergeMs;
+				telemetry.trace("git.merge_completed", {
+					mode: "fast_forward",
+					durationMs: metrics.fastForwardMergeMs,
+				});
 			} catch {
 				console.log(
 					"[GitInitializationService] Fast-forward not possible, attempting regular merge...",
 				);
+				telemetry.trace("git.merge_fast_forward_failed", {
+					mode: "fast_forward",
+				});
 				try {
 					const tMerge = performance.now();
 					await gitEngine.merge(NOTES_ROOT, {
@@ -534,7 +682,12 @@ export class GitInitializationService {
 						},
 						message: "Merge remote changes",
 					});
-					metrics.mergeMs = Math.round(performance.now() - tMerge);
+					metrics.regularMergeMs = Math.round(performance.now() - tMerge);
+					metrics.mergeMs = metrics.regularMergeMs;
+					telemetry.trace("git.merge_completed", {
+						mode: "regular",
+						durationMs: metrics.regularMergeMs,
+					});
 				} catch (mergeError) {
 					const errorMsg =
 						mergeError instanceof Error
@@ -545,12 +698,36 @@ export class GitInitializationService {
 				}
 			}
 
+			const tHeadAfter = performance.now();
 			const headAfterMerge = await gitEngine.resolveHeadOid(NOTES_ROOT);
+			metrics.resolveHeadAfterMs = Math.round(performance.now() - tHeadAfter);
 			metrics.didHeadChange = headBeforeSync !== headAfterMerge;
+			telemetry.trace("git.resolve_head_after_sync_completed", {
+				durationMs: metrics.resolveHeadAfterMs,
+				headOidPrefix: headAfterMerge.slice(0, 7),
+				didHeadChange: metrics.didHeadChange,
+			});
 			if (!metrics.didHeadChange) {
+				const readStart = performance.now();
 				const lastSyncedOid = await readLastSyncedOid();
+				metrics.readLastSyncedOidMs = Math.round(
+					performance.now() - readStart,
+				);
+				telemetry.trace("git.last_synced_oid_read", {
+					durationMs: metrics.readLastSyncedOidMs,
+					hasLastSyncedOid: Boolean(lastSyncedOid),
+					context: "no_head_change",
+				});
 				if (!lastSyncedOid) {
+					const writeStart = performance.now();
 					await writeLastSyncedOid(headAfterMerge);
+					metrics.writeLastSyncedOidMs = Math.round(
+						performance.now() - writeStart,
+					);
+					telemetry.trace("git.last_synced_oid_written", {
+						durationMs: metrics.writeLastSyncedOidMs,
+						context: "no_head_change",
+					});
 				}
 				return { success: true, metrics };
 			}
@@ -561,9 +738,18 @@ export class GitInitializationService {
 				force: true,
 			});
 			metrics.checkoutMs += Math.round(performance.now() - tCheckout);
+			telemetry.trace("git.checkout_completed", {
+				durationMs: metrics.checkoutMs,
+				target: "HEAD",
+				force: true,
+			});
 
-			const dbResult = await this.syncDbAfterPull(headAfterMerge);
+			const dbResult = await this.syncDbAfterPull(headAfterMerge, telemetry);
 			metrics.dbSyncMs = dbResult.dbSyncMs;
+			metrics.readLastSyncedOidMs = dbResult.readLastSyncedOidMs;
+			metrics.writeLastSyncedOidMs = dbResult.writeLastSyncedOidMs;
+			metrics.changedPathsMs = dbResult.changedPathsMs;
+			metrics.indexSyncMs = dbResult.indexSyncMs;
 			metrics.didDbSync = dbResult.didDbSync;
 			return { success: true, metrics };
 		} catch (error) {
@@ -573,50 +759,116 @@ export class GitInitializationService {
 		}
 	}
 
-	private async syncDbAfterPull(currentOid?: string): Promise<SyncDbAfterPullResult> {
+	private async syncDbAfterPull(
+		currentOid: string | undefined,
+		telemetry: StartupTelemetry,
+	): Promise<SyncDbAfterPullResult> {
 		const tSync = performance.now();
 		let didDbSync = false;
+		let readLastSyncedOidMs = 0;
+		let writeLastSyncedOidMs = 0;
+		let changedPathsMs = 0;
+		let indexSyncMs = 0;
 		try {
 			const gitEngine = this.ensureGitEngine();
 			const resolvedCurrentOid =
 				currentOid ?? (await gitEngine.resolveHeadOid(NOTES_ROOT));
+			const readStart = performance.now();
 			const lastSyncedOid = await readLastSyncedOid();
+			readLastSyncedOidMs = Math.round(performance.now() - readStart);
+			telemetry.trace("git.last_synced_oid_read", {
+				durationMs: readLastSyncedOidMs,
+				hasLastSyncedOid: Boolean(lastSyncedOid),
+				context: "post_pull",
+			});
 
 			if (!lastSyncedOid) {
 				console.log(
 					"[GitInitializationService] No lastSyncedOid — rebuilding DB from disk",
 				);
-				await NotesIndexService.rebuildFromDisk();
+				const indexSyncStart = performance.now();
+				const syncResult = await NotesIndexService.rebuildFromDisk();
+				indexSyncMs = Math.round(performance.now() - indexSyncStart);
+				telemetry.trace("git.db_sync_completed", {
+					syncMode: "full_rebuild",
+					reason: "missing_last_synced_oid",
+					indexSyncMs,
+					...syncResult,
+				});
 				didDbSync = true;
 			} else if (lastSyncedOid !== resolvedCurrentOid) {
+				const changedPathsStart = performance.now();
 				const changedPaths = await this.getChangedMarkdownPaths(
 					gitEngine,
 					lastSyncedOid,
 					resolvedCurrentOid,
+					telemetry,
 				);
+				changedPathsMs = Math.round(performance.now() - changedPathsStart);
+				const changedPathCount =
+					changedPaths.added.length +
+					changedPaths.modified.length +
+					changedPaths.deleted.length;
 				console.log(
 					`[GitInitializationService] Head changed from ${lastSyncedOid.slice(0, 7)} to ${resolvedCurrentOid.slice(0, 7)}, syncing index`,
 					changedPaths,
 				);
-				await NotesIndexService.syncChangedPaths(changedPaths);
+				telemetry.trace("git.changed_paths_computed", {
+					durationMs: changedPathsMs,
+					addedCount: changedPaths.added.length,
+					modifiedCount: changedPaths.modified.length,
+					deletedCount: changedPaths.deleted.length,
+					changedPathCount,
+				});
+				const indexSyncStart = performance.now();
+				const syncResult = await NotesIndexService.syncChangedPaths(changedPaths);
+				indexSyncMs = Math.round(performance.now() - indexSyncStart);
+				telemetry.trace("git.db_sync_completed", {
+					syncMode: syncResult.mode,
+					reason: "head_changed",
+					indexSyncMs,
+					changedPathCount: syncResult.changedPathCount,
+					markdownChangedPathCount: syncResult.markdownChangedPathCount,
+					metrics: syncResult.metrics as unknown as Record<string, unknown>,
+				});
 				didDbSync = true;
 			} else {
 				console.log(
 					"[GitInitializationService] No new commits since last sync, skipping DB sync",
 				);
+				telemetry.trace("git.db_sync_skipped", {
+					reason: "no_new_commits",
+				});
 				return {
 					didDbSync: false,
 					dbSyncMs: 0,
+					readLastSyncedOidMs,
+					writeLastSyncedOidMs,
+					changedPathsMs,
+					indexSyncMs,
 				};
 			}
 
+			const writeStart = performance.now();
 			await writeLastSyncedOid(resolvedCurrentOid);
+			writeLastSyncedOidMs = Math.round(performance.now() - writeStart);
+			telemetry.trace("git.last_synced_oid_written", {
+				durationMs: writeLastSyncedOidMs,
+				context: "post_pull",
+			});
 		} catch (err) {
+			telemetry.trace("git.db_sync_failed", {
+				errorMessage: err instanceof Error ? err.message : String(err),
+			});
 			console.warn("[GitInitializationService] syncDbAfterPull failed:", err);
 		}
 		return {
 			didDbSync,
 			dbSyncMs: Math.round(performance.now() - tSync),
+			readLastSyncedOidMs,
+			writeLastSyncedOidMs,
+			changedPathsMs,
+			indexSyncMs,
 		};
 	}
 
@@ -624,10 +876,15 @@ export class GitInitializationService {
 		gitEngine: GitEngine,
 		fromOid: string,
 		toOid: string,
+		telemetry: StartupTelemetry,
 	): Promise<GitChangedPaths> {
 		try {
 			return await gitEngine.changedMarkdownPaths(NOTES_ROOT, fromOid, toOid);
 		} catch (error) {
+			telemetry.trace("git.changed_paths_fallback", {
+				reason: "changed_markdown_paths_failed",
+				errorMessage: error instanceof Error ? error.message : String(error),
+			});
 			console.warn(
 				"[GitInitializationService] changedMarkdownPaths failed, falling back to full rebuild:",
 				error,

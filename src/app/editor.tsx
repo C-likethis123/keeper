@@ -1,4 +1,3 @@
-import NoteEditorView from "@/components/NoteEditorView";
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
@@ -6,8 +5,12 @@ import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useLoadNote } from "@/hooks/useLoadNote";
 import { useStyles } from "@/hooks/useStyles";
 import { useLocalSearchParams } from "expo-router";
-import React from "react";
+import React, { Suspense } from "react";
 import { StyleSheet, View } from "react-native";
+
+const LazyNoteEditorView = React.lazy(
+	() => import("@/components/NoteEditorView"),
+);
 
 export default function NoteEditorScreen() {
 	const params = useLocalSearchParams();
@@ -41,7 +44,9 @@ export default function NoteEditorScreen() {
 	return (
 		<View style={styles.screen}>
 			<View style={styles.content}>
-				<NoteEditorView note={note} />
+				<Suspense fallback={<Loader />}>
+					<LazyNoteEditorView note={note} />
+				</Suspense>
 			</View>
 		</View>
 	);

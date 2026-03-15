@@ -85,6 +85,7 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 **Current**: 5–7 seconds startup time
 **Issue**: Slow due to git operations and checkout requirements
 **Recent progress**: Startup orchestration now runs through a dedicated hook and runtime strategy/step modules instead of a single large effect in `RootLayout`.
+**Diagnostics**: Structured startup timing logs now emit under the `[StartupTrace]` prefix. See `docs/Startup telemetry.md` for how to read hydration, storage, git, and index timing fields.
 **Key files**: `src/app/_layout.tsx`, `src/hooks/useAppStartup.ts`, `src/services/startup/startupStrategies.ts`, `src/services/startup/startupSteps.ts`
 **Options**:
 1. Change branching strategy (reduce checkout overhead)
@@ -128,6 +129,10 @@ Move old journal entries out of active workspace.
 
 ### Embedded Video Player
 Watch YouTube (and other videos) while editing notes, without leaving the app.
+
+### Tabs
+- Being able to spawn new tabs
+- Being able to pin existing tabs
 
 **Layout**:
 - Mobile: video panel above the note editor (stacked vertically)

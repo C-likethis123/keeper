@@ -21,6 +21,7 @@ function toNote(item: NoteIndexItem): Note {
 export default function useNotes() {
 	const capabilities = useStorageStore((s) => s.capabilities);
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
+	const contentVersion = useStorageStore((s) => s.contentVersion);
 	const [query, setQuery] = useState("");
 	const [notes, setNotes] = useState<Note[]>([]);
 	const [hasMore, setHasMore] = useState(true);
@@ -30,6 +31,7 @@ export default function useNotes() {
 	const loadingRef = useRef(false);
 	const nextOffsetRef = useRef<number | undefined>(undefined);
 	const prevQueryRef = useRef(query);
+	const prevContentVersionRef = useRef(contentVersion);
 
 	const fetchNotes = useCallback(
 		async (append: boolean) => {
@@ -90,16 +92,20 @@ export default function useNotes() {
 
 		let cancelled = false;
 		const isQueryChange = prevQueryRef.current !== query;
+		const contentChanged = prevContentVersionRef.current !== contentVersion;
 		if (isQueryChange) {
 			if (!capabilities.canSearch) return;
 			prevQueryRef.current = query;
+		}
+		if (contentChanged) {
+			prevContentVersionRef.current = contentVersion;
 		}
 		const timeoutId = isQueryChange
 			? setTimeout(() => {
 					if (!cancelled) fetchNotes(false);
 				}, 300)
 			: undefined;
-		if (!isQueryChange) {
+		if (!isQueryChange || contentChanged) {
 			fetchNotes(false);
 		}
 		return () => {
@@ -111,6 +117,7 @@ export default function useNotes() {
 		query,
 		capabilities.canSearch,
 		capabilities.reason,
+		contentVersion,
 		initializationStatus,
 	]);
 
