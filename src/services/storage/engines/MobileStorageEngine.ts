@@ -10,8 +10,15 @@ import {
 } from "@/services/notes/notesIndexDb";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import type { Note } from "@/services/notes/types";
-import type { NoteFileEntry, StorageEngine, StorageInitializeResult } from "@/services/storage/engines/StorageEngine";
-import type { NoteIndexListResult, NoteIndexPersistenceItem } from "@/services/storage/types";
+import type {
+	NoteFileEntry,
+	StorageEngine,
+	StorageInitializeResult,
+} from "@/services/storage/engines/StorageEngine";
+import type {
+	NoteIndexListResult,
+	NoteIndexPersistenceItem,
+} from "@/services/storage/types";
 import { Directory, File } from "expo-file-system";
 
 function extractSummary(markdown: string, maxLines = 6): string {
@@ -86,6 +93,8 @@ export class MobileStorageEngine implements StorageEngine {
 				content: parsed.content,
 				lastUpdated: file.modificationTime ?? 0,
 				isPinned: parsed.isPinned,
+				noteType: parsed.noteType,
+				status: parsed.noteType === "todo" ? parsed.status : undefined,
 			};
 		} catch {
 			return null;
@@ -122,7 +131,10 @@ export class MobileStorageEngine implements StorageEngine {
 		}
 		const items = dir
 			.list()
-			.filter((entry): entry is File => entry instanceof File && entry.name.endsWith(".md"))
+			.filter(
+				(entry): entry is File =>
+					entry instanceof File && entry.name.endsWith(".md"),
+			)
 			.map((entry) => ({
 				id: entry.name.replace(/\.md$/, ""),
 				updatedAt: entry.modificationTime ?? 0,

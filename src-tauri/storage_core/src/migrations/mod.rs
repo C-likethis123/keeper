@@ -1,5 +1,6 @@
 mod v1_init;
 mod v2_add_fts;
+mod v3_add_note_metadata;
 
 use rusqlite::Connection;
 
@@ -16,6 +17,10 @@ const MIGRATIONS: &[Migration] = &[
     Migration {
         version: 2,
         apply: v2_add_fts::apply,
+    },
+    Migration {
+        version: 3,
+        apply: v3_add_note_metadata::apply,
     },
 ];
 

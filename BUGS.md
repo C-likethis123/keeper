@@ -17,7 +17,7 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 
 - Desktop editor still needs follow-up polish
 - Expo OTA (Over-The-Air) updates not working
-- Note organization and relevance ranking (in development)
+- Note organization and relevance work is in progress; note metadata plumbing exists, but migration validation and metadata-driven views are not complete yet
 
 ## Minor style issues
 

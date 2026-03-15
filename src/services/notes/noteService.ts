@@ -1,9 +1,9 @@
 import { GitService } from "@/services/git/gitService";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { getStorageEngine } from "@/services/storage/storageEngine";
-import type { Note } from "./types";
 import { useStorageStore } from "@/stores/storageStore";
 import type { ListNotesResult } from "./notesIndex";
+import type { Note } from "./types";
 
 // Persists notes to the file system
 
@@ -52,8 +52,10 @@ export class NoteService {
 			summary,
 			title,
 			isPinned: pinnedState,
-			updatedAt: saved.lastUpdated,
-		});
+				updatedAt: saved.lastUpdated,
+				noteType: saved.noteType,
+				status: saved.status,
+			});
 
 		GitService.queueChange(`${id}.md`, isNewNote ? "add" : "modify");
 		void GitService.commitBatch();
@@ -63,9 +65,9 @@ export class NoteService {
 
 	static async deleteNote(id: string): Promise<boolean> {
 		NoteService.assertCanWrite();
-			try {
-				const deleted = await getStorageEngine().deleteNote(id);
-				if (!deleted) return false;
+		try {
+			const deleted = await getStorageEngine().deleteNote(id);
+			if (!deleted) return false;
 			try {
 				await NotesIndexService.deleteNote(id);
 			} catch (err) {
@@ -111,10 +113,12 @@ export class NoteService {
 			items: page.map((note) => ({
 				noteId: note.id,
 				title: note.title,
-				summary: note.content,
-				updatedAt: note.lastUpdated,
-				isPinned: note.isPinned,
-			})),
+					summary: note.content,
+					updatedAt: note.lastUpdated,
+					isPinned: note.isPinned,
+					noteType: note.noteType,
+					status: note.status,
+				})),
 			cursor:
 				from + limit < filtered.length
 					? {

@@ -7,7 +7,7 @@ import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
 import { resetAppData } from "@/services/app/resetAppDataService";
 import { NoteService } from "@/services/notes/noteService";
-import type { Note } from "@/services/notes/types";
+import type { Note, NoteType } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -172,10 +172,7 @@ export default function Index() {
 			/>
 			<TouchableOpacity
 				activeOpacity={0.8}
-				style={[
-					styles.fab,
-					!capabilities.canWrite && { opacity: 0.5 },
-				]}
+				style={[styles.fab, !capabilities.canWrite && { opacity: 0.5 }]}
 				onPress={async () => {
 					if (!capabilities.canWrite) {
 						showToast(capabilities.reason ?? "Read-only mode");
@@ -187,6 +184,7 @@ export default function Index() {
 						content: "",
 						lastUpdated: Date.now(),
 						isPinned: false,
+						noteType: "note" as NoteType,
 					};
 					await NoteService.saveNote(newNote, true);
 					router.push(`/editor?id=${newNote.id}`);

@@ -1,6 +1,10 @@
 import type { Note } from "@/services/notes/types";
+import type {
+	NoteFileEntry,
+	StorageEngine,
+	StorageInitializeResult,
+} from "@/services/storage/engines/StorageEngine";
 import { getTauriInvoke } from "@/services/storage/runtime";
-import type { NoteFileEntry, StorageEngine, StorageInitializeResult } from "@/services/storage/engines/StorageEngine";
 import type { NotesIndexRebuildMetrics } from "@/services/notes/notesIndexDb";
 import type { NoteIndexListResult, NoteIndexPersistenceItem } from "@/services/storage/types";
 
@@ -10,6 +14,8 @@ type ReadNoteResult = {
 	content: string;
 	isPinned: boolean;
 	lastUpdated: number;
+	noteType: Note["noteType"];
+	status: Note["status"];
 };
 
 type TauriInvoke = NonNullable<ReturnType<typeof getTauriInvoke>>;
@@ -44,6 +50,8 @@ export class TauriStorageEngine implements StorageEngine {
 				title: note.title,
 				content: note.content,
 				isPinned: note.isPinned,
+				noteType: note.noteType,
+				status: note.status,
 			},
 		});
 		return {
@@ -72,6 +80,8 @@ export class TauriStorageEngine implements StorageEngine {
 				summary: item.summary,
 				isPinned: item.isPinned,
 				updatedAt: item.updatedAt,
+				noteType: item.noteType,
+				status: item.status,
 			},
 		});
 	}

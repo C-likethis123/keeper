@@ -10,9 +10,17 @@ type AutoSaveInput = {
 	title: string;
 	content: string;
 	isPinned: boolean;
+	noteType: Note["noteType"];
+	status?: Note["status"];
 };
 
-export function useAutoSave({ id, title, isPinned }: AutoSaveInput) {
+export function useAutoSave({
+	id,
+	title,
+	isPinned,
+	noteType,
+	status: noteStatus,
+}: AutoSaveInput) {
 	const canWrite = useStorageStore((s) => s.capabilities.canWrite);
 	const timerRef = useRef<number | null>(null);
 	const lastSavedRef = useRef<Note | null>(null);
@@ -31,12 +39,16 @@ export function useAutoSave({ id, title, isPinned }: AutoSaveInput) {
 			const previousTitle = lastSavedRef.current?.title;
 			const previousContent = lastSavedRef.current?.content;
 			const previousIsPinned = lastSavedRef.current?.isPinned;
+			const previousNoteType = lastSavedRef.current?.noteType;
+			const previousStatus = lastSavedRef.current?.status;
 			const content = getContent();
 			if (
 				id !== previousId ||
 				title !== previousTitle ||
 				content !== previousContent ||
-				isPinned !== previousIsPinned
+				isPinned !== previousIsPinned ||
+				noteType !== previousNoteType ||
+				noteStatus !== previousStatus
 			) {
 				setStatus("saving");
 				try {
@@ -46,6 +58,8 @@ export function useAutoSave({ id, title, isPinned }: AutoSaveInput) {
 						content,
 						isPinned,
 						lastUpdated: Date.now(),
+						noteType,
+						status: noteStatus,
 					});
 				} catch {
 					setStatus("idle");
@@ -57,6 +71,8 @@ export function useAutoSave({ id, title, isPinned }: AutoSaveInput) {
 					isPinned,
 					title: title.trim(),
 					lastUpdated: Date.now(),
+					noteType,
+					status: noteStatus,
 				};
 				setStatus("saved");
 				setTimeout(() => {
@@ -72,7 +88,7 @@ export function useAutoSave({ id, title, isPinned }: AutoSaveInput) {
 				clearInterval(timerRef.current);
 			}
 		};
-	}, [id, title, isPinned, canWrite, getContent]);
+	}, [id, title, isPinned, noteType, noteStatus, canWrite, getContent]);
 
 	return { status };
 }

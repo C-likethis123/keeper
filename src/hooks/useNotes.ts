@@ -1,9 +1,9 @@
 import { PAGE_SIZE } from "@/constants/pagination";
+import { NoteService } from "@/services/notes/noteService";
 import {
 	type NoteIndexItem,
 	NotesIndexService,
 } from "@/services/notes/notesIndex";
-import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,6 +15,8 @@ function toNote(item: NoteIndexItem): Note {
 		content: item.summary,
 		lastUpdated: item.updatedAt,
 		isPinned: item.isPinned,
+		noteType: item.noteType ?? "note",
+		status: item.status,
 	};
 }
 

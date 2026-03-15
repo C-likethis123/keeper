@@ -17,7 +17,13 @@ import React, {
 	useMemo,
 	useState,
 } from "react";
-import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import {
+	StyleSheet,
+	Text,
+	TextInput,
+	TouchableOpacity,
+	View,
+} from "react-native";
 import { EditorScrollProvider } from "./editor/EditorScrollContext";
 import Loader from "./shared/Loader";
 
@@ -33,42 +39,72 @@ const LazyHybridEditor = React.lazy(
 	})),
 );
 
+const NOTE_TYPE_OPTIONS = [
+	{ label: "Note", value: "note" },
+	{ label: "Journal", value: "journal" },
+	{ label: "Resource", value: "resource" },
+	{ label: "Todo", value: "todo" },
+] as const;
+
+const TODO_STATUS_OPTIONS = [
+	{ label: "Open", value: "open" },
+	{ label: "Doing", value: "doing" },
+	{ label: "Blocked", value: "blocked" },
+	{ label: "Done", value: "done" },
+] as const;
+
 export default function NoteEditorView({ note }: { note: Note }) {
 	const router = useRouter();
 	const theme = useExtendedTheme();
 	const id = note.id;
 	const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
 	const [title, setTitle] = useState<string>(note.title);
+	const [noteType, setNoteType] = useState<Note["noteType"]>(note.noteType);
+	const [todoStatus, setTodoStatus] = useState<Note["status"]>(
+		note.noteType === "todo" ? (note.status ?? "open") : undefined,
+	);
 	const capabilities = useStorageStore((s) => s.capabilities);
 	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
 	const getContent = useEditorState((s: EditorState) => s.getContent);
+
+	const buildNotePayload = useCallback(
+		(overrides?: Partial<Note>): Note => ({
+			id,
+			title,
+			content: getContent(),
+			isPinned,
+			lastUpdated: Date.now(),
+			noteType,
+			status: noteType === "todo" ? (todoStatus ?? "open") : undefined,
+			...overrides,
+		}),
+		[id, title, getContent, isPinned, noteType, todoStatus],
+	);
 
 	const togglePin = useCallback(async () => {
 		if (!capabilities.canWrite) {
 			showToast(capabilities.reason ?? "Read-only mode");
 			return;
 		}
-		const newNote = {
-			content: getContent(),
-			title,
-			isPinned: !isPinned,
-			lastUpdated: Date.now(),
-			id,
-		};
+		const newNote = buildNotePayload({ isPinned: !isPinned });
 		await NoteService.saveNote(newNote);
 		setIsPinned((prev) => !prev);
 	}, [
-		id,
-		title,
-		isPinned,
 		capabilities.canWrite,
 		capabilities.reason,
 		showToast,
-		getContent,
+		buildNotePayload,
+		isPinned,
 	]);
 
-	const { status } = useAutoSave(note);
+	const { status } = useAutoSave({
+		...note,
+		title,
+		isPinned,
+		noteType,
+		status: noteType === "todo" ? (todoStatus ?? "open") : undefined,
+	});
 	// biome-ignore lint/correctness/useExhaustiveDependencies: only load this when starting
 	useEffect(() => {
 		loadMarkdown(note.content);
@@ -88,13 +124,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 									router.back();
 									return;
 								}
-								await NoteService.saveNote({
-									id,
-									title,
-									content: getContent(),
-									isPinned: isPinned,
-									lastUpdated: Date.now(),
-								});
+								await NoteService.saveNote(buildNotePayload());
 								router.back();
 							}}
 							style={{ marginLeft: 8, marginRight: 8 }}
@@ -154,6 +184,77 @@ export default function NoteEditorView({ note }: { note: Note }) {
 					placeholder="Title"
 					placeholderTextColor={theme.custom.editor.placeholder}
 				/>
+				<View style={styles.metadataSection}>
+					<View style={styles.metadataGroup}>
+						<Text style={styles.metadataLabel}>Type</Text>
+						<View style={styles.optionRow}>
+							{NOTE_TYPE_OPTIONS.map((option) => {
+								const selected = noteType === option.value;
+								return (
+									<TouchableOpacity
+										key={option.value}
+										style={[
+											styles.optionChip,
+											selected && styles.optionChipSelected,
+										]}
+										onPress={() => {
+											if (!capabilities.canWrite) return;
+											setNoteType(option.value);
+											if (option.value === "todo") {
+												setTodoStatus((current) => current ?? "open");
+											} else {
+												setTodoStatus(undefined);
+											}
+										}}
+										disabled={!capabilities.canWrite}
+									>
+										<Text
+											style={[
+												styles.optionChipText,
+												selected && styles.optionChipTextSelected,
+											]}
+										>
+											{option.label}
+										</Text>
+									</TouchableOpacity>
+								);
+							})}
+						</View>
+					</View>
+					{noteType === "todo" ? (
+						<View style={styles.metadataGroup}>
+							<Text style={styles.metadataLabel}>Status</Text>
+							<View style={styles.optionRow}>
+								{TODO_STATUS_OPTIONS.map((option) => {
+									const selected = (todoStatus ?? "open") === option.value;
+									return (
+										<TouchableOpacity
+											key={option.value}
+											style={[
+												styles.optionChip,
+												selected && styles.optionChipSelected,
+											]}
+											onPress={() => {
+												if (!capabilities.canWrite) return;
+												setTodoStatus(option.value);
+											}}
+											disabled={!capabilities.canWrite}
+										>
+											<Text
+												style={[
+													styles.optionChipText,
+													selected && styles.optionChipTextSelected,
+												]}
+											>
+												{option.label}
+											</Text>
+										</TouchableOpacity>
+									);
+								})}
+							</View>
+						</View>
+					) : null}
+				</View>
 
 				<Suspense fallback={<Loader />}>
 					<LazyEditorToolbar disabled={!capabilities.canWrite} />
@@ -193,6 +294,44 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			borderBottomColor: theme.colors.border,
 			paddingVertical: 4,
 			color: theme.colors.text,
+		},
+		metadataSection: {
+			gap: 10,
+			marginBottom: 14,
+		},
+		metadataGroup: {
+			gap: 6,
+		},
+		metadataLabel: {
+			fontSize: 12,
+			fontWeight: "600",
+			color: theme.colors.textMuted,
+			textTransform: "uppercase",
+		},
+		optionRow: {
+			flexDirection: "row",
+			flexWrap: "wrap",
+			gap: 8,
+		},
+		optionChip: {
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+			paddingHorizontal: 10,
+			paddingVertical: 6,
+			backgroundColor: theme.colors.card,
+		},
+		optionChipSelected: {
+			backgroundColor: theme.colors.primary,
+			borderColor: theme.colors.primary,
+		},
+		optionChipText: {
+			fontSize: 13,
+			fontWeight: "600",
+			color: theme.colors.textMuted,
+		},
+		optionChipTextSelected: {
+			color: theme.colors.primaryContrast,
 		},
 	});
 }

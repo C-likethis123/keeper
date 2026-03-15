@@ -32,6 +32,8 @@ pub struct ReadNoteResult {
     pub content: String,
     pub is_pinned: bool,
     pub last_updated: i64,
+    pub note_type: String,
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -41,6 +43,8 @@ pub struct WriteNoteInput {
     pub title: String,
     pub content: String,
     pub is_pinned: bool,
+    pub note_type: String,
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -51,6 +55,8 @@ pub struct IndexUpsertInput {
     pub summary: String,
     pub is_pinned: bool,
     pub updated_at: i64,
+    pub note_type: String,
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,6 +75,8 @@ pub struct IndexItem {
     pub summary: String,
     pub is_pinned: bool,
     pub updated_at: i64,
+    pub note_type: String,
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -159,19 +167,24 @@ fn open_index_db(index_db_path: &Path) -> Result<Connection, String> {
 struct NoteFrontmatter {
     title: Option<String>,
     pinned: Option<bool>,
+    #[serde(rename = "type")]
+    note_type: Option<String>,
+    status: Option<String>,
 }
 
-fn parse_frontmatter(markdown: &str) -> (String, bool, String) {
+fn parse_frontmatter(markdown: &str) -> (String, bool, String, Option<String>, String) {
     let matter = Matter::<YAML>::new();
     let parsed = match matter.parse::<NoteFrontmatter>(markdown) {
         Ok(parsed) => parsed,
-        Err(_) => return (String::new(), false, markdown.to_string()),
+        Err(_) => return (String::new(), false, "note".to_string(), None, markdown.to_string()),
     };
 
     let frontmatter = parsed.data.unwrap_or_default();
     (
         frontmatter.title.unwrap_or_default(),
         frontmatter.pinned.unwrap_or(false),
+        frontmatter.note_type.unwrap_or_else(|| "note".to_string()),
+        frontmatter.status,
         parsed.content,
     )
 }
@@ -188,9 +201,22 @@ fn serialize_note(input: &WriteNoteInput) -> Result<String, String> {
     let id = stringify_yaml_string(input.id.trim())?;
 
     Ok(format!(
-        "{delimiter}\npinned: {}\ntitle: {title}\nid: {id}\n{close_delimiter}\n{}",
+        "{delimiter}\npinned: {}\ntitle: {title}\nid: {id}{note_type}{status}\n{close_delimiter}\n{}",
         if input.is_pinned { "true" } else { "false" },
-        input.content
+        input.content,
+        note_type = format!(
+            "\ntype: {}",
+            stringify_yaml_string(&input.note_type).unwrap_or_else(|_| "\"note\"".to_string())
+        ),
+        status = if input.note_type == "todo" {
+            format!(
+                "\nstatus: {}",
+                stringify_yaml_string(input.status.as_deref().unwrap_or("open"))
+                    .unwrap_or_else(|_| "\"open\"".to_string())
+            )
+        } else {
+            String::new()
+        }
     ))
 }
 
@@ -235,13 +261,15 @@ pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>
         return Ok(None);
     }
     let markdown = fs::read_to_string(&path).map_err(|e| format!("failed to read note: {e}"))?;
-    let (title, is_pinned, content) = parse_frontmatter(&markdown);
+    let (title, is_pinned, note_type, status, content) = parse_frontmatter(&markdown);
     Ok(Some(ReadNoteResult {
         id,
         title,
         content,
         is_pinned,
         last_updated: file_mtime_ms(&path),
+        note_type,
+        status,
     }))
 }
 
@@ -301,15 +329,22 @@ pub fn stat_note(notes_root: &Path, id: String) -> Result<Option<i64>, String> {
 
 pub fn index_upsert(index_db_path: &Path, input: IndexUpsertInput) -> Result<(), String> {
     let conn = open_index_db(index_db_path)?;
+    let status = if input.note_type == "todo" {
+        Some(input.status.as_deref().unwrap_or("open"))
+    } else {
+        None
+    };
     conn.execute(
         &format!(
-            "INSERT INTO {TABLE} (id, title, summary, is_pinned, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)
+            "INSERT INTO {TABLE} (id, title, summary, is_pinned, updated_at, note_type, status)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
              ON CONFLICT(id) DO UPDATE SET
                title = excluded.title,
                summary = excluded.summary,
                is_pinned = excluded.is_pinned,
-               updated_at = excluded.updated_at"
+               updated_at = excluded.updated_at,
+               note_type = excluded.note_type,
+               status = excluded.status"
         ),
         params![
             input.note_id,
@@ -317,6 +352,8 @@ pub fn index_upsert(index_db_path: &Path, input: IndexUpsertInput) -> Result<(),
             input.summary,
             if input.is_pinned { 1 } else { 0 },
             input.updated_at,
+            input.note_type,
+            status,
         ],
     )
     .map_err(|e| format!("index_upsert failed: {e}"))?;
@@ -347,7 +384,9 @@ pub fn index_list(index_db_path: &Path, input: IndexListInput) -> Result<IndexLi
                    note_index.title,
                    note_index.summary,
                    note_index.is_pinned,
-                   note_index.updated_at
+                   note_index.updated_at,
+                   note_index.note_type,
+                   note_index.status
                  FROM {TABLE}
                  JOIN {FTS_TABLE} ON {TABLE}.rowid = {FTS_TABLE}.rowid
                  WHERE {FTS_TABLE} MATCH ?1
@@ -367,6 +406,8 @@ pub fn index_list(index_db_path: &Path, input: IndexListInput) -> Result<IndexLi
                     summary: row.get(2)?,
                     is_pinned: row.get::<_, i64>(3)? != 0,
                     updated_at: row.get(4)?,
+                    note_type: row.get(5)?,
+                    status: row.get(6)?,
                 })
             })
             .map_err(|e| format!("index_list query failed: {e}"))?;
@@ -376,7 +417,7 @@ pub fn index_list(index_db_path: &Path, input: IndexListInput) -> Result<IndexLi
     } else {
         let mut stmt = conn
             .prepare(&format!(
-                "SELECT id, title, summary, is_pinned, updated_at
+                "SELECT id, title, summary, is_pinned, updated_at, note_type, status
                  FROM {TABLE}
                  ORDER BY is_pinned DESC, updated_at DESC
                  LIMIT ?1 OFFSET ?2"
@@ -390,6 +431,8 @@ pub fn index_list(index_db_path: &Path, input: IndexListInput) -> Result<IndexLi
                     summary: row.get(2)?,
                     is_pinned: row.get::<_, i64>(3)? != 0,
                     updated_at: row.get(4)?,
+                    note_type: row.get(5)?,
+                    status: row.get(6)?,
                 })
             })
             .map_err(|e| format!("index_list query failed: {e}"))?;
@@ -442,17 +485,24 @@ pub fn index_rebuild_from_disk(
         };
         let markdown =
             fs::read_to_string(&path).map_err(|e| format!("failed to read markdown: {e}"))?;
-        let (title, is_pinned, content) = parse_frontmatter(&markdown);
+        let (title, is_pinned, note_type, status, content) = parse_frontmatter(&markdown);
         let summary = extract_summary(&content, 6);
+        let status = if note_type == "todo" {
+            Some(status.as_deref().unwrap_or("open"))
+        } else {
+            None
+        };
         tx.execute(
             &format!(
-                "INSERT INTO {TABLE} (id, title, summary, is_pinned, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5)
+                "INSERT INTO {TABLE} (id, title, summary, is_pinned, updated_at, note_type, status)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
                  ON CONFLICT(id) DO UPDATE SET
                    title = excluded.title,
                    summary = excluded.summary,
                    is_pinned = excluded.is_pinned,
-                   updated_at = excluded.updated_at"
+                   updated_at = excluded.updated_at,
+                   note_type = excluded.note_type,
+                   status = excluded.status"
             ),
             params![
                 id,
@@ -460,6 +510,8 @@ pub fn index_rebuild_from_disk(
                 summary,
                 if is_pinned { 1 } else { 0 },
                 file_mtime_ms(&path),
+                note_type,
+                status,
             ],
         )
         .map_err(|e| format!("failed to insert note index row: {e}"))?;
@@ -484,30 +536,36 @@ mod tests {
     #[test]
     fn parse_frontmatter_unescapes_quoted_titles() {
         let markdown = "---\ntitle: \"He said \\\"hi\\\"\"\npinned: true\n---\nHello";
-        let (title, is_pinned, content) = parse_frontmatter(markdown);
+        let (title, is_pinned, note_type, status, content) = parse_frontmatter(markdown);
 
         assert_eq!(title, "He said \"hi\"");
         assert!(is_pinned);
+        assert_eq!(note_type, "note");
+        assert_eq!(status, None);
         assert_eq!(content, "Hello");
     }
 
     #[test]
     fn parse_frontmatter_falls_back_for_plain_markdown() {
         let markdown = "# Heading\n\nBody";
-        let (title, is_pinned, content) = parse_frontmatter(markdown);
+        let (title, is_pinned, note_type, status, content) = parse_frontmatter(markdown);
 
         assert_eq!(title, "");
         assert!(!is_pinned);
+        assert_eq!(note_type, "note");
+        assert_eq!(status, None);
         assert_eq!(content, markdown);
     }
 
     #[test]
     fn parse_frontmatter_falls_back_for_invalid_yaml() {
         let markdown = "---\ntitle: \"unterminated\n---\nBody";
-        let (title, is_pinned, content) = parse_frontmatter(markdown);
+        let (title, is_pinned, note_type, status, content) = parse_frontmatter(markdown);
 
         assert_eq!(title, "");
         assert!(!is_pinned);
+        assert_eq!(note_type, "note");
+        assert_eq!(status, None);
         assert_eq!(content, markdown);
     }
 
@@ -518,12 +576,16 @@ mod tests {
             title: "He said \"hi\"".to_string(),
             content: "# Heading\n- item".to_string(),
             is_pinned: true,
+            note_type: "todo".to_string(),
+            status: Some("open".to_string()),
         })
         .expect("note should serialize");
 
-        let (title, is_pinned, content) = parse_frontmatter(&markdown);
+        let (title, is_pinned, note_type, status, content) = parse_frontmatter(&markdown);
         assert_eq!(title, "He said \"hi\"");
         assert!(is_pinned);
+        assert_eq!(note_type, "todo");
+        assert_eq!(status.as_deref(), Some("open"));
         assert_eq!(content, "# Heading\n- item");
         assert!(markdown.contains("\nid: \"note-1\"\n"));
     }

@@ -1,5 +1,9 @@
 import { MIGRATIONS } from "@/migrations/migrations";
-import { parseFrontmatter, type ParsedFrontmatter } from "@/services/notes/frontmatter";
+import {
+	type ParsedFrontmatter,
+	parseFrontmatter,
+} from "@/services/notes/frontmatter";
+import type { NoteStatus, NoteType } from "@/services/notes/types";
 import { Directory, File } from "expo-file-system";
 import type { SQLiteDatabase } from "expo-sqlite";
 import * as SQLite from "expo-sqlite";
@@ -11,6 +15,8 @@ export interface NoteIndexItem {
 	title: string;
 	isPinned: boolean;
 	updatedAt: number;
+	noteType: NoteType;
+	status?: NoteStatus;
 }
 
 export function extractSummary(markdown: string, maxLines = 6): string {
@@ -39,7 +45,17 @@ export function extractSummary(markdown: string, maxLines = 6): string {
 const DB_NAME = "notes-index.db";
 const TABLE = "note_index";
 const FTS_TABLE = "note_index_fts";
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
+
+type NoteIndexRow = {
+	id: string;
+	title: string;
+	summary: string;
+	is_pinned: number;
+	updated_at: number;
+	note_type: NoteType | null;
+	status: NoteStatus | null;
+};
 
 let db: SQLite.SQLiteDatabase | null = null;
 
@@ -92,18 +108,30 @@ export async function notesIndexDbHasRows(): Promise<boolean> {
 export async function notesIndexDbUpsert(item: NoteIndexItem): Promise<void> {
 	const database = await getDb();
 	await database.runAsync(
-		`INSERT INTO ${TABLE} (id, title, summary, is_pinned, updated_at)
-		 VALUES (?, ?, ?, ?, ?)
+		`INSERT INTO ${TABLE} (
+			id,
+			title,
+			summary,
+			is_pinned,
+			updated_at,
+			note_type,
+			status
+		)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 		   title = excluded.title,
 		   summary = excluded.summary,
 		   is_pinned = excluded.is_pinned,
-		   updated_at = excluded.updated_at`,
+		   updated_at = excluded.updated_at,
+		   note_type = excluded.note_type,
+		   status = excluded.status`,
 		item.noteId,
 		item.title ?? "",
 		item.summary,
 		item.isPinned ? 1 : 0,
 		item.updatedAt,
+		item.noteType,
+		item.noteType === "todo" ? (item.status ?? "open") : null,
 	);
 }
 
@@ -126,7 +154,13 @@ export async function notesIndexDbListAll(
 
 		const sql = `
 			SELECT
-				*,
+				${TABLE}.id,
+				${TABLE}.title,
+				${TABLE}.summary,
+				${TABLE}.is_pinned,
+				${TABLE}.updated_at,
+				${TABLE}.note_type,
+				${TABLE}.status,
 				bm25(${FTS_TABLE}, 1.0, 0.2) AS score
 			FROM ${TABLE}
 			JOIN ${FTS_TABLE} ON ${TABLE}.rowid = ${FTS_TABLE}.rowid
@@ -138,13 +172,12 @@ export async function notesIndexDbListAll(
 			LIMIT ? OFFSET ?
 		`;
 
-		const rows = await database.getAllAsync<{
-			id: string;
-			title: string;
-			summary: string;
-			is_pinned: number;
-			updated_at: number;
-		}>(sql, ftsQuery, limit + 1, offsetVal);
+		const rows = await database.getAllAsync<NoteIndexRow>(
+			sql,
+			ftsQuery,
+			limit + 1,
+			offsetVal,
+		);
 
 		const items: NoteIndexItem[] = rows.slice(0, limit).map((row) => ({
 			noteId: row.id,
@@ -152,6 +185,8 @@ export async function notesIndexDbListAll(
 			summary: row.summary,
 			isPinned: row.is_pinned !== 0,
 			updatedAt: row.updated_at,
+			noteType: row.note_type ?? "note",
+			status: row.status ?? undefined,
 		}));
 		const nextCursor =
 			rows.length > limit ? { offset: offsetVal + limit } : undefined;
@@ -159,17 +194,23 @@ export async function notesIndexDbListAll(
 	}
 
 	const sql = `
-		SELECT * FROM ${TABLE}
+		SELECT
+			id,
+			title,
+			summary,
+			is_pinned,
+			updated_at,
+			note_type,
+			status
+		FROM ${TABLE}
 		ORDER BY is_pinned DESC, updated_at DESC
 		LIMIT ? OFFSET ?
 	`;
-	const rows = await database.getAllAsync<{
-		id: string;
-		title: string;
-		summary: string;
-		is_pinned: number;
-		updated_at: number;
-	}>(sql, limit + 1, offsetVal);
+	const rows = await database.getAllAsync<NoteIndexRow>(
+		sql,
+		limit + 1,
+		offsetVal,
+	);
 
 	const items: NoteIndexItem[] = rows.slice(0, limit).map((row) => ({
 		noteId: row.id,
@@ -177,6 +218,8 @@ export async function notesIndexDbListAll(
 		summary: row.summary,
 		isPinned: row.is_pinned !== 0,
 		updatedAt: row.updated_at,
+		noteType: row.note_type ?? "note",
+		status: row.status ?? undefined,
 	}));
 	const nextCursor =
 		rows.length > limit ? { offset: offsetVal + limit } : undefined;
@@ -196,6 +239,8 @@ interface RebuildRow {
 	summary: string;
 	isPinned: number;
 	updatedAt: number;
+	noteType: NoteType | null;
+	status: NoteStatus | null;
 }
 
 export interface NotesIndexRebuildMetrics {
@@ -245,7 +290,9 @@ async function mapWithConcurrency<T, R>(
 }
 
 function getInsertPlaceholders(count: number): string {
-	return Array.from({ length: count }, () => "(?, ?, ?, ?, ?)").join(", ");
+	return Array.from({ length: count }, () => "(?, ?, ?, ?, ?, ?, ?)").join(
+		", ",
+	);
 }
 
 function parseFrontmatterForIndex(markdown: string): ParsedFrontmatter {
@@ -258,7 +305,9 @@ async function dropFtsTriggers(database: SQLite.SQLiteDatabase): Promise<void> {
 	await database.execAsync("DROP TRIGGER IF EXISTS note_index_au");
 }
 
-async function createFtsTriggers(database: SQLite.SQLiteDatabase): Promise<void> {
+async function createFtsTriggers(
+	database: SQLite.SQLiteDatabase,
+): Promise<void> {
 	await database.execAsync(`
 		CREATE TRIGGER IF NOT EXISTS note_index_ai AFTER INSERT ON note_index BEGIN
 			INSERT INTO note_index_fts(rowid, title, summary)
@@ -290,15 +339,18 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 	const database = await getDb();
 
 	// Read all file data before opening the transaction
-	const markdownPaths = [...changedPaths.added, ...changedPaths.modified].filter(
-		(path) => path.endsWith(".md"),
-	);
+	const markdownPaths = [
+		...changedPaths.added,
+		...changedPaths.modified,
+	].filter((path) => path.endsWith(".md"));
 	const upsertItems: {
 		id: string;
 		title: string;
 		summary: string;
 		isPinned: number;
 		mtime: number;
+		noteType: NoteType | null;
+		status: NoteStatus | null;
 	}[] = [];
 	const readParseStart = performance.now();
 	for (
@@ -323,6 +375,9 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 					summary: extractSummary(parsed.content),
 					isPinned: parsed.isPinned ? 1 : 0,
 					mtime: file.modificationTime ?? 0,
+					noteType: parsed.noteType ?? null,
+					status:
+						parsed.noteType === "todo" ? (parsed.status ?? "open") : null,
 				};
 			},
 		);
@@ -340,22 +395,36 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 	await database.withTransactionAsync(async () => {
 		for (let i = 0; i < upsertItems.length; i += SYNC_BATCH_SIZE) {
 			const batch = upsertItems.slice(i, i + SYNC_BATCH_SIZE);
-			const placeholders = batch.map(() => "(?, ?, ?, ?, ?)").join(", ");
+			const placeholders = batch
+				.map(() => "(?, ?, ?, ?, ?, ?, ?)")
+				.join(", ");
 			const values = batch.flatMap((item) => [
 				item.id,
 				item.title,
 				item.summary,
-				item.isPinned,
-				item.mtime,
-			]);
+					item.isPinned,
+					item.mtime,
+					item.noteType,
+					item.status,
+				]);
 			await database.runAsync(
-				`INSERT INTO ${TABLE} (id, title, summary, is_pinned, updated_at)
+				`INSERT INTO ${TABLE} (
+					id,
+					title,
+					summary,
+					is_pinned,
+					updated_at,
+					note_type,
+					status
+				)
 				 VALUES ${placeholders}
 				 ON CONFLICT(id) DO UPDATE SET
 				   title = excluded.title,
 				   summary = excluded.summary,
 				   is_pinned = excluded.is_pinned,
-				   updated_at = excluded.updated_at`,
+				   updated_at = excluded.updated_at,
+				   note_type = excluded.note_type,
+				   status = excluded.status`,
 				...values,
 			);
 		}
@@ -432,6 +501,9 @@ export async function notesIndexDbRebuildFromDisk(): Promise<NotesIndexRebuildMe
 					summary: extractSummary(parsed.content),
 					isPinned: parsed.isPinned ? 1 : 0,
 					updatedAt: entry.modificationTime ?? 0,
+					noteType: parsed.noteType ?? null,
+					status:
+						parsed.noteType === "todo" ? (parsed.status ?? "open") : null,
 				};
 			},
 		);
@@ -456,9 +528,19 @@ export async function notesIndexDbRebuildFromDisk(): Promise<NotesIndexRebuildMe
 				row.summary,
 				row.isPinned,
 				row.updatedAt,
+				row.noteType,
+				row.status,
 			]);
 			await database.runAsync(
-				`INSERT INTO ${TABLE} (id, title, summary, is_pinned, updated_at)
+				`INSERT INTO ${TABLE} (
+					id,
+					title,
+					summary,
+					is_pinned,
+					updated_at,
+					note_type,
+					status
+				)
 				 VALUES ${placeholders}`,
 				...values,
 			);

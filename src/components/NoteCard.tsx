@@ -5,6 +5,17 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+function formatNoteType(note: Note): string | null {
+	if (!note.noteType || note.noteType === "note") return null;
+	if (note.noteType === "todo") {
+		if (note.status === "done") return "TODO DONE";
+		if (note.status === "doing") return "TODO DOING";
+		if (note.status === "blocked") return "TODO BLOCKED";
+		return "TODO";
+	}
+	return note.noteType.toUpperCase();
+}
+
 export default function NoteCard({
 	note,
 	onDelete,
@@ -17,6 +28,7 @@ export default function NoteCard({
 	const router = useRouter();
 	const theme = useExtendedTheme();
 	const styles = useStyles(createStyles);
+	const typeLabel = formatNoteType(note);
 
 	const openNote = () => router.push(`/editor?id=${note.id}`);
 
@@ -53,6 +65,16 @@ export default function NoteCard({
 			<Text style={styles.content} numberOfLines={3}>
 				{note.content}
 			</Text>
+
+			{typeLabel && (
+				<View style={styles.badges}>
+					{typeLabel ? (
+						<View style={styles.badge}>
+							<Text style={styles.badgeText}>{typeLabel}</Text>
+						</View>
+					) : null}
+				</View>
+			)}
 
 			<View style={styles.footer}>
 				<Text style={styles.date}>
@@ -107,6 +129,25 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			marginTop: 6,
 			color: theme.colors.textMuted,
 			flexGrow: 1,
+		},
+		badges: {
+			flexDirection: "row",
+			gap: 6,
+			marginTop: 10,
+			flexWrap: "wrap",
+		},
+		badge: {
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+			paddingHorizontal: 8,
+			paddingVertical: 3,
+			backgroundColor: theme.colors.background,
+		},
+		badgeText: {
+			fontSize: 11,
+			fontWeight: "600",
+			color: theme.colors.textMuted,
 		},
 		footer: {
 			marginTop: 8,

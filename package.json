@@ -13,6 +13,7 @@
 		"build:mobile-git": "./scripts/build-mobile-git.sh",
 		"desktop": "tauri dev",
 		"build:desktop": "tauri build",
+		"migrate:note-metadata": "node ./scripts/update-note-metadata.mjs",
 		"lint": "biome lint .",
 		"lint:fix": "biome check . --apply",
 		"knip": "knip"
