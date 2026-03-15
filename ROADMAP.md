@@ -4,11 +4,11 @@ This is the central planning document for Keeper. It outlines critical issues, d
 
 ## Critical Issues (P1)
 
-### [P1] Desktop Hydration Bug
-**Impact**: Desktop app can permanently load editor from wrong backend
-**Root cause**: In `_layout.tsx` (line 98), Tauri renders before `StorageInitializationService` finishes. `useLoadNote.ts` (line 10) only loads once per id. If app restores editor route on startup, NoteService.loadNote() runs against default expo-opfs backend, returns null, and never retries after storage init.
-**Affected files**: `app/_layout.tsx`, `hooks/useLoadNote.ts`, `services/notes/`
-**Fix**: Ensure storage backend selection completes before editor load, or implement retry logic on storage init completion.
+No currently confirmed P1 issues.
+
+### Recently resolved
+**Desktop hydration bug**: Fixed. Desktop now hydrates immediately on Tauri while note-loading hooks wait for storage initialization state before reading from disk, so restored editor routes no longer get stuck on the wrong backend.
+**Key files**: `src/app/_layout.tsx`, `src/hooks/useLoadNote.ts`, `src/hooks/useNotes.ts`, `src/stores/storageStore.ts`
 
 ---
 
@@ -91,6 +91,12 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 ### App Updates
 **Issue**: Expo OTA (Over-The-Air) updates not working
 **Impact**: Desktop/mobile app updates require full rebuild
+
+### Wikilink Create Flow ✅
+**Status**: Implemented in this workspace.
+**Current**: Wikilink autocomplete now offers a create action for unmatched titles, inserts the `[[Title]]` link, and creates a stub note so the destination exists immediately.
+**Affected files**: `src/components/editor/wikilinks/WikiLinkContext.tsx`, `src/components/editor/wikilinks/WikiLinkModal.tsx`, `src/components/editor/wikilinks/WikiLinkOverlay.tsx`
+**Follow-up**: Validate the new create flow UX on device and keep the dropdown result model flexible for future wiki link actions.
 
 ### Mobile Native Git Bridge
 **Status**: Implemented via the local Expo module in `modules/keeper-git`

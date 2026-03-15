@@ -66,12 +66,12 @@ export function WikiLinkModal() {
 					<TextInput
 						style={styles.input}
 						onSubmitEditing={handleSubmitEditing}
-						placeholder="Search notes..."
+						placeholder="Search or create notes..."
 						placeholderTextColor={theme.custom.editor.placeholder}
 						onChangeText={(text) => {
-						setInputValue(text);
-						wikiLinks.handleQueryUpdate(text);
-					}}
+							setInputValue(text);
+							wikiLinks.handleQueryUpdate(text);
+						}}
 						onKeyPress={handleKeyPress}
 						autoFocus
 						autoCapitalize="none"

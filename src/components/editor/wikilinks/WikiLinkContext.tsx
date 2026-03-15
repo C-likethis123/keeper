@@ -1,7 +1,9 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
 import { NotesIndexService } from "@/services/notes/notesIndex";
+import { NoteService } from "@/services/notes/noteService";
 import { useEditorState } from "@/stores/editorStore";
+import { nanoid } from "nanoid";
 import type React from "react";
 import {
 	createContext,
@@ -13,8 +15,15 @@ import {
 	useState,
 } from "react";
 
+export interface WikiLinkResult {
+	id: string;
+	type: "existing" | "create";
+	title: string;
+	noteId?: string;
+}
+
 interface WikiLinkContextValue {
-	results: string[];
+	results: WikiLinkResult[];
 	selectedIndex: number;
 	isActive: boolean;
 	isLoading: boolean;
@@ -22,20 +31,24 @@ interface WikiLinkContextValue {
 	handleTriggerStart: (blockIndex: number, triggerStartOffset: number) => void;
 	handleQueryUpdate: (query: string) => void;
 	handleCancel: () => void;
-	handleSelect: (link: string) => void;
+	handleSelect: (result: WikiLinkResult) => void;
 
 	selectNext: () => void;
 	selectPrevious: () => void;
-	getSelectedResult: () => string | null;
+	getSelectedResult: () => WikiLinkResult | null;
 }
 
 const WikiLinkContext = createContext<WikiLinkContextValue | null>(null);
+
+function normalizeTitle(title: string): string {
+	return title.trim().toLocaleLowerCase();
+}
 
 export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 	const [isActive, setIsActive] = useState<boolean>(false);
 	const [query, setQuery] = useState<string>("");
 	const debouncedQuery = useDebounce(query, 300);
-	const [results, setResults] = useState<string[]>([]);
+	const [results, setResults] = useState<WikiLinkResult[]>([]);
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const blockIndexRef = useRef<number>(0);
@@ -95,6 +108,21 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 		endSession();
 	}, [isActive, endSession, updateBlockContent]);
 
+	const insertWikiLink = useCallback(
+		(title: string) => {
+			const doc = useEditorState.getState().document;
+			const block = doc.blocks[blockIndexRef.current];
+			if (!block) return;
+
+			const start = triggerStartOffsetRef.current;
+			const newText = `${block.content.substring(0, start)}[[${title}]]${block.content.substring(start + 2)}`;
+			const cursorAfter = start + title.length + 4;
+
+			updateBlockContent(blockIndexRef.current, newText, cursorAfter);
+		},
+		[updateBlockContent],
+	);
+
 	useEffect(() => {
 		if (!isActive) {
 			return;
@@ -109,17 +137,37 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 					PAGE_SIZE,
 					0,
 				);
-				const titles: string[] = [];
+				const nextResults: WikiLinkResult[] = [];
 				const seenTitles = new Set<string>();
+				const normalizedQuery = normalizeTitle(debouncedQuery);
+				let hasExactMatch = false;
 
 				for (const item of result.items) {
-					if (item.title && !seenTitles.has(item.title)) {
-						seenTitles.add(item.title);
-						titles.push(item.title);
+					const title = item.title?.trim();
+					if (!title) continue;
+					const normalizedTitle = normalizeTitle(title);
+					if (seenTitles.has(normalizedTitle)) continue;
+					seenTitles.add(normalizedTitle);
+					if (normalizedTitle === normalizedQuery) {
+						hasExactMatch = true;
 					}
+					nextResults.push({
+						id: item.noteId,
+						type: "existing",
+						title,
+						noteId: item.noteId,
+					});
 				}
 
-				setResults(titles);
+				if (normalizedQuery.length > 0 && !hasExactMatch) {
+					nextResults.unshift({
+						id: `create:${normalizedQuery}`,
+						type: "create",
+						title: debouncedQuery.trim(),
+					});
+				}
+
+				setResults(nextResults);
 				setSelectedIndex(0);
 			} catch (error) {
 				console.warn("Failed to search notes:", error);
@@ -135,21 +183,28 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 	const handleQueryUpdate = setQuery;
 
 	const handleSelect = useCallback(
-		(link: string) => {
+		async (result: WikiLinkResult) => {
 			if (!isActive) return;
-
-			const doc = useEditorState.getState().document;
-			const block = doc.blocks[blockIndexRef.current];
-			if (!block) return;
-
-			const start = triggerStartOffsetRef.current;
-			const newText = `${block.content.substring(0, start)}[[${link}]]${block.content.substring(start + 2)}`;
-			const cursorAfter = start + link.length + 4; // after [[link]]
-
-			updateBlockContent(blockIndexRef.current, newText, cursorAfter);
+			insertWikiLink(result.title);
+			if (result.type === "create") {
+				try {
+					await NoteService.saveNote(
+						{
+							id: nanoid(),
+							title: result.title,
+							content: "",
+							lastUpdated: Date.now(),
+							isPinned: false,
+						},
+						true,
+					);
+				} catch (error) {
+					console.warn("Failed to create note from wiki link:", error);
+				}
+			}
 			endSession();
 		},
-		[isActive, endSession, updateBlockContent],
+		[isActive, endSession, insertWikiLink],
 	);
 
 	const selectNext = useCallback(() => {
@@ -162,7 +217,7 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 		setSelectedIndex((prev) => (prev - 1 + results.length) % results.length);
 	}, [results.length]);
 
-	const getSelectedResult = useCallback((): string | null => {
+	const getSelectedResult = useCallback((): WikiLinkResult | null => {
 		if (results.length === 0) return null;
 		return results[selectedIndex];
 	}, [results, selectedIndex]);

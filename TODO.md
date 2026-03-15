@@ -8,7 +8,8 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **Phase 2**: Image blocks (desktop-focused) complete
 - **Phase 3**: Editor keyboard shortcut foundation (desktop + web) complete
 - **Next keyboard work**: soft line breaks, checkbox toggle shortcut, better code-block vertical navigation, formatting shortcuts, app-level shortcuts
-- **P1 Bug**: Desktop hydration can load from wrong backend
+- **Critical issues**: No currently confirmed P1 items; desktop hydration was fixed in the storage-init follow-up
+- **Wikilinks**: create-from-`[[...]]` flow is implemented in this workspace; next checks are UX polish and device validation
 - **Native bridge**: Android and iOS now use the local Expo module in `modules/keeper-git`
 
 For full context on each item, see `ROADMAP.md`.

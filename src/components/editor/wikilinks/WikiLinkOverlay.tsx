@@ -2,12 +2,13 @@ import Loader from "@/components/shared/Loader";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import type { WikiLinkResult } from "./WikiLinkContext";
 
 interface WikiLinkOverlayProps {
-	results: string[];
+	results: WikiLinkResult[];
 	selectedIndex: number;
 	isLoading?: boolean;
-	onSelect: (title: string) => void;
+	onSelect: (result: WikiLinkResult) => void;
 }
 
 const MAX_HEIGHT = 200;
@@ -39,10 +40,11 @@ export function WikiLinkOverlay({
 				>
 					{results.map((item, index) => {
 						const isSelected = index === selectedIndex;
+						const label =
+							item.type === "create" ? `Create "${item.title}"` : item.title;
 						return (
 							<Pressable
-								// biome-ignore lint/suspicious/noArrayIndexKey: results list order stable; index needed for duplicate items
-								key={`${item}-${index}`}
+								key={item.id}
 								onPress={() => onSelect(item)}
 								style={({ pressed }) => [
 									styles.item,
@@ -56,7 +58,7 @@ export function WikiLinkOverlay({
 										isSelected && styles.itemTextSelected,
 									]}
 								>
-									{item}
+									{label}
 								</Text>
 							</Pressable>
 						);
