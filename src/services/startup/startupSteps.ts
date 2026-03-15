@@ -2,6 +2,7 @@ import { GitInitializationService } from "@/services/git/gitInitializationServic
 import type { GitRuntimeSupport } from "@/services/git/runtime";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { StorageInitializationService } from "@/services/storage/storageInitializationService";
+import { useStorageStore } from "@/stores/storageStore";
 import type { StartupTelemetry } from "./startupTelemetry";
 
 type ShowToast = (message: string, duration?: number) => void;
@@ -29,6 +30,7 @@ export async function initializeStorageStep(
 		telemetry.stepCompleted("storage.index_rebuild_after_init", rebuildStart, {
 			noteCount: metrics.noteCount,
 		});
+		useStorageStore.getState().bumpContentVersion();
 	}
 	if (!result.success && result.readOnlyReason) {
 		telemetry.trace("storage.read_only_mode", {
@@ -76,6 +78,9 @@ export async function initializeGitStep({
 					noteCount: metrics.noteCount,
 				});
 				console.log("[App] notesIndexDbRebuildFromDisk", metrics);
+				useStorageStore.getState().bumpContentVersion();
+			} else if (result.metrics.didDbSync) {
+				useStorageStore.getState().bumpContentVersion();
 			}
 			return;
 		}

@@ -61,13 +61,17 @@ export default function Index() {
 			return;
 		}
 		setIsResetting(true);
+		showToast("Clearing app data...", 1500);
 		try {
 			await resetAppData();
 			await handleRefresh();
 			showToast("App data cleared");
 		} catch (error) {
 			console.warn("Failed to reset app data:", error);
-			showToast("Failed to clear app data");
+			showToast(
+				error instanceof Error ? error.message : "Failed to clear app data",
+				6000,
+			);
 		} finally {
 			setIsResetting(false);
 		}
@@ -81,10 +85,7 @@ export default function Index() {
 		const message =
 			"This clears local notes, attachments, search data, and stored app keys. Git-backed notes may sync back from remote afterward.";
 		if (Platform.OS === "web") {
-			const confirmed = globalThis.confirm?.(`${title}\n\n${message}`) ?? false;
-			if (confirmed) {
-				void runReset();
-			}
+			void runReset();
 			return;
 		}
 		Alert.alert(
