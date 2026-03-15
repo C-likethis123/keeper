@@ -5,11 +5,14 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
+import { resetAppData } from "@/services/app/resetAppDataService";
+import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, router, useFocusEffect } from "expo-router";
+import { nanoid } from "nanoid";
 import React, { useCallback } from "react";
 import {
 	Alert,
@@ -42,9 +45,7 @@ export default function Index() {
 				return;
 			}
 			try {
-				const success = await import("@/services/notes/noteService").then(
-					(module) => module.NoteService.deleteNote(note.id),
-				);
+				const success = await NoteService.deleteNote(note.id);
 				if (!success) throw new Error("Failed to delete note");
 				showToast(`Deleted "${note.title}"`);
 			} catch (e) {
@@ -62,9 +63,7 @@ export default function Index() {
 		setIsResetting(true);
 		showToast("Clearing app data...", 1500);
 		try {
-			await import("@/services/app/resetAppDataService").then((module) =>
-				module.resetAppData(),
-			);
+			await resetAppData();
 			await handleRefresh();
 			showToast("App data cleared");
 		} catch (error) {
@@ -113,9 +112,7 @@ export default function Index() {
 			showToast(capabilities.reason ?? "Read-only mode");
 			return;
 		}
-		await import("@/services/notes/noteService").then((module) =>
-			module.NoteService.saveNote(updated),
-		);
+		await NoteService.saveNote(updated);
 	}, [capabilities.canWrite, capabilities.reason, showToast]);
 
 	const styles = useStyles(createStyles);
@@ -184,10 +181,6 @@ export default function Index() {
 						showToast(capabilities.reason ?? "Read-only mode");
 						return;
 					}
-					const [{ nanoid }, { NoteService }] = await Promise.all([
-						import("nanoid"),
-						import("@/services/notes/noteService"),
-					]);
 					const newNote = {
 						id: nanoid(),
 						title: "",
