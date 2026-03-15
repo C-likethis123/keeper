@@ -84,6 +84,8 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 ### App Startup Performance
 **Current**: 5–7 seconds startup time
 **Issue**: Slow due to git operations and checkout requirements
+**Recent progress**: Startup orchestration now runs through a dedicated hook and runtime strategy/step modules instead of a single large effect in `RootLayout`.
+**Key files**: `src/app/_layout.tsx`, `src/hooks/useAppStartup.ts`, `src/services/startup/startupStrategies.ts`, `src/services/startup/startupSteps.ts`
 **Options**:
 1. Change branching strategy (reduce checkout overhead)
 2. Switch to lib2git (alternative git implementation)
