@@ -262,6 +262,11 @@ export const useEditorState = create<EditorState>()((set, get) => {
 			});
 		},
 
+		resetState: () => {
+			history.clear();
+			set({ ...initialEditorStateSlice });
+		},
+
 		toMarkdown: () => documentToMarkdown(get().document),
 		getContent: () => documentToMarkdown(get().document),
 

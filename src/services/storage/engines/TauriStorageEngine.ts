@@ -29,6 +29,10 @@ export class TauriStorageEngine implements StorageEngine {
 		return this.invoke<StorageInitializeResult>("storage_initialize");
 	}
 
+	async resetAllData(): Promise<void> {
+		await this.invoke("storage_reset_all_data");
+	}
+
 	async loadNote(id: string): Promise<Note | null> {
 		return this.invoke<ReadNoteResult | null>("read_note", { id });
 	}

@@ -5,15 +5,22 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
+import { resetAppData } from "@/services/app/resetAppDataService";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
-import { router, useFocusEffect } from "expo-router";
+import { Stack, router, useFocusEffect } from "expo-router";
 import { nanoid } from "nanoid";
 import React, { useCallback } from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import {
+	Alert,
+	Platform,
+	StyleSheet,
+	TouchableOpacity,
+	View,
+} from "react-native";
 
 export default function Index() {
 	const {
@@ -29,6 +36,7 @@ export default function Index() {
 	const theme = useExtendedTheme();
 	const showToast = useToastStore((state) => state.showToast);
 	const capabilities = useStorageStore((s) => s.capabilities);
+	const [isResetting, setIsResetting] = React.useState(false);
 
 	const handleDeleteNote = useCallback(
 		async (note: Note) => {
@@ -47,6 +55,56 @@ export default function Index() {
 		},
 		[showToast, capabilities.canWrite, capabilities.reason],
 	);
+
+	const runReset = useCallback(async () => {
+		if (isResetting) {
+			return;
+		}
+		setIsResetting(true);
+		try {
+			await resetAppData();
+			await handleRefresh();
+			showToast("App data cleared");
+		} catch (error) {
+			console.warn("Failed to reset app data:", error);
+			showToast("Failed to clear app data");
+		} finally {
+			setIsResetting(false);
+		}
+	}, [handleRefresh, isResetting, showToast]);
+
+	const confirmReset = useCallback(() => {
+		if (isResetting) {
+			return;
+		}
+		const title = "Reset app data?";
+		const message =
+			"This clears local notes, attachments, search data, and stored app keys. Git-backed notes may sync back from remote afterward.";
+		if (Platform.OS === "web") {
+			const confirmed = globalThis.confirm?.(`${title}\n\n${message}`) ?? false;
+			if (confirmed) {
+				void runReset();
+			}
+			return;
+		}
+		Alert.alert(
+			title,
+			message,
+			[
+				{
+					text: "Cancel",
+					style: "cancel",
+				},
+				{
+					text: "Reset",
+					style: "destructive",
+					onPress: () => {
+						void runReset();
+					},
+				},
+			],
+		);
+	}, [isResetting, runReset]);
 
 	const handlePinToggle = useCallback(async (updated: Note) => {
 		if (!capabilities.canWrite) {
@@ -74,6 +132,28 @@ export default function Index() {
 
 	return (
 		<View style={styles.container}>
+			<Stack.Screen
+				options={{
+					title: "Keeper",
+					headerRight: () => (
+						<TouchableOpacity
+							onPress={confirmReset}
+							disabled={isResetting}
+							style={styles.headerAction}
+						>
+							<MaterialIcons
+								name="delete-forever"
+								size={22}
+								color={
+									isResetting
+										? theme.colors.textFaded
+										: theme.colors.error
+								}
+							/>
+						</TouchableOpacity>
+					),
+				}}
+			/>
 			<SearchBar
 				searchQuery={query}
 				setSearchQuery={setQuery}
@@ -143,6 +223,10 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			shadowOpacity: 0.2,
 			shadowRadius: 4,
 			shadowOffset: { width: 0, height: 2 },
+		},
+		headerAction: {
+			paddingHorizontal: 8,
+			paddingVertical: 4,
 		},
 	});
 }

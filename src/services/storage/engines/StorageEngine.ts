@@ -14,6 +14,7 @@ export interface NoteFileEntry {
 
 export interface StorageEngine {
 	initialize(): Promise<StorageInitializeResult>;
+	resetAllData(): Promise<void>;
 	loadNote(id: string): Promise<Note | null>;
 	saveNote(note: Note): Promise<Note>;
 	deleteNote(id: string): Promise<boolean>;

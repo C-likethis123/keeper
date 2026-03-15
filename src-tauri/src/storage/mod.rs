@@ -115,6 +115,27 @@ fn ensure_storage_dirs(app: &tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+fn reset_storage_dirs(app: &tauri::AppHandle) -> Result<(), String> {
+    let notes_dir = notes_root_path(app)?;
+    if notes_dir.exists() {
+        fs::remove_dir_all(&notes_dir).map_err(|e| format!("failed to remove notes dir: {e}"))?;
+    }
+
+    let db_path = index_db_path(app)?;
+    if db_path.exists() {
+        fs::remove_file(&db_path).map_err(|e| format!("failed to remove index db: {e}"))?;
+    }
+    for suffix in ["-wal", "-shm"] {
+        let sidecar = PathBuf::from(format!("{}{}", db_path.to_string_lossy(), suffix));
+        if sidecar.exists() {
+            fs::remove_file(&sidecar)
+                .map_err(|e| format!("failed to remove sqlite sidecar: {e}"))?;
+        }
+    }
+
+    ensure_storage_dirs(app)
+}
+
 fn sanitize_note_id(id: &str) -> Result<&str, String> {
     let trimmed = id.trim();
     if trimmed.is_empty() {
@@ -223,6 +244,11 @@ pub fn storage_initialize(app: tauri::AppHandle) -> Result<StorageInitResult, St
         notes_root: root.to_string_lossy().to_string(),
         needs_rebuild,
     })
+}
+
+#[tauri::command]
+pub fn storage_reset_all_data(app: tauri::AppHandle) -> Result<(), String> {
+    reset_storage_dirs(&app)
 }
 
 #[tauri::command]

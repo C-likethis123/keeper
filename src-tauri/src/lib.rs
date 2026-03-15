@@ -116,6 +116,7 @@ pub fn run() {
             git_head_oid_repo,
             git_changed_markdown_paths_repo,
             storage::storage_initialize,
+            storage::storage_reset_all_data,
             storage::read_note,
             storage::write_note,
             storage::delete_note,

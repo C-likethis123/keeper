@@ -1,6 +1,8 @@
+import { FORCE_REPO_RESET_KEY } from "@/services/app/resetAppDataService";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import type { GitChangedPaths } from "@/services/git/engines/GitEngine";
 import { NotesIndexService } from "@/services/notes/notesIndex";
+import { getStorageEngine } from "@/services/storage/storageEngine";
 import {
 	createNoopStartupTelemetry,
 	type StartupTelemetry,
@@ -32,6 +34,22 @@ async function writeLastSyncedOid(oid: string): Promise<void> {
 			"[GitInitializationService] Failed to persist lastSyncedOid:",
 			err,
 		);
+	}
+}
+
+async function shouldForceRepoReset(): Promise<boolean> {
+	try {
+		return (await AsyncStorage.getItem(FORCE_REPO_RESET_KEY)) === "1";
+	} catch {
+		return false;
+	}
+}
+
+async function clearForceRepoResetFlag(): Promise<void> {
+	try {
+		await AsyncStorage.removeItem(FORCE_REPO_RESET_KEY);
+	} catch {
+		// ignore marker cleanup failures
 	}
 }
 
@@ -190,6 +208,11 @@ export class GitInitializationService {
 			options.telemetry ?? createNoopStartupTelemetry("git-initialization");
 		console.log("[GitInitializationService] Starting initialization...");
 		try {
+			if (await shouldForceRepoReset()) {
+				await getStorageEngine().resetAllData();
+				await clearForceRepoResetFlag();
+			}
+
 			const runtimeSupport = getGitRuntimeSupport();
 			if (!runtimeSupport.supported) {
 				telemetry.trace("git.runtime_unsupported", {

@@ -1,6 +1,7 @@
 import { parseFrontmatter, stringifyFrontmatter } from "@/services/notes/frontmatter";
 import {
 	type NotesIndexRebuildMetrics,
+	notesIndexDbReset,
 	notesIndexDbDelete,
 	notesIndexDbHasRows,
 	notesIndexDbListAll,
@@ -24,6 +25,22 @@ function extractSummary(markdown: string, maxLines = 6): string {
 	return lines.join("\n");
 }
 
+function deleteDirectoryRecursive(dir: Directory): void {
+	if (!dir.exists) {
+		return;
+	}
+
+	for (const entry of dir.list()) {
+		if (entry instanceof Directory) {
+			deleteDirectoryRecursive(entry);
+			continue;
+		}
+		entry.delete();
+	}
+
+	dir.delete();
+}
+
 export class MobileStorageEngine implements StorageEngine {
 	async initialize(): Promise<StorageInitializeResult> {
 		const dir = new Directory(NOTES_ROOT);
@@ -40,6 +57,22 @@ export class MobileStorageEngine implements StorageEngine {
 			notesRoot: NOTES_ROOT,
 			needsRebuild: hasMarkdownFiles && !hasRows,
 		};
+	}
+
+	async resetAllData(): Promise<void> {
+		const dir = new Directory(NOTES_ROOT);
+		if (dir.exists) {
+			deleteDirectoryRecursive(dir);
+		}
+
+		await notesIndexDbReset();
+		dir.create({ intermediates: true, idempotent: true });
+		const remainingFiles = dir
+			.list()
+			.filter((entry): entry is File => entry instanceof File);
+		if (remainingFiles.length > 0) {
+			throw new Error("Failed to clear note storage");
+		}
 	}
 
 	async loadNote(id: string): Promise<Note | null> {

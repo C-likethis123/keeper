@@ -68,6 +68,14 @@ async function getDb(): Promise<SQLite.SQLiteDatabase> {
 	return db;
 }
 
+export async function notesIndexDbReset(): Promise<void> {
+	if (db) {
+		await db.closeAsync();
+		db = null;
+	}
+	await SQLite.deleteDatabaseAsync(DB_NAME);
+}
+
 export interface ListNotesResult {
 	items: NoteIndexItem[];
 	cursor?: { offset: number };
