@@ -1,10 +1,19 @@
 import React from "react";
 import { type BlockNode, BlockType } from "../core/BlockNode";
 import { BlockRenderer } from "./BlockRenderer";
-import { CodeBlock } from "./CodeBlock";
-import { ImageBlock } from "./ImageBlock";
-import { MathBlock } from "./MathBlock";
 import { UnifiedBlock } from "./UnifiedBlock";
+
+const LazyCodeBlock = React.lazy(
+	() => import("./CodeBlock").then((module) => ({ default: module.CodeBlock })),
+);
+
+const LazyMathBlock = React.lazy(
+	() => import("./MathBlock").then((module) => ({ default: module.MathBlock })),
+);
+
+const LazyImageBlock = React.lazy(
+	() => import("./ImageBlock").then((module) => ({ default: module.ImageBlock })),
+);
 
 export interface BlockConfig {
 	block: BlockNode;
@@ -111,6 +120,27 @@ class BlockRegistry {
 // Singleton instance
 export const blockRegistry = new BlockRegistry();
 
+function renderLazyBlock(
+	BlockComponent: React.LazyExoticComponent<
+		(config: BlockConfig) => React.ReactElement
+	>,
+	config: BlockConfig,
+): React.ReactElement {
+	return (
+		<React.Suspense
+			fallback={
+				<BlockRenderer
+					block={config.block}
+					index={config.index}
+					isFocused={config.isFocused}
+				/>
+			}
+		>
+			<BlockComponent {...config} />
+		</React.Suspense>
+	);
+}
+
 // Register default builders
 blockRegistry.registerAll([
 	{
@@ -158,17 +188,17 @@ blockRegistry.registerAll([
 		type: BlockType.codeBlock,
 		triggerPrefix: /^```([a-z]*)$/,
 		markdownPrefix: "```",
-		build: (config) => <CodeBlock {...config} />,
+		build: (config) => renderLazyBlock(LazyCodeBlock, config),
 	},
 	{
 		type: BlockType.mathBlock,
 		triggerPrefix: /^\$\$/,
 		markdownPrefix: "$$",
-		build: (config) => <MathBlock {...config} />,
+		build: (config) => renderLazyBlock(LazyMathBlock, config),
 	},
 	{
 		type: BlockType.image,
 		markdownPrefix: "![](",
-		build: (config) => <ImageBlock {...config} />,
+		build: (config) => renderLazyBlock(LazyImageBlock, config),
 	},
 ]);

@@ -1,9 +1,5 @@
 import { PAGE_SIZE } from "@/constants/pagination";
-import {
-	type NoteIndexItem,
-	NotesIndexService,
-} from "@/services/notes/notesIndex";
-import { NoteService } from "@/services/notes/noteService";
+import type { NoteIndexItem } from "@/services/notes/notesIndex";
 import type { Note } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -43,8 +39,20 @@ export default function useNotes() {
 				const offset = append ? (nextOffsetRef.current ?? 0) : 0;
 				const searchQuery = capabilities.canSearch ? query : "";
 				const results = capabilities.canSearch
-					? await NotesIndexService.listNotes(searchQuery, PAGE_SIZE, offset)
-					: await NoteService.listNotesFallback(searchQuery, PAGE_SIZE, offset);
+					? await import("@/services/notes/notesIndex").then((module) =>
+							module.NotesIndexService.listNotes(
+								searchQuery,
+								PAGE_SIZE,
+								offset,
+							),
+						)
+					: await import("@/services/notes/noteService").then((module) =>
+							module.NoteService.listNotesFallback(
+								searchQuery,
+								PAGE_SIZE,
+								offset,
+							),
+						);
 				nextOffsetRef.current = results.cursor?.offset;
 				const newNotes = results.items.map(toNote);
 				if (append) {
