@@ -92,11 +92,11 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 **Issue**: Expo OTA (Over-The-Air) updates not working
 **Impact**: Desktop/mobile app updates require full rebuild
 
-### Wikilink Creation Gap
-**Current**: Wikilink autocomplete only returns titles that already exist in the notes index.
-**Impact**: Users cannot complete a `[[New Note]]` link directly from the wikilink flow when the destination note does not exist yet.
-**Affected files**: `src/components/editor/wikilinks/WikiLinkContext.tsx`, `src/components/editor/wikilinks/WikiLinkModal.tsx`
-**Next step**: Add an explicit "create/link new note" path when the query does not match an existing title.
+### Wikilink Create Flow ✅
+**Status**: Implemented in this workspace.
+**Current**: Wikilink autocomplete now offers a create action for unmatched titles, inserts the `[[Title]]` link, and creates a stub note so the destination exists immediately.
+**Affected files**: `src/components/editor/wikilinks/WikiLinkContext.tsx`, `src/components/editor/wikilinks/WikiLinkModal.tsx`, `src/components/editor/wikilinks/WikiLinkOverlay.tsx`
+**Follow-up**: Validate the new create flow UX on device and keep the dropdown result model flexible for future wiki link actions.
 
 ### Mobile Native Git Bridge
 **Status**: Implemented via the local Expo module in `modules/keeper-git`

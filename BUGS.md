@@ -10,7 +10,6 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 
 - **App Startup**: 5–7 seconds (explore branching strategy or lib2git)
 - **Git Operations**: Slow checkout required for new changes from other sources
-- Wikilinks: I cannot create a wikilink that has not existed yet
 - Slow to update
 
 ## Known Regressions & Improvements
