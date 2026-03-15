@@ -9,6 +9,7 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 ## Performance Issues
 
 - **App Startup**: 5–7 seconds (explore branching strategy or lib2git)
+- **Startup architecture**: startup flow refactor shipped (`useAppStartup` + startup strategies), but no confirmed startup latency reduction yet
 - **Git Operations**: Slow checkout required for new changes from other sources
 - Slow to update
 

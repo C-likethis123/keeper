@@ -3,9 +3,9 @@ import { Platform } from "react-native";
 import { hasRustGitNativeBridge } from "@/services/git/native/rustGitNativeModule";
 import { getTauriInvoke } from "@/services/storage/runtime";
 
-type GitRuntime = "desktop-tauri" | "mobile-native" | "unsupported";
+export type GitRuntime = "desktop-tauri" | "mobile-native" | "unsupported";
 
-interface GitRuntimeSupport {
+export interface GitRuntimeSupport {
 	runtime: GitRuntime;
 	supported: boolean;
 	reason?: string;
