@@ -138,6 +138,7 @@ EXPO_PUBLIC_GIT_API_URL=<backend-url>   # optional remote backend
 - **Linting/formatting**: Biome (not ESLint/Prettier). Install the Biome VS Code extension.
 - **Platform splits**: Files ending in `.web.ts` override their `.ts` counterpart on web (e.g., `Notes.web.ts`).
 - **No test suite**: Rely on TypeScript + Biome for correctness checking.
+- **Startup profiling**: Use the `[StartupTrace]` logs documented in `docs/Startup telemetry.md` when investigating launch performance.
 
 ## Commit conventions
 

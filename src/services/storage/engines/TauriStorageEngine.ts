@@ -1,6 +1,7 @@
 import type { Note } from "@/services/notes/types";
 import { getTauriInvoke } from "@/services/storage/runtime";
 import type { NoteFileEntry, StorageEngine, StorageInitializeResult } from "@/services/storage/engines/StorageEngine";
+import type { NotesIndexRebuildMetrics } from "@/services/notes/notesIndexDb";
 import type { NoteIndexListResult, NoteIndexPersistenceItem } from "@/services/storage/types";
 
 type ReadNoteResult = {
@@ -89,7 +90,7 @@ export class TauriStorageEngine implements StorageEngine {
 		});
 	}
 
-	async indexRebuildFromDisk(): Promise<{ noteCount: number }> {
-		return this.invoke<{ noteCount: number }>("index_rebuild_from_disk");
+	async indexRebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
+		return this.invoke<NotesIndexRebuildMetrics>("index_rebuild_from_disk");
 	}
 }

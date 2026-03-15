@@ -1,5 +1,12 @@
 import { parseFrontmatter, stringifyFrontmatter } from "@/services/notes/frontmatter";
-import { notesIndexDbDelete, notesIndexDbHasRows, notesIndexDbListAll, notesIndexDbRebuildFromDisk, notesIndexDbUpsert } from "@/services/notes/notesIndexDb";
+import {
+	type NotesIndexRebuildMetrics,
+	notesIndexDbDelete,
+	notesIndexDbHasRows,
+	notesIndexDbListAll,
+	notesIndexDbRebuildFromDisk,
+	notesIndexDbUpsert,
+} from "@/services/notes/notesIndexDb";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import type { Note } from "@/services/notes/types";
 import type { NoteFileEntry, StorageEngine, StorageInitializeResult } from "@/services/storage/engines/StorageEngine";
@@ -115,7 +122,7 @@ export class MobileStorageEngine implements StorageEngine {
 		return notesIndexDbListAll(query, limit, offset);
 	}
 
-	async indexRebuildFromDisk(): Promise<{ noteCount: number }> {
+	async indexRebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
 		return notesIndexDbRebuildFromDisk();
 	}
 

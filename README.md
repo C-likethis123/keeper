@@ -78,6 +78,7 @@ Unsupported runtimes fall back to local-only mode:
 ## Tooling
 - Install the Biome VS Code extension and enable it for linting/formatting.
 - In CI, run `npm run lint` to use Biome.
+- For startup profiling, see `docs/Startup telemetry.md` for the `[StartupTrace]` log format and the main timing fields.
 
 
 ## Learn more

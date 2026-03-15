@@ -190,12 +190,26 @@ interface RebuildRow {
 	updatedAt: number;
 }
 
-interface NotesIndexRebuildMetrics {
+export interface NotesIndexRebuildMetrics {
 	noteCount: number;
-	listMs: number;
+	listMs?: number;
+	readParseMs?: number;
+	sqlInsertMs?: number;
+	ftsRebuildMs?: number;
+	totalMs?: number;
+}
+
+export interface NotesIndexSyncMetrics {
+	mode: "incremental";
+	addedCount: number;
+	modifiedCount: number;
+	deletedCount: number;
+	markdownUpsertPathCount: number;
+	markdownDeleteCount: number;
+	upsertedNoteCount: number;
+	deletedNoteCount: number;
 	readParseMs: number;
-	sqlInsertMs: number;
-	ftsRebuildMs: number;
+	sqlMs: number;
 	totalMs: number;
 }
 
@@ -263,7 +277,8 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 	added: string[];
 	modified: string[];
 	deleted: string[];
-}): Promise<void> {
+}): Promise<NotesIndexSyncMetrics> {
+	const syncStart = performance.now();
 	const database = await getDb();
 
 	// Read all file data before opening the transaction
@@ -277,6 +292,7 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 		isPinned: number;
 		mtime: number;
 	}[] = [];
+	const readParseStart = performance.now();
 	for (
 		let chunkStart = 0;
 		chunkStart < markdownPaths.length;
@@ -306,11 +322,13 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 			if (item) upsertItems.push(item);
 		}
 	}
+	const readParseMs = Math.round(performance.now() - readParseStart);
 
 	const deleteIds = changedPaths.deleted
 		.filter((path) => path.endsWith(".md"))
 		.map((path) => path.replace(/\.md$/, ""));
 
+	const sqlStart = performance.now();
 	await database.withTransactionAsync(async () => {
 		for (let i = 0; i < upsertItems.length; i += SYNC_BATCH_SIZE) {
 			const batch = upsertItems.slice(i, i + SYNC_BATCH_SIZE);
@@ -343,6 +361,22 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 			);
 		}
 	});
+
+	const metrics: NotesIndexSyncMetrics = {
+		mode: "incremental",
+		addedCount: changedPaths.added.length,
+		modifiedCount: changedPaths.modified.length,
+		deletedCount: changedPaths.deleted.length,
+		markdownUpsertPathCount: markdownPaths.length,
+		markdownDeleteCount: deleteIds.length,
+		upsertedNoteCount: upsertItems.length,
+		deletedNoteCount: deleteIds.length,
+		readParseMs,
+		sqlMs: Math.round(performance.now() - sqlStart),
+		totalMs: Math.round(performance.now() - syncStart),
+	};
+	console.log("[notesIndexDb] syncChanges metrics", metrics);
+	return metrics;
 }
 
 export async function notesIndexDbRebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
