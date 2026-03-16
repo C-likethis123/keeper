@@ -1,3 +1,4 @@
+import { NoteFiltersBar } from "@/components/NoteFiltersBar";
 import NoteGrid from "@/components/NoteGrid";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
@@ -26,12 +27,16 @@ export default function Index() {
 	const {
 		notes,
 		query,
+		noteTypeFilter,
+		statusFilter,
 		hasMore,
 		isLoading,
 		error,
 		handleRefresh,
 		loadMoreNotes,
 		setQuery,
+		setNoteTypeFilter,
+		setStatusFilter,
 	} = useNotes();
 	const theme = useExtendedTheme();
 	const showToast = useToastStore((state) => state.showToast);
@@ -116,6 +121,10 @@ export default function Index() {
 	}, [capabilities.canWrite, capabilities.reason, showToast]);
 
 	const styles = useStyles(createStyles);
+	const hasActiveFilters = noteTypeFilter != null || statusFilter != null;
+	const emptySubtitle = hasActiveFilters
+		? "Try a different note type or todo status filter"
+		: "Create a note to get started";
 
 	useFocusEffect(
 		useCallback(() => {
@@ -160,8 +169,20 @@ export default function Index() {
 				setSearchQuery={setQuery}
 				editable={capabilities.canSearch}
 			/>
+			<NoteFiltersBar
+				noteType={noteTypeFilter}
+				status={statusFilter}
+				onNoteTypeChange={(value) => {
+					setNoteTypeFilter(value);
+					if (value !== "todo") {
+						setStatusFilter(undefined);
+					}
+				}}
+				onStatusChange={setStatusFilter}
+			/>
 			<NoteGrid
 				notes={notes}
+				emptySubtitle={emptySubtitle}
 				onDelete={handleDeleteNote}
 				onPinToggle={handlePinToggle}
 				refreshing={isLoading}

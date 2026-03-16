@@ -1,4 +1,5 @@
 import type { GitChangedPaths } from "@/services/git/engines/GitEngine";
+import type { NoteListFilters } from "@/services/notes/types";
 import { getRuntimeStorageBackend } from "@/services/storage/runtime";
 import { getStorageEngine } from "@/services/storage/storageEngine";
 import {
@@ -41,8 +42,9 @@ export class NotesIndexService {
 		query: string,
 		limit = 20,
 		offset?: number,
+		filters?: NoteListFilters,
 	): Promise<ListNotesResult> {
-		return getStorageEngine().indexList(query, limit, offset);
+		return getStorageEngine().indexList(query, limit, offset, filters);
 	}
 
 	static async rebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {

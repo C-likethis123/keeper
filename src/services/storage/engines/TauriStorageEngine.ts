@@ -6,7 +6,11 @@ import type {
 } from "@/services/storage/engines/StorageEngine";
 import { getTauriInvoke } from "@/services/storage/runtime";
 import type { NotesIndexRebuildMetrics } from "@/services/notes/notesIndexDb";
-import type { NoteIndexListResult, NoteIndexPersistenceItem } from "@/services/storage/types";
+import type {
+	NoteIndexListResult,
+	NoteIndexPersistenceItem,
+	NoteIndexQueryFilters,
+} from "@/services/storage/types";
 
 type ReadNoteResult = {
 	id: string;
@@ -94,12 +98,14 @@ export class TauriStorageEngine implements StorageEngine {
 		query: string,
 		limit: number,
 		offset?: number,
+		filters?: NoteIndexQueryFilters,
 	): Promise<NoteIndexListResult> {
 		return this.invoke<NoteIndexListResult>("index_list", {
 			input: {
 				query,
 				limit,
 				offset,
+				filters,
 			},
 		});
 	}

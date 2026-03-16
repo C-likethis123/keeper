@@ -1,7 +1,7 @@
 mod migrations;
 
 use gray_matter::{engine::YAML, Matter};
-use rusqlite::{params, Connection};
+use rusqlite::{params, types::Value, Connection};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -65,6 +65,14 @@ pub struct IndexListInput {
     pub query: String,
     pub limit: i64,
     pub offset: Option<i64>,
+    pub filters: Option<IndexListFilters>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexListFilters {
+    pub note_type: Option<String>,
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -375,8 +383,34 @@ pub fn index_list(index_db_path: &Path, input: IndexListInput) -> Result<IndexLi
     let offset = input.offset.unwrap_or(0).max(0);
     let limit_plus_one = (input.limit.max(1) + 1) as usize;
     let mut items = Vec::<IndexItem>::new();
+    let normalized_query = input.query.trim().to_string();
+    let filters = input.filters;
 
-    if !input.query.trim().is_empty() {
+    let mut where_clauses: Vec<&str> = Vec::new();
+    let mut params_vec: Vec<Value> = Vec::new();
+
+    if !normalized_query.is_empty() {
+        where_clauses.push("note_index_fts MATCH ?");
+        params_vec.push(Value::Text(format!("{normalized_query}*")));
+    }
+    if let Some(note_type) = filters
+        .as_ref()
+        .and_then(|value| value.note_type.as_ref())
+    {
+        where_clauses.push("note_index.note_type = ?");
+        params_vec.push(Value::Text(note_type.clone()));
+    }
+    if let Some(status) = filters.as_ref().and_then(|value| value.status.as_ref()) {
+        where_clauses.push("note_index.status = ?");
+        params_vec.push(Value::Text(status.clone()));
+    }
+    let where_sql = if where_clauses.is_empty() {
+        String::new()
+    } else {
+        format!(" WHERE {}", where_clauses.join(" AND "))
+    };
+
+    if !normalized_query.is_empty() {
         let mut stmt = conn
             .prepare(&format!(
                 "SELECT
@@ -389,17 +423,18 @@ pub fn index_list(index_db_path: &Path, input: IndexListInput) -> Result<IndexLi
                    note_index.status
                  FROM {TABLE}
                  JOIN {FTS_TABLE} ON {TABLE}.rowid = {FTS_TABLE}.rowid
-                 WHERE {FTS_TABLE} MATCH ?1
+                 {where_sql}
                  ORDER BY
                    note_index.is_pinned DESC,
                    bm25({FTS_TABLE}, 1.0, 0.2),
                    note_index.updated_at DESC
-                 LIMIT ?2 OFFSET ?3"
+                 LIMIT ? OFFSET ?"
             ))
             .map_err(|e| format!("index_list prepare failed: {e}"))?;
-        let fts_query = format!("{}*", input.query.trim());
+        params_vec.push(Value::Integer(limit_plus_one as i64));
+        params_vec.push(Value::Integer(offset));
         let rows = stmt
-            .query_map(params![fts_query, limit_plus_one as i64, offset], |row| {
+            .query_map(rusqlite::params_from_iter(params_vec.iter()), |row| {
                 Ok(IndexItem {
                     note_id: row.get(0)?,
                     title: row.get(1)?,
@@ -419,12 +454,15 @@ pub fn index_list(index_db_path: &Path, input: IndexListInput) -> Result<IndexLi
             .prepare(&format!(
                 "SELECT id, title, summary, is_pinned, updated_at, note_type, status
                  FROM {TABLE}
+                 {where_sql}
                  ORDER BY is_pinned DESC, updated_at DESC
-                 LIMIT ?1 OFFSET ?2"
+                 LIMIT ? OFFSET ?"
             ))
             .map_err(|e| format!("index_list prepare failed: {e}"))?;
+        params_vec.push(Value::Integer(limit_plus_one as i64));
+        params_vec.push(Value::Integer(offset));
         let rows = stmt
-            .query_map(params![limit_plus_one as i64, offset], |row| {
+            .query_map(rusqlite::params_from_iter(params_vec.iter()), |row| {
                 Ok(IndexItem {
                     note_id: row.get(0)?,
                     title: row.get(1)?,

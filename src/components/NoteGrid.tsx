@@ -12,6 +12,8 @@ import EmptyState from "./shared/EmptyState";
 
 export default function NoteGrid({
 	notes,
+	emptyTitle = "No notes found",
+	emptySubtitle = "Create a note to get started",
 	onDelete,
 	onPinToggle,
 	refreshing = false,
@@ -21,6 +23,8 @@ export default function NoteGrid({
 	hasMore = false,
 }: {
 	notes: Note[];
+	emptyTitle?: string;
+	emptySubtitle?: string;
 	onDelete: (note: Note) => void;
 	onPinToggle: (updated: Note) => void;
 	refreshing?: boolean;
@@ -56,8 +60,8 @@ export default function NoteGrid({
 			}}
 			ListEmptyComponent={
 				<EmptyState
-					title="No notes found"
-					subtitle="Create a note to get started"
+					title={emptyTitle}
+					subtitle={emptySubtitle}
 				/>
 			}
 			showsVerticalScrollIndicator
