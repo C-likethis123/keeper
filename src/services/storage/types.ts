@@ -1,4 +1,8 @@
-import type { NoteStatus, NoteType } from "@/services/notes/types";
+import type {
+	NoteListFilters,
+	NoteStatus,
+	NoteType,
+} from "@/services/notes/types";
 
 export type StorageBackend = "desktop-native" | "mobile-native";
 
@@ -23,3 +27,5 @@ export interface NoteIndexListResult {
 	items: NoteIndexPersistenceItem[];
 	cursor?: { offset: number };
 }
+
+export type NoteIndexQueryFilters = NoteListFilters;

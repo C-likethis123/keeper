@@ -3,7 +3,7 @@ import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { getStorageEngine } from "@/services/storage/storageEngine";
 import { useStorageStore } from "@/stores/storageStore";
 import type { ListNotesResult } from "./notesIndex";
-import type { Note } from "./types";
+import type { Note, NoteListFilters } from "./types";
 
 // Persists notes to the file system
 
@@ -86,6 +86,7 @@ export class NoteService {
 		query: string,
 		limit: number,
 		offset?: number,
+		filters?: NoteListFilters,
 	): Promise<ListNotesResult> {
 		const files = await getStorageEngine().listNoteFiles();
 		const normalizedQuery = query.trim().toLowerCase();
@@ -97,7 +98,11 @@ export class NoteService {
 				normalizedQuery.length === 0 ||
 				loaded.title.toLowerCase().includes(normalizedQuery) ||
 				loaded.content.toLowerCase().includes(normalizedQuery);
-			if (!matches) continue;
+			const matchesType =
+				!filters?.noteType || loaded.noteType === filters.noteType;
+			const matchesStatus =
+				!filters?.status || loaded.status === filters.status;
+			if (!matches || !matchesType || !matchesStatus) continue;
 			filtered.push({
 				...loaded,
 				content: extractSummary(loaded.content),

@@ -9,7 +9,7 @@ import {
 	notesIndexDbUpsert,
 } from "@/services/notes/notesIndexDb";
 import { NOTES_ROOT } from "@/services/notes/Notes";
-import type { Note } from "@/services/notes/types";
+import type { Note, NoteListFilters } from "@/services/notes/types";
 import type {
 	NoteFileEntry,
 	StorageEngine,
@@ -17,6 +17,7 @@ import type {
 } from "@/services/storage/engines/StorageEngine";
 import type {
 	NoteIndexListResult,
+	NoteIndexQueryFilters,
 	NoteIndexPersistenceItem,
 } from "@/services/storage/types";
 import { Directory, File } from "expo-file-system";
@@ -163,8 +164,9 @@ export class MobileStorageEngine implements StorageEngine {
 		query: string,
 		limit: number,
 		offset?: number,
+		filters?: NoteIndexQueryFilters,
 	): Promise<NoteIndexListResult> {
-		return notesIndexDbListAll(query, limit, offset);
+		return notesIndexDbListAll(query, limit, offset, filters);
 	}
 
 	async indexRebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
@@ -175,6 +177,7 @@ export class MobileStorageEngine implements StorageEngine {
 		limit: number,
 		offset?: number,
 		query?: string,
+		filters?: NoteListFilters,
 	): Promise<Note[]> {
 		const normalizedQuery = query?.trim().toLowerCase() ?? "";
 		const files = await this.listNoteFiles();
@@ -186,7 +189,11 @@ export class MobileStorageEngine implements StorageEngine {
 				normalizedQuery.length === 0 ||
 				loaded.title.toLowerCase().includes(normalizedQuery) ||
 				loaded.content.toLowerCase().includes(normalizedQuery);
-			if (!matches) continue;
+			const matchesType =
+				!filters?.noteType || loaded.noteType === filters.noteType;
+			const matchesStatus =
+				!filters?.status || loaded.status === filters.status;
+			if (!matches || !matchesType || !matchesStatus) continue;
 			filtered.push({
 				...loaded,
 				content: extractSummary(loaded.content),

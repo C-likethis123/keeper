@@ -3,7 +3,11 @@ import {
 	type ParsedFrontmatter,
 	parseFrontmatter,
 } from "@/services/notes/frontmatter";
-import type { NoteStatus, NoteType } from "@/services/notes/types";
+import type {
+	NoteListFilters,
+	NoteStatus,
+	NoteType,
+} from "@/services/notes/types";
 import { Directory, File } from "expo-file-system";
 import type { SQLiteDatabase } from "expo-sqlite";
 import * as SQLite from "expo-sqlite";
@@ -144,14 +148,33 @@ export async function notesIndexDbListAll(
 	query: string,
 	limit: number,
 	offset?: number,
+	filters?: NoteListFilters,
 ): Promise<ListNotesResult> {
 	const database = await getDb();
 	const offsetVal = offset ?? 0;
+	const normalizedQuery = query.trim();
+	const whereClauses: string[] = [];
+	const params: (string | number)[] = [];
 
-	if (query.length > 0) {
-		const q = query.trim();
-		const ftsQuery = `${q}*`;
+	if (normalizedQuery.length > 0) {
+		whereClauses.push(`${FTS_TABLE} MATCH ?`);
+		params.push(`${normalizedQuery}*`);
+	}
 
+	if (filters?.noteType) {
+		whereClauses.push(`${TABLE}.note_type = ?`);
+		params.push(filters.noteType);
+	}
+
+	if (filters?.status) {
+		whereClauses.push(`${TABLE}.status = ?`);
+		params.push(filters.status);
+	}
+
+	const whereSql =
+		whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+
+	if (normalizedQuery.length > 0) {
 		const sql = `
 			SELECT
 				${TABLE}.id,
@@ -164,7 +187,7 @@ export async function notesIndexDbListAll(
 				bm25(${FTS_TABLE}, 1.0, 0.2) AS score
 			FROM ${TABLE}
 			JOIN ${FTS_TABLE} ON ${TABLE}.rowid = ${FTS_TABLE}.rowid
-			WHERE ${FTS_TABLE} MATCH ?
+			${whereSql}
 			ORDER BY
 				is_pinned DESC,
 				score,
@@ -174,7 +197,7 @@ export async function notesIndexDbListAll(
 
 		const rows = await database.getAllAsync<NoteIndexRow>(
 			sql,
-			ftsQuery,
+			...params,
 			limit + 1,
 			offsetVal,
 		);
@@ -203,11 +226,13 @@ export async function notesIndexDbListAll(
 			note_type,
 			status
 		FROM ${TABLE}
+		${whereSql}
 		ORDER BY is_pinned DESC, updated_at DESC
 		LIMIT ? OFFSET ?
 	`;
 	const rows = await database.getAllAsync<NoteIndexRow>(
 		sql,
+		...params,
 		limit + 1,
 		offsetVal,
 	);

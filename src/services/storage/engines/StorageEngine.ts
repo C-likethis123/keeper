@@ -1,6 +1,10 @@
 import type { Note } from "@/services/notes/types";
 import type { NotesIndexRebuildMetrics } from "@/services/notes/notesIndexDb";
-import type { NoteIndexListResult, NoteIndexPersistenceItem } from "@/services/storage/types";
+import type {
+	NoteIndexListResult,
+	NoteIndexPersistenceItem,
+	NoteIndexQueryFilters,
+} from "@/services/storage/types";
 
 export interface StorageInitializeResult {
 	notesRoot: string;
@@ -26,6 +30,7 @@ export interface StorageEngine {
 		query: string,
 		limit: number,
 		offset?: number,
+		filters?: NoteIndexQueryFilters,
 	): Promise<NoteIndexListResult>;
 	indexRebuildFromDisk(): Promise<NotesIndexRebuildMetrics>;
 }

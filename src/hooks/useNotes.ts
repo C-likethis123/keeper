@@ -4,9 +4,9 @@ import {
 	type NoteIndexItem,
 	NotesIndexService,
 } from "@/services/notes/notesIndex";
-import type { Note } from "@/services/notes/types";
+import type { Note, NoteListFilters, NoteStatus, NoteType } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 function toNote(item: NoteIndexItem): Note {
 	return {
@@ -25,6 +25,12 @@ export default function useNotes() {
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
 	const contentVersion = useStorageStore((s) => s.contentVersion);
 	const [query, setQuery] = useState("");
+	const [noteTypeFilter, setNoteTypeFilter] = useState<NoteType | undefined>(
+		undefined,
+	);
+	const [statusFilter, setStatusFilter] = useState<NoteStatus | undefined>(
+		undefined,
+	);
 	const [notes, setNotes] = useState<Note[]>([]);
 	const [hasMore, setHasMore] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -33,7 +39,17 @@ export default function useNotes() {
 	const loadingRef = useRef(false);
 	const nextOffsetRef = useRef<number | undefined>(undefined);
 	const prevQueryRef = useRef(query);
+	const prevNoteTypeFilterRef = useRef(noteTypeFilter);
+	const prevStatusFilterRef = useRef(statusFilter);
 	const prevContentVersionRef = useRef(contentVersion);
+
+	const filters = useMemo<NoteListFilters>(
+		() => ({
+			noteType: noteTypeFilter,
+			status: statusFilter,
+		}),
+		[noteTypeFilter, statusFilter],
+	);
 
 	const fetchNotes = useCallback(
 		async (append: boolean) => {
@@ -45,8 +61,18 @@ export default function useNotes() {
 				const offset = append ? (nextOffsetRef.current ?? 0) : 0;
 				const searchQuery = capabilities.canSearch ? query : "";
 				const results = capabilities.canSearch
-					? await NotesIndexService.listNotes(searchQuery, PAGE_SIZE, offset)
-					: await NoteService.listNotesFallback(searchQuery, PAGE_SIZE, offset);
+					? await NotesIndexService.listNotes(
+							searchQuery,
+							PAGE_SIZE,
+							offset,
+							filters,
+						)
+					: await NoteService.listNotesFallback(
+							searchQuery,
+							PAGE_SIZE,
+							offset,
+							filters,
+						);
 				nextOffsetRef.current = results.cursor?.offset;
 				const newNotes = results.items.map(toNote);
 				if (append) {
@@ -64,7 +90,7 @@ export default function useNotes() {
 				setIsLoading(false);
 			}
 		},
-		[query, capabilities.canSearch, initializationStatus],
+		[filters, query, capabilities.canSearch, initializationStatus],
 	);
 
 	const loadMoreNotes = useCallback(async () => {
@@ -94,10 +120,19 @@ export default function useNotes() {
 
 		let cancelled = false;
 		const isQueryChange = prevQueryRef.current !== query;
+		const isTypeFilterChange = prevNoteTypeFilterRef.current !== noteTypeFilter;
+		const isStatusFilterChange = prevStatusFilterRef.current !== statusFilter;
+		const filtersChanged = isTypeFilterChange || isStatusFilterChange;
 		const contentChanged = prevContentVersionRef.current !== contentVersion;
 		if (isQueryChange) {
 			if (!capabilities.canSearch) return;
 			prevQueryRef.current = query;
+		}
+		if (isTypeFilterChange) {
+			prevNoteTypeFilterRef.current = noteTypeFilter;
+		}
+		if (isStatusFilterChange) {
+			prevStatusFilterRef.current = statusFilter;
 		}
 		if (contentChanged) {
 			prevContentVersionRef.current = contentVersion;
@@ -107,7 +142,7 @@ export default function useNotes() {
 					if (!cancelled) fetchNotes(false);
 				}, 300)
 			: undefined;
-		if (!isQueryChange || contentChanged) {
+		if (!isQueryChange || filtersChanged || contentChanged) {
 			fetchNotes(false);
 		}
 		return () => {
@@ -117,6 +152,8 @@ export default function useNotes() {
 	}, [
 		fetchNotes,
 		query,
+		noteTypeFilter,
+		statusFilter,
 		capabilities.canSearch,
 		capabilities.reason,
 		contentVersion,
@@ -129,6 +166,10 @@ export default function useNotes() {
 		isLoading,
 		loadMoreNotes,
 		setQuery,
+		noteTypeFilter,
+		setNoteTypeFilter,
+		statusFilter,
+		setStatusFilter,
 		query,
 		error,
 		handleRefresh,
