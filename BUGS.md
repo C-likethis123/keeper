@@ -12,6 +12,7 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 - **Startup architecture**: startup flow refactor shipped (`useAppStartup` + startup strategies), but no confirmed startup latency reduction yet
 - **Git Operations**: Slow checkout required for new changes from other sources
 - Slow to update
+- There is lag time when saving
 
 ## Known Regressions & Improvements
 
