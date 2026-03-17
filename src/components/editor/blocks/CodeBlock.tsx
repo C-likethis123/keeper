@@ -17,10 +17,11 @@ import * as Braces from "../code/Braces";
 import * as Indentation from "../code/Indentation";
 import { LanguageRegistry } from "../code/LanguageRegistry";
 import { SmartEditingHandler } from "../code/SmartEditingHandler";
-import SyntaxHighlighter from "../code/SyntaxHighlighter";
 import { BlockType, getBlockLanguage } from "../core/BlockNode";
 import type { BlockConfig } from "./BlockRegistry";
 import { CodeBlockHeader } from "./CodeBlockHeader";
+
+const LazySyntaxHighlighter = React.lazy(() => import("../code/SyntaxHighlighter"));
 
 export function CodeBlock({
 	block,
@@ -224,14 +225,16 @@ export function CodeBlock({
 				onDelete={() => onDelete(index)}
 			/>
 			<View>
-				<SyntaxHighlighter
-					language={language}
-					showLineNumbers
-					scrollEnabled={false}
-					ref={highlighterRef}
-				>
-					{value}
-				</SyntaxHighlighter>
+				<React.Suspense fallback={<View style={styles.highlighterFallback} />}>
+					<LazySyntaxHighlighter
+						language={language}
+						showLineNumbers
+						scrollEnabled={false}
+						ref={highlighterRef}
+					>
+						{value}
+					</LazySyntaxHighlighter>
+				</React.Suspense>
 				<TextInput
 					ref={inputRef}
 					style={[
@@ -262,6 +265,9 @@ export function CodeBlock({
 }
 
 const styles = StyleSheet.create({
+	highlighterFallback: {
+		minHeight: 56,
+	},
 	input: {
 		position: "absolute",
 		textAlignVertical: "top",

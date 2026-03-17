@@ -11,6 +11,12 @@ type StartupTelemetryPayload = Record<string, StartupTelemetryValue>;
 
 const STARTUP_TRACE_RUN_ID_KEY = "__keeperStartupTraceRunId";
 
+function getExecutionContext(): "server" | "client" {
+	return typeof window === "undefined" || typeof document === "undefined"
+		? "server"
+		: "client";
+}
+
 function currentTimestampMs(): number {
 	return Math.round(performance.now());
 }
@@ -73,6 +79,7 @@ export function traceStartupBootstrapEvent(
 		runtime: "bootstrap",
 		event,
 		timestampMs: currentTimestampMs(),
+		executionContext: getExecutionContext(),
 		...payload,
 	});
 }
@@ -123,6 +130,7 @@ export function createStartupTelemetry(runtime: string): StartupTelemetry {
 				runtime,
 				event,
 				timestampMs: currentTimestampMs(),
+				executionContext: getExecutionContext(),
 				...payload,
 			});
 		},
@@ -134,6 +142,7 @@ export function createStartupTelemetry(runtime: string): StartupTelemetry {
 				event: "step_started",
 				step,
 				timestampMs: currentTimestampMs(),
+				executionContext: getExecutionContext(),
 				...payload,
 			});
 			return startedAt;
@@ -146,6 +155,7 @@ export function createStartupTelemetry(runtime: string): StartupTelemetry {
 				step,
 				durationMs: Math.round(performance.now() - startedAt),
 				timestampMs: currentTimestampMs(),
+				executionContext: getExecutionContext(),
 				...payload,
 			});
 		},
@@ -157,6 +167,7 @@ export function createStartupTelemetry(runtime: string): StartupTelemetry {
 				step,
 				durationMs: Math.round(performance.now() - startedAt),
 				timestampMs: currentTimestampMs(),
+				executionContext: getExecutionContext(),
 				...serializeError(error),
 				...payload,
 			});

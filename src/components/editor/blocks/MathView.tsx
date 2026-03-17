@@ -1,31 +1,18 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import katex from "katex";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
-import { MathJaxSvg } from "react-native-mathjax-html-to-svg";
+
+const LazyMathJaxSvg = React.lazy(() =>
+	import("react-native-mathjax-html-to-svg").then((module) => ({
+		default: module.MathJaxSvg,
+	})),
+);
 
 interface MathViewProps {
 	expression: string;
 	displayMode?: boolean;
 	onError?: (error: string) => void;
 	style?: object;
-}
-
-function renderKaTeXToHtml(
-	expression: string,
-	displayMode: boolean,
-	textColor: string,
-): string | null {
-	try {
-		const html = katex.renderToString(expression.trim(), {
-			displayMode,
-			throwOnError: false,
-			output: "html",
-		});
-		return `<span style="color:${textColor}">${html}</span>`;
-	} catch {
-		return null;
-	}
 }
 
 export function MathView({
@@ -48,22 +35,38 @@ export function MathView({
 			setError(null);
 			return;
 		}
-		try {
-			const result = renderKaTeXToHtml(expression, displayMode, textColor);
-			if (result) {
-				setHtml(result);
-				setError(null);
-			} else {
-				setError("Invalid LaTeX");
-				setHtml(null);
-				onErrorRef.current?.("Invalid LaTeX");
-			}
-		} catch (e) {
-			const msg = e instanceof Error ? e.message : "Invalid LaTeX";
-			setError(msg);
-			setHtml(null);
-			onErrorRef.current?.(msg);
-		}
+		let isCancelled = false;
+		void import("katex")
+			.then((katexModule) => {
+				if (isCancelled) return;
+				try {
+					const rendered = katexModule.default.renderToString(
+						expression.trim(),
+						{
+							displayMode,
+							throwOnError: false,
+							output: "html",
+						},
+					);
+					setHtml(`<span style="color:${textColor}">${rendered}</span>`);
+					setError(null);
+				} catch {
+					setError("Invalid LaTeX");
+					setHtml(null);
+					onErrorRef.current?.("Invalid LaTeX");
+				}
+			})
+			.catch((e) => {
+				const msg = e instanceof Error ? e.message : "Invalid LaTeX";
+				if (!isCancelled) {
+					setError(msg);
+					setHtml(null);
+				}
+				onErrorRef.current?.(msg);
+			});
+		return () => {
+			isCancelled = true;
+		};
 	}, [expression, displayMode, textColor]);
 
 	const styles = useMemo(() => createStyles(displayMode), [displayMode]);
@@ -109,13 +112,21 @@ export function MathView({
 
 	return (
 		<View style={[styles.container, style]}>
-			<MathJaxSvg
-				fontSize={fontSize}
-				color={textColor}
-				style={styles.mathJaxContainer}
+			<React.Suspense
+				fallback={
+					<Text style={[styles.fallback, { color: theme.colors.text }]}>
+						{expression}
+					</Text>
+				}
 			>
-				{mathJaxInput}
-			</MathJaxSvg>
+				<LazyMathJaxSvg
+					fontSize={fontSize}
+					color={textColor}
+					style={styles.mathJaxContainer}
+				>
+					{mathJaxInput}
+				</LazyMathJaxSvg>
+			</React.Suspense>
 		</View>
 	);
 }
