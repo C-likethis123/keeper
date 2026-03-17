@@ -28,7 +28,8 @@ export function useAutoSave({
 	status: noteStatus,
 }: AutoSaveInput) {
 	const canWrite = useStorageStore((s) => s.capabilities.canWrite);
-	const getContent = useEditorState((s) => s.getContent);
+	const getContentForVersion = useEditorState((s) => s.getContentForVersion);
+	const prepareContent = useEditorState((s) => s.prepareContent);
 	const [status, setStatus] = useState<SaveStatus>("idle");
 	const lastSavedRef = useRef<Note | null>(null);
 	const latestNoteRef = useRef({
@@ -41,8 +42,10 @@ export function useAutoSave({
 	const lastInputAtRef = useRef(Date.now());
 	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const prepareTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const isSavingRef = useRef(false);
+	const latestDocumentVersionRef = useRef(useEditorState.getState().document.version);
 
 	useEffect(() => {
 		latestNoteRef.current = {
@@ -76,11 +79,28 @@ export function useAutoSave({
 				return;
 			}
 			lastDocumentVersion = nextDocumentVersion;
+			latestDocumentVersionRef.current = nextDocumentVersion;
 			lastInputAtRef.current = Date.now();
+
+			if (prepareTimeoutRef.current) {
+				clearTimeout(prepareTimeoutRef.current);
+			}
+			prepareTimeoutRef.current = setTimeout(() => {
+				prepareTimeoutRef.current = null;
+				void InteractionManager.runAfterInteractions(async () => {
+					prepareContent();
+				});
+			}, INPUT_IDLE_BEFORE_SAVE_MS);
 		});
 
-		return unsubscribe;
-	}, []);
+		return () => {
+			unsubscribe();
+			if (prepareTimeoutRef.current) {
+				clearTimeout(prepareTimeoutRef.current);
+				prepareTimeoutRef.current = null;
+			}
+		};
+	}, [prepareContent]);
 
 	useEffect(() => {
 		if (statusTimeoutRef.current) {
@@ -90,6 +110,10 @@ export function useAutoSave({
 		if (idleTimeoutRef.current) {
 			clearTimeout(idleTimeoutRef.current);
 			idleTimeoutRef.current = null;
+		}
+		if (prepareTimeoutRef.current) {
+			clearTimeout(prepareTimeoutRef.current);
+			prepareTimeoutRef.current = null;
 		}
 		if (intervalRef.current) {
 			clearInterval(intervalRef.current);
@@ -116,7 +140,9 @@ export function useAutoSave({
 					}
 
 					const { id, title, isPinned, noteType, status } = latestNoteRef.current;
-					const currentContent = getContent();
+					const currentContent = getContentForVersion(
+						latestDocumentVersionRef.current,
+					);
 					const previousId = lastSavedRef.current?.id;
 					const previousTitle = lastSavedRef.current?.title;
 					const previousContent = lastSavedRef.current?.content;
@@ -183,12 +209,16 @@ export function useAutoSave({
 				clearTimeout(idleTimeoutRef.current);
 				idleTimeoutRef.current = null;
 			}
+			if (prepareTimeoutRef.current) {
+				clearTimeout(prepareTimeoutRef.current);
+				prepareTimeoutRef.current = null;
+			}
 			if (intervalRef.current) {
 				clearInterval(intervalRef.current);
 				intervalRef.current = null;
 			}
 		};
-	}, [canWrite, getContent]);
+	}, [canWrite, getContentForVersion]);
 
 	return { status };
 }
