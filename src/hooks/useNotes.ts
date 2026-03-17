@@ -1,10 +1,16 @@
 import { PAGE_SIZE } from "@/constants/pagination";
+import { useDebounce } from "@/hooks/useDebounce";
 import { NoteService } from "@/services/notes/noteService";
 import {
 	type NoteIndexItem,
 	NotesIndexService,
 } from "@/services/notes/notesIndex";
-import type { Note, NoteListFilters, NoteStatus, NoteType } from "@/services/notes/types";
+import type {
+	Note,
+	NoteListFilters,
+	NoteStatus,
+	NoteType,
+} from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -25,6 +31,7 @@ export default function useNotes() {
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
 	const contentVersion = useStorageStore((s) => s.contentVersion);
 	const [query, setQuery] = useState("");
+	const debouncedQuery = useDebounce(query, 300);
 	const [noteTypeFilter, setNoteTypeFilter] = useState<NoteType | undefined>(
 		undefined,
 	);
@@ -37,11 +44,8 @@ export default function useNotes() {
 	const [isLoading, setIsLoading] = useState(true);
 
 	const loadingRef = useRef(false);
+	const pendingRefreshRef = useRef(false);
 	const nextOffsetRef = useRef<number | undefined>(undefined);
-	const prevQueryRef = useRef(query);
-	const prevNoteTypeFilterRef = useRef(noteTypeFilter);
-	const prevStatusFilterRef = useRef(statusFilter);
-	const prevContentVersionRef = useRef(contentVersion);
 
 	const filters = useMemo<NoteListFilters>(
 		() => ({
@@ -50,28 +54,49 @@ export default function useNotes() {
 		}),
 		[noteTypeFilter, statusFilter],
 	);
+	const latestQueryRef = useRef(debouncedQuery);
+	const latestFiltersRef = useRef(filters);
 
 	const fetchNotes = useCallback(
-		async (append: boolean) => {
+		async (
+			append: boolean,
+			overrides?: {
+				searchQuery?: string;
+				filters?: NoteListFilters;
+			},
+		) => {
 			if (initializationStatus !== "ready") return;
-			if (loadingRef.current) return;
+			const searchQuery = overrides?.searchQuery ?? latestQueryRef.current;
+			const nextFilters = overrides?.filters ?? latestFiltersRef.current;
+			if (loadingRef.current) {
+				if (!append) {
+					pendingRefreshRef.current = true;
+					latestQueryRef.current = searchQuery;
+					latestFiltersRef.current = nextFilters;
+				}
+				return;
+			}
 			loadingRef.current = true;
 			setIsLoading(true);
 			try {
 				const offset = append ? (nextOffsetRef.current ?? 0) : 0;
-				const searchQuery = capabilities.canSearch ? query : "";
+				if (!append) {
+					nextOffsetRef.current = undefined;
+					setError(null);
+				}
+				const normalizedQuery = capabilities.canSearch ? searchQuery : "";
 				const results = capabilities.canSearch
 					? await NotesIndexService.listNotes(
-							searchQuery,
+							normalizedQuery,
 							PAGE_SIZE,
 							offset,
-							filters,
+							nextFilters,
 						)
 					: await NoteService.listNotesFallback(
-							searchQuery,
+							normalizedQuery,
 							PAGE_SIZE,
 							offset,
-							filters,
+							nextFilters,
 						);
 				nextOffsetRef.current = results.cursor?.offset;
 				const newNotes = results.items.map(toNote);
@@ -88,9 +113,13 @@ export default function useNotes() {
 			} finally {
 				loadingRef.current = false;
 				setIsLoading(false);
+				if (pendingRefreshRef.current) {
+					pendingRefreshRef.current = false;
+					void fetchNotes(false);
+				}
 			}
 		},
-		[filters, query, capabilities.canSearch, initializationStatus],
+		[capabilities.canSearch, initializationStatus],
 	);
 
 	const loadMoreNotes = useCallback(async () => {
@@ -99,10 +128,13 @@ export default function useNotes() {
 	}, [hasMore, isLoading, fetchNotes]);
 
 	const handleRefresh = useCallback(async () => {
-		setError(null);
-		nextOffsetRef.current = undefined;
 		await fetchNotes(false);
 	}, [fetchNotes]);
+
+	useEffect(() => {
+		latestQueryRef.current = debouncedQuery;
+		latestFiltersRef.current = filters;
+	}, [debouncedQuery, filters]);
 
 	useEffect(() => {
 		if (initializationStatus === "pending") {
@@ -118,43 +150,15 @@ export default function useNotes() {
 			return;
 		}
 
-		let cancelled = false;
-		const isQueryChange = prevQueryRef.current !== query;
-		const isTypeFilterChange = prevNoteTypeFilterRef.current !== noteTypeFilter;
-		const isStatusFilterChange = prevStatusFilterRef.current !== statusFilter;
-		const filtersChanged = isTypeFilterChange || isStatusFilterChange;
-		const contentChanged = prevContentVersionRef.current !== contentVersion;
-		if (isQueryChange) {
-			if (!capabilities.canSearch) return;
-			prevQueryRef.current = query;
-		}
-		if (isTypeFilterChange) {
-			prevNoteTypeFilterRef.current = noteTypeFilter;
-		}
-		if (isStatusFilterChange) {
-			prevStatusFilterRef.current = statusFilter;
-		}
-		if (contentChanged) {
-			prevContentVersionRef.current = contentVersion;
-		}
-		const timeoutId = isQueryChange
-			? setTimeout(() => {
-					if (!cancelled) fetchNotes(false);
-				}, 300)
-			: undefined;
-		if (!isQueryChange || filtersChanged || contentChanged) {
-			fetchNotes(false);
-		}
-		return () => {
-			cancelled = true;
-			if (timeoutId != null) clearTimeout(timeoutId);
-		};
+		void contentVersion;
+		void fetchNotes(false, {
+			searchQuery: debouncedQuery,
+			filters,
+		});
 	}, [
 		fetchNotes,
-		query,
-		noteTypeFilter,
-		statusFilter,
-		capabilities.canSearch,
+		debouncedQuery,
+		filters,
 		capabilities.reason,
 		contentVersion,
 		initializationStatus,
