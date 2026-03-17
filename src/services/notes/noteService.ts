@@ -58,7 +58,7 @@ export class NoteService {
 		});
 
 		GitService.queueChange(`${id}.md`, isNewNote ? "add" : "modify");
-		void GitService.commitBatch();
+		GitService.scheduleCommitBatch();
 
 		return saved;
 	}
@@ -74,7 +74,7 @@ export class NoteService {
 				console.warn("Failed to delete note from index:", err);
 			}
 			GitService.queueChange(`${id}.md`, "delete");
-			void GitService.commitBatch();
+			GitService.scheduleCommitBatch();
 			return true;
 		} catch (e) {
 			console.warn("Failed to delete note:", e);
