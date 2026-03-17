@@ -17,11 +17,21 @@ const initialRuntime = getGitRuntimeSupport().runtime;
 let hasTracedHookEntry = false;
 let hasTracedEffectStart = false;
 
+function getExecutionContext(): "server" | "client" {
+	return typeof window === "undefined" || typeof document === "undefined"
+		? "server"
+		: "client";
+}
+
 export function useAppStartup(): AppStartupState {
 	if (!hasTracedHookEntry) {
 		hasTracedHookEntry = true;
 		traceStartupBootstrapEvent("bootstrap.use_app_startup_hook_entered", {
 			initialRuntime,
+			executionContextNote:
+				getExecutionContext() === "server"
+					? "SSR render cannot detect Tauri globals"
+					: undefined,
 		});
 	}
 	const showToast = useToastStore((state) => state.showToast);

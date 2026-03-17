@@ -1,7 +1,6 @@
-import * as Updates from "expo-updates";
-
 export async function checkForUpdates() {
 	try {
+		const Updates = await import("expo-updates");
 		const update = await Updates.checkForUpdateAsync();
 		if (update.isAvailable) {
 			await Updates.fetchUpdateAsync();

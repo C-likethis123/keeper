@@ -1,12 +1,10 @@
 import { NoteFiltersBar } from "@/components/NoteFiltersBar";
-import NoteGrid from "@/components/NoteGrid";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import { SearchBar } from "@/components/shared/SearchBar";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
-import { resetAppData } from "@/services/app/resetAppDataService";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note, NoteType } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
@@ -22,6 +20,8 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+
+const LazyNoteGrid = React.lazy(() => import("@/components/NoteGrid"));
 
 export default function Index() {
 	const {
@@ -68,6 +68,9 @@ export default function Index() {
 		setIsResetting(true);
 		showToast("Clearing app data...", 1500);
 		try {
+			const { resetAppData } = await import(
+				"@/services/app/resetAppDataService"
+			);
 			await resetAppData();
 			await handleRefresh();
 			showToast("App data cleared");
@@ -180,17 +183,19 @@ export default function Index() {
 				}}
 				onStatusChange={setStatusFilter}
 			/>
-			<NoteGrid
-				notes={notes}
-				emptySubtitle={emptySubtitle}
-				onDelete={handleDeleteNote}
-				onPinToggle={handlePinToggle}
-				refreshing={isLoading}
-				onRefresh={handleRefresh}
-				onEndReached={loadMoreNotes}
-				isLoadingMore={isLoading}
-				hasMore={hasMore}
-			/>
+			<React.Suspense fallback={<Loader />}>
+				<LazyNoteGrid
+					notes={notes}
+					emptySubtitle={emptySubtitle}
+					onDelete={handleDeleteNote}
+					onPinToggle={handlePinToggle}
+					refreshing={isLoading}
+					onRefresh={handleRefresh}
+					onEndReached={loadMoreNotes}
+					isLoadingMore={isLoading}
+					hasMore={hasMore}
+				/>
+			</React.Suspense>
 			<TouchableOpacity
 				activeOpacity={0.8}
 				style={[styles.fab, !capabilities.canWrite && { opacity: 0.5 }]}

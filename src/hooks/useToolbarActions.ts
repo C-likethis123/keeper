@@ -4,9 +4,7 @@ import {
 } from "@/components/editor/core/BlockNode";
 import { executeEditorCommand } from "@/components/editor/keyboard/editorCommands";
 import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
-import { copyPickedImageToNotes } from "@/services/notes/imageStorage";
 import { useEditorState } from "@/stores/editorStore";
-import * as DocumentPicker from "expo-document-picker";
 import { useCallback } from "react";
 import { Platform } from "react-native";
 import { useFocusBlock } from "./useFocusBlock";
@@ -49,13 +47,17 @@ export function useToolbarActions(): UseToolbarActions {
 
 	const handleInsertImage = useCallback(async () => {
 		if (Platform.OS === "web") return;
-		const result = await DocumentPicker.getDocumentAsync({
+		const [documentPickerModule, imageStorageModule] = await Promise.all([
+			import("expo-document-picker"),
+			import("@/services/notes/imageStorage"),
+		]);
+		const result = await documentPickerModule.getDocumentAsync({
 			type: "image/*",
 			copyToCacheDirectory: true,
 		});
 		if (result.canceled) return;
 		const uri = result.assets[0].uri;
-		const path = await copyPickedImageToNotes(uri);
+		const path = await imageStorageModule.copyPickedImageToNotes(uri);
 		const focusedIndex = getFocusedBlockIndex() ?? 0;
 		insertBlockAfter(focusedIndex, createImageBlock(path));
 		focusBlock(focusedIndex + 1);
