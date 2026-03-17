@@ -52,10 +52,10 @@ export class NoteService {
 			summary,
 			title,
 			isPinned: pinnedState,
-				updatedAt: saved.lastUpdated,
-				noteType: saved.noteType,
-				status: saved.status,
-			});
+			updatedAt: saved.lastUpdated,
+			noteType: saved.noteType,
+			status: saved.status,
+		});
 
 		GitService.queueChange(`${id}.md`, isNewNote ? "add" : "modify");
 		void GitService.commitBatch();
@@ -118,12 +118,12 @@ export class NoteService {
 			items: page.map((note) => ({
 				noteId: note.id,
 				title: note.title,
-					summary: note.content,
-					updatedAt: note.lastUpdated,
-					isPinned: note.isPinned,
-					noteType: note.noteType,
-					status: note.status,
-				})),
+				summary: note.content,
+				updatedAt: note.lastUpdated,
+				isPinned: note.isPinned,
+				noteType: note.noteType,
+				status: note.status,
+			})),
 			cursor:
 				from + limit < filtered.length
 					? {
