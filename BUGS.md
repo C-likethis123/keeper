@@ -20,6 +20,8 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 - Desktop editor still needs follow-up polish
 - Expo OTA (Over-The-Air) updates not working
 - Note organization and relevance work is in progress; note metadata editing and note-list filters exist, but migration validation and metadata-driven views are not complete yet
+- Automated test coverage is still narrow: only `Document`, `Transaction`, and `History` are covered so far, so regressions in `EditorState`, `editorStore`, services, and UI flows can still slip through
+- No component/integration test harness exists yet for Expo/React Native surfaces, so editor interactions and storage flows still rely on manual validation
 
 ## Minor style issues
 
