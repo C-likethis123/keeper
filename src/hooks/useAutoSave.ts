@@ -3,7 +3,12 @@ import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useStorageStore } from "@/stores/storageStore";
+import { InteractionManager } from "react-native";
 import { useEffect, useRef, useState } from "react";
+
+const AUTO_SAVE_INTERVAL_MS = 60000;
+const INPUT_IDLE_BEFORE_SAVE_MS = 1500;
+const SAVE_INDICATOR_DELAY_MS = 1000;
 
 type AutoSaveInput = {
 	id: string;
@@ -17,78 +22,203 @@ type AutoSaveInput = {
 export function useAutoSave({
 	id,
 	title,
+	content: initialContent,
 	isPinned,
 	noteType,
 	status: noteStatus,
 }: AutoSaveInput) {
 	const canWrite = useStorageStore((s) => s.capabilities.canWrite);
-	const timerRef = useRef<number | null>(null);
-	const lastSavedRef = useRef<Note | null>(null);
+	const getContentForVersion = useEditorState((s) => s.getContentForVersion);
+	const prepareContent = useEditorState((s) => s.prepareContent);
 	const [status, setStatus] = useState<SaveStatus>("idle");
-	const getContent = useEditorState((s) => s.getContent);
-	useEffect(() => {
-		setStatus("idle");
+	const lastSavedRef = useRef<Note | null>(null);
+	const latestNoteRef = useRef({
+		id,
+		title,
+		isPinned,
+		noteType,
+		status: noteStatus,
+	});
+	const lastInputAtRef = useRef(Date.now());
+	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const prepareTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const isSavingRef = useRef(false);
+	const latestDocumentVersionRef = useRef(useEditorState.getState().document.version);
 
-		if (timerRef.current) {
-			clearInterval(timerRef.current);
+	useEffect(() => {
+		latestNoteRef.current = {
+			id,
+			title,
+			isPinned,
+			noteType,
+			status: noteStatus,
+		};
+		lastInputAtRef.current = Date.now();
+
+		if (lastSavedRef.current?.id !== id) {
+			lastSavedRef.current = {
+				id,
+				title: title.trim(),
+				content: initialContent,
+				isPinned,
+				lastUpdated: Date.now(),
+				noteType,
+				status: noteStatus,
+			};
+			setStatus("idle");
+		}
+	}, [id, title, initialContent, isPinned, noteType, noteStatus]);
+
+	useEffect(() => {
+		let lastDocumentVersion = useEditorState.getState().document.version;
+		const unsubscribe = useEditorState.subscribe((state) => {
+			const nextDocumentVersion = state.document.version;
+			if (nextDocumentVersion === lastDocumentVersion) {
+				return;
+			}
+			lastDocumentVersion = nextDocumentVersion;
+			latestDocumentVersionRef.current = nextDocumentVersion;
+			lastInputAtRef.current = Date.now();
+
+			if (prepareTimeoutRef.current) {
+				clearTimeout(prepareTimeoutRef.current);
+			}
+			prepareTimeoutRef.current = setTimeout(() => {
+				prepareTimeoutRef.current = null;
+				void InteractionManager.runAfterInteractions(async () => {
+					prepareContent();
+				});
+			}, INPUT_IDLE_BEFORE_SAVE_MS);
+		});
+
+		return () => {
+			unsubscribe();
+			if (prepareTimeoutRef.current) {
+				clearTimeout(prepareTimeoutRef.current);
+				prepareTimeoutRef.current = null;
+			}
+		};
+	}, [prepareContent]);
+
+	useEffect(() => {
+		if (statusTimeoutRef.current) {
+			clearTimeout(statusTimeoutRef.current);
+			statusTimeoutRef.current = null;
+		}
+		if (idleTimeoutRef.current) {
+			clearTimeout(idleTimeoutRef.current);
+			idleTimeoutRef.current = null;
+		}
+		if (prepareTimeoutRef.current) {
+			clearTimeout(prepareTimeoutRef.current);
+			prepareTimeoutRef.current = null;
+		}
+		if (intervalRef.current) {
+			clearInterval(intervalRef.current);
+			intervalRef.current = null;
 		}
 
-		const runSave = async () => {
-			if (!canWrite) return;
-			const previousId = lastSavedRef.current?.id;
-			const previousTitle = lastSavedRef.current?.title;
-			const previousContent = lastSavedRef.current?.content;
-			const previousIsPinned = lastSavedRef.current?.isPinned;
-			const previousNoteType = lastSavedRef.current?.noteType;
-			const previousStatus = lastSavedRef.current?.status;
-			const content = getContent();
-			if (
-				id !== previousId ||
-				title !== previousTitle ||
-				content !== previousContent ||
-				isPinned !== previousIsPinned ||
-				noteType !== previousNoteType ||
-				noteStatus !== previousStatus
-			) {
-				setStatus("saving");
-				try {
-					await NoteService.saveNote({
+		const scheduleSaveWhenIdle = () => {
+			if (!canWrite || isSavingRef.current) {
+				return;
+			}
+
+			const idleForMs = Date.now() - lastInputAtRef.current;
+			const waitMs = Math.max(0, INPUT_IDLE_BEFORE_SAVE_MS - idleForMs);
+
+			if (idleTimeoutRef.current) {
+				clearTimeout(idleTimeoutRef.current);
+			}
+
+			idleTimeoutRef.current = setTimeout(() => {
+				idleTimeoutRef.current = null;
+				void InteractionManager.runAfterInteractions(async () => {
+					if (!canWrite || isSavingRef.current) {
+						return;
+					}
+
+					const { id, title, isPinned, noteType, status } = latestNoteRef.current;
+					const currentContent = getContentForVersion(
+						latestDocumentVersionRef.current,
+					);
+					const previousId = lastSavedRef.current?.id;
+					const previousTitle = lastSavedRef.current?.title;
+					const previousContent = lastSavedRef.current?.content;
+					const previousIsPinned = lastSavedRef.current?.isPinned;
+					const previousNoteType = lastSavedRef.current?.noteType;
+					const previousStatus = lastSavedRef.current?.status;
+
+					if (
+						id === previousId &&
+						title === previousTitle &&
+						currentContent === previousContent &&
+						isPinned === previousIsPinned &&
+						noteType === previousNoteType &&
+						status === previousStatus
+					) {
+						return;
+					}
+
+					isSavingRef.current = true;
+					setStatus("saving");
+					try {
+						await NoteService.saveNote({
+							id,
+							title: title.trim(),
+							content: currentContent,
+							isPinned,
+							lastUpdated: Date.now(),
+							noteType,
+							status,
+						});
+					} catch {
+						setStatus("idle");
+						isSavingRef.current = false;
+						return;
+					}
+
+					lastSavedRef.current = {
 						id,
 						title: title.trim(),
-						content,
+						content: currentContent,
 						isPinned,
 						lastUpdated: Date.now(),
 						noteType,
-						status: noteStatus,
-					});
-				} catch {
-					setStatus("idle");
-					return;
-				}
-				lastSavedRef.current = {
-					id,
-					content,
-					isPinned,
-					title: title.trim(),
-					lastUpdated: Date.now(),
-					noteType,
-					status: noteStatus,
-				};
-				setStatus("saved");
-				setTimeout(() => {
-					setStatus("idle");
-				}, 1000);
-			}
+						status,
+					};
+					isSavingRef.current = false;
+					setStatus("saved");
+					statusTimeoutRef.current = setTimeout(() => {
+						setStatus("idle");
+						statusTimeoutRef.current = null;
+					}, SAVE_INDICATOR_DELAY_MS);
+				});
+			}, waitMs);
 		};
 
-		timerRef.current = setInterval(runSave, 10000);
+		intervalRef.current = setInterval(scheduleSaveWhenIdle, AUTO_SAVE_INTERVAL_MS);
 
 		return () => {
-			if (timerRef.current) {
-				clearInterval(timerRef.current);
+			if (statusTimeoutRef.current) {
+				clearTimeout(statusTimeoutRef.current);
+				statusTimeoutRef.current = null;
+			}
+			if (idleTimeoutRef.current) {
+				clearTimeout(idleTimeoutRef.current);
+				idleTimeoutRef.current = null;
+			}
+			if (prepareTimeoutRef.current) {
+				clearTimeout(prepareTimeoutRef.current);
+				prepareTimeoutRef.current = null;
+			}
+			if (intervalRef.current) {
+				clearInterval(intervalRef.current);
+				intervalRef.current = null;
 			}
 		};
-	}, [id, title, isPinned, noteType, noteStatus, canWrite, getContent]);
+	}, [canWrite, getContentForVersion]);
 
 	return { status };
 }

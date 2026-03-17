@@ -290,14 +290,34 @@ export function getListItemNumber(
 /// Converts the document to markdown
 export function documentToMarkdown(document: Document): string {
 	const buffer: string[] = [];
+	const numberedListCounts = new Map<number, number>();
+
+	const resetCountersFromLevel = (level: number) => {
+		for (const existingLevel of [...numberedListCounts.keys()]) {
+			if (existingLevel >= level) {
+				numberedListCounts.delete(existingLevel);
+			}
+		}
+	};
+
 	for (let i = 0; i < document.blocks.length; i++) {
-		buffer.push(
-			blockToMarkdown(document.blocks[i], getListItemNumber(document, i)),
-		);
+		const block = document.blocks[i];
+		let listNumber: number | undefined;
+
+		if (block.type === BlockType.numberedList) {
+			const listLevel = getListLevel(block);
+			resetCountersFromLevel(listLevel + 1);
+			const nextNumber = (numberedListCounts.get(listLevel) ?? 0) + 1;
+			numberedListCounts.set(listLevel, nextNumber);
+			listNumber = nextNumber;
+		} else {
+			resetCountersFromLevel(0);
+		}
+
+		buffer.push(blockToMarkdown(block, listNumber));
 		if (i < document.blocks.length - 1) {
 			buffer.push("\n");
 			// Add extra newline after code blocks
-			const block = document.blocks[i];
 			if (isCodeBlock(block) || block.type === BlockType.mathBlock) {
 				buffer.push("\n");
 			}
