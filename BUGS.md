@@ -13,13 +13,15 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 - **Git Operations**: Slow checkout required for new changes from other sources
 - Slow to update
 - **Saving responsiveness**: autosave now waits for input idle time and defers heavier prepare work until after interactions, but device-side validation is still needed before calling save lag fully resolved
-- space does not work
+- **Paragraph space insertion**: in paragraph blocks, moving the caret away from the end and pressing space can advance the cursor without inserting a space; list blocks do not reproduce this because they stay on the native `TextInput` path
 
 ## Known Regressions & Improvements
 
 - Desktop editor still needs follow-up polish
 - Expo OTA (Over-The-Air) updates not working
 - Note organization and relevance work is in progress; note metadata editing and note-list filters exist, but migration validation and metadata-driven views are not complete yet
+- Automated test coverage is still narrow: only `Document`, `Transaction`, and `History` are covered so far, so regressions in `EditorState`, `editorStore`, services, and UI flows can still slip through
+- No component/integration test harness exists yet for Expo/React Native surfaces, so editor interactions and storage flows still rely on manual validation
 
 ## Minor style issues
 

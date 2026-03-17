@@ -89,6 +89,73 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 
 ---
 
+### Phase 4: Editor Core Test Foundation ✅
+
+The first automated test slice is now in place for the immutable editor core.
+
+**Status**: Implemented
+**Shipped in this phase**:
+
+- Added `vitest` as the initial unit test runner for pure TypeScript modules
+- Added coverage for `Document` markdown parsing, serialization, numbered-list numbering, and empty-document invariants
+- Added coverage for `Transaction` application, inverse generation, and builder metadata
+- Added coverage for `History` undo/redo behavior, transaction grouping, and undo-stack trimming
+
+**Key files**:
+
+- `src/components/editor/core/__tests__/Document.test.ts`
+- `src/components/editor/core/__tests__/Transaction.test.ts`
+- `src/components/editor/core/__tests__/History.test.ts`
+- `package.json`
+
+**Why this phase first**:
+
+- These modules are pure and deterministic, so they provide fast feedback without React Native rendering or native storage mocks
+- They cover some of the riskiest editor invariants: markdown conversion, immutable state transitions, and undo/redo behavior
+
+---
+
+### Phase 5: Test Expansion for Editor State and Services
+
+Build on the new editor-core test foundation by extending coverage into reducer/store behavior and pure service boundaries.
+
+**Status**: Planned
+**Objectives**:
+
+- Add reducer-level tests for `EditorState`
+- Add focused store tests for high-value `editorStore` behaviors that wrap reducer/history flows
+- Add unit tests for pure notes and startup helpers where mocking cost stays low
+- Keep the first test layers framework-light and avoid React rendering unless behavior requires it
+
+**Candidate files**:
+
+- `src/components/editor/core/EditorState.ts`
+- `src/stores/editorStore.ts`
+- `src/services/notes/frontmatter.ts`
+- `src/services/startup/startupStrategies.ts`
+- `src/services/startup/startupSteps.ts`
+
+---
+
+### Phase 6: Component and Integration Test Architecture
+
+Introduce a separate test layer for UI and integration behavior after the pure-core suite is stable.
+
+**Status**: Planned
+**Objectives**:
+
+- Decide on React Native / Expo component-test tooling
+- Add integration coverage for `HybridEditor`, toolbar flows, and note-loading/save interactions
+- Define a small shared test-fixture strategy for documents, notes, and storage adapters
+- Separate pure unit tests from UI/integration runs so feedback stays fast
+
+**Open questions**:
+
+- Whether to use `jest-expo` plus React Native Testing Library for component coverage
+- How much storage and git behavior should be mocked versus exercised through higher-level service seams
+
+---
+
 ## Known Issues & Improvements
 
 ### App Startup Performance
@@ -103,6 +170,13 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 1. Change branching strategy (reduce checkout overhead)
 2. Switch to lib2git (alternative git implementation)
 
+### Paragraph Space Insertion Regression
+
+**Issue**: In paragraph blocks, pressing space after manually moving the cursor away from the block end can advance the caret without inserting a space.
+**Current evidence**: Paragraph blocks intercept the space key through `UnifiedBlock`/`HybridEditor`, while list blocks continue to use the native `TextInput` insertion path.
+**Key files**: `src/components/editor/blocks/UnifiedBlock.tsx`, `src/components/editor/HybridEditor.tsx`
+**Next**: Make paragraph-space handling match list-block behavior for normal typing and keep markdown-trigger conversion only for explicit trigger cases.
+
 ### App Updates
 
 **Issue**: Expo OTA (Over-The-Air) updates not working
@@ -110,7 +184,7 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 
 ### Wikilink Create Flow ✅
 
-**Status**: Implemented in this workspace.
+**Status**: Implemented.
 **Current**: Wikilink autocomplete now offers a create action for unmatched titles, inserts the `[[Title]]` link, and creates a stub note so the destination exists immediately.
 **Affected files**: `src/components/editor/wikilinks/WikiLinkContext.tsx`, `src/components/editor/wikilinks/WikiLinkModal.tsx`, `src/components/editor/wikilinks/WikiLinkOverlay.tsx`
 **Follow-up**: Validate the new create flow UX on device and keep the dropdown result model flexible for future wiki link actions.
@@ -148,6 +222,21 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 - Journals (time-based)
 - Resources (reference material)
 - Todos (action items)
+
+### Testing Architecture
+
+**Status**: In progress
+**Current**: The project now has an initial `vitest` setup and passing editor-core coverage for `Document`, `Transaction`, and `History`.
+**Next**:
+
+- Expand tests into `EditorState` and selected `editorStore` flows
+- Decide on the component/integration testing stack for Expo/React Native surfaces
+- Add shared fixtures only where repetition appears, keeping early tests close to the modules they cover
+
+**Current constraints**:
+
+- No pre-existing automated test suite beyond lint
+- Native/mobile behavior still needs a different strategy than pure TypeScript modules
 
 ---
 

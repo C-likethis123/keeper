@@ -7,11 +7,16 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **Phase 1**: FTS5 wikilink relevance ranking complete
 - **Phase 2**: Image blocks (desktop-focused) complete
 - **Phase 3**: Editor keyboard shortcut foundation (desktop + web) complete
+- **Phase 4**: Editor core test foundation complete with passing `Document`, `Transaction`, and `History` coverage under `vitest`
+- **Phase 5**: Next testing work is reducer/store coverage for `EditorState` and selected `editorStore` flows
+- **Phase 6**: After pure-core expansion, choose and add component/integration test architecture for Expo/React Native UI
 - **Next keyboard work**: soft line breaks, checkbox toggle shortcut, better code-block vertical navigation, formatting shortcuts, app-level shortcuts
 - **Critical issues**: No currently confirmed P1 items; desktop hydration was fixed in the storage-init follow-up
-- **Wikilinks**: create-from-`[[...]]` flow is implemented in this workspace; next checks are UX polish and device validation
+- **Wikilinks**: create-from-`[[...]]` flow is implemented; next checks are UX polish and device validation
 - **Startup architecture**: startup orchestration moved out of `RootLayout` into `useAppStartup` + runtime startup strategy/step modules; performance work is still open
 - **Note metadata**: note type + todo-status metadata is now editable in the editor and filterable in the note list; remaining work is migration validation plus deciding how metadata should drive organization views
 - **Native bridge**: Android and iOS now use the local Expo module in `modules/keeper-git`
+- **Testing status**: `npm test` now runs `vitest`; current suite covers the immutable editor core only
+- **Paragraph space bug**: paragraph blocks can swallow a manually inserted space when the caret is moved away from the end; list blocks are unaffected because they keep the native `TextInput` insertion path
 
 For full context on each item, see `ROADMAP.md`.
