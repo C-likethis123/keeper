@@ -132,10 +132,19 @@ export function UnifiedBlock({
 				return;
 			}
 
-			// Handle space key - trigger block type detection for paragraph blocks
-			if (key === " " && block.type === BlockType.paragraph) {
-				onSpace(index);
-				return;
+			// Match list-block behavior for normal typing: only intercept space
+			// when we explicitly handle a markdown trigger at the block end.
+			if (
+				key === " " &&
+				block.type === BlockType.paragraph &&
+				selection?.anchor.blockIndex === index &&
+				selection?.focus.blockIndex === index &&
+				selection.anchor.offset === selection.focus.offset
+			) {
+				const handled = onSpace(index, selection.focus.offset);
+				if (handled) {
+					return;
+				}
 			}
 
 			// Handle Enter key - split non-code blocks at the current cursor position

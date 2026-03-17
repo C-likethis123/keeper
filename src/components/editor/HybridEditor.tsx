@@ -146,23 +146,29 @@ function HybridEditorContent() {
 	);
 
 	const handleSpace = useCallback(
-		(index: number) => {
+		(index: number, cursorOffset: number) => {
 			const block = getFocusedBlock();
 			if (!block) {
-				return;
+				return false;
 			}
-			// Get current content and add space (space key was just pressed)
-			const newContent = `${block.content ?? ""} `;
+
+			if (cursorOffset !== block.content.length) {
+				return false;
+			}
+
+			const newContent = `${block.content} `;
 
 			if (
 				!handleBlockTypeDetection(index, newContent, {
 					ignoreContentChange: true,
 				})
 			) {
-				updateBlockContent(index, newContent, newContent.length);
+				return false;
 			}
+
+			return true;
 		},
-		[updateBlockContent, handleBlockTypeDetection, getFocusedBlock],
+		[handleBlockTypeDetection, getFocusedBlock],
 	);
 
 	const handleBackspaceAtStart = useCallback(

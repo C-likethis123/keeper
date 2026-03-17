@@ -11,6 +11,9 @@ No currently confirmed P1 issues.
 **Desktop hydration bug**: Fixed. Desktop now hydrates immediately on Tauri while note-loading hooks wait for storage initialization state before reading from disk, so restored editor routes no longer get stuck on the wrong backend.
 **Key files**: `src/app/_layout.tsx`, `src/hooks/useLoadNote.ts`, `src/hooks/useNotes.ts`, `src/stores/storageStore.ts`
 
+**Paragraph space insertion regression**: Fixed in this workspace. Paragraph blocks now fall back to native `TextInput` insertion for normal typing after manual cursor moves, while retaining markdown-trigger conversion only for explicit end-of-block trigger cases.
+**Key files**: `src/components/editor/blocks/UnifiedBlock.tsx`, `src/components/editor/HybridEditor.tsx`, `src/components/editor/blocks/BlockRegistry.tsx`, `src/components/editor/BlockRow.tsx`
+
 ---
 
 ## Development Phases
