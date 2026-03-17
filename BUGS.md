@@ -13,7 +13,6 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 - **Git Operations**: Slow checkout required for new changes from other sources
 - Slow to update
 - **Saving responsiveness**: autosave now waits for input idle time and defers heavier prepare work until after interactions, but device-side validation is still needed before calling save lag fully resolved
-- **Paragraph space insertion**: in paragraph blocks, moving the caret away from the end and pressing space can advance the cursor without inserting a space; list blocks do not reproduce this because they stay on the native `TextInput` path
 
 ## Known Regressions & Improvements
 

@@ -17,6 +17,5 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **Note metadata**: note type + todo-status metadata is now editable in the editor and filterable in the note list; remaining work is migration validation plus deciding how metadata should drive organization views
 - **Native bridge**: Android and iOS now use the local Expo module in `modules/keeper-git`
 - **Testing status**: `npm test` now runs `vitest`; current suite covers the immutable editor core only
-- **Paragraph space bug**: paragraph blocks can swallow a manually inserted space when the caret is moved away from the end; list blocks are unaffected because they keep the native `TextInput` insertion path
 
 For full context on each item, see `ROADMAP.md`.

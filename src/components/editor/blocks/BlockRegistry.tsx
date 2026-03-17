@@ -26,7 +26,7 @@ export interface BlockConfig {
 		language?: string,
 	) => void;
 	onBackspaceAtStart: (index: number) => void;
-	onSpace: (index: number) => void;
+	onSpace: (index: number, cursorOffset: number) => boolean;
 	onEnter: (index: number, cursorOffset: number) => void;
 	onSelectionChange: (index: number, start: number, end: number) => void;
 	onDelete: (index: number) => void;
