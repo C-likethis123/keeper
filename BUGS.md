@@ -12,13 +12,14 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 - **Startup architecture**: startup flow refactor shipped (`useAppStartup` + startup strategies), but no confirmed startup latency reduction yet
 - **Git Operations**: Slow checkout required for new changes from other sources
 - Slow to update
-- There is lag time when saving
+- **Saving responsiveness**: autosave now waits for input idle time and defers heavier prepare work until after interactions, but device-side validation is still needed before calling save lag fully resolved
+- space does not work
 
 ## Known Regressions & Improvements
 
 - Desktop editor still needs follow-up polish
 - Expo OTA (Over-The-Air) updates not working
-- Note organization and relevance work is in progress; note metadata plumbing exists, but migration validation and metadata-driven views are not complete yet
+- Note organization and relevance work is in progress; note metadata editing and note-list filters exist, but migration validation and metadata-driven views are not complete yet
 
 ## Minor style issues
 
