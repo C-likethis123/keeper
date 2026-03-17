@@ -14,11 +14,14 @@ interface QueuedChange {
 	operation: GitChangeOperation;
 }
 
+const COMMIT_DEBOUNCE_MS = 15000;
+
 export class GitService {
 	static readonly instance = new GitService();
 
 	private static readonly queue = new Map<string, GitChangeOperation>();
 	private static gitEngine: GitEngine | null = null;
+	private static commitTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	private appStateSubscription: NativeEventSubscription | null = null;
 	private static isCommitting = false;
@@ -69,10 +72,28 @@ export class GitService {
 	}
 
 	static clearQueuedChanges(): void {
+		if (GitService.commitTimeout) {
+			clearTimeout(GitService.commitTimeout);
+			GitService.commitTimeout = null;
+		}
 		GitService.queue.clear();
 	}
 
+	static scheduleCommitBatch(delayMs = COMMIT_DEBOUNCE_MS): void {
+		if (GitService.commitTimeout) {
+			clearTimeout(GitService.commitTimeout);
+		}
+		GitService.commitTimeout = setTimeout(() => {
+			GitService.commitTimeout = null;
+			void GitService.commitBatch();
+		}, delayMs);
+	}
+
 	static async commitBatch(message?: string): Promise<void> {
+		if (GitService.commitTimeout) {
+			clearTimeout(GitService.commitTimeout);
+			GitService.commitTimeout = null;
+		}
 		if (GitService.isCommitting || GitService.queue.size === 0) {
 			return;
 		}

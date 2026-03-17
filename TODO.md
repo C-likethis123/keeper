@@ -14,7 +14,7 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **Critical issues**: No currently confirmed P1 items; desktop hydration was fixed in the storage-init follow-up
 - **Wikilinks**: create-from-`[[...]]` flow is implemented in this workspace; next checks are UX polish and device validation
 - **Startup architecture**: startup orchestration moved out of `RootLayout` into `useAppStartup` + runtime startup strategy/step modules; performance work is still open
-- **Note metadata**: note type + todo-status plumbing is in progress across frontmatter, SQLite/Tauri migrations, storage engines, and editor UI; remaining work is migration validation plus deciding how metadata should drive organization views
+- **Note metadata**: note type + todo-status metadata is now editable in the editor and filterable in the note list; remaining work is migration validation plus deciding how metadata should drive organization views
 - **Native bridge**: Android and iOS now use the local Expo module in `modules/keeper-git`
 - **Testing status**: `npm test` now runs `vitest`; current suite covers the immutable editor core only
 

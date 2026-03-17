@@ -30,7 +30,22 @@ type EditorAction = Parameters<typeof editorReducer>[1];
 const history = new History();
 export const useEditorState = create<EditorState>()((set, get) => {
 	const dispatch = (action: EditorAction) =>
-		set((state) => editorReducer(state, action, history));
+		set((state) => {
+			const nextState = editorReducer(state, action, history);
+			switch (action.type) {
+				case "SET_DOCUMENT":
+				case "APPLY_TRANSACTION":
+				case "UNDO":
+				case "REDO":
+					return {
+						...nextState,
+						preparedMarkdown: null,
+						preparedVersion: null,
+					};
+				default:
+					return nextState;
+			}
+		});
 
 	return {
 		...initialEditorStateSlice,
@@ -267,8 +282,37 @@ export const useEditorState = create<EditorState>()((set, get) => {
 			set({ ...initialEditorStateSlice });
 		},
 
-		toMarkdown: () => documentToMarkdown(get().document),
-		getContent: () => documentToMarkdown(get().document),
+		toMarkdown: () => get().getContentForVersion(),
+		prepareContent: () => {
+			const state = get();
+			const markdown = documentToMarkdown(state.document);
+			set({
+				preparedMarkdown: markdown,
+				preparedVersion: state.document.version,
+			});
+		},
+		getPreparedContent: () => {
+			const { preparedMarkdown, preparedVersion } = get();
+			if (preparedMarkdown == null || preparedVersion == null) {
+				return null;
+			}
+			return {
+				version: preparedVersion,
+				markdown: preparedMarkdown,
+			};
+		},
+		getContentForVersion: (version) => {
+			const state = get();
+			if (
+				state.preparedMarkdown != null &&
+				state.preparedVersion != null &&
+				(version == null || state.preparedVersion === version)
+			) {
+				return state.preparedMarkdown;
+			}
+			return documentToMarkdown(state.document);
+		},
+		getContent: () => get().getContentForVersion(),
 
 		getCanUndo: () => history.canUndo,
 		getCanRedo: () => history.canRedo,

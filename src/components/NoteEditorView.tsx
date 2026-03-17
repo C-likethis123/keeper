@@ -66,20 +66,23 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const capabilities = useStorageStore((s) => s.capabilities);
 	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
-	const getContent = useEditorState((s: EditorState) => s.getContent);
+	const documentVersion = useEditorState((s: EditorState) => s.document.version);
+	const getContentForVersion = useEditorState(
+		(s: EditorState) => s.getContentForVersion,
+	);
 
 	const buildNotePayload = useCallback(
 		(overrides?: Partial<Note>): Note => ({
 			id,
 			title,
-			content: getContent(),
+			content: getContentForVersion(documentVersion),
 			isPinned,
 			lastUpdated: Date.now(),
 			noteType,
 			status: noteType === "todo" ? (todoStatus ?? "open") : undefined,
 			...overrides,
 		}),
-		[id, title, getContent, isPinned, noteType, todoStatus],
+		[id, title, getContentForVersion, documentVersion, isPinned, noteType, todoStatus],
 	);
 
 	const togglePin = useCallback(async () => {

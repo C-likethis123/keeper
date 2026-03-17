@@ -194,9 +194,9 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 ### Note Organization & Relevance
 
 **Status**: In progress
-**Current implementation evidence**: note type and todo-status metadata are being threaded through frontmatter parsing, SQLite/Tauri migrations, storage engines, note cards, and editor controls.
-**Key files**: `src/services/notes/frontmatter.ts`, `src/services/notes/notesIndexDb.ts`, `src/components/NoteEditorView.tsx`, `src/components/NoteCard.tsx`, `src/migrations/003_add_note_metadata.ts`, `src-tauri/src/storage/migrations/v3_add_note_metadata.rs`
-**Next**: validate migration/backfill behavior on existing notes and decide how metadata should drive filtering and higher-level note organization views.
+**Current implementation evidence**: note type and todo-status metadata are now persisted in frontmatter and storage indexes, editable in the note editor, and filterable from the note list UI.
+**Key files**: `src/services/notes/frontmatter.ts`, `src/services/notes/notesIndexDb.ts`, `src/components/NoteEditorView.tsx`, `src/components/NoteFiltersBar.tsx`, `src/hooks/useNotes.ts`, `src/migrations/003_add_note_metadata.ts`, `src-tauri/src/storage/migrations/v3_add_note_metadata.rs`
+**Next**: validate migration/backfill behavior on existing notes, decide how metadata should affect default sorting/relevance, and add higher-level organization views beyond the current filters.
 
 **Goals**:
 

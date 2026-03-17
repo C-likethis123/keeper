@@ -18,6 +18,8 @@ export interface EditorStateSlice {
 	selection: DocumentSelection | null;
 	blockSelection: BlockSelection | null;
 	isComposing: boolean;
+	preparedMarkdown: string | null;
+	preparedVersion: number | null;
 }
 
 export interface EditorState extends EditorStateSlice {
@@ -45,6 +47,9 @@ export interface EditorState extends EditorStateSlice {
 	mergeWithPrevious: (index: number) => void;
 	loadMarkdown: (markdown: string) => void;
 	toMarkdown: () => string;
+	prepareContent: () => void;
+	getPreparedContent: () => { version: number; markdown: string } | null;
+	getContentForVersion: (version?: number) => string;
 	getCanUndo: () => boolean;
 	getCanRedo: () => boolean;
 	getFocusedBlockIndex: () => number | null;
@@ -59,6 +64,8 @@ export const initialEditorStateSlice: EditorStateSlice = {
 	selection: null,
 	blockSelection: null,
 	isComposing: false,
+	preparedMarkdown: null,
+	preparedVersion: null,
 };
 
 type EditorAction =
