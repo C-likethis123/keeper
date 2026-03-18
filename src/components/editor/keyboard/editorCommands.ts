@@ -6,6 +6,7 @@ export type EditorCommandId =
 	| "focusNextBlock"
 	| "undo"
 	| "redo"
+	| "toggleCheckbox"
 	| "indentListItem"
 	| "outdentListItem"
 	| "deleteSelectedBlocks"
@@ -23,6 +24,7 @@ export interface EditorCommandContext {
 	focusBlockAt: (index: number, offset: number) => void;
 	runUndo: () => boolean;
 	runRedo: () => boolean;
+	runToggleCheckbox: () => boolean;
 	runIndentListItem: () => boolean;
 	runOutdentListItem: () => boolean;
 	runDeleteSelectedBlocks: () => boolean;
@@ -48,6 +50,7 @@ export const editorCommands: Record<EditorCommandId, EditorCommand> = {
 	},
 	undo: (context) => context.runUndo(),
 	redo: (context) => context.runRedo(),
+	toggleCheckbox: (context) => context.runToggleCheckbox(),
 	indentListItem: (context) => context.runIndentListItem(),
 	outdentListItem: (context) => context.runOutdentListItem(),
 	deleteSelectedBlocks: (context) => {
