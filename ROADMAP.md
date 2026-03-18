@@ -122,7 +122,13 @@ The first automated test slice is now in place for the immutable editor core.
 
 Build on the new editor-core test foundation by extending coverage into reducer/store behavior and pure service boundaries.
 
-**Status**: Planned
+**Status**: Implemented
+**Current implementation evidence**:
+
+- Added reducer-level coverage for `EditorState` selection normalization, select-all, transaction application, and undo/redo restoration
+- Added focused `editorStore` coverage for prepared-content invalidation, block-range deletion, split/merge behavior, and reset/history cleanup
+- Added service-level coverage for notes frontmatter parsing/stringifying and startup-step rebuild/error handling
+- Added a lightweight `vitest` alias config so source modules can be exercised through their existing `@/` imports
 **Objectives**:
 
 - Add reducer-level tests for `EditorState`
@@ -137,6 +143,17 @@ Build on the new editor-core test foundation by extending coverage into reducer/
 - `src/services/notes/frontmatter.ts`
 - `src/services/startup/startupStrategies.ts`
 - `src/services/startup/startupSteps.ts`
+- `src/components/editor/core/__tests__/EditorState.test.ts`
+- `src/stores/__tests__/editorStore.test.ts`
+- `src/services/notes/__tests__/frontmatter.test.ts`
+- `src/services/startup/__tests__/startupSteps.test.ts`
+- `vitest.config.ts`
+
+**Follow-up**:
+
+- Add coverage for `startupStrategies.ts` runtime sequencing and hydration ordering as the suite expands
+- Add more `editorStore` flows gradually if regressions or repeated manual checks show the need
+- Keep Phase 6 UI/integration work separate so this layer stays fast and deterministic
 
 ---
 
@@ -229,10 +246,10 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 ### Testing Architecture
 
 **Status**: In progress
-**Current**: The project now has an initial `vitest` setup and passing editor-core coverage for `Document`, `Transaction`, and `History`.
+**Current**: The project now has a `vitest` setup with passing coverage for `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, and startup-step orchestration.
 **Next**:
 
-- Expand tests into `EditorState` and selected `editorStore` flows
+- Expand tests gradually into remaining startup/runtime seams, especially `startupStrategies`, as follow-on work rather than a prerequisite for this phase
 - Decide on the component/integration testing stack for Expo/React Native surfaces
 - Add shared fixtures only where repetition appears, keeping early tests close to the modules they cover
 
