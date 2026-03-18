@@ -98,7 +98,7 @@ export default function useNotes() {
 							offset,
 							nextFilters,
 						);
-				nextOffsetRef.current = results.cursor?.offset;
+				nextOffsetRef.current = results.cursor;
 				const newNotes = results.items.map(toNote);
 				if (append) {
 					setNotes((prev) => [...prev, ...newNotes]);

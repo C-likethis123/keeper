@@ -2,15 +2,14 @@ import type { GitChangedPaths } from "@/services/git/engines/GitEngine";
 import type { NoteListFilters } from "@/services/notes/types";
 import { getRuntimeStorageBackend } from "@/services/storage/runtime";
 import { getStorageEngine } from "@/services/storage/storageEngine";
-import {
-	type ListNotesResult,
-	type NotesIndexRebuildMetrics,
-	type NotesIndexSyncMetrics,
-	type NoteIndexItem,
-	notesIndexDbSyncChanges,
+import { syncChanges } from "./indexDb/syncService";
+import type {
+	ListNotesResult,
+	NoteIndexItem,
+	NotesIndexRebuildMetrics,
+	NotesIndexSyncMetrics,
 } from "./notesIndexDb";
 
-export { extractSummary } from "./notesIndexDb";
 export type {
 	ListNotesResult,
 	NoteIndexItem,
@@ -30,6 +29,7 @@ export class NotesIndexService {
 
 	private constructor() {}
 
+	// REVIEW: can we cache getStorageEngine() as a instance level method?
 	static async upsertNote(item: NoteIndexItem): Promise<void> {
 		await getStorageEngine().indexUpsert(item);
 	}
@@ -68,7 +68,7 @@ export class NotesIndexService {
 				mode: "incremental",
 				changedPathCount,
 				markdownChangedPathCount,
-				metrics: await notesIndexDbSyncChanges(changedPaths),
+				metrics: await syncChanges(changedPaths),
 			};
 		}
 

@@ -125,11 +125,7 @@ export class NoteService {
 				status: note.status,
 			})),
 			cursor:
-				from + limit < filtered.length
-					? {
-							offset: from + limit,
-						}
-					: undefined,
+				from + limit < filtered.length ? from + limit : undefined,
 		};
 	}
 }

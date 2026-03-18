@@ -25,7 +25,7 @@ export interface NoteIndexPersistenceItem {
 
 export interface NoteIndexListResult {
 	items: NoteIndexPersistenceItem[];
-	cursor?: { offset: number };
+	cursor?: number;
 }
 
 export type NoteIndexQueryFilters = NoteListFilters;

@@ -1,6 +1,7 @@
 import type { Note, NoteStatus, NoteType } from "@/services/notes/types";
 
 export interface ParsedFrontmatter {
+	id: string;
 	title: string;
 	isPinned: boolean;
 	noteType: NoteType;
@@ -31,14 +32,11 @@ function parseYamlScalar(raw: string): string {
 	return trimmed;
 }
 
-function stringifyYamlString(value: string): string {
-	return JSON.stringify(value);
-}
-
 export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(markdown);
 	if (!match) {
 		return {
+			id: "",
 			title: "",
 			isPinned: false,
 			noteType: "note",
@@ -50,6 +48,7 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	let isPinned = false;
 	let noteType: NoteType = "note";
 	let status: NoteStatus | undefined;
+	let id = "";
 	const frontmatter = match[1];
 	const content = markdown.slice(match[0].length);
 
@@ -63,6 +62,8 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 		const value = parseYamlScalar(line.slice(separator + 1));
 		if (key === "title") {
 			title = value;
+		} else if (key === "id") {
+			id = value;
 		} else if (key === "pinned") {
 			isPinned = value.toLowerCase() === "true";
 		} else if (key === "type" && isNoteType(value)) {
@@ -73,6 +74,7 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	}
 
 	return {
+		id,
 		title,
 		isPinned,
 		noteType,
@@ -81,23 +83,18 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	};
 }
 
-export function stringifyFrontmatter(
-	note: Pick<
-		Note,
-		"id" | "title" | "isPinned" | "content" | "noteType" | "status"
-	>,
-): string {
+export function stringifyFrontmatter(note: Omit<Note, "lastUpdated">): string {
 	const frontmatterLines = [
 		"---",
 		`pinned: ${note.isPinned ? "true" : "false"}`,
-		`title: ${stringifyYamlString((note.title ?? "").trim())}`,
-		`id: ${stringifyYamlString(note.id)}`,
+		`title: ${JSON.stringify((note.title ?? "").trim())}`,
+		`id: ${JSON.stringify(note.id)}`,
 	];
 	if (note.noteType) {
-		frontmatterLines.push(`type: ${stringifyYamlString(note.noteType)}`);
+		frontmatterLines.push(`type: ${JSON.stringify(note.noteType)}`);
 	}
 	if (note.noteType === "todo" && note.status) {
-		frontmatterLines.push(`status: ${stringifyYamlString(note.status)}`);
+		frontmatterLines.push(`status: ${JSON.stringify(note.status)}`);
 	}
 	frontmatterLines.push("---");
 
