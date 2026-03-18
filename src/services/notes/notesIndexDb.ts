@@ -1,8 +1,4 @@
 import { MIGRATIONS } from "@/migrations/migrations";
-import {
-	type ParsedFrontmatter,
-	parseFrontmatter,
-} from "@/services/notes/frontmatter";
 import type {
 	NoteListFilters,
 	NoteStatus,
@@ -12,6 +8,7 @@ import { Directory, File } from "expo-file-system";
 import type { SQLiteDatabase } from "expo-sqlite";
 import * as SQLite from "expo-sqlite";
 import { NOTES_ROOT } from "./Notes";
+import { parseFrontmatter } from "./frontmatter";
 
 export interface NoteIndexItem {
 	noteId: string;
@@ -320,10 +317,6 @@ function getInsertPlaceholders(count: number): string {
 	);
 }
 
-function parseFrontmatterForIndex(markdown: string): ParsedFrontmatter {
-	return parseFrontmatter(markdown);
-}
-
 async function dropFtsTriggers(database: SQLite.SQLiteDatabase): Promise<void> {
 	await database.execAsync("DROP TRIGGER IF EXISTS note_index_ai");
 	await database.execAsync("DROP TRIGGER IF EXISTS note_index_ad");
@@ -393,7 +386,7 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 			async (path) => {
 				const file = new File(NOTES_ROOT, path);
 				if (!file.exists) return null;
-				const parsed = parseFrontmatterForIndex(await file.text());
+				const parsed = parseFrontmatter(await file.text());
 				return {
 					id: path.replace(/\.md$/, ""),
 					title: parsed.title,
@@ -401,8 +394,7 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 					isPinned: parsed.isPinned ? 1 : 0,
 					mtime: file.modificationTime ?? 0,
 					noteType: parsed.noteType ?? null,
-					status:
-						parsed.noteType === "todo" ? (parsed.status ?? "open") : null,
+					status: parsed.noteType === "todo" ? (parsed.status ?? "open") : null,
 				};
 			},
 		);
@@ -420,18 +412,16 @@ export async function notesIndexDbSyncChanges(changedPaths: {
 	await database.withTransactionAsync(async () => {
 		for (let i = 0; i < upsertItems.length; i += SYNC_BATCH_SIZE) {
 			const batch = upsertItems.slice(i, i + SYNC_BATCH_SIZE);
-			const placeholders = batch
-				.map(() => "(?, ?, ?, ?, ?, ?, ?)")
-				.join(", ");
+			const placeholders = batch.map(() => "(?, ?, ?, ?, ?, ?, ?)").join(", ");
 			const values = batch.flatMap((item) => [
 				item.id,
 				item.title,
 				item.summary,
-					item.isPinned,
-					item.mtime,
-					item.noteType,
-					item.status,
-				]);
+				item.isPinned,
+				item.mtime,
+				item.noteType,
+				item.status,
+			]);
 			await database.runAsync(
 				`INSERT INTO ${TABLE} (
 					id,
@@ -519,7 +509,7 @@ export async function notesIndexDbRebuildFromDisk(): Promise<NotesIndexRebuildMe
 			REBUILD_PARSE_CONCURRENCY,
 			async (entry) => {
 				const id = entry.name.replace(/\.md$/, "");
-				const parsed = parseFrontmatterForIndex(await entry.text());
+				const parsed = parseFrontmatter(await entry.text());
 				return {
 					id,
 					title: parsed.title,
@@ -527,8 +517,7 @@ export async function notesIndexDbRebuildFromDisk(): Promise<NotesIndexRebuildMe
 					isPinned: parsed.isPinned ? 1 : 0,
 					updatedAt: entry.modificationTime ?? 0,
 					noteType: parsed.noteType ?? null,
-					status:
-						parsed.noteType === "todo" ? (parsed.status ?? "open") : null,
+					status: parsed.noteType === "todo" ? (parsed.status ?? "open") : null,
 				};
 			},
 		);
