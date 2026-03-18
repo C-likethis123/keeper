@@ -4,6 +4,7 @@ import { parseFrontmatter, stringifyFrontmatter } from "../frontmatter";
 describe("frontmatter", () => {
 	it("parses quoted YAML scalars and todo metadata", () => {
 		const parsed = parseFrontmatter(`---
+id: "note-1"
 title: "Ship \"v2\""
 pinned: true
 type: todo
@@ -12,6 +13,7 @@ status: doing
 Body`);
 
 		expect(parsed).toEqual({
+			id: "note-1",
 			title: 'Ship "v2"',
 			isPinned: true,
 			noteType: "todo",
@@ -22,6 +24,7 @@ Body`);
 
 	it("drops status for non-todo notes", () => {
 		const parsed = parseFrontmatter(`---
+id: "note-2"
 title: "Reference"
 pinned: false
 type: resource
@@ -35,6 +38,7 @@ Content`);
 
 	it("falls back to plain content when no frontmatter exists", () => {
 		expect(parseFrontmatter("Just text")).toEqual({
+			id: "",
 			title: "",
 			isPinned: false,
 			noteType: "note",

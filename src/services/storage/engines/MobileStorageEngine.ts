@@ -1,14 +1,18 @@
-import { parseFrontmatter, stringifyFrontmatter } from "@/services/notes/frontmatter";
+import { NOTES_ROOT } from "@/services/notes/Notes";
+import {
+	parseFrontmatter,
+	stringifyFrontmatter,
+} from "@/services/notes/frontmatter";
+import { resetNotesIndexDb } from "@/services/notes/indexDb/db";
+import { extractSummary } from "@/services/notes/indexDb/mapper";
+import { rebuildFromDisk } from "@/services/notes/indexDb/rebuildService";
 import {
 	type NotesIndexRebuildMetrics,
-	notesIndexDbReset,
 	notesIndexDbDelete,
 	notesIndexDbHasRows,
 	notesIndexDbListAll,
-	notesIndexDbRebuildFromDisk,
 	notesIndexDbUpsert,
 } from "@/services/notes/notesIndexDb";
-import { NOTES_ROOT } from "@/services/notes/Notes";
 import type { Note, NoteListFilters } from "@/services/notes/types";
 import type {
 	NoteFileEntry,
@@ -17,21 +21,10 @@ import type {
 } from "@/services/storage/engines/StorageEngine";
 import type {
 	NoteIndexListResult,
-	NoteIndexQueryFilters,
 	NoteIndexPersistenceItem,
+	NoteIndexQueryFilters,
 } from "@/services/storage/types";
 import { Directory, File } from "expo-file-system";
-
-function extractSummary(markdown: string, maxLines = 6): string {
-	const lines: string[] = [];
-	for (const line of markdown.split(/\r?\n/)) {
-		const trimmed = line.trim();
-		if (!trimmed) continue;
-		lines.push(trimmed);
-		if (lines.length >= maxLines) break;
-	}
-	return lines.join("\n");
-}
 
 function deleteDirectoryRecursive(dir: Directory): void {
 	if (!dir.exists) {
@@ -73,7 +66,7 @@ export class MobileStorageEngine implements StorageEngine {
 			deleteDirectoryRecursive(dir);
 		}
 
-		await notesIndexDbReset();
+		await resetNotesIndexDb();
 		dir.create({ intermediates: true, idempotent: true });
 		const remainingFiles = dir
 			.list()
@@ -170,7 +163,7 @@ export class MobileStorageEngine implements StorageEngine {
 	}
 
 	async indexRebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
-		return notesIndexDbRebuildFromDisk();
+		return rebuildFromDisk();
 	}
 
 	async listNotesFallback(
