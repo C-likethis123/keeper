@@ -66,13 +66,13 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 - `Tab` / `Shift+Tab` indent and outdent for list items
 - `Escape` dismissal for wiki link UI
 - `Backspace` / `Delete` for block-selection deletion
+- `Cmd/Ctrl+Enter` toggle checkbox state for the focused checkbox block on web/desktop
 - Cross-block `ArrowUp` / `ArrowDown` navigation for paragraph, heading, list, math, and image blocks
 
 **What remains next for keyboard work**:
 
 - **Tier 2: Common block-editor shortcuts**
   - `Shift+Enter` — Soft line break within supported blocks
-  - `Cmd/Ctrl+Enter` — Toggle checkbox state or complete current todo
   - Better vertical caret preservation in complex blocks such as code blocks
 - **Tier 3: Formatting shortcuts**
   - `Cmd/Ctrl+B` — Bold
@@ -270,10 +270,6 @@ Move old journal entries out of active workspace.
 
 Watch YouTube (and other videos) while editing notes, without leaving the app.
 
-### Tabs
-- Being able to spawn new tabs
-- Being able to pin existing tabs
-
 **Layout**:
 
 - Mobile: video panel above the note editor (stacked vertically)
@@ -286,6 +282,16 @@ Watch YouTube (and other videos) while editing notes, without leaving the app.
 - Playback controls visible while editing
 
 **TODO**: Remove read-only view guards
+
+### Tabs
+
+Use tabs to toggle between different views without leaving the current workspace context.
+
+**Scope**:
+
+- Toggle between different views with tabs
+- Being able to spawn new tabs
+- Being able to pin existing tabs
 
 ### Future Ideas from Google Keep
 

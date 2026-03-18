@@ -13,8 +13,6 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **Next keyboard work**: soft line breaks, checkbox toggle shortcut, better code-block vertical navigation, formatting shortcuts, app-level shortcuts
 - **Critical issues**: No currently confirmed P1 items; desktop hydration was fixed in the storage-init follow-up
 - **Wikilinks**: create-from-`[[...]]` flow is implemented; next checks are UX polish and device validation
-- **Startup architecture**: startup orchestration moved out of `RootLayout` into `useAppStartup` + runtime startup strategy/step modules; performance work is still open
-- **Note metadata**: note type + todo-status metadata is now editable in the editor and filterable in the note list; remaining work is migration validation plus deciding how metadata should drive organization views
 - **Native bridge**: Android and iOS now use the local Expo module in `modules/keeper-git`
 - **Testing status**: `npm test` now runs `vitest`; the suite covers the immutable editor core plus `EditorState`, selected `editorStore` flows, `frontmatter`, and `startupSteps`
 
