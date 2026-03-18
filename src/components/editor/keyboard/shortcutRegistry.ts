@@ -6,6 +6,8 @@ const shortcutRegistry = new Map<string, EditorCommandId>([
 	["Meta+Shift+Z", "redo"],
 	["Ctrl+Shift+Z", "redo"],
 	["Ctrl+Y", "redo"],
+	["Meta+Enter", "toggleCheckbox"],
+	["Ctrl+Enter", "toggleCheckbox"],
 	["Tab", "indentListItem"],
 	["Shift+Tab", "outdentListItem"],
 	["Escape", "dismissOverlays"],

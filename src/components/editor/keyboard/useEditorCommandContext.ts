@@ -23,6 +23,7 @@ export function useEditorCommandContext(
 	const getHasBlockSelection = useEditorState((state) => state.getHasBlockSelection);
 	const updateBlockListLevel = useEditorState((state) => state.updateBlockListLevel);
 	const updateBlockType = useEditorState((state) => state.updateBlockType);
+	const toggleCheckbox = useEditorState((state) => state.toggleCheckbox);
 	const deleteSelectedBlocksFromStore = useEditorState(
 		(state) => state.deleteSelectedBlocks,
 	);
@@ -45,6 +46,14 @@ export function useEditorCommandContext(
 			focusBlockAt,
 			runUndo: () => undoFromStore(),
 			runRedo: () => redoFromStore(),
+			runToggleCheckbox: () => {
+				const index = getFocusedBlockIndex();
+				if (index === null) return false;
+				const block = document.blocks[index];
+				if (!block || block.type !== BlockType.checkboxList) return false;
+				toggleCheckbox(index);
+				return true;
+			},
 			runIndentListItem: () => {
 				const index = getFocusedBlockIndex();
 				if (index === null) return false;
@@ -91,6 +100,7 @@ export function useEditorCommandContext(
 			options.isWikiLinkModalOpen,
 			redoFromStore,
 			selectAllBlocksFromStore,
+			toggleCheckbox,
 			undoFromStore,
 			updateBlockListLevel,
 			updateBlockType,
