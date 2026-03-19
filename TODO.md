@@ -9,14 +9,14 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **Phase 3**: Editor keyboard shortcut foundation (desktop + web) complete
 - **Phase 4**: Editor core test foundation complete with passing `Document`, `Transaction`, and `History` coverage under `vitest`
 - **Phase 5**: Test expansion complete for the first lightweight slice; `EditorState`, selected `editorStore` flows, `frontmatter`, and `startupSteps` now have `vitest` coverage
-- **Phase 6**: Use `jest-expo` + React Native Testing Library for Expo/React Native component tests, then add the integration test architecture around that stack
+- **Phase 6**: In progress; `jest-expo` + React Native Testing Library are in place, with initial route-aware coverage for `src/app/editor.tsx` and `NoteEditorView`
 - **Next keyboard work**: soft line breaks, checkbox toggle shortcut, better code-block vertical navigation, formatting shortcuts, app-level shortcuts
 - **Critical issues**: No currently confirmed P1 items; desktop hydration was fixed in the storage-init follow-up
 - **Wikilinks**: create-from-`[[...]]` flow is implemented; next checks are UX polish and device validation
 - **Startup architecture**: startup orchestration moved out of `RootLayout` into `useAppStartup` + runtime startup strategy/step modules; performance work is still open
 - **Note metadata**: note type + todo-status metadata is now editable in the editor and filterable in the note list; remaining work is migration validation plus deciding how metadata should drive organization views
 - **Native bridge**: Android and iOS now use the local Expo module in `modules/keeper-git`
-- **Testing status**: `npm test` now runs `vitest`; the suite covers the immutable editor core plus `EditorState`, selected `editorStore` flows, `frontmatter`, and `startupSteps`
-- **Testing TODO**: Migrate the remaining `vitest` suites to `jest` over time so component and unit coverage share one runner
+- **Testing status**: `npm test` covers the immutable editor core plus `EditorState`, selected `editorStore` flows, `frontmatter`, and `startupSteps`; `npm run test:component` now covers `src/app/editor.tsx` and `NoteEditorView`
+- **Testing TODO**: Add missing Jest coverage for `HybridEditor`, `EditorToolbar`, `useAutoSave`, `useLoadNote`, startup UI/runtime flows, Wikilink interactions, `src/app/index.tsx`/`NoteGrid`, and additional `editorStore` flows; migrate remaining `vitest` suites to `jest` over time for consistency
 
 For full context on each item, see `ROADMAP.md`.

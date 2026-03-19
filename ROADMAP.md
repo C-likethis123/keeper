@@ -161,7 +161,12 @@ Build on the new editor-core test foundation by extending coverage into reducer/
 
 Introduce a separate test layer for UI and integration behavior after the pure-core suite is stable.
 
-**Status**: Planned
+**Status**: In progress
+**Current implementation evidence**:
+
+- Added a `jest-expo` + React Native Testing Library harness for `*.jest.test.tsx`
+- Added route-aware Jest coverage for `src/app/editor.tsx` via `renderRouter`
+- Added `NoteEditorView` coverage for note loading, todo-status defaulting on save, and read-only back-navigation behavior
 **Objectives**:
 
 - Use `jest-expo` with React Native Testing Library for component coverage
@@ -176,6 +181,14 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 
 - Add a TODO to migrate the remaining `vitest` suites to `jest` over time for test-runner consistency
 - How much storage and git behavior should be mocked versus exercised through higher-level service seams
+- Add `HybridEditor` integration coverage for keyboard shortcuts, split/merge flows, block selection deletion, paragraph-space handling, and scroll/focus coordination
+- Add `EditorToolbar` coverage for formatting actions, block type changes, and disabled/read-only behavior
+- Add `useAutoSave` coverage for idle timing, save dedupe, error handling, and `SaveIndicator` state transitions
+- Add `useLoadNote` hook coverage for pending, failed init, note-not-found, and thrown-error paths
+- Add startup UI/integration coverage for `src/app/_layout.tsx`, `useAppStartup`, and `startupStrategies.ts`
+- Add Wikilink UI/integration coverage for create flow, overlay results, keyboard selection, and dismissal
+- Add note-list route coverage for `src/app/index.tsx` and `NoteGrid` loading, error, empty, populated, filter, and navigation states
+- Add more `editorStore` flow coverage as regressions or repeated manual checks reveal weak spots
 
 ---
 
