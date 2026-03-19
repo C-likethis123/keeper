@@ -3,30 +3,27 @@ import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useStorageStore } from "@/stores/storageStore";
 import {
-	render,
+	renderRouter,
 	screen,
+	testRouter,
 	userEvent,
 	waitFor,
-} from "@testing-library/react-native";
+} from "expo-router/testing-library";
 import React from "react";
+import { Text } from "react-native";
 
-const mockRouterBack = jest.fn();
 const mockSaveNote = jest.fn();
 const mockDeleteNote = jest.fn();
 
-// Expo Router's testing-library docs were reviewed here, but the current Jest
-// stack in this repo fails to import `expo-router/testing-library` because its
-// matcher setup reaches for `expect/build/matchers`. Keep this focused mock
-// until the router test stack is upgraded.
 jest.mock("expo-router", () => {
+	const actual = jest.requireActual("expo-router/build/index");
 	const React = require("react");
 	const { View } = require("react-native");
 
 	return {
-		useRouter: () => ({
-			back: mockRouterBack,
-		}),
+		...actual,
 		Stack: {
+			...actual.Stack,
 			Screen: ({
 				options,
 			}: {
@@ -131,9 +128,20 @@ function makeNote(overrides?: Partial<Note>): Note {
 	};
 }
 
+function renderNoteEditor(note: Note) {
+	const result = renderRouter(
+		{
+			index: () => <Text>Home route</Text>,
+			editor: () => <NoteEditorView note={note} />,
+		},
+		{ initialUrl: "/" },
+	);
+	testRouter.push("/editor");
+	return result;
+}
+
 describe("NoteEditorView", () => {
 	beforeEach(() => {
-		mockRouterBack.mockReset();
 		mockSaveNote.mockReset();
 		mockDeleteNote.mockReset();
 		mockSaveNote.mockResolvedValue(undefined);
@@ -154,19 +162,20 @@ describe("NoteEditorView", () => {
 	it("loads note markdown into the editor store on mount", async () => {
 		const note = makeNote({ content: "# Heading" });
 
-		render(<NoteEditorView note={note} />);
+		renderNoteEditor(note);
 
 		await screen.findByText("Mock editor");
 		await waitFor(() => {
 			expect(useEditorState.getState().getContent()).toBe("# Heading");
 		});
+		expect(screen).toHavePathname("/editor");
 	});
 
 	it("defaults todo status to open when switching a note to todo and saving", async () => {
 		const user = userEvent.setup();
 		const note = makeNote();
 
-		render(<NoteEditorView note={note} />);
+		renderNoteEditor(note);
 
 		await screen.findByText("Toolbar enabled");
 		await user.press(screen.getByText("Todo"));
@@ -183,7 +192,7 @@ describe("NoteEditorView", () => {
 				}),
 			);
 		});
-		expect(mockRouterBack).toHaveBeenCalledTimes(1);
+		expect(screen).toHavePathname("/");
 	});
 
 	it("skips saves in read-only mode and only navigates back", async () => {
@@ -200,7 +209,7 @@ describe("NoteEditorView", () => {
 			initializationStatus: "failed",
 		});
 
-		render(<NoteEditorView note={note} />);
+		renderNoteEditor(note);
 
 		await screen.findByText("Toolbar disabled");
 		expect(screen.getByPlaceholderText("Title").props.editable).toBe(false);
@@ -208,7 +217,7 @@ describe("NoteEditorView", () => {
 		await user.press(screen.getByText("arrow-back"));
 
 		await waitFor(() => {
-			expect(mockRouterBack).toHaveBeenCalledTimes(1);
+			expect(screen).toHavePathname("/");
 		});
 		expect(mockSaveNote).not.toHaveBeenCalled();
 	});
