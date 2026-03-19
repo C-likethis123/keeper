@@ -11,7 +11,6 @@ import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, {
-	Suspense,
 	useCallback,
 	useEffect,
 	useMemo,
@@ -24,20 +23,9 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+import { EditorToolbar } from "./editor/EditorToolbar";
+import { HybridEditor } from "./editor/HybridEditor";
 import { EditorScrollProvider } from "./editor/EditorScrollContext";
-import Loader from "./shared/Loader";
-
-const LazyEditorToolbar = React.lazy(
-	() => import("@/components/editor/EditorToolbar").then((module) => ({
-		default: module.EditorToolbar,
-	})),
-);
-
-const LazyHybridEditor = React.lazy(
-	() => import("@/components/editor/HybridEditor").then((module) => ({
-		default: module.HybridEditor,
-	})),
-);
 
 const NOTE_TYPE_OPTIONS = [
 	{ label: "Note", value: "note" },
@@ -66,7 +54,9 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const capabilities = useStorageStore((s) => s.capabilities);
 	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
-	const documentVersion = useEditorState((s: EditorState) => s.document.version);
+	const documentVersion = useEditorState(
+		(s: EditorState) => s.document.version,
+	);
 	const getContentForVersion = useEditorState(
 		(s: EditorState) => s.getContentForVersion,
 	);
@@ -82,7 +72,15 @@ export default function NoteEditorView({ note }: { note: Note }) {
 			status: noteType === "todo" ? (todoStatus ?? "open") : undefined,
 			...overrides,
 		}),
-		[id, title, getContentForVersion, documentVersion, isPinned, noteType, todoStatus],
+		[
+			id,
+			title,
+			getContentForVersion,
+			documentVersion,
+			isPinned,
+			noteType,
+			todoStatus,
+		],
 	);
 
 	const togglePin = useCallback(async () => {
@@ -259,12 +257,10 @@ export default function NoteEditorView({ note }: { note: Note }) {
 					) : null}
 				</View>
 
-				<Suspense fallback={<Loader />}>
-					<LazyEditorToolbar disabled={!capabilities.canWrite} />
-					<EditorScrollProvider>
-						<LazyHybridEditor />
-					</EditorScrollProvider>
-				</Suspense>
+				<EditorToolbar disabled={!capabilities.canWrite} />
+				<EditorScrollProvider>
+					<HybridEditor />
+				</EditorScrollProvider>
 			</View>
 		</View>
 	);

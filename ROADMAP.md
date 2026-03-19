@@ -164,14 +164,17 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 **Status**: Planned
 **Objectives**:
 
-- Decide on React Native / Expo component-test tooling
+- Use `jest-expo` with React Native Testing Library for component coverage
 - Add integration coverage for `HybridEditor`, toolbar flows, and note-loading/save interactions
 - Define a small shared test-fixture strategy for documents, notes, and storage adapters
 - Separate pure unit tests from UI/integration runs so feedback stays fast
 
-**Open questions**:
+**Decisions**:
 
-- Whether to use `jest-expo` plus React Native Testing Library for component coverage
+- React Native / Expo component tests should use `jest-expo` plus React Native Testing Library
+**Follow-up**:
+
+- Add a TODO to migrate the remaining `vitest` suites to `jest` over time for test-runner consistency
 - How much storage and git behavior should be mocked versus exercised through higher-level service seams
 
 ---
