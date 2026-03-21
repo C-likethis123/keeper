@@ -14,6 +14,9 @@ No currently confirmed P1 issues.
 **Paragraph space insertion regression**: Fixed in this workspace. Paragraph blocks now fall back to native `TextInput` insertion for normal typing after manual cursor moves, while retaining markdown-trigger conversion only for explicit end-of-block trigger cases.
 **Key files**: `src/components/editor/blocks/UnifiedBlock.tsx`, `src/components/editor/HybridEditor.tsx`, `src/components/editor/blocks/BlockRegistry.tsx`, `src/components/editor/BlockRow.tsx`
 
+**Desktop note-list pagination regression**: Fixed in this workspace. Desktop note-list scrolling now loads additional notes again after the Tauri `index_list` command returned to a plain numeric cursor offset, and `NoteGrid` now has focused component coverage for load-more behavior.
+**Key files**: `src/components/NoteGrid.tsx`, `src/components/__tests__/NoteGrid.jest.test.tsx`, `src-tauri/storage_core/src/lib.rs`
+
 ---
 
 ## Development Phases
@@ -167,6 +170,7 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 - Added a `jest-expo` + React Native Testing Library harness for `*.jest.test.tsx`
 - Added route-aware Jest coverage for `src/app/editor.tsx` via `renderRouter`
 - Added `NoteEditorView` coverage for note loading, todo-status defaulting on save, and read-only back-navigation behavior
+- Added `NoteGrid` component coverage for load-more triggering and duplicate end-reached suppression
 **Objectives**:
 
 - Use `jest-expo` with React Native Testing Library for component coverage
@@ -187,7 +191,7 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 - Add `useLoadNote` hook coverage for pending, failed init, note-not-found, and thrown-error paths
 - Add startup UI/integration coverage for `src/app/_layout.tsx`, `useAppStartup`, and `startupStrategies.ts`
 - Add Wikilink UI/integration coverage for create flow, overlay results, keyboard selection, and dismissal
-- Add note-list route coverage for `src/app/index.tsx` and `NoteGrid` loading, error, empty, populated, filter, and navigation states
+- Add note-list route coverage for `src/app/index.tsx` plus broader `NoteGrid` loading, error, empty, populated, filter, and navigation states
 - Add more `editorStore` flow coverage as regressions or repeated manual checks reveal weak spots
 
 ### Wikilink Follow-up
@@ -221,13 +225,6 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, a
 
 1. Change branching strategy (reduce checkout overhead)
 2. Switch to lib2git (alternative git implementation)
-
-### Desktop Scroll-to-Next-Page Regression
-
-**Issue**: On desktop, scrolling to the end of the editor does not advance to the next page, while the same interaction still works on mobile.
-**Current evidence**: Editor scroll coordination is centralized in `EditorScrollContext`, `HybridEditor`, and `UnifiedBlock`, but current roadmap coverage and bug notes do not show a desktop-specific follow-up for end-of-page navigation.
-**Key files**: `src/components/editor/EditorScrollContext.tsx`, `src/components/editor/HybridEditor.tsx`, `src/components/editor/blocks/UnifiedBlock.tsx`
-**Next**: Reproduce on Tauri/web, compare desktop scroll-end handling against mobile behavior, and add a targeted fix plus integration coverage for scroll/focus/page-transition coordination
 
 ### App Updates
 

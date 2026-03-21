@@ -89,15 +89,9 @@ pub struct IndexItem {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct IndexCursor {
-    pub offset: i64,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct IndexListResult {
     pub items: Vec<IndexItem>,
-    pub cursor: Option<IndexCursor>,
+    pub cursor: Option<i64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -481,9 +475,7 @@ pub fn index_list(index_db_path: &Path, input: IndexListInput) -> Result<IndexLi
 
     let has_more = items.len() > input.limit as usize;
     let cursor = if has_more {
-        Some(IndexCursor {
-            offset: offset + input.limit.max(1),
-        })
+        Some(offset + input.limit.max(1))
     } else {
         None
     };

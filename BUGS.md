@@ -18,11 +18,10 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 ## Known Regressions & Improvements
 
 - Desktop editor still needs follow-up polish
-- Desktop scroll-to-end does not advance to the next page, even though mobile still does
 - Expo OTA (Over-The-Air) updates not working
 - Note organization and relevance work is in progress; note metadata editing and note-list filters exist, but migration validation and metadata-driven views are not complete yet
 - Automated test coverage now includes `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, and `startupSteps`, but UI flows and remaining startup/runtime seams can still slip through until later expansion work
-- Component/integration coverage now exists for `src/app/editor.tsx` and `NoteEditorView`, but editor interactions, wikilink flows, desktop scroll/page coordination, and broader storage flows still rely on manual validation
+- Component/integration coverage now exists for `src/app/editor.tsx`, `NoteEditorView`, and focused `NoteGrid` pagination behavior, but editor interactions, wikilink flows, startup/runtime seams, and broader storage flows still rely on manual validation
 
 ## Minor style issues
 

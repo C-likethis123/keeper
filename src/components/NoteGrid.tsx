@@ -1,6 +1,7 @@
 import NoteCard from "@/components/NoteCard";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import type { Note } from "@/services/notes/types";
+import React, { useCallback } from "react";
 import {
 	ActivityIndicator,
 	FlatList,
@@ -41,11 +42,11 @@ export default function NoteGrid({
 	if (width > 900) numColumns = 4;
 	else if (width > 600) numColumns = 3;
 
-	const handleEndReached = () => {
+	const handleEndReached = useCallback(() => {
 		if (hasMore && !isLoadingMore) {
 			onEndReached?.();
 		}
-	};
+	}, [hasMore, isLoadingMore, onEndReached]);
 
 	return (
 		<FlatList
@@ -59,10 +60,7 @@ export default function NoteGrid({
 				paddingBottom: 100,
 			}}
 			ListEmptyComponent={
-				<EmptyState
-					title={emptyTitle}
-					subtitle={emptySubtitle}
-				/>
+				<EmptyState title={emptyTitle} subtitle={emptySubtitle} />
 			}
 			showsVerticalScrollIndicator
 			refreshControl={
