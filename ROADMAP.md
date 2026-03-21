@@ -77,6 +77,8 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 - **Tier 2: Common block-editor shortcuts**
   - `Shift+Enter` — Soft line break within supported blocks
   - Better vertical caret preservation in complex blocks such as code blocks
+  - Fix cursor selection stability during editor navigation and editing flows
+  - Fix brace auto-completion behavior in code blocks
 - **Tier 3: Formatting shortcuts**
   - `Cmd/Ctrl+B` — Bold
   - `Cmd/Ctrl+I` — Italic
@@ -326,6 +328,17 @@ Use tabs to toggle between different views without leaving the current workspace
 - Toggle between different views with tabs
 - Being able to spawn new tabs
 - Being able to pin existing tabs
+
+### Note Templates
+
+Let users start a new note from a saved template and create reusable templates from inside the app.
+
+**Scope**:
+
+- Start note creation from a template instead of only a blank note
+- Create and edit templates for common note structures
+- Store templates in a way that works across the existing file, index, and git-backed note flows
+- Keep room for future defaults such as journal, meeting, project, or checklist templates
 
 ### Future Ideas from Google Keep
 
