@@ -2,6 +2,7 @@ import type { GitChangedPaths } from "@/services/git/engines/GitEngine";
 import type { NoteListFilters } from "@/services/notes/types";
 import { getRuntimeStorageBackend } from "@/services/storage/runtime";
 import { getStorageEngine } from "@/services/storage/storageEngine";
+export { extractSummary } from "./indexDb/mapper";
 import { syncChanges } from "./indexDb/syncService";
 import type {
 	ListNotesResult,

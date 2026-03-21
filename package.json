@@ -12,6 +12,7 @@
 		"ios": "expo run:ios",
 		"build:mobile-git": "./scripts/build-mobile-git.sh",
 		"desktop": "tauri dev",
+		"desktop:devtools": "sh -c 'trap \"kill 0\" INT TERM EXIT; react-devtools & npm run desktop & wait'",
 		"build:desktop": "tauri build",
 		"migrate:note-metadata": "node ./scripts/update-note-metadata.mjs",
 		"test": "vitest run",

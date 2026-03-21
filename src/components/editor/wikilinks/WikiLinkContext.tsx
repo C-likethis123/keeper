@@ -14,6 +14,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { normalizeWikiLinkTitle } from "./wikiLinkUtils";
 
 export interface WikiLinkResult {
 	id: string;
@@ -39,10 +40,6 @@ interface WikiLinkContextValue {
 }
 
 const WikiLinkContext = createContext<WikiLinkContextValue | null>(null);
-
-function normalizeTitle(title: string): string {
-	return title.trim().toLocaleLowerCase();
-}
 
 export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 	const [isActive, setIsActive] = useState<boolean>(false);
@@ -139,13 +136,13 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 				);
 				const nextResults: WikiLinkResult[] = [];
 				const seenTitles = new Set<string>();
-				const normalizedQuery = normalizeTitle(debouncedQuery);
+				const normalizedQuery = normalizeWikiLinkTitle(debouncedQuery);
 				let hasExactMatch = false;
 
 				for (const item of result.items) {
 					const title = item.title?.trim();
 					if (!title) continue;
-					const normalizedTitle = normalizeTitle(title);
+					const normalizedTitle = normalizeWikiLinkTitle(title);
 					if (seenTitles.has(normalizedTitle)) continue;
 					seenTitles.add(normalizedTitle);
 					if (normalizedTitle === normalizedQuery) {
@@ -195,6 +192,7 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 							content: "",
 							lastUpdated: Date.now(),
 							isPinned: false,
+							noteType: "note",
 						},
 						true,
 					);

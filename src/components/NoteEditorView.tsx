@@ -9,11 +9,13 @@ import { useEditorState } from "@/stores/editorStore";
 import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Stack, useRouter } from "expo-router";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import React, {
+	Suspense,
 	useCallback,
-	useEffect,
+	useLayoutEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import {
@@ -23,9 +25,20 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
-import { EditorToolbar } from "./editor/EditorToolbar";
-import { HybridEditor } from "./editor/HybridEditor";
 import { EditorScrollProvider } from "./editor/EditorScrollContext";
+import Loader from "./shared/Loader";
+
+const LazyEditorToolbar = React.lazy(
+	() => import("@/components/editor/EditorToolbar").then((module) => ({
+		default: module.EditorToolbar,
+	})),
+);
+
+const LazyHybridEditor = React.lazy(
+	() => import("@/components/editor/HybridEditor").then((module) => ({
+		default: module.HybridEditor,
+	})),
+);
 
 const NOTE_TYPE_OPTIONS = [
 	{ label: "Note", value: "note" },
@@ -42,6 +55,7 @@ const TODO_STATUS_OPTIONS = [
 ] as const;
 
 export default function NoteEditorView({ note }: { note: Note }) {
+	const navigation = useNavigation();
 	const router = useRouter();
 	const theme = useExtendedTheme();
 	const id = note.id;
@@ -54,50 +68,73 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const capabilities = useStorageStore((s) => s.capabilities);
 	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
-	const documentVersion = useEditorState(
-		(s: EditorState) => s.document.version,
-	);
-	const getContentForVersion = useEditorState(
-		(s: EditorState) => s.getContentForVersion,
+	const latestDraftRef = useRef({
+		title,
+		isPinned,
+		noteType,
+		todoStatus,
+	});
+	const latestCapabilitiesRef = useRef(capabilities);
+
+	latestDraftRef.current = {
+		title,
+		isPinned,
+		noteType,
+		todoStatus,
+	};
+	latestCapabilitiesRef.current = capabilities;
+
+	const buildCurrentNotePayload = useCallback(
+		(overrides?: Partial<Note>): Note => {
+			const draft = latestDraftRef.current;
+			return {
+				id,
+				title: draft.title,
+				content: useEditorState.getState().getContent(),
+				isPinned: draft.isPinned,
+				lastUpdated: Date.now(),
+				noteType: draft.noteType,
+				status:
+					draft.noteType === "todo"
+						? (draft.todoStatus ?? "open")
+						: undefined,
+				...overrides,
+			};
+		},
+		[id],
 	);
 
-	const buildNotePayload = useCallback(
-		(overrides?: Partial<Note>): Note => ({
-			id,
-			title,
-			content: getContentForVersion(documentVersion),
-			isPinned,
-			lastUpdated: Date.now(),
-			noteType,
-			status: noteType === "todo" ? (todoStatus ?? "open") : undefined,
-			...overrides,
-		}),
-		[
-			id,
-			title,
-			getContentForVersion,
-			documentVersion,
-			isPinned,
-			noteType,
-			todoStatus,
-		],
-	);
-
-	const togglePin = useCallback(async () => {
-		if (!capabilities.canWrite) {
-			showToast(capabilities.reason ?? "Read-only mode");
+	const handleTogglePin = useCallback(async () => {
+		const currentCapabilities = latestCapabilitiesRef.current;
+		if (!currentCapabilities.canWrite) {
+			showToast(currentCapabilities.reason ?? "Read-only mode");
 			return;
 		}
-		const newNote = buildNotePayload({ isPinned: !isPinned });
+		const nextIsPinned = !latestDraftRef.current.isPinned;
+		const newNote = buildCurrentNotePayload({ isPinned: nextIsPinned });
 		await NoteService.saveNote(newNote);
-		setIsPinned((prev) => !prev);
-	}, [
-		capabilities.canWrite,
-		capabilities.reason,
-		showToast,
-		buildNotePayload,
-		isPinned,
-	]);
+		setIsPinned(nextIsPinned);
+	}, [buildCurrentNotePayload, showToast]);
+
+	const handleBackPress = useCallback(async () => {
+		const currentCapabilities = latestCapabilitiesRef.current;
+		if (!currentCapabilities.canWrite) {
+			router.back();
+			return;
+		}
+		await NoteService.saveNote(buildCurrentNotePayload());
+		router.back();
+	}, [buildCurrentNotePayload, router]);
+
+	const handleDeletePress = useCallback(async () => {
+		const currentCapabilities = latestCapabilitiesRef.current;
+		if (!currentCapabilities.canWrite) {
+			showToast(currentCapabilities.reason ?? "Read-only mode");
+			return;
+		}
+		await NoteService.deleteNote(id);
+		router.back();
+	}, [id, router, showToast]);
 
 	const { status } = useAutoSave({
 		...note,
@@ -106,76 +143,83 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		noteType,
 		status: noteType === "todo" ? (todoStatus ?? "open") : undefined,
 	});
-	// biome-ignore lint/correctness/useExhaustiveDependencies: only load this when starting
-	useEffect(() => {
-		loadMarkdown(note.content);
-	}, []);
+
+	useFocusEffect(
+		useCallback(() => {
+			setIsPinned(!!note.isPinned);
+			setTitle(note.title);
+			setNoteType(note.noteType);
+			setTodoStatus(note.noteType === "todo" ? (note.status ?? "open") : undefined);
+			loadMarkdown(note.content);
+		}, [loadMarkdown, note]),
+	);
+
+	useLayoutEffect(() => {
+		navigation.setOptions({
+			title: "Editor",
+			headerLeft: () => (
+				<TouchableOpacity
+					onPress={() => {
+						void handleBackPress();
+					}}
+					style={{ marginLeft: 8, marginRight: 8 }}
+				>
+					<MaterialIcons
+						name="arrow-back"
+						size={24}
+						color={theme.colors.text}
+					/>
+				</TouchableOpacity>
+			),
+			headerRight: () => (
+				<>
+					<TouchableOpacity
+						onPress={() => {
+							void handleTogglePin();
+						}}
+						style={{ marginRight: 8 }}
+						disabled={!capabilities.canWrite}
+					>
+						<MaterialIcons
+							name="push-pin"
+							size={24}
+							color={isPinned ? theme.colors.primary : theme.colors.textMuted}
+						/>
+					</TouchableOpacity>
+					<TouchableOpacity
+						onPress={() => {
+							void handleDeletePress();
+						}}
+						style={{ marginRight: 8 }}
+						disabled={!capabilities.canWrite}
+					>
+						<MaterialIcons
+							name="delete"
+							size={24}
+							color={theme.colors.textMuted}
+						/>
+					</TouchableOpacity>
+				</>
+			),
+			headerTitle: () => <SaveIndicator status={status} />,
+		});
+	}, [
+		navigation,
+		handleBackPress,
+		handleDeletePress,
+		handleTogglePin,
+		theme.colors.text,
+		theme.colors.primary,
+		theme.colors.textMuted,
+		capabilities.canWrite,
+		isPinned,
+		status,
+	]);
 
 	const styles = useMemo(() => createStyles(theme), [theme]);
 
 	return (
 		<View style={styles.screen}>
-			<Stack.Screen
-				options={{
-					title: "Editor",
-					headerLeft: () => (
-						<TouchableOpacity
-							onPress={async () => {
-								if (!capabilities.canWrite) {
-									router.back();
-									return;
-								}
-								await NoteService.saveNote(buildNotePayload());
-								router.back();
-							}}
-							style={{ marginLeft: 8, marginRight: 8 }}
-						>
-							<MaterialIcons
-								name="arrow-back"
-								size={24}
-								color={theme.colors.text}
-							/>
-						</TouchableOpacity>
-					),
-					headerRight: () => (
-						<>
-							<TouchableOpacity
-								onPress={togglePin}
-								style={{ marginRight: 8 }}
-								disabled={!capabilities.canWrite}
-							>
-								<MaterialIcons
-									name="push-pin"
-									size={24}
-									color={
-										isPinned ? theme.colors.primary : theme.colors.textMuted
-									}
-								/>
-							</TouchableOpacity>
-							<TouchableOpacity
-								onPress={async () => {
-									if (!capabilities.canWrite) {
-										showToast(capabilities.reason ?? "Read-only mode");
-										return;
-									}
-									await NoteService.deleteNote(id as string);
-									router.back();
-								}}
-								style={{ marginRight: 8 }}
-								disabled={!capabilities.canWrite}
-							>
-								<MaterialIcons
-									name="delete"
-									size={24}
-									color={theme.colors.textMuted}
-								/>
-							</TouchableOpacity>
-						</>
-					),
-					headerTitle: () => <SaveIndicator status={status} />,
-				}}
-			/>
-
 			<View style={styles.content}>
 				<TextInput
 					style={styles.titleInput}
@@ -257,10 +301,12 @@ export default function NoteEditorView({ note }: { note: Note }) {
 					) : null}
 				</View>
 
-				<EditorToolbar disabled={!capabilities.canWrite} />
-				<EditorScrollProvider>
-					<HybridEditor />
-				</EditorScrollProvider>
+				<Suspense fallback={<Loader />}>
+					<LazyEditorToolbar disabled={!capabilities.canWrite} />
+					<EditorScrollProvider>
+						<LazyHybridEditor />
+					</EditorScrollProvider>
+				</Suspense>
 			</View>
 		</View>
 	);

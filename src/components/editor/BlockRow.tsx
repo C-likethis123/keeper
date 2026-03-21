@@ -21,6 +21,7 @@ interface BlockRowHandlers {
 	onSelectionChange: (index: number, start: number, end: number) => void;
 	onDelete: (index: number) => void;
 	onCheckboxToggle: (index: number) => void;
+	onOpenWikiLink: (title: string) => void;
 }
 
 interface BlockRowProps {
@@ -60,6 +61,7 @@ export const BlockRow = React.memo(function BlockRow({
 		onDelete: handlers.onDelete,
 		listItemNumber,
 		onCheckboxToggle: handlers.onCheckboxToggle,
+		onOpenWikiLink: handlers.onOpenWikiLink,
 	};
 
 	return (

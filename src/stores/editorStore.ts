@@ -18,11 +18,13 @@ import {
 	initialEditorStateSlice,
 } from "@/components/editor/core/EditorState";
 import { History } from "@/components/editor/core/History";
+import type { DocumentSelection } from "@/components/editor/core/Selection";
 import { createCollapsedSelection } from "@/components/editor/core/Selection";
 import {
 	type Transaction,
 	TransactionBuilder,
 } from "@/components/editor/core/Transaction";
+import { useCallback, useRef } from "react";
 import { create } from "zustand";
 
 type EditorAction = Parameters<typeof editorReducer>[1];
@@ -92,7 +94,11 @@ export const useEditorState = create<EditorState>()((set, get) => {
 			return true;
 		},
 
-		updateBlockContent: (index: number, newContent: string, selectionOffset?: number) => {
+		updateBlockContent: (
+			index: number,
+			newContent: string,
+			selectionOffset?: number,
+		) => {
 			const s = get();
 			const block = s.document.blocks[index];
 			if (block.content === newContent) return;
@@ -328,6 +334,57 @@ export const useEditorState = create<EditorState>()((set, get) => {
 
 export function useEditorSelection(): EditorStateSlice["selection"] {
 	return useEditorState((s) => s.selection);
+}
+
+export interface EditorBlockSelection {
+	start: number;
+	end: number;
+}
+
+export function useEditorBlockSelection(
+	index: number,
+): EditorBlockSelection | null {
+	const cachedSelectionRef = useRef<DocumentSelection | null>(null);
+	const cachedRangeRef = useRef<EditorBlockSelection | null>(null);
+
+	const selector = useCallback(
+		(s: EditorState) => {
+			const selection = s.selection;
+			if (
+				!selection ||
+				selection.anchor.blockIndex !== index ||
+				selection.focus.blockIndex !== index
+			) {
+				cachedSelectionRef.current = null;
+				cachedRangeRef.current = null;
+				return null;
+			}
+
+			if (cachedSelectionRef.current === selection && cachedRangeRef.current) {
+				return cachedRangeRef.current;
+			}
+
+			const start = Math.min(selection.anchor.offset, selection.focus.offset);
+			const end = Math.max(selection.anchor.offset, selection.focus.offset);
+			const cachedRange = cachedRangeRef.current;
+			if (
+				cachedRange &&
+				cachedRange.start === start &&
+				cachedRange.end === end
+			) {
+				cachedSelectionRef.current = selection;
+				return cachedRange;
+			}
+
+			const nextRange = { start, end };
+			cachedSelectionRef.current = selection;
+			cachedRangeRef.current = nextRange;
+			return nextRange;
+		},
+		[index],
+	);
+
+	return useEditorState(selector);
 }
 
 export function useEditorBlock(index: number): BlockNode | undefined {
