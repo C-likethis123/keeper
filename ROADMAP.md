@@ -226,6 +226,11 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, a
 1. Change branching strategy (reduce checkout overhead)
 2. Switch to lib2git (alternative git implementation)
 
+### Editor Typing Lag
+
+**Status**: On hold
+**Issue**: Typing lag is still tracked in `docs/PLAN-editor-typing-lag.md`, but planning for this workstream is paused and it should not be auto-selected for new work until reprioritized.
+
 ### App Updates
 
 **Issue**: Expo OTA (Over-The-Air) updates not working
