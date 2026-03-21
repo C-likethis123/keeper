@@ -190,6 +190,22 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 - Add note-list route coverage for `src/app/index.tsx` and `NoteGrid` loading, error, empty, populated, filter, and navigation states
 - Add more `editorStore` flow coverage as regressions or repeated manual checks reveal weak spots
 
+### Wikilink Follow-up
+
+The wiki link flow now covers exact-title resolution, create-on-miss behavior, and desktop/web activation helpers, but end-to-end UI validation is still incomplete.
+
+**Status**: Partially implemented
+**Current implementation evidence**:
+
+- Added shared wiki link resolution helpers for exact-match lookup and create-if-missing note creation
+- Added unit coverage for normalization, existing-note resolution, create-on-miss behavior, and platform-specific activation rules
+- Editor follow-up work touched `NoteEditorView`, `HybridEditor`, and block rendering paths to support the newer activation flow
+**Next**:
+
+- Manually validate clickable wiki links on desktop, including the expected modifier-key behavior on web/Tauri
+- Add component/integration coverage for wiki link activation, overlay selection, and navigation after note creation
+- Confirm device behavior stays consistent across desktop and mobile surfaces
+
 ---
 
 ## Known Issues & Improvements
@@ -206,12 +222,12 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 1. Change branching strategy (reduce checkout overhead)
 2. Switch to lib2git (alternative git implementation)
 
-### Paragraph Space Insertion Regression
+### Desktop Scroll-to-Next-Page Regression
 
-**Issue**: In paragraph blocks, pressing space after manually moving the cursor away from the block end can advance the caret without inserting a space.
-**Current evidence**: Paragraph blocks intercept the space key through `UnifiedBlock`/`HybridEditor`, while list blocks continue to use the native `TextInput` insertion path.
-**Key files**: `src/components/editor/blocks/UnifiedBlock.tsx`, `src/components/editor/HybridEditor.tsx`
-**Next**: Make paragraph-space handling match list-block behavior for normal typing and keep markdown-trigger conversion only for explicit trigger cases.
+**Issue**: On desktop, scrolling to the end of the editor does not advance to the next page, while the same interaction still works on mobile.
+**Current evidence**: Editor scroll coordination is centralized in `EditorScrollContext`, `HybridEditor`, and `UnifiedBlock`, but current roadmap coverage and bug notes do not show a desktop-specific follow-up for end-of-page navigation.
+**Key files**: `src/components/editor/EditorScrollContext.tsx`, `src/components/editor/HybridEditor.tsx`, `src/components/editor/blocks/UnifiedBlock.tsx`
+**Next**: Reproduce on Tauri/web, compare desktop scroll-end handling against mobile behavior, and add a targeted fix plus integration coverage for scroll/focus/page-transition coordination
 
 ### App Updates
 
