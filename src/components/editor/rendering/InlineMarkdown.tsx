@@ -1,18 +1,24 @@
 import { MathView } from "@/components/editor/blocks/MathView";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import type React from "react";
-import { Text, type TextStyle, View } from "react-native";
+import {
+	Text,
+	type GestureResponderEvent,
+	type TextStyle,
+	View,
+} from "react-native";
 
 interface InlineMarkdownProps {
 	text: string;
 	style?: TextStyle;
 	onLinkPress?: (url: string) => void;
+	onWikiLinkPress?: (title: string, event: GestureResponderEvent) => void;
 }
 
 interface TextSegment {
 	text: string;
 	style?: TextStyle;
-	onPress?: () => void;
+	onPress?: (event: GestureResponderEvent) => void;
 	isMath?: boolean; // For inline math rendering
 }
 
@@ -21,9 +27,16 @@ export function InlineMarkdown({
 	text,
 	style,
 	onLinkPress,
+	onWikiLinkPress,
 }: InlineMarkdownProps) {
 	const theme = useExtendedTheme();
-	const segments = parseInlineMarkdown(text, style || {}, onLinkPress, theme);
+	const segments = parseInlineMarkdown(
+		text,
+		style || {},
+		onLinkPress,
+		onWikiLinkPress,
+		theme,
+	);
 
 	// Group segments into text runs and math segments
 	const elements: React.ReactNode[] = [];
@@ -103,6 +116,9 @@ function parseInlineMarkdown(
 	text: string,
 	baseStyle: TextStyle,
 	onLinkPress: ((url: string) => void) | undefined,
+	onWikiLinkPress:
+		| ((title: string, event: GestureResponderEvent) => void)
+		| undefined,
 	theme: ReturnType<typeof useExtendedTheme>,
 ): TextSegment[] {
 	const segments: TextSegment[] = [];
@@ -137,6 +153,7 @@ function parseInlineMarkdown(
 				restOfLine,
 				{ ...baseStyle, ...headingStyle },
 				onLinkPress,
+				onWikiLinkPress,
 				theme,
 			);
 			segments.push(...nested);
@@ -157,7 +174,9 @@ function parseInlineMarkdown(
 						color: theme.colors.primary,
 						textDecorationLine: "underline",
 					},
-					onPress: onLinkPress ? () => onLinkPress(linkText) : undefined,
+					onPress: onWikiLinkPress
+						? (event) => onWikiLinkPress(linkText, event)
+						: undefined,
 				});
 				i = closeIndex + 2;
 				continue;
@@ -254,6 +273,7 @@ function parseInlineMarkdown(
 					boldText,
 					{ ...baseStyle, fontWeight: "bold" },
 					onLinkPress,
+					onWikiLinkPress,
 					theme,
 				);
 				segments.push(...nestedSegments);
@@ -276,6 +296,7 @@ function parseInlineMarkdown(
 						italicText,
 						{ ...baseStyle, fontStyle: "italic" },
 						onLinkPress,
+						onWikiLinkPress,
 						theme,
 					);
 					segments.push(...nestedSegments);

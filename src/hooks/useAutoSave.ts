@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 const AUTO_SAVE_INTERVAL_MS = 60000;
 const INPUT_IDLE_BEFORE_SAVE_MS = 1500;
 const SAVE_INDICATOR_DELAY_MS = 1000;
+const AUTO_SAVE_PROFILE = process.env.NODE_ENV === "development";
 
 type AutoSaveInput = {
 	id: string;
@@ -88,7 +89,14 @@ export function useAutoSave({
 			prepareTimeoutRef.current = setTimeout(() => {
 				prepareTimeoutRef.current = null;
 				void InteractionManager.runAfterInteractions(async () => {
+					const prepareStart = performance.now();
 					prepareContent();
+					if (AUTO_SAVE_PROFILE) {
+						console.log("[AutoSaveProfile] prepareContent", {
+							documentVersion: latestDocumentVersionRef.current,
+							durationMs: Math.round(performance.now() - prepareStart),
+						});
+					}
 				});
 			}, INPUT_IDLE_BEFORE_SAVE_MS);
 		});
@@ -163,6 +171,15 @@ export function useAutoSave({
 
 					isSavingRef.current = true;
 					setStatus("saving");
+					const saveStart = performance.now();
+					if (AUTO_SAVE_PROFILE) {
+						console.log("[AutoSaveProfile] saveNote:start", {
+							id,
+							titleLength: title.length,
+							contentLength: currentContent.length,
+							documentVersion: latestDocumentVersionRef.current,
+						});
+					}
 					try {
 						await NoteService.saveNote({
 							id,
@@ -174,9 +191,21 @@ export function useAutoSave({
 							status,
 						});
 					} catch {
+						if (AUTO_SAVE_PROFILE) {
+							console.log("[AutoSaveProfile] saveNote:error", {
+								id,
+								durationMs: Math.round(performance.now() - saveStart),
+							});
+						}
 						setStatus("idle");
 						isSavingRef.current = false;
 						return;
+					}
+					if (AUTO_SAVE_PROFILE) {
+						console.log("[AutoSaveProfile] saveNote:done", {
+							id,
+							durationMs: Math.round(performance.now() - saveStart),
+						});
 					}
 
 					lastSavedRef.current = {

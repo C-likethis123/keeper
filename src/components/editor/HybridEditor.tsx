@@ -1,8 +1,10 @@
 import { useEditorScrollView } from "@/components/editor/EditorScrollContext";
 import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
 import { useEditorKeyboardShortcuts } from "@/components/editor/keyboard/useEditorKeyboardShortcuts";
+import { resolveOrCreateWikiLinkNoteId } from "@/components/editor/wikilinks/wikiLinkUtils";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
+import { useRouter } from "expo-router";
 import React, { useCallback, useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { BlockRow } from "./BlockRow";
@@ -27,6 +29,7 @@ export function HybridEditor() {
 }
 
 function HybridEditorContent() {
+	const router = useRouter();
 	const blockIds = useEditorBlockIds();
 	const setSelection = useEditorState((s) => s.setSelection);
 	const selection = useEditorState((s) => s.selection);
@@ -286,6 +289,18 @@ function HybridEditorContent() {
 		[setSelection],
 	);
 
+	const handleOpenWikiLink = useCallback(
+		async (title: string) => {
+			const noteId = await resolveOrCreateWikiLinkNoteId(title);
+			if (!noteId) {
+				return;
+			}
+
+			router.push(`/editor?id=${noteId}`);
+		},
+		[router],
+	);
+
 	const handlers = React.useMemo(
 		() => ({
 			onContentChange: handleContentChange,
@@ -296,6 +311,7 @@ function HybridEditorContent() {
 			onSelectionChange: handleSelectionChange,
 			onDelete: handleDelete,
 			onCheckboxToggle: toggleCheckbox,
+			onOpenWikiLink: handleOpenWikiLink,
 		}),
 		[
 			handleContentChange,
@@ -306,6 +322,7 @@ function HybridEditorContent() {
 			handleSelectionChange,
 			handleDelete,
 			toggleCheckbox,
+			handleOpenWikiLink,
 		],
 	);
 

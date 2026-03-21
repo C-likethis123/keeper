@@ -3,7 +3,7 @@ import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useStyles } from "@/hooks/useStyles";
 import { NOTES_ROOT } from "@/services/notes/Notes";
-import { useEditorSelection } from "@/stores/editorStore";
+import { useEditorBlockSelection } from "@/stores/editorStore";
 import { Paths } from "expo-file-system";
 import { Image } from "expo-image";
 import React, { useCallback, useRef } from "react";
@@ -40,10 +40,16 @@ export function ImageBlock({
 }: BlockConfig) {
 	const { focusBlock } = useFocusBlock();
 	const inputRef = useRef<TextInput | null>(null);
-	const selection = useEditorSelection();
+	const selection = useEditorBlockSelection(index);
 	const styles = useStyles(createStyles);
 	const uri = resolveImageUri(block.content);
 	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
+	const handleFocus = useCallback(() => {
+		if (isFocused) {
+			return;
+		}
+		focusBlock(index);
+	}, [focusBlock, index, isFocused]);
 	const handleKeyPress = useCallback(
 		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
 			const key = e.nativeEvent.key;
@@ -52,15 +58,16 @@ export function ImageBlock({
 			}
 			if (
 				key === "Enter" &&
-				selection?.anchor.offset === selection?.focus.offset
+				selection &&
+				selection.start === selection.end
 			) {
-				onEnter(index, selection?.focus.offset ?? 0);
+				onEnter(index, selection.end);
 			}
 
 			if (
 				key === "Backspace" &&
-				selection?.anchor.offset === 0 &&
-				selection?.focus.offset === 0
+				selection?.start === 0 &&
+				selection?.end === 0
 			) {
 				onBackspaceAtStart(index);
 				return;
@@ -86,7 +93,7 @@ export function ImageBlock({
 				isFocused && styles.focused,
 				pressed && styles.pressed,
 			]}
-			onPress={() => focusBlock(index)}
+			onPress={handleFocus}
 		>
 			{!isFocused && (
 				<Image source={{ uri }} style={styles.image} contentFit="contain" />

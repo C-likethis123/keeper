@@ -32,18 +32,12 @@ function isBefore(
 }
 
 /// Whether this position is after another position
-function isAfter(
-	position: DocumentPosition,
-	other: DocumentPosition,
-): boolean {
+function isAfter(position: DocumentPosition, other: DocumentPosition): boolean {
 	return comparePositions(position, other) > 0;
 }
 
 /// Compares two positions
-function comparePositions(
-	a: DocumentPosition,
-	b: DocumentPosition,
-): number {
+function comparePositions(a: DocumentPosition, b: DocumentPosition): number {
 	if (a.blockIndex !== b.blockIndex) {
 		return a.blockIndex - b.blockIndex;
 	}
@@ -58,6 +52,16 @@ function comparePositions(
 export interface DocumentSelection {
 	readonly anchor: DocumentPosition;
 	readonly focus: DocumentPosition;
+}
+
+/// Represents a selection in the document.
+///
+/// A selection has an anchor (where the selection started) and a focus
+/// (where the selection currently ends). If anchor == focus, it's a
+/// collapsed selection (cursor).
+export interface DocumentSelectionRange {
+	readonly start: number;
+	readonly end: number;
 }
 
 /// Creates a collapsed selection (cursor) at the given position
@@ -85,18 +89,14 @@ function isCollapsed(selection: DocumentSelection): boolean {
 }
 
 /// Gets the start position (earlier of anchor/focus)
-function getSelectionStart(
-	selection: DocumentSelection,
-): DocumentPosition {
+function getSelectionStart(selection: DocumentSelection): DocumentPosition {
 	return isBefore(selection.anchor, selection.focus)
 		? selection.anchor
 		: selection.focus;
 }
 
 /// Gets the end position (later of anchor/focus)
-function getSelectionEnd(
-	selection: DocumentSelection,
-): DocumentPosition {
+function getSelectionEnd(selection: DocumentSelection): DocumentPosition {
 	return isAfter(selection.anchor, selection.focus)
 		? selection.anchor
 		: selection.focus;

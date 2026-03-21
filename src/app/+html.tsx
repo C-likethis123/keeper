@@ -2,9 +2,12 @@ import { ScrollViewStyleReset } from "expo-router/html";
 import type { PropsWithChildren } from "react";
 
 export default function Root({ children }: PropsWithChildren) {
+	const isDevelopment = process.env.NODE_ENV === "development";
+
 	return (
 		<html lang="en">
 			<head>
+				{isDevelopment ? <script src="http://localhost:8097" /> : null}
 				<meta charSet="utf-8" />
 				<meta httpEquiv="X-UA-Compatible" content="IE=edge" />
 				<meta

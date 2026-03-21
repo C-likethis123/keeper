@@ -13,6 +13,7 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 - **Git Operations**: Slow checkout required for new changes from other sources
 - Slow to update
 - **Saving responsiveness**: autosave now waits for input idle time and defers heavier prepare work until after interactions, but device-side validation is still needed before calling save lag fully resolved
+- **Editor typing lag**: likely caused by selection-driven editor-wide re-renders plus repeated inline markdown preview work during typing; see `docs/PLAN-editor-typing-lag.md`
 
 ## Known Regressions & Improvements
 

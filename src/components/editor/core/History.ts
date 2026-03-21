@@ -5,6 +5,7 @@ import {
 	createInverseTransaction,
 	isTransactionEmpty,
 } from "./Transaction";
+import { UpdateBlockContentOperation } from "./operations/UpdateBlockContentOperation";
 
 /// Configuration for the history system
 interface HistoryConfig {
@@ -68,13 +69,14 @@ export class History {
 			// Group with previous transaction
 			const previous = this.undoStack.pop();
 			if (!previous) return;
-			const grouped: Transaction = {
-				operations: [...previous.operations, ...transaction.operations],
-				selectionBefore: previous.selectionBefore,
-				selectionAfter: transaction.selectionAfter,
-				description: transaction.description ?? previous.description,
-				timestamp: now,
-			};
+			const grouped =
+				this.coalesceGroupedTransaction(previous, transaction, now) ?? {
+					operations: [...previous.operations, ...transaction.operations],
+					selectionBefore: previous.selectionBefore,
+					selectionAfter: transaction.selectionAfter,
+					description: transaction.description ?? previous.description,
+					timestamp: now,
+				};
 			this.undoStack.push(grouped);
 		} else {
 			this.undoStack.push(transaction);
@@ -122,5 +124,45 @@ export class History {
 		this.undoStack = [];
 		this.redoStack = [];
 		this.lastTransactionTime = undefined;
+	}
+
+	private coalesceGroupedTransaction(
+		previous: Transaction,
+		next: Transaction,
+		timestamp: Date,
+	): Transaction | null {
+		if (previous.operations.length !== 1 || next.operations.length !== 1) {
+			return null;
+		}
+
+		const previousOp = previous.operations[0];
+		const nextOp = next.operations[0];
+		if (
+			!(previousOp instanceof UpdateBlockContentOperation) ||
+			!(nextOp instanceof UpdateBlockContentOperation)
+		) {
+			return null;
+		}
+
+		if (
+			previousOp.blockIndex !== nextOp.blockIndex ||
+			previousOp.newContent !== nextOp.oldContent
+		) {
+			return null;
+		}
+
+		return {
+			operations: [
+				new UpdateBlockContentOperation(
+					previousOp.blockIndex,
+					previousOp.oldContent,
+					nextOp.newContent,
+				),
+			],
+			selectionBefore: previous.selectionBefore,
+			selectionAfter: next.selectionAfter,
+			description: next.description ?? previous.description,
+			timestamp,
+		};
 	}
 }

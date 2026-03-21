@@ -1,8 +1,9 @@
 import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import { useEditorSelection, useEditorState } from "@/stores/editorStore";
+import { useEditorBlockSelection, useEditorState } from "@/stores/editorStore";
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import type { GestureResponderEvent } from "react-native";
 import {
 	type NativeMethods,
 	type NativeSyntheticEvent,
@@ -20,6 +21,11 @@ import { BlockType, getListLevel, isListItem } from "../core/BlockNode";
 import { InlineMarkdown } from "../rendering/InlineMarkdown";
 import { useWikiLinkContext } from "../wikilinks/WikiLinkContext";
 import { findWikiLinkTriggerStart } from "../wikilinks/WikiLinkTrigger";
+import {
+	type WikiLinkActivationEvent,
+	shouldOpenWikiLink,
+	stopWikiLinkActivation,
+} from "../wikilinks/wikiLinkUtils";
 import type { BlockConfig } from "./BlockRegistry";
 import { ListMarker } from "./ListMarker";
 export function UnifiedBlock({
@@ -33,17 +39,18 @@ export function UnifiedBlock({
 	onSelectionChange,
 	listItemNumber,
 	onCheckboxToggle,
+	onOpenWikiLink,
 }: BlockConfig) {
 	const { focusBlock, blurBlock } = useFocusBlock();
 	const { scrollViewRef, scrollYRef, viewHeightRef } = useEditorScrollView();
 	const inputRef = useRef<TextInput>(null);
 	const ignoreNextChangeRef = useRef(false);
 	const prevIsFocusedRef = useRef(false);
-	const selection = useEditorSelection();
+	const selectionRange = useEditorBlockSelection(index);
 	const getFocusedBlockIndex = useEditorState(
 		(state) => state.getFocusedBlockIndex,
 	);
-	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
+	const handleVerticalArrow = useVerticalArrowNavigation(index, selectionRange);
 
 	useLayoutEffect(() => {
 		if (isFocused && !prevIsFocusedRef.current && inputRef.current) {
@@ -76,8 +83,11 @@ export function UnifiedBlock({
 	}, [isFocused, scrollViewRef, scrollYRef, viewHeightRef]);
 
 	const handleFocus = useCallback(() => {
+		if (isFocused) {
+			return;
+		}
 		focusBlock(index);
-	}, [focusBlock, index]);
+	}, [focusBlock, index, isFocused]);
 
 	const handleBlur = useCallback(() => {
 		const currentFocus = getFocusedBlockIndex();
@@ -92,6 +102,21 @@ export function UnifiedBlock({
 			onSelectionChange(index, start, end);
 		},
 		[index, onSelectionChange],
+	);
+	const handleWikiLinkPress = useCallback(
+		async (title: string, event: GestureResponderEvent) => {
+			const wikiEvent = event as GestureResponderEvent &
+				WikiLinkActivationEvent;
+
+			if (!shouldOpenWikiLink(Platform.OS, wikiEvent)) {
+				handleFocus();
+				return;
+			}
+
+			stopWikiLinkActivation(wikiEvent);
+			await onOpenWikiLink(title);
+		},
+		[handleFocus, onOpenWikiLink],
 	);
 	const wikiLinks = useWikiLinkContext();
 	const handleContentChange = useCallback(
@@ -137,11 +162,10 @@ export function UnifiedBlock({
 			if (
 				key === " " &&
 				block.type === BlockType.paragraph &&
-				selection?.anchor.blockIndex === index &&
-				selection?.focus.blockIndex === index &&
-				selection.anchor.offset === selection.focus.offset
+				selectionRange &&
+				selectionRange.start === selectionRange.end
 			) {
-				const handled = onSpace(index, selection.focus.offset);
+				const handled = onSpace(index, selectionRange.end);
 				if (handled) {
 					return;
 				}
@@ -150,7 +174,8 @@ export function UnifiedBlock({
 			// Handle Enter key - split non-code blocks at the current cursor position
 			if (
 				key === "Enter" &&
-				selection?.anchor.offset === selection?.focus.offset
+				selectionRange &&
+				selectionRange.start === selectionRange.end
 			) {
 				if (block.type !== BlockType.codeBlock) {
 					if (Platform.OS === "web") {
@@ -163,7 +188,7 @@ export function UnifiedBlock({
 						// action fires, so we can safely ignore that one onChangeText.
 						ignoreNextChangeRef.current = true;
 					}
-					onEnter(index, selection?.focus.offset ?? 0);
+					onEnter(index, selectionRange.end);
 				}
 				return;
 			}
@@ -171,9 +196,15 @@ export function UnifiedBlock({
 			// Handle backspace at the start (position 0)
 			if (
 				key === "Backspace" &&
-				selection?.anchor.offset === 0 &&
-				selection?.focus.offset === 0
+				selectionRange?.start === 0 &&
+				selectionRange?.end === 0
 			) {
+				if (Platform.OS === "web") {
+					e.preventDefault();
+				} else {
+					ignoreNextChangeRef.current = true;
+				}
+
 				// Paragraph blocks: delegate to editor-level handler (empty = delete, non-empty = merge or focus previous)
 				if (block.type === BlockType.paragraph) {
 					onBackspaceAtStart(index);
@@ -194,7 +225,7 @@ export function UnifiedBlock({
 			onBackspaceAtStart,
 			onEnter,
 			onSpace,
-			selection,
+			selectionRange,
 		],
 	);
 
@@ -215,16 +246,12 @@ export function UnifiedBlock({
 		}
 	}, [block.type, theme.typography]);
 	const selectionProp =
-		isFocused && selection && selection.focus.blockIndex === index
+		isFocused && selectionRange
 			? (() => {
-					const sel = selection;
-					if (!sel) return undefined;
-					const start = Math.min(sel.anchor.offset, sel.focus.offset);
-					const end = Math.max(sel.anchor.offset, sel.focus.offset);
 					const len = block.content.length;
 					return {
-						start: Math.min(start, len),
-						end: Math.min(end, len),
+						start: Math.min(selectionRange.start, len),
+						end: Math.min(selectionRange.end, len),
 					};
 				})()
 			: undefined;
@@ -287,9 +314,13 @@ export function UnifiedBlock({
 								: styles.overlay
 							: { display: "none" },
 					]}
-					pointerEvents="none"
+					pointerEvents="box-none"
 				>
-					<InlineMarkdown text={block.content} style={textStyle} />
+					<InlineMarkdown
+						text={block.content}
+						style={textStyle}
+						onWikiLinkPress={handleWikiLinkPress}
+					/>
 				</View>
 				<TextInput
 					{...textInputProps}

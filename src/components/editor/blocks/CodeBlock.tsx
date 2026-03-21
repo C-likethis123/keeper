@@ -41,7 +41,7 @@ export function CodeBlock({
 		start: 0,
 		end: 0,
 	});
-	const { focusBlock, blurBlock, focusBlockIndex } = useFocusBlock();
+	const { focusBlock, blurBlock } = useFocusBlock();
 	const language = getBlockLanguage(block) ?? "plaintext";
 	const languageRegistry = LanguageRegistry.instance;
 	const languageConfig = useMemo(() => {
