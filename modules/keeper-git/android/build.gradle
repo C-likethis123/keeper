@@ -14,7 +14,7 @@ tasks.register("buildRustGitAndroid", Exec) {
 }
 
 android {
-  namespace "com.clikethis123.keeper"
+  namespace "com.clikethis123.keeper.git"
   defaultConfig {
     versionCode 1
     versionName '1.0.0'
