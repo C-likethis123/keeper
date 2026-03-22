@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Ensure cargo is on PATH when invoked from Gradle (which spawns a fresh shell
+# that does not inherit the PATH set by the eas-build-pre-install hook).
+[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_ROOT="$(cd "$ROOT_DIR/../.." && pwd)"
 GIT_CORE_MANIFEST="$REPO_ROOT/src-tauri/git_core/Cargo.toml"
