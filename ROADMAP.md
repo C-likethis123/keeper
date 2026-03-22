@@ -66,6 +66,7 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 - `Cmd/Ctrl+Z` undo
 - `Cmd+Shift+Z` redo on macOS plus `Ctrl+Y` / `Ctrl+Shift+Z` compatibility on non-mac layouts
 - `Cmd/Ctrl+A` select-all-blocks command
+- `Shift+Enter` soft line break insertion for supported text blocks
 - `Tab` / `Shift+Tab` indent and outdent for list items
 - `Escape` dismissal for wiki link UI
 - `Backspace` / `Delete` for block-selection deletion
@@ -75,7 +76,6 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 **What remains next for keyboard work**:
 
 - **Tier 2: Common block-editor shortcuts**
-  - `Shift+Enter` — Soft line break within supported blocks
   - Better vertical caret preservation in complex blocks such as code blocks
   - Fix cursor selection stability during editor navigation and editing flows
   - Fix brace auto-completion behavior in code blocks
@@ -331,13 +331,22 @@ Use tabs to toggle between different views without leaving the current workspace
 
 ### Note Templates
 
-Let users start a new note from a saved template and create reusable templates from inside the app.
+Reusable templates now exist inside the editor flow, but the home-screen note creation path still starts from a blank note and templates do not yet have broader surfacing or organization behavior.
 
-**Scope**:
+**Status**: Partially implemented
+**Current implementation evidence**:
+
+- Notes can be converted into templates from `NoteEditorView` metadata controls
+- Existing templates can be listed and applied back into a note body from the editor
+- Template storage now has dedicated frontmatter, storage-engine methods, and git queue integration
+- Template markdown is kept out of the main notes index so templates do not pollute ordinary note search results
+
+**Key files**: `src/components/NoteEditorView.tsx`, `src/services/notes/editorEntryPersistence.ts`, `src/services/notes/templateService.ts`, `src/services/notes/templateFrontmatter.ts`, `src/services/notes/templatePaths.ts`, `src/services/storage/engines/MobileStorageEngine.ts`, `src/services/storage/engines/TauriStorageEngine.ts`
+
+**Remaining scope**:
 
 - Start note creation from a template instead of only a blank note
-- Create and edit templates for common note structures
-- Store templates in a way that works across the existing file, index, and git-backed note flows
+- Decide whether templates need a dedicated browser, filter, or other surfacing outside the editor
 - Keep room for future defaults such as journal, meeting, project, or checklist templates
 
 ### Future Ideas from Google Keep

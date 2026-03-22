@@ -20,6 +20,7 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 - Desktop editor still needs follow-up polish
 - Expo OTA (Over-The-Air) updates not working
 - Note organization and relevance work is in progress; note metadata editing and note-list filters exist, but migration validation and metadata-driven views are not complete yet
+- Note templates now persist separately from indexed notes and can be applied inside the editor, but the main new-note flow still starts from a blank note and template browsing is limited to the editor modal
 - Automated test coverage now includes `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, and `startupSteps`, but UI flows and remaining startup/runtime seams can still slip through until later expansion work
 - Component/integration coverage now exists for `src/app/editor.tsx`, `NoteEditorView`, and focused `NoteGrid` pagination behavior, but editor interactions, wikilink flows, startup/runtime seams, and broader storage flows still rely on manual validation
 
