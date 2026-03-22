@@ -15,10 +15,8 @@
 		"desktop:devtools": "sh -c 'trap \"kill 0\" INT TERM EXIT; react-devtools & npm run desktop & wait'",
 		"build:desktop": "tauri build",
 		"migrate:note-metadata": "node ./scripts/update-note-metadata.mjs",
-		"test": "vitest run",
-		"test:watch": "vitest",
-		"test:component": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
-		"test:component:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
+		"test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+		"test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
 		"lint": "biome lint .",
 		"lint:fix": "biome check . --apply",
 		"knip": "knip"
@@ -73,8 +71,7 @@
 		"jest-expo": "^55.0.10",
 		"knip": "^5.86.0",
 		"react-test-renderer": "^19.1.0",
-		"typescript": "~5.9.2",
-		"vitest": "^3.2.4"
+		"typescript": "~5.9.2"
 	},
 	"private": true
 }

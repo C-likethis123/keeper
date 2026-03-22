@@ -19,13 +19,12 @@ npm run build:desktop # Build production desktop app → src-tauri/target/releas
 
 # Utilities
 npm run build:mobile-git  # Rebuild Rust git bridge (all platforms)
-npm test                  # Vitest unit suite
-npm run test:component    # Jest Expo / RNTL component suite
+npm test                  # Test unit suite
 npm run lint              # Biome linter
 npm run lint:fix          # Auto-fix lint issues
 ```
 
-Automated tests exist for pure modules and selected UI/routes. Use `npm run lint` for CI checks, and run `npm test` / `npm run test:component` when touching covered areas.
+Automated tests exist for pure modules and selected UI/routes. Use `npm run lint` for CI checks, and run `npm test` when touching covered areas.
 
 ### Android Build Variants
 
@@ -100,7 +99,7 @@ EXPO_PUBLIC_GIT_API_URL=<backend-url>   # optional remote backend
 - **All editor state changes go through `editorStore` actions** — don't modify document state outside the store.
 - **Linting/formatting**: Biome (not ESLint/Prettier). Install the Biome VS Code extension.
 - **Platform splits**: Files ending in `.web.ts` override their `.ts` counterpart on web (e.g., `Notes.web.ts`).
-- **Testing**: Prefer `npm test` for pure TypeScript coverage, `npm run test:component` for Expo/React Native component coverage, and `npm run lint` for Biome checks.
+- **Testing**: Use `npm test` for testing, and `npm run lint` for Biome checks.
 
 ## Commit conventions
 

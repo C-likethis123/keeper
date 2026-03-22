@@ -16,8 +16,8 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **Native bridge**: Android and iOS now use the local Expo module in `modules/keeper-git`
 - **Templates**: reusable templates now work inside the editor flow; remaining work is starting new notes from a template and deciding how templates should surface outside the editor
 - **Quick composer**: wire the brush action to create a drawing note once drawing support lands
-- **Testing status**: `npm test` covers the immutable editor core plus `EditorState`, selected `editorStore` flows, `frontmatter`, and `startupSteps`; `npm run test:component` now covers `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, and focused `NoteGrid` pagination behavior
-- **Testing TODO**: Add missing Jest coverage for `HybridEditor`, `EditorToolbar`, `useAutoSave`, `useLoadNote`, startup UI/runtime flows, Wikilink interactions, broader `NoteGrid` and note-list states, and additional `editorStore` flows; migrate remaining `vitest` suites to `jest` over time for consistency
+- **Testing status**: `npm test` covers the immutable editor core plus `EditorState`, selected `editorStore` flows, `frontmatter`, `startupSteps`, `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, and focused `NoteGrid` pagination behavior
+- **Testing TODO**: Add missing Jest coverage for `HybridEditor`, `EditorToolbar`, `useAutoSave`, `useLoadNote`, startup UI/runtime flows, Wikilink interactions, broader `NoteGrid` and note-list states, and additional `editorStore` flows;
 - **Recently fixed**: desktop note-list scrolling now loads additional notes again after the Tauri index cursor returned to a plain numeric offset
 
 For full context on each item, see `ROADMAP.md`.

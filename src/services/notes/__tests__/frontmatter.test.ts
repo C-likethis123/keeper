@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { parseFrontmatter, stringifyFrontmatter } from "../frontmatter";
 
 describe("frontmatter", () => {

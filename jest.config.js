@@ -1,7 +1,7 @@
 module.exports = {
 	preset: "jest-expo",
 	setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
-	testMatch: ["**/*.jest.test.ts?(x)"],
+	testMatch: ["**/__tests__/**/*.test.ts?(x)", "**/*.jest.test.ts?(x)"],
 	moduleNameMapper: {
 		"^@/(.*)$": "<rootDir>/src/$1",
 		"^@react-navigation/([^/]+)$":
@@ -11,5 +11,6 @@ module.exports = {
 	transformIgnorePatterns: [
 		"node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|expo-router|@react-navigation/.*))",
 	],
+	clearMocks: true,
 	watchman: false,
 };

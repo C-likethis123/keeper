@@ -1,4 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
 import { createDocumentFromMarkdown, documentToMarkdown } from "../Document";
 import { History } from "../History";
 import { TransactionBuilder } from "../Transaction";
@@ -38,8 +37,8 @@ describe("History", () => {
 	});
 
 	it("groups transactions within the configured delay", () => {
-		vi.useFakeTimers();
-		vi.setSystemTime(new Date("2026-03-17T10:00:00Z"));
+		jest.useFakeTimers();
+		jest.setSystemTime(new Date("2026-03-17T10:00:00Z"));
 
 		const history = new History({ groupingDelay: 500 });
 		const document = createDocumentFromMarkdown("Alpha");
@@ -51,12 +50,12 @@ describe("History", () => {
 		}).build();
 
 		history.push(first, document);
-		vi.advanceTimersByTime(200);
+		jest.advanceTimersByTime(200);
 		history.push(second, document);
 
 		expect(history.undoDepth).toBe(1);
 
-		vi.useRealTimers();
+		jest.useRealTimers();
 	});
 
 	it("ignores empty transactions and trims history to max undo levels", () => {

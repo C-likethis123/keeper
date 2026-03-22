@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { createCodeBlock, createParagraphBlock } from "../../core/BlockNode";
 import { createEmptyDocument } from "../../core/Document";
 import { createCollapsedSelection } from "../../core/Selection";
