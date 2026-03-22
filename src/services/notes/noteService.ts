@@ -1,7 +1,6 @@
 import { GitService } from "@/services/git/gitService";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { getStorageEngine } from "@/services/storage/storageEngine";
-import { useStorageStore } from "@/stores/storageStore";
 import type { ListNotesResult } from "./notesIndex";
 import type { Note, NoteListFilters } from "./types";
 
@@ -21,21 +20,11 @@ export class NoteService {
 		// mobile/web will lazily create notes root through expo-file-system on write.
 	}
 
-	private static assertCanWrite(): void {
-		const capabilities = useStorageStore.getState().capabilities;
-		if (!capabilities.canWrite) {
-			throw new Error(
-				capabilities.reason ?? "Storage is unavailable in read-only mode",
-			);
-		}
-	}
-
 	static async loadNote(id: string): Promise<Note | null> {
 		return getStorageEngine().loadNote(id);
 	}
 
 	static async saveNote(note: Note, isNewNote = false): Promise<Note> {
-		NoteService.assertCanWrite();
 		const id = note.id.trim();
 		const pinnedState = !!note.isPinned;
 		const title = (note.title ?? "").trim();
@@ -64,7 +53,6 @@ export class NoteService {
 	}
 
 	static async deleteNote(id: string): Promise<boolean> {
-		NoteService.assertCanWrite();
 		try {
 			const deleted = await getStorageEngine().deleteNote(id);
 			if (!deleted) return false;

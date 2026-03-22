@@ -146,10 +146,10 @@ describe("Index", () => {
 		useStorageStore.setState({
 			capabilities: {
 				backend: "mobile-native",
-				canWrite: true,
 				canSearch: true,
 			},
 			initializationStatus: "ready",
+			initializationError: undefined,
 			contentVersion: 0,
 			notesRoot: undefined,
 		});
@@ -316,26 +316,29 @@ describe("Index", () => {
 		expect(mockRouterPush).toHaveBeenCalledWith("/editor?id=new-note-id");
 	});
 
-	it("blocks quick-note creation in read-only mode and shows a toast", async () => {
+	it("creates a quick note from the composer", async () => {
 		const user = userEvent.setup();
 		mockUseFocusEffect.mockImplementation(() => {});
 		mockUseNotes.mockReturnValue(makeUseNotesResult());
-		useStorageStore.setState({
-			capabilities: {
-				backend: "mobile-native",
-				canWrite: false,
-				canSearch: false,
-				reason: "Read-only mode",
-			},
-			initializationStatus: "failed",
-		});
 
 		render(<Index />);
 
 		await user.press(screen.getByRole("button", { name: "Take a note" }));
 
-		expect(mockShowToast).toHaveBeenCalledWith("Read-only mode");
-		expect(NoteService.saveNote).not.toHaveBeenCalled();
-		expect(mockRouterPush).not.toHaveBeenCalled();
+		await waitFor(() => {
+			expect(NoteService.saveNote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: "new-note-id",
+					title: "",
+					content: "",
+					isPinned: false,
+					noteType: "note",
+					lastUpdated: expect.any(Number),
+				}),
+				true,
+			);
+		});
+		expect(mockShowToast).not.toHaveBeenCalled();
+		expect(mockRouterPush).toHaveBeenCalledWith("/editor?id=new-note-id");
 	});
 });

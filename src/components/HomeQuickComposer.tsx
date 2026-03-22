@@ -2,7 +2,13 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
-import { Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+	Pressable,
+	StyleSheet,
+	Text,
+	TouchableOpacity,
+	View,
+} from "react-native";
 
 function QuickActionButton({
 	label,
@@ -37,7 +43,9 @@ function QuickActionButton({
 			</Pressable>
 			{isHovered ? (
 				<View pointerEvents="none" style={styles.tooltip}>
-					<Text style={styles.tooltipText}>{label}</Text>
+					<Text numberOfLines={1} style={styles.tooltipText}>
+						{label}
+					</Text>
 				</View>
 			) : null}
 		</View>
@@ -49,20 +57,18 @@ export default function HomeQuickComposer({
 	onCreateTodo,
 	onCreateJournal,
 	onCreateResource,
-	disabled = false,
 }: {
 	onPress: () => void;
 	onCreateTodo: () => void;
 	onCreateJournal: () => void;
 	onCreateResource: () => void;
-	disabled?: boolean;
 }) {
 	const theme = useExtendedTheme();
 	const styles = useStyles(createStyles);
 
 	return (
 		<View style={styles.wrapper}>
-			<View style={[styles.card, disabled && styles.cardDisabled]}>
+			<View style={[styles.card]}>
 				<TouchableOpacity
 					accessibilityRole="button"
 					accessibilityLabel="Take a note"
@@ -70,11 +76,7 @@ export default function HomeQuickComposer({
 					style={styles.primaryAction}
 					onPress={onPress}
 				>
-					<Text
-						style={[styles.placeholder, disabled && styles.placeholderDisabled]}
-					>
-						Take a note...
-					</Text>
+					<Text style={[styles.placeholder]}>Take a note...</Text>
 				</TouchableOpacity>
 				<View style={styles.actions}>
 					<QuickActionButton
@@ -147,16 +149,10 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		primaryAction: {
 			flex: 1,
 		},
-		cardDisabled: {
-			opacity: 0.6,
-		},
 		placeholder: {
 			flex: 1,
 			fontSize: 20,
 			color: theme.colors.textMuted,
-		},
-		placeholderDisabled: {
-			color: theme.colors.textFaded,
 		},
 		actions: {
 			flexDirection: "row",
@@ -191,7 +187,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			fontSize: 12,
 			fontWeight: "500",
 			color: theme.colors.card,
-			whiteSpace: "nowrap",
 		},
 	});
 }

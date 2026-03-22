@@ -19,7 +19,6 @@ export function getStorageEngine(): StorageEngine {
 export function getStorageCapabilities() {
 	return {
 		backend: getRuntimeStorageBackend(),
-		canWrite: true,
 		canSearch: true,
 	} as const;
 }

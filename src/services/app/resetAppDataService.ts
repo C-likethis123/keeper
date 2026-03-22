@@ -31,12 +31,7 @@ export async function resetAppData(): Promise<void> {
 		GitService.clearQueuedChanges();
 		useEditorState.getState().resetState();
 
-		const storageResult = await StorageInitializationService.instance.initialize();
-		if (!storageResult.success) {
-			throw new Error(
-				storageResult.readOnlyReason ?? "Storage initialization failed after reset",
-			);
-		}
+		await StorageInitializationService.instance.initialize();
 	})().finally(() => {
 		resetInFlight = null;
 	});

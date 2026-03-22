@@ -76,7 +76,7 @@ describe("NoteEditorScreen", () => {
 			note: null,
 		});
 
-		renderRouter(
+		const result = renderRouter(
 			{
 				index: () => null,
 				editor: NoteEditorScreen,
@@ -86,8 +86,8 @@ describe("NoteEditorScreen", () => {
 
 		expect(await screen.findByText("Loading note")).toBeTruthy();
 		expect(mockUseLoadNote).toHaveBeenCalledWith("note-1");
-		expect(screen).toHavePathname("/editor");
-		expect(screen).toHaveSearchParams({ id: "note-1" });
+		expect(result.getPathname()).toBe("/editor");
+		expect(result.getSearchParams()).toEqual({ id: "note-1" });
 	});
 
 	it("shows the error screen when loading fails", async () => {
@@ -97,7 +97,7 @@ describe("NoteEditorScreen", () => {
 			note: null,
 		});
 
-		renderRouter(
+		const result = renderRouter(
 			{
 				index: () => null,
 				editor: NoteEditorScreen,
@@ -116,7 +116,7 @@ describe("NoteEditorScreen", () => {
 			note: null,
 		});
 
-		renderRouter(
+		const result = renderRouter(
 			{
 				index: () => null,
 				editor: NoteEditorScreen,
@@ -134,7 +134,7 @@ describe("NoteEditorScreen", () => {
 			note: makeNote({ title: "Loaded draft" }),
 		});
 
-		renderRouter(
+		const result = renderRouter(
 			{
 				index: () => null,
 				editor: NoteEditorScreen,
@@ -143,6 +143,6 @@ describe("NoteEditorScreen", () => {
 		);
 
 		expect(await screen.findByText("Loaded note: Loaded draft")).toBeTruthy();
-		expect(screen).toHavePathname("/editor");
+		expect(result.getPathname()).toBe("/editor");
 	});
 });

@@ -188,7 +188,7 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 - Add a TODO to migrate the remaining `vitest` suites to `jest` over time for test-runner consistency
 - How much storage and git behavior should be mocked versus exercised through higher-level service seams
 - Add `HybridEditor` integration coverage for keyboard shortcuts, split/merge flows, block selection deletion, paragraph-space handling, and scroll/focus coordination
-- Add `EditorToolbar` coverage for formatting actions, block type changes, and disabled/read-only behavior
+- Add `EditorToolbar` coverage for formatting actions and block type changes
 - Add `useAutoSave` coverage for idle timing, save dedupe, error handling, and `SaveIndicator` state transitions
 - Add `useLoadNote` hook coverage for pending, failed init, note-not-found, and thrown-error paths
 - Add startup UI/integration coverage for `src/app/_layout.tsx`, `useAppStartup`, and `startupStrategies.ts`

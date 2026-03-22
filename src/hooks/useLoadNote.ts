@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 export function useLoadNote(id: string) {
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
-	const storageReason = useStorageStore((s) => s.capabilities.reason);
+	const initializationError = useStorageStore((s) => s.initializationError);
 	const [note, setNote] = useState<Note | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export function useLoadNote(id: string) {
 		if (initializationStatus === "failed") {
 			setNote(null);
 			setIsLoading(false);
-			setError(storageReason ?? "Storage is unavailable");
+			setError(initializationError ?? "Storage is unavailable");
 			return;
 		}
 
@@ -38,7 +38,7 @@ export function useLoadNote(id: string) {
 				setError(err instanceof Error ? err.message : String(err));
 			})
 			.finally(() => setIsLoading(false));
-	}, [id, initializationStatus, storageReason]);
+	}, [id, initializationStatus, initializationError]);
 
 	return {
 		isLoading,

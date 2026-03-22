@@ -94,12 +94,7 @@ jest.mock("@/components/editor/EditorToolbar", () => {
 	const React = require("react");
 	const { Text } = require("react-native");
 	return {
-		EditorToolbar: ({ disabled }: { disabled: boolean }) =>
-			React.createElement(
-				Text,
-				null,
-				disabled ? "Toolbar disabled" : "Toolbar enabled",
-			),
+		EditorToolbar: () => React.createElement(Text, null, "Toolbar"),
 	};
 });
 
@@ -165,10 +160,10 @@ describe("NoteEditorView", () => {
 		useStorageStore.setState({
 			capabilities: {
 				backend: "mobile-native",
-				canWrite: true,
 				canSearch: true,
 			},
 			initializationStatus: "ready",
+			initializationError: undefined,
 			contentVersion: 0,
 			notesRoot: undefined,
 		});
@@ -177,20 +172,20 @@ describe("NoteEditorView", () => {
 	it("loads note markdown into the editor store on mount", async () => {
 		const note = makeNote({ content: "# Heading" });
 
-		renderNoteEditor(note);
+		const result = renderNoteEditor(note);
 
 		await screen.findByText("Mock editor");
 		await waitFor(() => {
 			expect(useEditorState.getState().getContent()).toBe("# Heading");
 		});
-		expect(screen).toHavePathname("/editor");
+		expect(result.getPathname()).toBe("/editor");
 	});
 
 	it("defaults todo status to open when switching a note to todo and saving", async () => {
 		const user = userEvent.setup();
 		const note = makeNote();
 
-		renderNoteEditor(note);
+		const result = renderNoteEditor(note);
 
 		await screen.findByText("Toolbar enabled");
 		await user.press(screen.getByText("Todo"));
@@ -213,24 +208,13 @@ describe("NoteEditorView", () => {
 		});
 	});
 
-	it("skips saves in read-only mode and only navigates back", async () => {
-		const user = userEvent.setup();
+	it("saves and navigates back when pressing the header back action", async () => {
 		const note = makeNote();
 
-		useStorageStore.setState({
-			capabilities: {
-				backend: "mobile-native",
-				canWrite: false,
-				canSearch: false,
-				reason: "Read-only mode",
-			},
-			initializationStatus: "failed",
-		});
+		const result = renderNoteEditor(note);
 
-		renderNoteEditor(note);
-
-		await screen.findByText("Toolbar disabled");
-		expect(screen.getByPlaceholderText("Title").props.editable).toBe(false);
+		await screen.findByText("Toolbar enabled");
+		expect(screen.getByPlaceholderText("Title").props.editable).toBe(true);
 
 		await waitFor(() => {
 			expect(latestNavigationOptions?.headerLeft).toBeDefined();
@@ -238,9 +222,15 @@ describe("NoteEditorView", () => {
 		pressHeaderBack();
 
 		await waitFor(() => {
-			expect(screen).toHavePathname("/");
+			expect(result.getPathname()).toBe("/");
 		});
-		expect(mockSaveNote).not.toHaveBeenCalled();
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: note.id,
+				title: note.title,
+			}),
+			false,
+		);
 	});
 
 	it("converts a note into a template on save when template type is selected", async () => {

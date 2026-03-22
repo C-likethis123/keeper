@@ -89,7 +89,11 @@ export function useAppStartup(): AppStartupState {
 				...prev,
 				isHydrated: true,
 				status: "error",
-				initError: prev.initError ?? "Startup failed unexpectedly.",
+				initError:
+					prev.initError ??
+					(error instanceof Error
+						? error.message
+						: "Startup failed unexpectedly."),
 			}));
 		});
 

@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { BlockType, getListLevel, isListItem } from "./core/BlockNode";
 
-export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
+export function EditorToolbar() {
 	const theme = useExtendedTheme();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const getCanUndo = useEditorState((s) => s.getCanUndo);
@@ -37,12 +37,12 @@ export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 
 	const isListBlock = isListItem(blockType);
 
-	const canOutdent = !disabled && isListBlock;
-	const canIndent = !disabled && isListBlock && listLevel >= 0 && listLevel < 10;
+	const canOutdent = isListBlock;
+	const canIndent = isListBlock && listLevel >= 0 && listLevel < 10;
 	const canConvertToCheckbox =
-		!disabled && blockType != null && blockType !== BlockType.checkboxList;
-	const canUndo = !disabled && getCanUndo();
-	const canRedo = !disabled && getCanRedo();
+		blockType != null && blockType !== BlockType.checkboxList;
+	const canUndo = getCanUndo();
+	const canRedo = getCanRedo();
 
 	return (
 		<View style={styles.toolbar}>
@@ -117,12 +117,11 @@ export function EditorToolbar({ disabled = false }: { disabled?: boolean }) {
 					style={styles.button}
 					onPress={handleInsertImage}
 					activeOpacity={0.7}
-					disabled={disabled}
 				>
 					<MaterialIcons
 						name="add-photo-alternate"
 						size={24}
-						color={disabled ? theme.colors.textDisabled : theme.colors.text}
+						color={theme.colors.text}
 					/>
 				</TouchableOpacity>
 			) : (

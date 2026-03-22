@@ -2,7 +2,6 @@ import type { SaveStatus } from "@/components/SaveIndicator";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
-import { useStorageStore } from "@/stores/storageStore";
 import { InteractionManager } from "react-native";
 import { useEffect, useRef, useState } from "react";
 
@@ -32,7 +31,6 @@ export function useAutoSave({
 	initialNoteType,
 	onPersisted,
 }: AutoSaveInput) {
-	const canWrite = useStorageStore((s) => s.capabilities.canWrite);
 	const getContentForVersion = useEditorState((s) => s.getContentForVersion);
 	const prepareContent = useEditorState((s) => s.prepareContent);
 	const [status, setStatus] = useState<SaveStatus>("idle");
@@ -141,7 +139,7 @@ export function useAutoSave({
 		}
 
 		const scheduleSaveWhenIdle = () => {
-			if (!canWrite || isSavingRef.current) {
+			if (isSavingRef.current) {
 				return;
 			}
 
@@ -155,7 +153,7 @@ export function useAutoSave({
 			idleTimeoutRef.current = setTimeout(() => {
 				idleTimeoutRef.current = null;
 				void InteractionManager.runAfterInteractions(async () => {
-					if (!canWrite || isSavingRef.current) {
+					if (isSavingRef.current) {
 						return;
 					}
 
@@ -261,7 +259,7 @@ export function useAutoSave({
 				intervalRef.current = null;
 			}
 		};
-	}, [canWrite, getContentForVersion, onPersisted]);
+	}, [getContentForVersion, onPersisted]);
 
 	return { status };
 }

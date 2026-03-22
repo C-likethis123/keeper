@@ -14,29 +14,26 @@ interface InitializeGitStepOptions {
 }
 
 export async function initializeStorageStep(
-	showToast: ShowToast,
 	telemetry: StartupTelemetry,
 ): Promise<void> {
 	const initializeStart = telemetry.stepStarted("storage.initialize");
-	const result = await StorageInitializationService.instance.initialize();
-	telemetry.stepCompleted("storage.initialize", initializeStart, {
-		success: result.success,
-		needsRebuild: result.needsRebuild,
-		hasReadOnlyReason: Boolean(result.readOnlyReason),
-	});
-	if (result.success && result.needsRebuild) {
-		const rebuildStart = telemetry.stepStarted("storage.index_rebuild_after_init");
-		const metrics = await NotesIndexService.rebuildFromDisk();
-		telemetry.stepCompleted("storage.index_rebuild_after_init", rebuildStart, {
-			noteCount: metrics.noteCount,
+	try {
+		const result = await StorageInitializationService.instance.initialize();
+		telemetry.stepCompleted("storage.initialize", initializeStart, {
+			success: true,
+			needsRebuild: result.needsRebuild,
 		});
-		useStorageStore.getState().bumpContentVersion();
-	}
-	if (!result.success && result.readOnlyReason) {
-		telemetry.trace("storage.read_only_mode", {
-			reason: result.readOnlyReason,
-		});
-		showToast(`Read-only mode: ${result.readOnlyReason}`, 6000);
+		if (result.needsRebuild) {
+			const rebuildStart = telemetry.stepStarted("storage.index_rebuild_after_init");
+			const metrics = await NotesIndexService.rebuildFromDisk();
+			telemetry.stepCompleted("storage.index_rebuild_after_init", rebuildStart, {
+				noteCount: metrics.noteCount,
+			});
+			useStorageStore.getState().bumpContentVersion();
+		}
+	} catch (error) {
+		telemetry.stepFailed("storage.initialize", initializeStart, error);
+		throw error;
 	}
 }
 

@@ -25,11 +25,10 @@ const runDesktopStartup: StartupStrategy = async ({
 	setInitError,
 	telemetry,
 }) => {
+	await initializeStorageStep(telemetry);
 	const hydrationStart = telemetry.stepStarted("desktop.hydrate_ui");
 	setHydrated();
 	telemetry.stepCompleted("desktop.hydrate_ui", hydrationStart);
-
-	await initializeStorageStep(showToast, telemetry);
 	void initializeGitStep(
 		{
 			backgroundMode: true,
@@ -46,7 +45,7 @@ const runMobileStartup: StartupStrategy = async ({
 	setInitError,
 	telemetry,
 }) => {
-	await initializeStorageStep(showToast, telemetry);
+	await initializeStorageStep(telemetry);
 	await initializeGitStep(
 		{
 			backgroundMode: false,
@@ -66,7 +65,7 @@ const runUnsupportedStartup: StartupStrategy = async ({
 	setHydrated,
 	telemetry,
 }) => {
-	await initializeStorageStep(showToast, telemetry);
+	await initializeStorageStep(telemetry);
 	await initializeUnsupportedRuntimeStep(runtimeSupport, showToast, telemetry);
 	const hydrationStart = telemetry.stepStarted("unsupported.hydrate_ui");
 	setHydrated();

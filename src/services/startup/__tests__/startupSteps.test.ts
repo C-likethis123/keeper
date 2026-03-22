@@ -35,44 +35,35 @@ describe("startupSteps", () => {
 		jest
 			.spyOn(StorageInitializationService.instance, "initialize")
 			.mockResolvedValue({
-				success: true,
 				needsRebuild: true,
-				readOnlyReason: undefined,
 			});
 		const telemetry = createTelemetry();
-		const showToast = jest.fn();
 
-		await initializeStorageStep(showToast, telemetry as never);
+		await initializeStorageStep(telemetry as never);
 
 		expect(StorageInitializationService.instance.initialize).toHaveBeenCalledTimes(
 			1,
 		);
 		expect(NotesIndexService.rebuildFromDisk).toHaveBeenCalledTimes(1);
 		expect(mockBumpContentVersion).toHaveBeenCalledTimes(1);
-		expect(showToast).not.toHaveBeenCalled();
 	});
 
-	it("shows a read-only toast when storage initialization fails with a reason", async () => {
+	it("surfaces storage initialization failures instead of entering read-only mode", async () => {
+		const error = new Error("Missing permissions");
 		jest
 			.spyOn(StorageInitializationService.instance, "initialize")
-			.mockResolvedValue({
-				success: false,
-				needsRebuild: false,
-				readOnlyReason: "Missing permissions",
-			});
+			.mockRejectedValue(error);
 		const telemetry = createTelemetry();
-		const showToast = jest.fn();
 
-		await initializeStorageStep(showToast, telemetry as never);
-
-		expect(NotesIndexService.rebuildFromDisk).not.toHaveBeenCalled();
-		expect(showToast).toHaveBeenCalledWith(
-			"Read-only mode: Missing permissions",
-			6000,
+		await expect(initializeStorageStep(telemetry as never)).rejects.toThrow(
+			"Missing permissions",
 		);
-		expect(telemetry.trace).toHaveBeenCalledWith("storage.read_only_mode", {
-			reason: "Missing permissions",
-		});
+		expect(NotesIndexService.rebuildFromDisk).not.toHaveBeenCalled();
+		expect(telemetry.stepFailed).toHaveBeenCalledWith(
+			"storage.initialize",
+			101,
+			error,
+		);
 	});
 
 	it("rebuilds and bumps content version after a successful clone", async () => {

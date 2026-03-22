@@ -3,9 +3,7 @@ import { setNotesRoot } from "@/services/notes/Notes";
 import { useStorageStore } from "@/stores/storageStore";
 
 interface StorageInitializationResult {
-	success: boolean;
 	needsRebuild: boolean;
-	readOnlyReason?: string;
 }
 
 export class StorageInitializationService {
@@ -22,7 +20,6 @@ export class StorageInitializationService {
 			useStorageStore.getState().setNotesRoot(result.notesRoot);
 			useStorageStore.getState().setInitializationReady();
 			return {
-				success: true,
 				needsRebuild: result.needsRebuild,
 			};
 		} catch (error) {
@@ -30,14 +27,8 @@ export class StorageInitializationService {
 				error instanceof Error
 					? error.message
 					: "Native storage initialization failed";
-			useStorageStore
-				.getState()
-				.setReadOnly(reason, getStorageCapabilities().backend);
-			return {
-				success: false,
-				needsRebuild: false,
-				readOnlyReason: reason,
-			};
+			useStorageStore.getState().setInitializationFailed(reason);
+			throw new Error(reason);
 		}
 	}
 }

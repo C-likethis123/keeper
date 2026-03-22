@@ -8,7 +8,6 @@ import { NoteService } from "@/services/notes/noteService";
 import { TemplateService } from "@/services/notes/templateService";
 import type { Note, NoteTemplate } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
-import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
@@ -33,14 +32,14 @@ import {
 import { EditorScrollProvider } from "./editor/EditorScrollContext";
 import Loader from "./shared/Loader";
 
-const LazyEditorToolbar = React.lazy(
-	() => import("@/components/editor/EditorToolbar").then((module) => ({
+const LazyEditorToolbar = React.lazy(() =>
+	import("@/components/editor/EditorToolbar").then((module) => ({
 		default: module.EditorToolbar,
 	})),
 );
 
-const LazyHybridEditor = React.lazy(
-	() => import("@/components/editor/HybridEditor").then((module) => ({
+const LazyHybridEditor = React.lazy(() =>
+	import("@/components/editor/HybridEditor").then((module) => ({
 		default: module.HybridEditor,
 	})),
 );
@@ -74,7 +73,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
 	const [templates, setTemplates] = useState<NoteTemplate[]>([]);
 	const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
-	const capabilities = useStorageStore((s) => s.capabilities);
 	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
 	const latestDraftRef = useRef({
@@ -83,7 +81,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		noteType,
 		todoStatus,
 	});
-	const latestCapabilitiesRef = useRef(capabilities);
 	const lastPersistedTypeRef = useRef<Note["noteType"]>(note.noteType);
 
 	latestDraftRef.current = {
@@ -92,8 +89,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		noteType,
 		todoStatus,
 	};
-	latestCapabilitiesRef.current = capabilities;
-
 	const buildCurrentNotePayload = useCallback(
 		(overrides?: Partial<Note>): Note => {
 			const draft = latestDraftRef.current;
@@ -105,9 +100,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 				lastUpdated: Date.now(),
 				noteType: draft.noteType,
 				status:
-					draft.noteType === "todo"
-						? (draft.todoStatus ?? "open")
-						: undefined,
+					draft.noteType === "todo" ? (draft.todoStatus ?? "open") : undefined,
 				...overrides,
 			};
 		},
@@ -128,11 +121,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	);
 
 	const handleTogglePin = useCallback(async () => {
-		const currentCapabilities = latestCapabilitiesRef.current;
-		if (!currentCapabilities.canWrite) {
-			showToast(currentCapabilities.reason ?? "Read-only mode");
-			return;
-		}
 		if (latestDraftRef.current.noteType === "template") {
 			showToast("Templates can't be pinned");
 			return;
@@ -143,34 +131,20 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	}, [persistCurrentEntry, showToast]);
 
 	const handleBackPress = useCallback(async () => {
-		const currentCapabilities = latestCapabilitiesRef.current;
-		if (!currentCapabilities.canWrite) {
-			router.back();
-			return;
-		}
 		await persistCurrentEntry();
 		router.back();
 	}, [persistCurrentEntry, router]);
 
 	const handleDeletePress = useCallback(async () => {
-		const currentCapabilities = latestCapabilitiesRef.current;
-		if (!currentCapabilities.canWrite) {
-			showToast(currentCapabilities.reason ?? "Read-only mode");
-			return;
-		}
 		if (latestDraftRef.current.noteType === "template") {
 			await TemplateService.deleteTemplate(id);
 		} else {
 			await NoteService.deleteNote(id);
 		}
 		router.back();
-	}, [id, router, showToast]);
+	}, [id, router]);
 
 	const openTemplateModal = useCallback(async () => {
-		if (!capabilities.canWrite) {
-			showToast(capabilities.reason ?? "Read-only mode");
-			return;
-		}
 		setIsTemplateModalVisible(true);
 		setIsLoadingTemplates(true);
 		try {
@@ -181,7 +155,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		} finally {
 			setIsLoadingTemplates(false);
 		}
-	}, [capabilities.canWrite, capabilities.reason, showToast]);
+	}, [showToast]);
 
 	const applyTemplate = useCallback(
 		(template: NoteTemplate) => {
@@ -262,7 +236,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 							void handleTogglePin();
 						}}
 						style={{ marginRight: 8 }}
-						disabled={!capabilities.canWrite || noteType === "template"}
+						disabled={noteType === "template"}
 					>
 						<MaterialIcons
 							name="push-pin"
@@ -281,7 +255,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 							void handleDeletePress();
 						}}
 						style={{ marginRight: 8 }}
-						disabled={!capabilities.canWrite}
 					>
 						<MaterialIcons
 							name="delete"
@@ -302,7 +275,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		theme.colors.primary,
 		theme.colors.textMuted,
 		theme.colors.textFaded,
-		capabilities.canWrite,
 		isPinned,
 		noteType,
 		status,
@@ -316,8 +288,8 @@ export default function NoteEditorView({ note }: { note: Note }) {
 				<TextInput
 					style={styles.titleInput}
 					value={title}
-					onChangeText={capabilities.canWrite ? setTitle : undefined}
-					editable={capabilities.canWrite}
+					onChangeText={setTitle}
+					editable
 					placeholder="Title"
 					placeholderTextColor={theme.custom.editor.placeholder}
 				/>
@@ -335,7 +307,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 											selected && styles.optionChipSelected,
 										]}
 										onPress={() => {
-											if (!capabilities.canWrite) return;
 											setNoteType(option.value);
 											if (option.value === "todo") {
 												setTodoStatus((current) => current ?? "open");
@@ -346,7 +317,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 												setIsPinned(false);
 											}
 										}}
-										disabled={!capabilities.canWrite}
 									>
 										<Text
 											style={[
@@ -370,7 +340,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 									onPress={() => {
 										void openTemplateModal();
 									}}
-									disabled={!capabilities.canWrite}
 								>
 									<MaterialIcons
 										name="content-copy"
@@ -398,10 +367,8 @@ export default function NoteEditorView({ note }: { note: Note }) {
 												selected && styles.optionChipSelected,
 											]}
 											onPress={() => {
-												if (!capabilities.canWrite) return;
 												setTodoStatus(option.value);
 											}}
-											disabled={!capabilities.canWrite}
 										>
 											<Text
 												style={[
@@ -420,7 +387,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 				</View>
 
 				<Suspense fallback={<Loader />}>
-					<LazyEditorToolbar disabled={!capabilities.canWrite} />
+					<LazyEditorToolbar />
 					<EditorScrollProvider>
 						<LazyHybridEditor />
 					</EditorScrollProvider>
@@ -470,10 +437,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 										<Text style={styles.templateCardTitle}>
 											{template.title || "Untitled template"}
 										</Text>
-										<Text
-											style={styles.templateCardContent}
-											numberOfLines={4}
-										>
+										<Text style={styles.templateCardContent} numberOfLines={4}>
 											{template.content || "Empty template"}
 										</Text>
 									</TouchableOpacity>

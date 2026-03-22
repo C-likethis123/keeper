@@ -33,15 +33,11 @@ export default function Index() {
 	} = useNotes();
 	const theme = useExtendedTheme();
 	const showToast = useToastStore((state) => state.showToast);
-	const capabilities = useStorageStore((s) => s.capabilities);
+	const canSearch = useStorageStore((s) => s.capabilities.canSearch);
 	const [isResetting, setIsResetting] = React.useState(false);
 
 	const handleDeleteNote = useCallback(
 		async (note: Note) => {
-			if (!capabilities.canWrite) {
-				showToast(capabilities.reason ?? "Read-only mode");
-				return;
-			}
 			try {
 				const success = await NoteService.deleteNote(note.id);
 				if (!success) throw new Error("Failed to delete note");
@@ -51,7 +47,7 @@ export default function Index() {
 				showToast("Failed to delete note");
 			}
 		},
-		[showToast, capabilities.canWrite, capabilities.reason],
+		[showToast],
 	);
 
 	const runReset = useCallback(async () => {
@@ -104,22 +100,11 @@ export default function Index() {
 		]);
 	}, [isResetting, runReset]);
 
-	const handlePinToggle = useCallback(
-		async (updated: Note) => {
-			if (!capabilities.canWrite) {
-				showToast(capabilities.reason ?? "Read-only mode");
-				return;
-			}
-			await NoteService.saveNote(updated);
-		},
-		[capabilities.canWrite, capabilities.reason, showToast],
-	);
+	const handlePinToggle = useCallback(async (updated: Note) => {
+		await NoteService.saveNote(updated);
+	}, []);
 
 	const handleCreateNote = useCallback(async () => {
-		if (!capabilities.canWrite) {
-			showToast(capabilities.reason ?? "Read-only mode");
-			return;
-		}
 		const newNote = {
 			id: nanoid(),
 			title: "",
@@ -130,14 +115,10 @@ export default function Index() {
 		};
 		await NoteService.saveNote(newNote, true);
 		router.push(`/editor?id=${newNote.id}`);
-	}, [capabilities.canWrite, capabilities.reason, showToast]);
+	}, []);
 
 	const handleCreateTypedNote = useCallback(
 		async (noteType: Extract<NoteType, "journal" | "resource">) => {
-			if (!capabilities.canWrite) {
-				showToast(capabilities.reason ?? "Read-only mode");
-				return;
-			}
 			const newNote = {
 				id: nanoid(),
 				title: "",
@@ -149,14 +130,10 @@ export default function Index() {
 			await NoteService.saveNote(newNote, true);
 			router.push(`/editor?id=${newNote.id}`);
 		},
-		[capabilities.canWrite, capabilities.reason, showToast],
+		[],
 	);
 
 	const handleCreateTodo = useCallback(async () => {
-		if (!capabilities.canWrite) {
-			showToast(capabilities.reason ?? "Read-only mode");
-			return;
-		}
 		const newTodo = {
 			id: nanoid(),
 			title: "",
@@ -168,7 +145,7 @@ export default function Index() {
 		};
 		await NoteService.saveNote(newTodo, true);
 		router.push(`/editor?id=${newTodo.id}`);
-	}, [capabilities.canWrite, capabilities.reason, showToast]);
+	}, []);
 
 	const styles = useStyles(createStyles);
 	const emptySubtitle =
@@ -198,7 +175,7 @@ export default function Index() {
 			<HomeScreenHeader
 				searchQuery={query}
 				setSearchQuery={setQuery}
-				searchEditable={capabilities.canSearch}
+				searchEditable={canSearch}
 				noteTypes={noteTypeFilter}
 				status={statusFilter}
 				onNoteTypesChange={(values) => {
@@ -236,7 +213,6 @@ export default function Index() {
 							onCreateResource={() => {
 								void handleCreateTypedNote("resource");
 							}}
-							disabled={!capabilities.canWrite}
 						/>
 					}
 				/>

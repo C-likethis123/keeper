@@ -29,6 +29,7 @@ function toNote(item: NoteIndexItem): Note {
 export default function useNotes() {
 	const capabilities = useStorageStore((s) => s.capabilities);
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
+	const initializationError = useStorageStore((s) => s.initializationError);
 	const contentVersion = useStorageStore((s) => s.contentVersion);
 	const [query, setQuery] = useState("");
 	const debouncedQuery = useDebounce(query, 300);
@@ -144,7 +145,7 @@ export default function useNotes() {
 			setIsLoading(false);
 			setNotes([]);
 			setHasMore(false);
-			setError(capabilities.reason ?? "Storage is unavailable");
+			setError(initializationError ?? "Storage is unavailable");
 			return;
 		}
 
@@ -157,7 +158,7 @@ export default function useNotes() {
 		fetchNotes,
 		debouncedQuery,
 		filters,
-		capabilities.reason,
+		initializationError,
 		contentVersion,
 		initializationStatus,
 	]);
