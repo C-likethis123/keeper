@@ -6,6 +6,14 @@ export type EditorCommandId =
 	| "focusNextBlock"
 	| "undo"
 	| "redo"
+	| "toggleBold"
+	| "toggleItalic"
+	| "toggleHeading1"
+	| "toggleHeading2"
+	| "toggleHeading3"
+	| "toggleBulletList"
+	| "toggleNumberedList"
+	| "toggleCheckboxList"
 	| "toggleCheckbox"
 	| "insertSoftLineBreak"
 	| "indentListItem"
@@ -25,6 +33,14 @@ export interface EditorCommandContext {
 	focusBlockAt: (index: number, offset: number) => void;
 	runUndo: () => boolean;
 	runRedo: () => boolean;
+	runToggleBold: () => boolean;
+	runToggleItalic: () => boolean;
+	runToggleHeading1: () => boolean;
+	runToggleHeading2: () => boolean;
+	runToggleHeading3: () => boolean;
+	runToggleBulletList: () => boolean;
+	runToggleNumberedList: () => boolean;
+	runToggleCheckboxList: () => boolean;
 	runToggleCheckbox: () => boolean;
 	runInsertSoftLineBreak: () => boolean;
 	runIndentListItem: () => boolean;
@@ -52,6 +68,14 @@ export const editorCommands: Record<EditorCommandId, EditorCommand> = {
 	},
 	undo: (context) => context.runUndo(),
 	redo: (context) => context.runRedo(),
+	toggleBold: (context) => context.runToggleBold(),
+	toggleItalic: (context) => context.runToggleItalic(),
+	toggleHeading1: (context) => context.runToggleHeading1(),
+	toggleHeading2: (context) => context.runToggleHeading2(),
+	toggleHeading3: (context) => context.runToggleHeading3(),
+	toggleBulletList: (context) => context.runToggleBulletList(),
+	toggleNumberedList: (context) => context.runToggleNumberedList(),
+	toggleCheckboxList: (context) => context.runToggleCheckboxList(),
 	toggleCheckbox: (context) => context.runToggleCheckbox(),
 	insertSoftLineBreak: (context) => context.runInsertSoftLineBreak(),
 	indentListItem: (context) => context.runIndentListItem(),

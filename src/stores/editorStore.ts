@@ -29,6 +29,38 @@ import { create } from "zustand";
 
 type EditorAction = Parameters<typeof editorReducer>[1];
 
+function isSelectionBackward(selection: DocumentSelection): boolean {
+	if (selection.anchor.blockIndex !== selection.focus.blockIndex) {
+		return selection.focus.blockIndex < selection.anchor.blockIndex;
+	}
+	return selection.focus.offset < selection.anchor.offset;
+}
+
+function createSelectionForRange(
+	blockIndex: number,
+	start: number,
+	end: number,
+	backward = false,
+): DocumentSelection {
+	if (backward) {
+		return {
+			anchor: { blockIndex, offset: end },
+			focus: { blockIndex, offset: start },
+		};
+	}
+
+	return {
+		anchor: { blockIndex, offset: start },
+		focus: { blockIndex, offset: end },
+	};
+}
+
+function isInlineFormattingUnsupported(type: BlockType): boolean {
+	return [BlockType.codeBlock, BlockType.mathBlock, BlockType.image].includes(
+		type,
+	);
+}
+
 const history = new History();
 export const useEditorState = create<EditorState>()((set, get) => {
 	const dispatch = (action: EditorAction) =>
@@ -161,6 +193,117 @@ export const useEditorState = create<EditorState>()((set, get) => {
 				.withDescription("Toggle checkbox")
 				.build();
 			dispatch({ type: "APPLY_TRANSACTION", transaction });
+		},
+
+		toggleInlineStyle: (marker: string) => {
+			const s = get();
+			const selection = s.selection;
+			if (
+				!selection ||
+				selection.anchor.blockIndex !== selection.focus.blockIndex
+			) {
+				return false;
+			}
+
+			const index = selection.focus.blockIndex;
+			const block = s.document.blocks[index];
+			if (!block || isInlineFormattingUnsupported(block.type)) {
+				return false;
+			}
+
+			const start = Math.min(selection.anchor.offset, selection.focus.offset);
+			const end = Math.max(selection.anchor.offset, selection.focus.offset);
+			const markerLength = marker.length;
+			const backward = isSelectionBackward(selection);
+			const content = block.content;
+
+			if (start === end) {
+				const newContent =
+					content.slice(0, start) + marker + marker + content.slice(end);
+				const transaction = new TransactionBuilder()
+					.updateContent(index, content, newContent)
+					.withSelectionBefore(selection)
+					.withSelectionAfter(
+						createCollapsedSelection({
+							blockIndex: index,
+							offset: start + markerLength,
+						}),
+					)
+					.withDescription(`Insert ${marker} inline style`)
+					.build();
+				dispatch({ type: "APPLY_TRANSACTION", transaction });
+				return true;
+			}
+
+			const hasWrappedSelection =
+				start >= markerLength &&
+				content.slice(start - markerLength, start) === marker &&
+				content.slice(end, end + markerLength) === marker;
+
+			let newContent: string;
+			let nextStart: number;
+			let nextEnd: number;
+
+			if (hasWrappedSelection) {
+				newContent =
+					content.slice(0, start - markerLength) +
+					content.slice(start, end) +
+					content.slice(end + markerLength);
+				nextStart = start - markerLength;
+				nextEnd = end - markerLength;
+			} else {
+				newContent =
+					content.slice(0, start) +
+					marker +
+					content.slice(start, end) +
+					marker +
+					content.slice(end);
+				nextStart = start + markerLength;
+				nextEnd = end + markerLength;
+			}
+
+			const transaction = new TransactionBuilder()
+				.updateContent(index, content, newContent)
+				.withSelectionBefore(selection)
+				.withSelectionAfter(
+					createSelectionForRange(index, nextStart, nextEnd, backward),
+				)
+				.withDescription(`Toggle ${marker} inline style`)
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+			return true;
+		},
+
+		toggleCurrentBlockType: (targetType: BlockType) => {
+			const s = get();
+			const index = s.selection?.focus.blockIndex ?? null;
+			if (index === null) return false;
+
+			const block = s.document.blocks[index];
+			if (!block || isInlineFormattingUnsupported(block.type)) {
+				return false;
+			}
+
+			const nextType =
+				block.type === targetType ? BlockType.paragraph : targetType;
+			if (block.type === nextType) {
+				return false;
+			}
+
+			const transaction = new TransactionBuilder()
+				.updateType(
+					index,
+					block.type,
+					nextType,
+					getBlockLanguage(block),
+					undefined,
+				)
+				.withSelectionBefore(s.selection)
+				.withSelectionAfter(s.selection)
+				.withDescription("Toggle block type")
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+			return true;
 		},
 
 		insertSoftLineBreak: () => {
