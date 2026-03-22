@@ -65,6 +65,9 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 - Web/desktop `keydown` listener in `HybridEditor`
 - `Cmd/Ctrl+Z` undo
 - `Cmd+Shift+Z` redo on macOS plus `Ctrl+Y` / `Ctrl+Shift+Z` compatibility on non-mac layouts
+- `Cmd/Ctrl+B` bold and `Cmd/Ctrl+I` italic inline formatting
+- `Cmd/Ctrl+Alt/Option+1/2/3` heading shortcuts
+- `Cmd/Ctrl+Shift+7/8/9` numbered-list, bullet-list, and checkbox-list shortcuts
 - `Cmd/Ctrl+A` select-all-blocks command
 - `Shift+Enter` soft line break insertion for supported text blocks
 - `Tab` / `Shift+Tab` indent and outdent for list items
@@ -79,11 +82,6 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
   - Better vertical caret preservation in complex blocks such as code blocks
   - Fix cursor selection stability during editor navigation and editing flows
   - Fix brace auto-completion behavior in code blocks
-- **Tier 3: Formatting shortcuts**
-  - `Cmd/Ctrl+B` — Bold
-  - `Cmd/Ctrl+I` — Italic
-  - `Cmd/Ctrl+Alt/Option+1/2/3` — Heading shortcuts
-  - `Cmd/Ctrl+Shift+7/8/9` — List type shortcuts
 - **Tier 4: App-level productivity shortcuts**
   - `Cmd/Ctrl+K` — Focus search
   - `Cmd/Ctrl+N` — New note
@@ -171,7 +169,9 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 
 - Added a `jest-expo` + React Native Testing Library harness for `*.jest.test.tsx`
 - Added route-aware Jest coverage for `src/app/editor.tsx` via `renderRouter`
+- Added home-screen route coverage for `src/app/index.tsx`, including quick-composer note creation and note-type filters
 - Added `NoteEditorView` coverage for note loading, todo-status defaulting on save, and read-only back-navigation behavior
+- Added focused component coverage for `NoteFiltersDropdown`
 - Added `NoteGrid` component coverage for load-more triggering and duplicate end-reached suppression
 **Objectives**:
 
@@ -193,7 +193,7 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 - Add `useLoadNote` hook coverage for pending, failed init, note-not-found, and thrown-error paths
 - Add startup UI/integration coverage for `src/app/_layout.tsx`, `useAppStartup`, and `startupStrategies.ts`
 - Add Wikilink UI/integration coverage for create flow, overlay results, keyboard selection, and dismissal
-- Add note-list route coverage for `src/app/index.tsx` plus broader `NoteGrid` loading, error, empty, populated, filter, and navigation states
+- Expand note-list coverage beyond the current index-route tests into broader `NoteGrid` loading, error, empty, populated, filter, and navigation states
 - Add more `editorStore` flow coverage as regressions or repeated manual checks reveal weak spots
 
 ### Wikilink Follow-up
@@ -257,8 +257,8 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, a
 ### Note Organization & Relevance
 
 **Status**: In progress
-**Current implementation evidence**: note type and todo-status metadata are now persisted in frontmatter and storage indexes, editable in the note editor, and filterable from the note list UI.
-**Key files**: `src/services/notes/frontmatter.ts`, `src/services/notes/notesIndexDb.ts`, `src/components/NoteEditorView.tsx`, `src/components/NoteFiltersBar.tsx`, `src/hooks/useNotes.ts`, `src/migrations/003_add_note_metadata.ts`, `src-tauri/src/storage/migrations/v3_add_note_metadata.rs`
+**Current implementation evidence**: note type and todo-status metadata are now persisted in frontmatter and storage indexes, editable in the note editor, filterable from the note list UI, and selectable from the home quick composer when creating new journal, resource, and todo entries.
+**Key files**: `src/services/notes/frontmatter.ts`, `src/services/notes/notesIndexDb.ts`, `src/components/NoteEditorView.tsx`, `src/components/NoteFiltersDropdown.tsx`, `src/components/HomeQuickComposer.tsx`, `src/app/index.tsx`, `src/hooks/useNotes.ts`, `src/migrations/003_add_note_metadata.ts`, `src-tauri/src/storage/migrations/v3_add_note_metadata.rs`
 **Next**: validate migration/backfill behavior on existing notes, decide how metadata should affect default sorting/relevance, and add higher-level organization views beyond the current filters.
 
 **Goals**:
@@ -282,16 +282,15 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, a
 ### Testing Architecture
 
 **Status**: In progress
-**Current**: The project now has a `vitest` setup with passing coverage for `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, and startup-step orchestration.
+**Current**: The project now has both `vitest` coverage for pure modules and a `jest-expo` + React Native Testing Library layer for UI/routes. Current coverage includes `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, startup-step orchestration, `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, and focused `NoteGrid` pagination behavior.
 **Next**:
 
 - Expand tests gradually into remaining startup/runtime seams, especially `startupStrategies`, as follow-on work rather than a prerequisite for this phase
-- Decide on the component/integration testing stack for Expo/React Native surfaces
 - Add shared fixtures only where repetition appears, keeping early tests close to the modules they cover
 
 **Current constraints**:
 
-- No pre-existing automated test suite beyond lint
+- UI/integration coverage is still partial and split across `vitest` and `jest-expo`
 - Native/mobile behavior still needs a different strategy than pure TypeScript modules
 
 ---
@@ -331,7 +330,7 @@ Use tabs to toggle between different views without leaving the current workspace
 
 ### Note Templates
 
-Reusable templates now exist inside the editor flow, but the home-screen note creation path still starts from a blank note and templates do not yet have broader surfacing or organization behavior.
+Reusable templates now exist inside the editor flow, but the home-screen quick composer still starts from blank or typed notes rather than from templates, and templates do not yet have broader surfacing or organization behavior.
 
 **Status**: Partially implemented
 **Current implementation evidence**:
