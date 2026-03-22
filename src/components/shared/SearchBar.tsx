@@ -2,21 +2,31 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useMemo } from "react";
 import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+
 export function SearchBar({
 	searchQuery,
 	setSearchQuery,
 	editable = true,
+	compact = false,
 }: {
 	searchQuery: string;
 	setSearchQuery: (query: string) => void;
 	editable?: boolean;
+	compact?: boolean;
 }) {
 	const theme = useExtendedTheme();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 
 	return (
-		<View style={styles.searchContainer}>
-			<View style={styles.searchInputContainer}>
+		<View
+			style={[styles.searchContainer, compact && styles.searchContainerCompact]}
+		>
+			<View
+				style={[
+					styles.searchInputContainer,
+					compact && styles.searchInputContainerCompact,
+				]}
+			>
 				<MaterialIcons
 					name="search"
 					size={20}
@@ -24,8 +34,9 @@ export function SearchBar({
 					style={styles.searchIcon}
 				/>
 				<TextInput
-					style={styles.searchInput}
-					placeholder={editable ? "Search" : "Search unavailable in read-only mode"}
+					style={[styles.searchInput, compact && styles.searchInputCompact]}
+					accessibilityLabel="Search notes"
+					placeholder={"Search"}
 					placeholderTextColor={theme.colors.textFaded}
 					value={searchQuery}
 					onChangeText={setSearchQuery}
@@ -35,6 +46,8 @@ export function SearchBar({
 				/>
 				{editable && searchQuery.length > 0 && (
 					<TouchableOpacity
+						accessibilityRole="button"
+						accessibilityLabel="Clear search"
 						onPress={() => setSearchQuery("")}
 						style={styles.clearButton}
 					>
@@ -53,10 +66,17 @@ export function SearchBar({
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		searchContainer: {
+			flex: 1,
 			paddingHorizontal: 16,
 			paddingTop: 8,
 			paddingBottom: 8,
 			backgroundColor: theme.colors.background,
+		},
+		searchContainerCompact: {
+			paddingHorizontal: 0,
+			paddingTop: 0,
+			paddingBottom: 0,
+			backgroundColor: "transparent",
 		},
 		searchInputContainer: {
 			flexDirection: "row",
@@ -67,6 +87,12 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			paddingVertical: 8,
 			borderWidth: 0,
 		},
+		searchInputContainerCompact: {
+			minHeight: 48,
+			borderRadius: 16,
+			paddingHorizontal: 14,
+			paddingVertical: 6,
+		},
 		searchIcon: {
 			marginRight: 8,
 			color: theme.colors.textMuted,
@@ -76,6 +102,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			fontSize: 16,
 			color: theme.colors.text,
 			paddingVertical: 0,
+		},
+		searchInputCompact: {
+			fontSize: 15,
 		},
 		clearButton: {
 			marginLeft: 8,

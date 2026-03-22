@@ -1,7 +1,8 @@
 import NoteCard from "@/components/NoteCard";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import type { Note } from "@/services/notes/types";
-import React, { useCallback } from "react";
+import type React from "react";
+import { useCallback } from "react";
 import {
 	ActivityIndicator,
 	FlatList,
@@ -22,6 +23,7 @@ export default function NoteGrid({
 	onEndReached,
 	isLoadingMore = false,
 	hasMore = false,
+	listHeaderComponent,
 }: {
 	notes: Note[];
 	emptyTitle?: string;
@@ -33,6 +35,7 @@ export default function NoteGrid({
 	onEndReached?: () => void;
 	isLoadingMore?: boolean;
 	hasMore?: boolean;
+	listHeaderComponent?: React.ReactElement | null;
 }) {
 	const { width } = useWindowDimensions();
 	const theme = useExtendedTheme();
@@ -59,6 +62,7 @@ export default function NoteGrid({
 				padding: 8,
 				paddingBottom: 100,
 			}}
+			ListHeaderComponent={listHeaderComponent}
 			ListEmptyComponent={
 				<EmptyState title={emptyTitle} subtitle={emptySubtitle} />
 			}

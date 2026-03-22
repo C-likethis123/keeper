@@ -32,9 +32,7 @@ export default function useNotes() {
 	const contentVersion = useStorageStore((s) => s.contentVersion);
 	const [query, setQuery] = useState("");
 	const debouncedQuery = useDebounce(query, 300);
-	const [noteTypeFilter, setNoteTypeFilter] = useState<NoteType | undefined>(
-		undefined,
-	);
+	const [noteTypeFilter, setNoteTypeFilter] = useState<NoteType[]>([]);
 	const [statusFilter, setStatusFilter] = useState<NoteStatus | undefined>(
 		undefined,
 	);
@@ -49,7 +47,7 @@ export default function useNotes() {
 
 	const filters = useMemo<NoteListFilters>(
 		() => ({
-			noteType: noteTypeFilter,
+			noteTypes: noteTypeFilter.length > 0 ? noteTypeFilter : undefined,
 			status: statusFilter,
 		}),
 		[noteTypeFilter, statusFilter],

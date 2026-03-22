@@ -99,7 +99,9 @@ export class NoteService {
 				loaded.title.toLowerCase().includes(normalizedQuery) ||
 				loaded.content.toLowerCase().includes(normalizedQuery);
 			const matchesType =
-				!filters?.noteType || loaded.noteType === filters.noteType;
+				!filters?.noteTypes ||
+				filters.noteTypes.length === 0 ||
+				filters.noteTypes.includes(loaded.noteType);
 			const matchesStatus =
 				!filters?.status || loaded.status === filters.status;
 			if (!matches || !matchesType || !matchesStatus) continue;

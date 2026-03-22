@@ -1,0 +1,197 @@
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
+import { MaterialIcons } from "@expo/vector-icons";
+import React from "react";
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+function QuickActionButton({
+	label,
+	icon,
+	onPress,
+	testID,
+	iconColor,
+	styles,
+}: {
+	label: string;
+	icon: React.ComponentProps<typeof MaterialIcons>["name"];
+	onPress?: () => void;
+	testID?: string;
+	iconColor: string;
+	styles: ReturnType<typeof createStyles>;
+}) {
+	const [isHovered, setIsHovered] = React.useState(false);
+
+	return (
+		<View style={styles.actionButtonWrapper}>
+			<Pressable
+				accessibilityRole="button"
+				accessibilityLabel={label}
+				testID={testID}
+				hitSlop={8}
+				onPress={onPress}
+				onHoverIn={() => setIsHovered(true)}
+				onHoverOut={() => setIsHovered(false)}
+				style={styles.iconButton}
+			>
+				<MaterialIcons name={icon} size={22} color={iconColor} />
+			</Pressable>
+			{isHovered ? (
+				<View pointerEvents="none" style={styles.tooltip}>
+					<Text style={styles.tooltipText}>{label}</Text>
+				</View>
+			) : null}
+		</View>
+	);
+}
+
+export default function HomeQuickComposer({
+	onPress,
+	onCreateTodo,
+	onCreateJournal,
+	onCreateResource,
+	disabled = false,
+}: {
+	onPress: () => void;
+	onCreateTodo: () => void;
+	onCreateJournal: () => void;
+	onCreateResource: () => void;
+	disabled?: boolean;
+}) {
+	const theme = useExtendedTheme();
+	const styles = useStyles(createStyles);
+
+	return (
+		<View style={styles.wrapper}>
+			<View style={[styles.card, disabled && styles.cardDisabled]}>
+				<TouchableOpacity
+					accessibilityRole="button"
+					accessibilityLabel="Take a note"
+					activeOpacity={0.85}
+					style={styles.primaryAction}
+					onPress={onPress}
+				>
+					<Text
+						style={[styles.placeholder, disabled && styles.placeholderDisabled]}
+					>
+						Take a note...
+					</Text>
+				</TouchableOpacity>
+				<View style={styles.actions}>
+					<QuickActionButton
+						label="Create todo"
+						icon="check-box"
+						onPress={onCreateTodo}
+						iconColor={theme.colors.textMuted}
+						styles={styles}
+					/>
+					<QuickActionButton
+						label="Create journal"
+						icon="menu-book"
+						onPress={onCreateJournal}
+						iconColor={theme.colors.textMuted}
+						styles={styles}
+					/>
+					<QuickActionButton
+						label="Create resource"
+						icon="bookmarks"
+						onPress={onCreateResource}
+						iconColor={theme.colors.textMuted}
+						styles={styles}
+					/>
+					<QuickActionButton
+						label="Create drawing"
+						icon="brush"
+						testID="home-quick-composer-brush"
+						iconColor={theme.colors.textMuted}
+						styles={styles}
+					/>
+					<QuickActionButton
+						label="Add image"
+						icon="image"
+						testID="home-quick-composer-image"
+						iconColor={theme.colors.textMuted}
+						styles={styles}
+					/>
+				</View>
+			</View>
+		</View>
+	);
+}
+
+function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+	return StyleSheet.create({
+		wrapper: {
+			paddingTop: 12,
+			paddingBottom: 16,
+			paddingHorizontal: 8,
+		},
+		card: {
+			maxWidth: 640,
+			width: "100%",
+			alignSelf: "center",
+			minHeight: 60,
+			paddingHorizontal: 18,
+			paddingVertical: 14,
+			borderRadius: 16,
+			backgroundColor: theme.colors.card,
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+			flexDirection: "row",
+			alignItems: "center",
+			shadowColor: theme.colors.shadow,
+			shadowOpacity: 0.12,
+			shadowRadius: 10,
+			shadowOffset: { width: 0, height: 4 },
+			elevation: 3,
+		},
+		primaryAction: {
+			flex: 1,
+		},
+		cardDisabled: {
+			opacity: 0.6,
+		},
+		placeholder: {
+			flex: 1,
+			fontSize: 20,
+			color: theme.colors.textMuted,
+		},
+		placeholderDisabled: {
+			color: theme.colors.textFaded,
+		},
+		actions: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 16,
+			marginLeft: 16,
+		},
+		actionButtonWrapper: {
+			position: "relative",
+			alignItems: "center",
+			justifyContent: "center",
+		},
+		iconButton: {
+			paddingVertical: 2,
+		},
+		tooltip: {
+			position: "absolute",
+			bottom: "100%",
+			marginBottom: 8,
+			paddingHorizontal: 8,
+			paddingVertical: 6,
+			borderRadius: 8,
+			backgroundColor: theme.colors.text,
+			shadowColor: theme.colors.shadow,
+			shadowOpacity: 0.14,
+			shadowRadius: 8,
+			shadowOffset: { width: 0, height: 4 },
+			elevation: 4,
+			zIndex: 10,
+		},
+		tooltipText: {
+			fontSize: 12,
+			fontWeight: "500",
+			color: theme.colors.card,
+			whiteSpace: "nowrap",
+		},
+	});
+}

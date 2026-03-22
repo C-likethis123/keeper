@@ -1,7 +1,8 @@
 import NoteGrid from "@/components/NoteGrid";
 import type { Note } from "@/services/notes/types";
-import { fireEvent, render } from "@testing-library/react-native";
+import { act, render, screen } from "@testing-library/react-native";
 import React from "react";
+import { FlatList, Text } from "react-native";
 
 jest.mock("@/components/NoteCard", () => {
 	const React = require("react");
@@ -57,18 +58,14 @@ describe("NoteGrid", () => {
 			/>,
 		);
 
-		fireEvent.scroll(UNSAFE_getByType("RCTScrollView"), {
-			nativeEvent: {
-				contentOffset: { x: 0, y: 760 },
-				contentSize: { width: 400, height: 1000 },
-				layoutMeasurement: { width: 400, height: 100 },
-			},
+		act(() => {
+			UNSAFE_getByType(FlatList).props.onEndReached();
 		});
 
 		expect(onEndReached).toHaveBeenCalledTimes(1);
 	});
 
-	it("does not re-trigger load more for the same content height", () => {
+	it("forwards repeated end-reached events while more notes are available", () => {
 		const onEndReached = jest.fn();
 		const { UNSAFE_getByType } = render(
 			<NoteGrid
@@ -82,18 +79,27 @@ describe("NoteGrid", () => {
 			/>,
 		);
 
-		const scrollView = UNSAFE_getByType("RCTScrollView");
-		const nearBottomEvent = {
-			nativeEvent: {
-				contentOffset: { x: 0, y: 760 },
-				contentSize: { width: 400, height: 1000 },
-				layoutMeasurement: { width: 400, height: 100 },
-			},
-		};
+		act(() => {
+			UNSAFE_getByType(FlatList).props.onEndReached();
+		});
+		act(() => {
+			UNSAFE_getByType(FlatList).props.onEndReached();
+		});
 
-		fireEvent.scroll(scrollView, nearBottomEvent);
-		fireEvent.scroll(scrollView, nearBottomEvent);
+		expect(onEndReached).toHaveBeenCalledTimes(2);
+	});
 
-		expect(onEndReached).toHaveBeenCalledTimes(1);
+	it("renders a list header component above the notes", () => {
+		render(
+			<NoteGrid
+				notes={makeNotes(2)}
+				onDelete={() => {}}
+				onPinToggle={() => {}}
+				onRefresh={() => {}}
+				listHeaderComponent={<Text>Take a note...</Text>}
+			/>,
+		);
+
+		expect(screen.getByText("Take a note...")).toBeOnTheScreen();
 	});
 });

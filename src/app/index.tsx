@@ -1,7 +1,7 @@
-import { NoteFiltersBar } from "@/components/NoteFiltersBar";
+import HomeQuickComposer from "@/components/HomeQuickComposer";
+import HomeScreenHeader from "@/components/HomeScreenHeader";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
-import { SearchBar } from "@/components/shared/SearchBar";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
@@ -9,17 +9,10 @@ import { NoteService } from "@/services/notes/noteService";
 import type { Note, NoteType } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
-import { MaterialIcons } from "@expo/vector-icons";
 import { Stack, router, useFocusEffect } from "expo-router";
 import { nanoid } from "nanoid";
 import React, { useCallback } from "react";
-import {
-	Alert,
-	Platform,
-	StyleSheet,
-	TouchableOpacity,
-	View,
-} from "react-native";
+import { Alert, Platform, StyleSheet, View } from "react-native";
 
 const LazyNoteGrid = React.lazy(() => import("@/components/NoteGrid"));
 
@@ -96,38 +89,90 @@ export default function Index() {
 			void runReset();
 			return;
 		}
-		Alert.alert(
-			title,
-			message,
-			[
-				{
-					text: "Cancel",
-					style: "cancel",
+		Alert.alert(title, message, [
+			{
+				text: "Cancel",
+				style: "cancel",
+			},
+			{
+				text: "Reset",
+				style: "destructive",
+				onPress: () => {
+					void runReset();
 				},
-				{
-					text: "Reset",
-					style: "destructive",
-					onPress: () => {
-						void runReset();
-					},
-				},
-			],
-		);
+			},
+		]);
 	}, [isResetting, runReset]);
 
-	const handlePinToggle = useCallback(async (updated: Note) => {
+	const handlePinToggle = useCallback(
+		async (updated: Note) => {
+			if (!capabilities.canWrite) {
+				showToast(capabilities.reason ?? "Read-only mode");
+				return;
+			}
+			await NoteService.saveNote(updated);
+		},
+		[capabilities.canWrite, capabilities.reason, showToast],
+	);
+
+	const handleCreateNote = useCallback(async () => {
 		if (!capabilities.canWrite) {
 			showToast(capabilities.reason ?? "Read-only mode");
 			return;
 		}
-		await NoteService.saveNote(updated);
+		const newNote = {
+			id: nanoid(),
+			title: "",
+			content: "",
+			lastUpdated: Date.now(),
+			isPinned: false,
+			noteType: "note" as NoteType,
+		};
+		await NoteService.saveNote(newNote, true);
+		router.push(`/editor?id=${newNote.id}`);
+	}, [capabilities.canWrite, capabilities.reason, showToast]);
+
+	const handleCreateTypedNote = useCallback(
+		async (noteType: Extract<NoteType, "journal" | "resource">) => {
+			if (!capabilities.canWrite) {
+				showToast(capabilities.reason ?? "Read-only mode");
+				return;
+			}
+			const newNote = {
+				id: nanoid(),
+				title: "",
+				content: "",
+				lastUpdated: Date.now(),
+				isPinned: false,
+				noteType,
+			};
+			await NoteService.saveNote(newNote, true);
+			router.push(`/editor?id=${newNote.id}`);
+		},
+		[capabilities.canWrite, capabilities.reason, showToast],
+	);
+
+	const handleCreateTodo = useCallback(async () => {
+		if (!capabilities.canWrite) {
+			showToast(capabilities.reason ?? "Read-only mode");
+			return;
+		}
+		const newTodo = {
+			id: nanoid(),
+			title: "",
+			content: "",
+			lastUpdated: Date.now(),
+			isPinned: false,
+			noteType: "todo" as NoteType,
+			status: "open" as const,
+		};
+		await NoteService.saveNote(newTodo, true);
+		router.push(`/editor?id=${newTodo.id}`);
 	}, [capabilities.canWrite, capabilities.reason, showToast]);
 
 	const styles = useStyles(createStyles);
-	const hasActiveFilters = noteTypeFilter != null || statusFilter != null;
-	const emptySubtitle = hasActiveFilters
-		? "Try a different note type or todo status filter"
-		: "Create a note to get started";
+	const emptySubtitle =
+		"There are no notes that match existing filters. Create a note to get started";
 
 	useFocusEffect(
 		useCallback(() => {
@@ -147,41 +192,24 @@ export default function Index() {
 		<View style={styles.container}>
 			<Stack.Screen
 				options={{
-					title: "Keeper",
-					headerRight: () => (
-						<TouchableOpacity
-							onPress={confirmReset}
-							disabled={isResetting}
-							style={styles.headerAction}
-						>
-							<MaterialIcons
-								name="delete-forever"
-								size={22}
-								color={
-									isResetting
-										? theme.colors.textFaded
-										: theme.colors.error
-								}
-							/>
-						</TouchableOpacity>
-					),
+					headerShown: false,
 				}}
 			/>
-			<SearchBar
+			<HomeScreenHeader
 				searchQuery={query}
 				setSearchQuery={setQuery}
-				editable={capabilities.canSearch}
-			/>
-			<NoteFiltersBar
-				noteType={noteTypeFilter}
+				searchEditable={capabilities.canSearch}
+				noteTypes={noteTypeFilter}
 				status={statusFilter}
-				onNoteTypeChange={(value) => {
-					setNoteTypeFilter(value);
-					if (value !== "todo") {
+				onNoteTypesChange={(values) => {
+					setNoteTypeFilter(values);
+					if (!values.includes("todo")) {
 						setStatusFilter(undefined);
 					}
 				}}
 				onStatusChange={setStatusFilter}
+				onReset={confirmReset}
+				resetDisabled={isResetting}
 			/>
 			<React.Suspense fallback={<Loader />}>
 				<LazyNoteGrid
@@ -194,35 +222,25 @@ export default function Index() {
 					onEndReached={loadMoreNotes}
 					isLoadingMore={isLoading}
 					hasMore={hasMore}
+					listHeaderComponent={
+						<HomeQuickComposer
+							onPress={() => {
+								void handleCreateNote();
+							}}
+							onCreateTodo={() => {
+								void handleCreateTodo();
+							}}
+							onCreateJournal={() => {
+								void handleCreateTypedNote("journal");
+							}}
+							onCreateResource={() => {
+								void handleCreateTypedNote("resource");
+							}}
+							disabled={!capabilities.canWrite}
+						/>
+					}
 				/>
 			</React.Suspense>
-			<TouchableOpacity
-				activeOpacity={0.8}
-				style={[styles.fab, !capabilities.canWrite && { opacity: 0.5 }]}
-				onPress={async () => {
-					if (!capabilities.canWrite) {
-						showToast(capabilities.reason ?? "Read-only mode");
-						return;
-					}
-					const newNote = {
-						id: nanoid(),
-						title: "",
-						content: "",
-						lastUpdated: Date.now(),
-						isPinned: false,
-						noteType: "note" as NoteType,
-					};
-					await NoteService.saveNote(newNote, true);
-					router.push(`/editor?id=${newNote.id}`);
-				}}
-				disabled={!capabilities.canWrite}
-			>
-				<MaterialIcons
-					name="add"
-					size={28}
-					color={theme.colors.primaryContrast}
-				/>
-			</TouchableOpacity>
 		</View>
 	);
 }
@@ -232,26 +250,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		container: {
 			flex: 1,
 			backgroundColor: theme.colors.background,
-		},
-		fab: {
-			position: "absolute",
-			right: 24,
-			bottom: 24,
-			width: 56,
-			height: 56,
-			borderRadius: 28,
-			backgroundColor: theme.colors.primary,
-			alignItems: "center",
-			justifyContent: "center",
-			elevation: 4, // Android
-			shadowColor: theme.colors.shadow,
-			shadowOpacity: 0.2,
-			shadowRadius: 4,
-			shadowOffset: { width: 0, height: 2 },
-		},
-		headerAction: {
-			paddingHorizontal: 8,
-			paddingVertical: 4,
 		},
 	});
 }

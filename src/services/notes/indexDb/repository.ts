@@ -82,9 +82,10 @@ export async function listAll(
 		params.push(`${normalizedQuery}*`);
 	}
 
-	if (filters?.noteType) {
-		whereClauses.push(`${TABLE}.note_type = ?`);
-		params.push(filters.noteType);
+	if (filters?.noteTypes && filters.noteTypes.length > 0) {
+		const placeholders = filters.noteTypes.map(() => "?").join(", ");
+		whereClauses.push(`${TABLE}.note_type IN (${placeholders})`);
+		params.push(...filters.noteTypes);
 	}
 
 	if (filters?.status) {

@@ -15,6 +15,7 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **Wikilinks**: exact-title resolution and create-from-`[[...]]` helpers are implemented; next checks are clickable desktop/web validation, UX polish, and device validation
 - **Native bridge**: Android and iOS now use the local Expo module in `modules/keeper-git`
 - **Templates**: reusable templates now work inside the editor flow; remaining work is starting new notes from a template and deciding how templates should surface outside the editor
+- **Quick composer**: wire the brush action to create a drawing note once drawing support lands
 - **Testing status**: `npm test` covers the immutable editor core plus `EditorState`, selected `editorStore` flows, `frontmatter`, and `startupSteps`; `npm run test:component` now covers `src/app/editor.tsx`, `NoteEditorView`, and focused `NoteGrid` pagination behavior
 - **Testing TODO**: Add missing Jest coverage for `HybridEditor`, `EditorToolbar`, `useAutoSave`, `useLoadNote`, startup UI/runtime flows, Wikilink interactions, `src/app/index.tsx`, broader `NoteGrid` states, and additional `editorStore` flows; migrate remaining `vitest` suites to `jest` over time for consistency
 - **Recently fixed**: desktop note-list scrolling now loads additional notes again after the Tauri index cursor returned to a plain numeric offset

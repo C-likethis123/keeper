@@ -2,7 +2,7 @@ export type NoteType = "journal" | "resource" | "todo" | "note" | "template";
 export type NoteStatus = "open" | "blocked" | "doing" | "done";
 
 export interface NoteListFilters {
-	noteType?: NoteType;
+	noteTypes?: NoteType[];
 	status?: NoteStatus;
 }
 
