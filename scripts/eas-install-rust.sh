@@ -2,6 +2,7 @@
 set -euo pipefail
 
 RUST_VERSION="${RUST_VERSION:-1.77.2}"
+CARGO_NDK_VERSION="${CARGO_NDK_VERSION:-3.5.4}"
 ANDROID_TARGETS=(
   "aarch64-linux-android"
   "armv7-linux-androideabi"
@@ -35,8 +36,8 @@ for target in "${ANDROID_TARGETS[@]}"; do
 done
 
 if ! command -v cargo-ndk >/dev/null 2>&1; then
-  echo "Installing cargo-ndk..."
-  cargo install cargo-ndk --locked
+  echo "Installing cargo-ndk ${CARGO_NDK_VERSION}..."
+  cargo install cargo-ndk --version "${CARGO_NDK_VERSION}" --locked
 else
   echo "cargo-ndk already installed."
 fi
