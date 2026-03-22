@@ -328,26 +328,6 @@ Use tabs to toggle between different views without leaving the current workspace
 - Being able to spawn new tabs
 - Being able to pin existing tabs
 
-### Note Templates
-
-Reusable templates now exist inside the editor flow, but the home-screen quick composer still starts from blank or typed notes rather than from templates, and templates do not yet have broader surfacing or organization behavior.
-
-**Status**: Partially implemented
-**Current implementation evidence**:
-
-- Notes can be converted into templates from `NoteEditorView` metadata controls
-- Existing templates can be listed and applied back into a note body from the editor
-- Template storage now has dedicated frontmatter, storage-engine methods, and git queue integration
-- Template markdown is kept out of the main notes index so templates do not pollute ordinary note search results
-
-**Key files**: `src/components/NoteEditorView.tsx`, `src/services/notes/editorEntryPersistence.ts`, `src/services/notes/templateService.ts`, `src/services/notes/templateFrontmatter.ts`, `src/services/notes/templatePaths.ts`, `src/services/storage/engines/MobileStorageEngine.ts`, `src/services/storage/engines/TauriStorageEngine.ts`
-
-**Remaining scope**:
-
-- Start note creation from a template instead of only a blank note
-- Decide whether templates need a dedicated browser, filter, or other surfacing outside the editor
-- Keep room for future defaults such as journal, meeting, project, or checklist templates
-
 ### Future Ideas from Google Keep
 
 - Drawings (low priority)
