@@ -1,11 +1,13 @@
-import { NOTES_ROOT } from "@/services/notes/Notes";
 import type { GitEngine } from "@/services/git/engines/GitEngine";
+import { NOTES_ROOT } from "@/services/notes/Notes";
+import { isTauriRuntime } from "@/services/storage/runtime";
+import { Directory } from "expo-file-system";
 import type {
+	CloneRepositoryResult,
 	GitHubConfig,
 	GitInitErrorMapper,
 	RepoBootstrapper,
 	RepositoryValidationResult,
-	CloneRepositoryResult,
 } from "./types";
 
 export class DefaultRepoBootstrapper implements RepoBootstrapper {
@@ -19,6 +21,21 @@ export class DefaultRepoBootstrapper implements RepoBootstrapper {
 		if (branches.includes("main")) return "main";
 		if (branches.includes("master")) return "master";
 		return branches[0];
+	}
+
+	private getNotesDirectory(): Directory {
+		return new Directory(NOTES_ROOT);
+	}
+
+	private hasBlockingNotesDirectory(): boolean {
+		if (isTauriRuntime()) {
+			return false;
+		}
+		const notesDirectory = this.getNotesDirectory();
+		if (!notesDirectory.exists) {
+			return false;
+		}
+		return notesDirectory.list().length > 0;
 	}
 
 	async validateRepository(): Promise<RepositoryValidationResult> {
@@ -35,8 +52,9 @@ export class DefaultRepoBootstrapper implements RepoBootstrapper {
 					"File system permission error. Ensure app has storage permissions",
 				);
 			}
+			const hasBlockingNotesDirectory = this.hasBlockingNotesDirectory();
 			return {
-				exists: false,
+				exists: hasBlockingNotesDirectory,
 				isValid: false,
 				reason:
 					error instanceof Error ? error.message : "Repository not initialized",

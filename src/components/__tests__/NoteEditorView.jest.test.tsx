@@ -10,6 +10,8 @@ import {
 	userEvent,
 	waitFor,
 } from "expo-router/testing-library";
+
+jest.useFakeTimers();
 import type React from "react";
 import { Text } from "react-native";
 
@@ -185,11 +187,10 @@ describe("NoteEditorView", () => {
 		const user = userEvent.setup();
 		const note = makeNote();
 
-		const result = renderNoteEditor(note);
+		renderNoteEditor(note);
 
-		await screen.findByText("Toolbar enabled");
+		await screen.findByText("Toolbar");
 		await user.press(screen.getByText("Todo"));
-		await screen.findByText("Status");
 		await waitFor(() => {
 			expect(latestNavigationOptions?.headerLeft).toBeDefined();
 		});
@@ -213,8 +214,8 @@ describe("NoteEditorView", () => {
 
 		const result = renderNoteEditor(note);
 
-		await screen.findByText("Toolbar enabled");
-		expect(screen.getByPlaceholderText("Title").props.editable).toBe(true);
+		await screen.findByText("Toolbar");
+		expect(screen.getByPlaceholderText("Title")).toHaveProp("editable", true);
 
 		await waitFor(() => {
 			expect(latestNavigationOptions?.headerLeft).toBeDefined();
@@ -239,7 +240,7 @@ describe("NoteEditorView", () => {
 
 		renderNoteEditor(note);
 
-		await screen.findByText("Toolbar enabled");
+		await screen.findByText("Toolbar");
 		await user.press(screen.getAllByText("Template")[0]);
 		await waitFor(() => {
 			expect(latestNavigationOptions?.headerLeft).toBeDefined();

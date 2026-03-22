@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RUST_VERSION="${RUST_VERSION:-1.77.2}"
+RUST_VERSION="${RUST_VERSION:-1.85.0}"
 CARGO_NDK_VERSION="${CARGO_NDK_VERSION:-3.5.4}"
 ANDROID_TARGETS=(
   "aarch64-linux-android"
