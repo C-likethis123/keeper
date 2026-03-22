@@ -24,6 +24,9 @@ export function useEditorCommandContext(
 	const updateBlockListLevel = useEditorState((state) => state.updateBlockListLevel);
 	const updateBlockType = useEditorState((state) => state.updateBlockType);
 	const toggleCheckbox = useEditorState((state) => state.toggleCheckbox);
+	const insertSoftLineBreak = useEditorState(
+		(state) => state.insertSoftLineBreak,
+	);
 	const deleteSelectedBlocksFromStore = useEditorState(
 		(state) => state.deleteSelectedBlocks,
 	);
@@ -54,6 +57,7 @@ export function useEditorCommandContext(
 				toggleCheckbox(index);
 				return true;
 			},
+			runInsertSoftLineBreak: () => insertSoftLineBreak(),
 			runIndentListItem: () => {
 				const index = getFocusedBlockIndex();
 				if (index === null) return false;
@@ -95,6 +99,7 @@ export function useEditorCommandContext(
 			getFocusedBlock,
 			getFocusedBlockIndex,
 			getHasBlockSelection,
+			insertSoftLineBreak,
 			options.dismissOverlays,
 			options.isEditorActive,
 			options.isWikiLinkModalOpen,

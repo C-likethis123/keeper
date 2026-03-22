@@ -96,4 +96,39 @@ describe("editorStore", () => {
 		expect(state.getCanUndo()).toBe(false);
 		expect(state.getCanRedo()).toBe(false);
 	});
+
+	it("inserts a soft line break within a focused text block", () => {
+		useEditorState.getState().setDocument(createDocumentFromMarkdown("Alpha Beta"));
+		useEditorState.getState().setSelection(
+			createCollapsedSelection({ blockIndex: 0, offset: 5 }),
+		);
+
+		const handled = useEditorState.getState().insertSoftLineBreak();
+
+		const state = useEditorState.getState();
+		expect(handled).toBe(true);
+		expect(state.document.blocks[0]?.content).toBe("Alpha\n Beta");
+		expect(state.selection).toEqual(
+			createCollapsedSelection({ blockIndex: 0, offset: 6 }),
+		);
+	});
+
+	it("does not insert a soft line break in unsupported blocks", () => {
+		useEditorState.getState().setDocument({
+			...createDocumentFromMarkdown(""),
+			blocks: [createCodeBlock("const x = 1;")],
+		});
+		useEditorState.getState().setSelection(
+			createCollapsedSelection({ blockIndex: 0, offset: 5 }),
+		);
+
+		const handled = useEditorState.getState().insertSoftLineBreak();
+
+		const state = useEditorState.getState();
+		expect(handled).toBe(false);
+		expect(state.document.blocks[0]?.content).toBe("const x = 1;");
+		expect(state.selection).toEqual(
+			createCollapsedSelection({ blockIndex: 0, offset: 5 }),
+		);
+	});
 });

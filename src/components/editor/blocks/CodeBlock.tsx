@@ -1,6 +1,15 @@
+import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { useEditorBlockSelection, useEditorState } from "@/stores/editorStore";
 import * as Clipboard from "expo-clipboard";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	type NativeSyntheticEvent,
 	Platform,
@@ -21,7 +30,9 @@ import { BlockType, getBlockLanguage } from "../core/BlockNode";
 import type { BlockConfig } from "./BlockRegistry";
 import { CodeBlockHeader } from "./CodeBlockHeader";
 
-const LazySyntaxHighlighter = React.lazy(() => import("../code/SyntaxHighlighter"));
+const LazySyntaxHighlighter = React.lazy(
+	() => import("../code/SyntaxHighlighter"),
+);
 
 export function CodeBlock({
 	block,
@@ -41,7 +52,13 @@ export function CodeBlock({
 		start: 0,
 		end: 0,
 	});
-	const { focusBlock, blurBlock } = useFocusBlock();
+	const prevIsFocusedRef = useRef(false);
+	const { focusBlockAt, blurBlock } = useFocusBlock();
+	const selectionRange = useEditorBlockSelection(index);
+	const getFocusedBlockIndex = useEditorState(
+		(state) => state.getFocusedBlockIndex,
+	);
+	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
 	const language = getBlockLanguage(block) ?? "plaintext";
 	const languageRegistry = LanguageRegistry.instance;
 	const languageConfig = useMemo(() => {
@@ -55,6 +72,36 @@ export function CodeBlock({
 	useEffect(() => {
 		onContentChange(index, value);
 	}, [onContentChange, index, value]);
+
+	useEffect(() => {
+		if (!isFocused || !selectionRange) {
+			return;
+		}
+		setSelection((current) => {
+			if (
+				current.start === selectionRange.start &&
+				current.end === selectionRange.end
+			) {
+				return current;
+			}
+			return selectionRange;
+		});
+	}, [isFocused, selectionRange]);
+
+	useLayoutEffect(() => {
+		if (isFocused && !prevIsFocusedRef.current) {
+			inputRef.current?.focus();
+		}
+		prevIsFocusedRef.current = isFocused;
+	}, [isFocused]);
+
+	const setSelectionAndSync = useCallback(
+		(nextSelection: { start: number; end: number }) => {
+			setSelection(nextSelection);
+			onSelectionChange?.(index, nextSelection.start, nextSelection.end);
+		},
+		[index, onSelectionChange],
+	);
 
 	const handleScroll = (e: NativeSyntheticEvent<TextInputScrollEventData>) => {
 		const y = e.nativeEvent.contentOffset.y;
@@ -157,21 +204,52 @@ export function CodeBlock({
 		e: NativeSyntheticEvent<TextInputSelectionChangeEventData>,
 	) => {
 		const sel = e.nativeEvent.selection;
-		setSelection(sel);
-		onSelectionChange?.(index, sel.start, sel.end);
+		setSelectionAndSync(sel);
 	};
+
+	const handleFocus = useCallback(() => {
+		if (isFocused) {
+			return;
+		}
+		focusBlockAt(index, selection.end);
+	}, [focusBlockAt, index, isFocused, selection.end]);
+
+	const handleBlur = useCallback(() => {
+		const currentFocus = getFocusedBlockIndex();
+		if (currentFocus === index) {
+			blurBlock();
+		}
+	}, [blurBlock, getFocusedBlockIndex, index]);
+
 	const handleKeyPress = (
 		e: NativeSyntheticEvent<TextInputKeyPressEventData>,
 	) => {
 		const key = e.nativeEvent.key;
+
+		if (handleVerticalArrow(key)) {
+			if (Platform.OS === "web") {
+				e.preventDefault();
+			}
+			return;
+		}
+		const isShiftModified = Boolean(
+			(
+				e.nativeEvent as TextInputKeyPressEventData & {
+					shiftKey?: boolean;
+				}
+			).shiftKey,
+		);
 		switch (key) {
 			case "Enter":
+				if (isShiftModified) {
+					return;
+				}
 				setTimeout(() => {
 					setValue((curr) => {
 						const result = handleEnterKey(curr);
 						// Update cursor position after state update
 						setTimeout(() => {
-							setSelection({
+							setSelectionAndSync({
 								start: result.newCursorOffset,
 								end: result.newCursorOffset,
 							});
@@ -187,7 +265,7 @@ export function CodeBlock({
 							const result = handleBraceInsert(curr, key);
 							// Update cursor position after state update
 							setTimeout(() => {
-								setSelection({
+								setSelectionAndSync({
 									start: result.newCursorOffset,
 									end: result.newCursorOffset,
 								});
@@ -253,6 +331,8 @@ export function CodeBlock({
 					selection={selection}
 					onKeyPress={handleKeyPress}
 					onSelectionChange={handleSelectionChange}
+					onFocus={handleFocus}
+					onBlur={handleBlur}
 					multiline
 					autoCapitalize="none"
 					autoCorrect={false}

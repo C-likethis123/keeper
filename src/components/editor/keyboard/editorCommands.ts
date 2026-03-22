@@ -7,6 +7,7 @@ export type EditorCommandId =
 	| "undo"
 	| "redo"
 	| "toggleCheckbox"
+	| "insertSoftLineBreak"
 	| "indentListItem"
 	| "outdentListItem"
 	| "deleteSelectedBlocks"
@@ -25,6 +26,7 @@ export interface EditorCommandContext {
 	runUndo: () => boolean;
 	runRedo: () => boolean;
 	runToggleCheckbox: () => boolean;
+	runInsertSoftLineBreak: () => boolean;
 	runIndentListItem: () => boolean;
 	runOutdentListItem: () => boolean;
 	runDeleteSelectedBlocks: () => boolean;
@@ -51,6 +53,7 @@ export const editorCommands: Record<EditorCommandId, EditorCommand> = {
 	undo: (context) => context.runUndo(),
 	redo: (context) => context.runRedo(),
 	toggleCheckbox: (context) => context.runToggleCheckbox(),
+	insertSoftLineBreak: (context) => context.runInsertSoftLineBreak(),
 	indentListItem: (context) => context.runIndentListItem(),
 	outdentListItem: (context) => context.runOutdentListItem(),
 	deleteSelectedBlocks: (context) => {

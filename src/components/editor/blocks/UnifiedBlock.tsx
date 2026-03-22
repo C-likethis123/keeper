@@ -170,10 +170,18 @@ export function UnifiedBlock({
 					return;
 				}
 			}
+			const isShiftModified = Boolean(
+				(
+					e.nativeEvent as TextInputKeyPressEventData & {
+						shiftKey?: boolean;
+					}
+				).shiftKey,
+			);
 
 			// Handle Enter key - split non-code blocks at the current cursor position
 			if (
 				key === "Enter" &&
+				!isShiftModified &&
 				selectionRange &&
 				selectionRange.start === selectionRange.end
 			) {

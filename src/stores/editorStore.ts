@@ -163,6 +163,51 @@ export const useEditorState = create<EditorState>()((set, get) => {
 			dispatch({ type: "APPLY_TRANSACTION", transaction });
 		},
 
+		insertSoftLineBreak: () => {
+			const s = get();
+			const selection = s.selection;
+			if (
+				!selection ||
+				selection.anchor.blockIndex !== selection.focus.blockIndex
+			) {
+				return false;
+			}
+
+			const index = selection.focus.blockIndex;
+			const block = s.document.blocks[index];
+			if (!block) {
+				return false;
+			}
+
+			const isSoftLineBreakNotSupported = [
+				BlockType.codeBlock,
+				BlockType.mathBlock,
+				BlockType.image,
+			].includes(block.type);
+			if (isSoftLineBreakNotSupported) {
+				return false;
+			}
+
+			const start = Math.min(selection.anchor.offset, selection.focus.offset);
+			const end = Math.max(selection.anchor.offset, selection.focus.offset);
+			const newContent = `${block.content.slice(0, start)}\n${block.content.slice(end)}`;
+			const newCursorOffset = start + 1;
+
+			const transaction = new TransactionBuilder()
+				.updateContent(index, block.content, newContent)
+				.withSelectionBefore(selection)
+				.withSelectionAfter(
+					createCollapsedSelection({
+						blockIndex: index,
+						offset: newCursorOffset,
+					}),
+				)
+				.withDescription("Insert soft line break")
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+			return true;
+		},
+
 		insertBlockAfter: (index: number, block: BlockNode) => {
 			const s = get();
 			const transaction = new TransactionBuilder()

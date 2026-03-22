@@ -41,6 +41,7 @@ export interface EditorState extends EditorStateSlice {
 	) => void;
 	updateBlockListLevel: (index: number, newLevel: number) => void;
 	toggleCheckbox: (index: number) => void;
+	insertSoftLineBreak: () => boolean;
 	insertBlockAfter: (index: number, block: BlockNode) => void;
 	deleteBlock: (index: number) => void;
 	splitBlock: (index: number, offset: number) => void;

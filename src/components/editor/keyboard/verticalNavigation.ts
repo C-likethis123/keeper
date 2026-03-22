@@ -115,6 +115,7 @@ export function getVerticalNavigationTarget(
 		case BlockType.bulletList:
 		case BlockType.numberedList:
 		case BlockType.checkboxList:
+		case BlockType.codeBlock:
 			return getPlainTextNavigationTarget(options);
 		case BlockType.mathBlock:
 		case BlockType.image:
