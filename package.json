@@ -4,6 +4,7 @@
 	"version": "1.0.0",
 	"scripts": {
 		"start": "expo start",
+		"eas-build-pre-install": "./scripts/eas-install-rust.sh",
 		"web:desktop": "BROWSER=none expo start --web --port 8082",
 		"build:web": "expo export --platform web",
 		"android": "npx expo prebuild --platform android --clean && ./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installRelease",
