@@ -32,8 +32,8 @@ function getFilterLabel(noteTypes: NoteType[], status?: NoteStatus) {
 	}
 	if (noteTypes.length === 1) {
 		const noteTypeLabel =
-			NOTE_TYPE_OPTIONS.find((option) => option.value === noteTypes[0])?.label ??
-			"All notes";
+			NOTE_TYPE_OPTIONS.find((option) => option.value === noteTypes[0])
+				?.label ?? "All notes";
 		if (noteTypes[0] !== "todo") {
 			return noteTypeLabel;
 		}

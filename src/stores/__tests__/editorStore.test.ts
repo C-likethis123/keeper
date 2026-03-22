@@ -97,10 +97,12 @@ describe("editorStore", () => {
 	});
 
 	it("inserts a soft line break within a focused text block", () => {
-		useEditorState.getState().setDocument(createDocumentFromMarkdown("Alpha Beta"));
-		useEditorState.getState().setSelection(
-			createCollapsedSelection({ blockIndex: 0, offset: 5 }),
-		);
+		useEditorState
+			.getState()
+			.setDocument(createDocumentFromMarkdown("Alpha Beta"));
+		useEditorState
+			.getState()
+			.setSelection(createCollapsedSelection({ blockIndex: 0, offset: 5 }));
 
 		const handled = useEditorState.getState().insertSoftLineBreak();
 
@@ -117,9 +119,9 @@ describe("editorStore", () => {
 			...createDocumentFromMarkdown(""),
 			blocks: [createCodeBlock("const x = 1;")],
 		});
-		useEditorState.getState().setSelection(
-			createCollapsedSelection({ blockIndex: 0, offset: 5 }),
-		);
+		useEditorState
+			.getState()
+			.setSelection(createCollapsedSelection({ blockIndex: 0, offset: 5 }));
 
 		const handled = useEditorState.getState().insertSoftLineBreak();
 
@@ -132,7 +134,9 @@ describe("editorStore", () => {
 	});
 
 	it("wraps selected text with bold markdown markers", () => {
-		useEditorState.getState().setDocument(createDocumentFromMarkdown("Alpha Beta"));
+		useEditorState
+			.getState()
+			.setDocument(createDocumentFromMarkdown("Alpha Beta"));
 		useEditorState.getState().setSelection({
 			anchor: { blockIndex: 0, offset: 0 },
 			focus: { blockIndex: 0, offset: 5 },
@@ -150,9 +154,9 @@ describe("editorStore", () => {
 	});
 
 	it("unwraps selected text when the same inline markers already surround it", () => {
-		useEditorState.getState().setDocument(
-			createDocumentFromMarkdown("**Alpha** Beta"),
-		);
+		useEditorState
+			.getState()
+			.setDocument(createDocumentFromMarkdown("**Alpha** Beta"));
 		useEditorState.getState().setSelection({
 			anchor: { blockIndex: 0, offset: 2 },
 			focus: { blockIndex: 0, offset: 7 },
@@ -171,9 +175,9 @@ describe("editorStore", () => {
 
 	it("inserts paired markers for collapsed inline formatting shortcuts", () => {
 		useEditorState.getState().setDocument(createDocumentFromMarkdown("Alpha"));
-		useEditorState.getState().setSelection(
-			createCollapsedSelection({ blockIndex: 0, offset: 3 }),
-		);
+		useEditorState
+			.getState()
+			.setSelection(createCollapsedSelection({ blockIndex: 0, offset: 3 }));
 
 		const handled = useEditorState.getState().toggleInlineStyle("*");
 
@@ -187,9 +191,9 @@ describe("editorStore", () => {
 
 	it("toggles heading shortcuts back to paragraph on repeat", () => {
 		useEditorState.getState().setDocument(createDocumentFromMarkdown("Alpha"));
-		useEditorState.getState().setSelection(
-			createCollapsedSelection({ blockIndex: 0, offset: 5 }),
-		);
+		useEditorState
+			.getState()
+			.setSelection(createCollapsedSelection({ blockIndex: 0, offset: 5 }));
 
 		expect(
 			useEditorState.getState().toggleCurrentBlockType(BlockType.heading2),
@@ -208,9 +212,9 @@ describe("editorStore", () => {
 
 	it("toggles list shortcuts onto the focused block", () => {
 		useEditorState.getState().setDocument(createDocumentFromMarkdown("Alpha"));
-		useEditorState.getState().setSelection(
-			createCollapsedSelection({ blockIndex: 0, offset: 5 }),
-		);
+		useEditorState
+			.getState()
+			.setSelection(createCollapsedSelection({ blockIndex: 0, offset: 5 }));
 
 		const handled = useEditorState
 			.getState()

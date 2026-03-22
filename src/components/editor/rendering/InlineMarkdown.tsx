@@ -2,8 +2,8 @@ import { MathView } from "@/components/editor/blocks/MathView";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import type React from "react";
 import {
-	Text,
 	type GestureResponderEvent,
+	Text,
 	type TextStyle,
 	View,
 } from "react-native";

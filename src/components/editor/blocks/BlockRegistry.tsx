@@ -3,16 +3,16 @@ import { type BlockNode, BlockType } from "../core/BlockNode";
 import { BlockRenderer } from "./BlockRenderer";
 import { UnifiedBlock } from "./UnifiedBlock";
 
-const LazyCodeBlock = React.lazy(
-	() => import("./CodeBlock").then((module) => ({ default: module.CodeBlock })),
+const LazyCodeBlock = React.lazy(() =>
+	import("./CodeBlock").then((module) => ({ default: module.CodeBlock })),
 );
 
-const LazyMathBlock = React.lazy(
-	() => import("./MathBlock").then((module) => ({ default: module.MathBlock })),
+const LazyMathBlock = React.lazy(() =>
+	import("./MathBlock").then((module) => ({ default: module.MathBlock })),
 );
 
-const LazyImageBlock = React.lazy(
-	() => import("./ImageBlock").then((module) => ({ default: module.ImageBlock })),
+const LazyImageBlock = React.lazy(() =>
+	import("./ImageBlock").then((module) => ({ default: module.ImageBlock })),
 );
 
 export interface BlockConfig {

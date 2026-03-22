@@ -1,3 +1,4 @@
+import type { NotesIndexRebuildMetrics } from "@/services/notes/notesIndexDb";
 import type { Note, NoteTemplate } from "@/services/notes/types";
 import type {
 	NoteFileEntry,
@@ -5,7 +6,6 @@ import type {
 	StorageInitializeResult,
 } from "@/services/storage/engines/StorageEngine";
 import { getTauriInvoke } from "@/services/storage/runtime";
-import type { NotesIndexRebuildMetrics } from "@/services/notes/notesIndexDb";
 import type {
 	NoteIndexListResult,
 	NoteIndexPersistenceItem,
@@ -85,9 +85,12 @@ export class TauriStorageEngine implements StorageEngine {
 	}
 
 	async loadTemplate(id: string): Promise<NoteTemplate | null> {
-		const template = await this.invoke<ReadEntryResult | null>("read_template", {
-			id,
-		});
+		const template = await this.invoke<ReadEntryResult | null>(
+			"read_template",
+			{
+				id,
+			},
+		);
 		if (!template) {
 			return null;
 		}

@@ -33,10 +33,7 @@ function buildNotePayload(input: PersistEditorEntryInput): Note {
 		isPinned: input.isPinned,
 		lastUpdated: input.lastUpdated,
 		noteType: input.noteType === "template" ? "note" : input.noteType,
-		status:
-			input.noteType === "todo"
-				? (input.status ?? "open")
-				: undefined,
+		status: input.noteType === "todo" ? (input.status ?? "open") : undefined,
 	};
 }
 

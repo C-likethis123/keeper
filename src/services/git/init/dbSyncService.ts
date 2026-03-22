@@ -1,8 +1,15 @@
+import type {
+	GitChangedPaths,
+	GitEngine,
+} from "@/services/git/engines/GitEngine";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import { NotesIndexService } from "@/services/notes/notesIndex";
-import type { GitChangedPaths, GitEngine } from "@/services/git/engines/GitEngine";
 import type { StartupTelemetry } from "@/services/startup/startupTelemetry";
-import type { DbSyncService, GitSyncStateStore, SyncDbAfterPullResult } from "./types";
+import type {
+	DbSyncService,
+	GitSyncStateStore,
+	SyncDbAfterPullResult,
+} from "./types";
 
 export class DefaultDbSyncService implements DbSyncService {
 	constructor(
@@ -16,7 +23,11 @@ export class DefaultDbSyncService implements DbSyncService {
 		telemetry: StartupTelemetry,
 	): Promise<GitChangedPaths> {
 		try {
-			return await this.gitEngine.changedMarkdownPaths(NOTES_ROOT, fromOid, toOid);
+			return await this.gitEngine.changedMarkdownPaths(
+				NOTES_ROOT,
+				fromOid,
+				toOid,
+			);
 		} catch (error) {
 			telemetry.trace("git.changed_paths_fallback", {
 				reason: "changed_markdown_paths_failed",
@@ -95,7 +106,8 @@ export class DefaultDbSyncService implements DbSyncService {
 					changedPathCount,
 				});
 				const indexSyncStart = performance.now();
-				const syncResult = await NotesIndexService.syncChangedPaths(changedPaths);
+				const syncResult =
+					await NotesIndexService.syncChangedPaths(changedPaths);
 				indexSyncMs = Math.round(performance.now() - indexSyncStart);
 				telemetry.trace("git.db_sync_completed", {
 					syncMode: syncResult.mode,

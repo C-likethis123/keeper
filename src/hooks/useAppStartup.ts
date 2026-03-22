@@ -1,6 +1,6 @@
 import { getGitRuntimeSupport } from "@/services/git/runtime";
-import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { runStartupStrategy } from "@/services/startup/startupStrategies";
+import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { useToastStore } from "@/stores/toastStore";
 import { useEffect, useState } from "react";
 
@@ -48,7 +48,9 @@ export function useAppStartup(): AppStartupState {
 			traceStartupBootstrapEvent("bootstrap.use_app_startup_effect_started");
 		}
 		let isCancelled = false;
-		const safeSetState = (updater: (prev: AppStartupState) => AppStartupState) => {
+		const safeSetState = (
+			updater: (prev: AppStartupState) => AppStartupState,
+		) => {
 			if (!isCancelled) {
 				setState(updater);
 			}

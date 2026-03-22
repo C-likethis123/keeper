@@ -10,7 +10,10 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { BlockRow } from "./BlockRow";
 import { blockRegistry } from "./blocks/BlockRegistry";
 import { BlockType, createParagraphBlock } from "./core/BlockNode";
-import { useWikiLinkContext, WikiLinkProvider } from "./wikilinks/WikiLinkContext";
+import {
+	WikiLinkProvider,
+	useWikiLinkContext,
+} from "./wikilinks/WikiLinkContext";
 import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
 
 /// A hybrid markdown/code editor widget

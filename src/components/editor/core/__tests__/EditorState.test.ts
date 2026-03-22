@@ -1,8 +1,5 @@
 import { createDocumentFromMarkdown } from "../Document";
-import {
-	editorReducer,
-	initialEditorStateSlice,
-} from "../EditorState";
+import { editorReducer, initialEditorStateSlice } from "../EditorState";
 import { History } from "../History";
 import { createCollapsedSelection } from "../Selection";
 import { TransactionBuilder } from "../Transaction";
@@ -41,8 +38,14 @@ describe("EditorState", () => {
 
 	it("applies transactions and restores them through undo and redo", () => {
 		const history = new History({ groupingDelay: 0 });
-		const beforeSelection = createCollapsedSelection({ blockIndex: 0, offset: 5 });
-		const afterSelection = createCollapsedSelection({ blockIndex: 0, offset: 4 });
+		const beforeSelection = createCollapsedSelection({
+			blockIndex: 0,
+			offset: 5,
+		});
+		const afterSelection = createCollapsedSelection({
+			blockIndex: 0,
+			offset: 4,
+		});
 		const initial = {
 			...initialEditorStateSlice,
 			document: createDocumentFromMarkdown("Alpha"),

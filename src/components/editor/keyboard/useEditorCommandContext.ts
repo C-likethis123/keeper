@@ -18,10 +18,16 @@ export function useEditorCommandContext(
 	options: UseEditorCommandContextOptions,
 ): EditorCommandContext {
 	const document = useEditorState((state) => state.document);
-	const getFocusedBlockIndex = useEditorState((state) => state.getFocusedBlockIndex);
+	const getFocusedBlockIndex = useEditorState(
+		(state) => state.getFocusedBlockIndex,
+	);
 	const getFocusedBlock = useEditorState((state) => state.getFocusedBlock);
-	const getHasBlockSelection = useEditorState((state) => state.getHasBlockSelection);
-	const updateBlockListLevel = useEditorState((state) => state.updateBlockListLevel);
+	const getHasBlockSelection = useEditorState(
+		(state) => state.getHasBlockSelection,
+	);
+	const updateBlockListLevel = useEditorState(
+		(state) => state.updateBlockListLevel,
+	);
 	const updateBlockType = useEditorState((state) => state.updateBlockType);
 	const toggleInlineStyle = useEditorState((state) => state.toggleInlineStyle);
 	const toggleCurrentBlockType = useEditorState(
@@ -58,8 +64,7 @@ export function useEditorCommandContext(
 			runToggleHeading1: () => toggleCurrentBlockType(BlockType.heading1),
 			runToggleHeading2: () => toggleCurrentBlockType(BlockType.heading2),
 			runToggleHeading3: () => toggleCurrentBlockType(BlockType.heading3),
-			runToggleBulletList: () =>
-				toggleCurrentBlockType(BlockType.bulletList),
+			runToggleBulletList: () => toggleCurrentBlockType(BlockType.bulletList),
 			runToggleNumberedList: () =>
 				toggleCurrentBlockType(BlockType.numberedList),
 			runToggleCheckboxList: () =>

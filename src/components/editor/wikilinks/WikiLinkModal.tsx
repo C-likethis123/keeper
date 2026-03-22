@@ -38,7 +38,12 @@ export function WikiLinkModal() {
 				wikiLinks.handleCancel();
 			}
 		},
-		[inputValue, wikiLinks.handleCancel, wikiLinks.selectNext, wikiLinks.selectPrevious],
+		[
+			inputValue,
+			wikiLinks.handleCancel,
+			wikiLinks.selectNext,
+			wikiLinks.selectPrevious,
+		],
 	);
 
 	const handleSubmitEditing = useCallback(() => {

@@ -1,7 +1,7 @@
 import type { GitEngine } from "@/services/git/engines/GitEngine";
 import {
-	isRustGitEngineAvailable,
 	RustGitEngine,
+	isRustGitEngineAvailable,
 } from "@/services/git/engines/RustGitEngine";
 import { getGitRuntimeSupport } from "@/services/git/runtime";
 

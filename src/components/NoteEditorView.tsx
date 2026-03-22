@@ -3,6 +3,7 @@ import type { EditorState } from "@/components/editor/core/EditorState";
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { appEvents } from "@/services/appEvents";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { TemplateService } from "@/services/notes/templateService";
@@ -14,6 +15,7 @@ import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import React, {
 	Suspense,
 	useCallback,
+	useEffect,
 	useLayoutEffect,
 	useMemo,
 	useRef,
@@ -119,6 +121,12 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		},
 		[buildCurrentNotePayload],
 	);
+
+	useEffect(() => {
+		return appEvents.on("forceSave", () => {
+			void persistCurrentEntry();
+		});
+	}, [persistCurrentEntry]);
 
 	const handleTogglePin = useCallback(async () => {
 		if (latestDraftRef.current.noteType === "template") {

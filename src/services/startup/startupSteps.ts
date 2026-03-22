@@ -24,11 +24,17 @@ export async function initializeStorageStep(
 			needsRebuild: result.needsRebuild,
 		});
 		if (result.needsRebuild) {
-			const rebuildStart = telemetry.stepStarted("storage.index_rebuild_after_init");
+			const rebuildStart = telemetry.stepStarted(
+				"storage.index_rebuild_after_init",
+			);
 			const metrics = await NotesIndexService.rebuildFromDisk();
-			telemetry.stepCompleted("storage.index_rebuild_after_init", rebuildStart, {
-				noteCount: metrics.noteCount,
-			});
+			telemetry.stepCompleted(
+				"storage.index_rebuild_after_init",
+				rebuildStart,
+				{
+					noteCount: metrics.noteCount,
+				},
+			);
 			useStorageStore.getState().bumpContentVersion();
 		}
 	} catch (error) {
@@ -37,16 +43,17 @@ export async function initializeStorageStep(
 	}
 }
 
-export async function initializeGitStep({
-	backgroundMode,
-	showToast,
-	setInitError,
-}: InitializeGitStepOptions, telemetry: StartupTelemetry): Promise<void> {
+export async function initializeGitStep(
+	{ backgroundMode, showToast, setInitError }: InitializeGitStepOptions,
+	telemetry: StartupTelemetry,
+): Promise<void> {
 	const initializeStart = telemetry.stepStarted("git.initialize", {
 		backgroundMode,
 	});
 	try {
-		const result = await GitInitializationService.instance.initialize({ telemetry });
+		const result = await GitInitializationService.instance.initialize({
+			telemetry,
+		});
 		telemetry.stepCompleted("git.initialize", initializeStart, {
 			backgroundMode,
 			success: result.success,
@@ -69,7 +76,9 @@ export async function initializeGitStep({
 			});
 			if (result.wasCloned) {
 				console.log("[App] Git repository was cloned, indexing notes...");
-				const rebuildStart = telemetry.stepStarted("git.index_rebuild_after_clone");
+				const rebuildStart = telemetry.stepStarted(
+					"git.index_rebuild_after_clone",
+				);
 				const metrics = await NotesIndexService.rebuildFromDisk();
 				telemetry.stepCompleted("git.index_rebuild_after_clone", rebuildStart, {
 					noteCount: metrics.noteCount,
@@ -96,7 +105,10 @@ export async function initializeGitStep({
 		});
 		console.error("[App] Git initialization error:", error);
 		if (backgroundMode) {
-			showToast(error instanceof Error ? error.message : "Git sync failed", 6000);
+			showToast(
+				error instanceof Error ? error.message : "Git sync failed",
+				6000,
+			);
 			return;
 		}
 		setInitError(

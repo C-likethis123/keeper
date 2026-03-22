@@ -32,7 +32,9 @@ async function main() {
 	}
 
 	const markdownFiles = await collectMarkdownFiles(root);
-	const existingPaths = new Set(markdownFiles.map((filePath) => path.resolve(filePath)));
+	const existingPaths = new Set(
+		markdownFiles.map((filePath) => path.resolve(filePath)),
+	);
 	const reservedTodoPaths = new Set();
 
 	for (const filePath of markdownFiles) {
@@ -150,11 +152,17 @@ async function walkDirectory(currentDir, files) {
 async function migrateMarkdownFile(filePath, options) {
 	const markdown = await fs.readFile(filePath, "utf8");
 	const fileName = path.basename(filePath, ".md");
-	const relativePath = path.relative(options.root, filePath) || path.basename(filePath);
+	const relativePath =
+		path.relative(options.root, filePath) || path.basename(filePath);
 	const parsed = splitFrontmatter(markdown);
 	const title = normalizeTitle(parsed.fields.title, fileName);
 	const isPinned = parsed.fields.pinned ?? false;
-	const noteType = getFinalNoteType(parsed.fields.noteType, title, fileName, parsed.body);
+	const noteType = getFinalNoteType(
+		parsed.fields.noteType,
+		title,
+		fileName,
+		parsed.body,
+	);
 	const sourceId = fileName;
 	const directory = path.dirname(filePath);
 	const extraction = extractTodos(parsed.body, {
@@ -415,7 +423,8 @@ function extractTodos(body, options) {
 			markdown,
 		});
 
-		lines[index] = `${indentation}- [${checked ? "x" : " "}] [[${candidate.title}]]`;
+		lines[index] =
+			`${indentation}- [${checked ? "x" : " "}] [[${candidate.title}]]`;
 	}
 
 	return {
@@ -433,7 +442,12 @@ function normalizeTodoTitle(rawText) {
 	return rawText.replace(/\s+/g, " ").trim();
 }
 
-function reserveTodoFile({ title, directory, existingPaths, reservedTodoPaths }) {
+function reserveTodoFile({
+	title,
+	directory,
+	existingPaths,
+	reservedTodoPaths,
+}) {
 	let collisions = 0;
 
 	while (true) {

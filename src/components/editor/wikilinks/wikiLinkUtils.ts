@@ -1,9 +1,9 @@
 import { PAGE_SIZE } from "@/constants/pagination";
-import {
-	NotesIndexService,
-	type NoteIndexItem,
-} from "@/services/notes/notesIndex";
 import { NoteService } from "@/services/notes/noteService";
+import {
+	type NoteIndexItem,
+	NotesIndexService,
+} from "@/services/notes/notesIndex";
 import { nanoid } from "nanoid";
 
 export interface WikiLinkActivationEvent {
@@ -35,7 +35,9 @@ export function findExactWikiLinkMatch(
 	);
 }
 
-export async function resolveWikiLinkNoteId(title: string): Promise<string | null> {
+export async function resolveWikiLinkNoteId(
+	title: string,
+): Promise<string | null> {
 	const query = title.trim();
 	if (query.length === 0) {
 		return null;

@@ -1,19 +1,20 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useMemo } from "react";
+import { forwardRef, useMemo } from "react";
 import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
-export function SearchBar({
-	searchQuery,
-	setSearchQuery,
-	editable = true,
-	compact = false,
-}: {
-	searchQuery: string;
-	setSearchQuery: (query: string) => void;
-	editable?: boolean;
-	compact?: boolean;
-}) {
+export const SearchBar = forwardRef<
+	TextInput,
+	{
+		searchQuery: string;
+		setSearchQuery: (query: string) => void;
+		editable?: boolean;
+		compact?: boolean;
+	}
+>(function SearchBar(
+	{ searchQuery, setSearchQuery, editable = true, compact = false },
+	ref,
+) {
 	const theme = useExtendedTheme();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -34,6 +35,7 @@ export function SearchBar({
 					style={styles.searchIcon}
 				/>
 				<TextInput
+					ref={ref}
 					style={[styles.searchInput, compact && styles.searchInputCompact]}
 					accessibilityLabel="Search notes"
 					placeholder={"Search"}
@@ -61,7 +63,7 @@ export function SearchBar({
 			</View>
 		</View>
 	);
-}
+});
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({

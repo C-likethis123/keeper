@@ -1,9 +1,6 @@
 import type { NoteListFilters } from "@/services/notes/types";
 import type { SQLiteDatabase } from "expo-sqlite";
-import {
-	mapDbRowToIndexItem,
-	mapIndexItemToSqlItem,
-} from "./mapper";
+import { mapDbRowToIndexItem, mapIndexItemToSqlItem } from "./mapper";
 import type {
 	ListNotesResult,
 	NoteIndexItem,
@@ -15,7 +12,9 @@ const TABLE = "note_index";
 const FTS_TABLE = "note_index_fts";
 
 export function getInsertPlaceholders(count: number): string {
-	return Array.from({ length: count }, () => "(?, ?, ?, ?, ?, ?, ?)").join(", ");
+	return Array.from({ length: count }, () => "(?, ?, ?, ?, ?, ?, ?)").join(
+		", ",
+	);
 }
 
 export async function hasRows(database: SQLiteDatabase): Promise<boolean> {
@@ -215,7 +214,9 @@ export async function dropFtsTriggers(database: SQLiteDatabase): Promise<void> {
 	await database.execAsync("DROP TRIGGER IF EXISTS note_index_au");
 }
 
-export async function createFtsTriggers(database: SQLiteDatabase): Promise<void> {
+export async function createFtsTriggers(
+	database: SQLiteDatabase,
+): Promise<void> {
 	await database.execAsync(`
 		CREATE TRIGGER IF NOT EXISTS note_index_ai AFTER INSERT ON note_index BEGIN
 			INSERT INTO note_index_fts(rowid, title, summary)
@@ -243,5 +244,7 @@ export async function clearTable(database: SQLiteDatabase): Promise<void> {
 }
 
 export async function rebuildFts(database: SQLiteDatabase): Promise<void> {
-	await database.execAsync(`INSERT INTO ${FTS_TABLE}(${FTS_TABLE}) VALUES('rebuild')`);
+	await database.execAsync(
+		`INSERT INTO ${FTS_TABLE}(${FTS_TABLE}) VALUES('rebuild')`,
+	);
 }

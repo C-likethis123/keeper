@@ -5,14 +5,21 @@ import Loader from "@/components/shared/Loader";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
+import { appEvents } from "@/services/appEvents";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note, NoteType } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import { Stack, router, useFocusEffect } from "expo-router";
 import { nanoid } from "nanoid";
-import React, { useCallback } from "react";
-import { Alert, Platform, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useRef } from "react";
+import {
+	Alert,
+	Platform,
+	StyleSheet,
+	type TextInput,
+	View,
+} from "react-native";
 
 const LazyNoteGrid = React.lazy(() => import("@/components/NoteGrid"));
 
@@ -147,6 +154,14 @@ export default function Index() {
 		router.push(`/editor?id=${newTodo.id}`);
 	}, []);
 
+	const searchInputRef = useRef<TextInput>(null);
+
+	useEffect(() => {
+		return appEvents.on("focusSearch", () => {
+			searchInputRef.current?.focus();
+		});
+	}, []);
+
 	const styles = useStyles(createStyles);
 	const emptySubtitle =
 		"There are no notes that match existing filters. Create a note to get started";
@@ -176,6 +191,7 @@ export default function Index() {
 				searchQuery={query}
 				setSearchQuery={setQuery}
 				searchEditable={canSearch}
+				searchInputRef={searchInputRef}
 				noteTypes={noteTypeFilter}
 				status={statusFilter}
 				onNoteTypesChange={(values) => {

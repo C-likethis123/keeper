@@ -2,8 +2,8 @@ import type { SaveStatus } from "@/components/SaveIndicator";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
-import { InteractionManager } from "react-native";
 import { useEffect, useRef, useState } from "react";
+import { InteractionManager } from "react-native";
 
 const AUTO_SAVE_INTERVAL_MS = 60000;
 const INPUT_IDLE_BEFORE_SAVE_MS = 1500;
@@ -48,7 +48,9 @@ export function useAutoSave({
 	const prepareTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const isSavingRef = useRef(false);
-	const latestDocumentVersionRef = useRef(useEditorState.getState().document.version);
+	const latestDocumentVersionRef = useRef(
+		useEditorState.getState().document.version,
+	);
 
 	useEffect(() => {
 		latestNoteRef.current = {
@@ -157,7 +159,8 @@ export function useAutoSave({
 						return;
 					}
 
-					const { id, title, isPinned, noteType, status } = latestNoteRef.current;
+					const { id, title, isPinned, noteType, status } =
+						latestNoteRef.current;
 					const currentContent = getContentForVersion(
 						latestDocumentVersionRef.current,
 					);
@@ -239,7 +242,10 @@ export function useAutoSave({
 			}, waitMs);
 		};
 
-		intervalRef.current = setInterval(scheduleSaveWhenIdle, AUTO_SAVE_INTERVAL_MS);
+		intervalRef.current = setInterval(
+			scheduleSaveWhenIdle,
+			AUTO_SAVE_INTERVAL_MS,
+		);
 
 		return () => {
 			if (statusTimeoutRef.current) {

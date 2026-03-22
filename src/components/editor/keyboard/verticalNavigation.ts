@@ -71,19 +71,28 @@ function getPlainTextNavigationTarget(
 	const currentBlock = options.document.blocks[options.blockIndex];
 	if (!currentBlock) return null;
 
-	const info = getLineInfo(currentBlock.content, options.selection?.focus.offset ?? 0);
+	const info = getLineInfo(
+		currentBlock.content,
+		options.selection?.focus.offset ?? 0,
+	);
 	const shouldMove =
 		options.direction === "up" ? info.isFirstLine : info.isLastLine;
 	if (!shouldMove) return null;
 
 	const nextIndex =
-		options.direction === "up" ? options.blockIndex - 1 : options.blockIndex + 1;
+		options.direction === "up"
+			? options.blockIndex - 1
+			: options.blockIndex + 1;
 	const nextBlock = options.document.blocks[nextIndex];
 	if (!nextBlock) return null;
 
 	return {
 		blockIndex: nextIndex,
-		offset: getOffsetForColumn(nextBlock.content, options.direction, info.column),
+		offset: getOffsetForColumn(
+			nextBlock.content,
+			options.direction,
+			info.column,
+		),
 	};
 }
 
@@ -91,7 +100,9 @@ function getSimpleBoundaryTarget(
 	options: VerticalNavigationOptions,
 ): NavigationTarget | null {
 	const nextIndex =
-		options.direction === "up" ? options.blockIndex - 1 : options.blockIndex + 1;
+		options.direction === "up"
+			? options.blockIndex - 1
+			: options.blockIndex + 1;
 	const nextBlock = options.document.blocks[nextIndex];
 	if (!nextBlock) return null;
 

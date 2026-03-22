@@ -69,14 +69,17 @@ export class History {
 			// Group with previous transaction
 			const previous = this.undoStack.pop();
 			if (!previous) return;
-			const grouped =
-				this.coalesceGroupedTransaction(previous, transaction, now) ?? {
-					operations: [...previous.operations, ...transaction.operations],
-					selectionBefore: previous.selectionBefore,
-					selectionAfter: transaction.selectionAfter,
-					description: transaction.description ?? previous.description,
-					timestamp: now,
-				};
+			const grouped = this.coalesceGroupedTransaction(
+				previous,
+				transaction,
+				now,
+			) ?? {
+				operations: [...previous.operations, ...transaction.operations],
+				selectionBefore: previous.selectionBefore,
+				selectionAfter: transaction.selectionAfter,
+				description: transaction.description ?? previous.description,
+				timestamp: now,
+			};
 			this.undoStack.push(grouped);
 		} else {
 			this.undoStack.push(transaction);

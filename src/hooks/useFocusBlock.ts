@@ -14,7 +14,10 @@ export function useFocusBlock(): UseFocusBlockReturn {
 		(index: number, offset: number) => {
 			const document = useEditorState.getState().document;
 			const block = document.blocks[index];
-			const nextOffset = Math.max(0, Math.min(offset, block?.content.length ?? 0));
+			const nextOffset = Math.max(
+				0,
+				Math.min(offset, block?.content.length ?? 0),
+			);
 			setSelection(
 				createCollapsedSelection({ blockIndex: index, offset: nextOffset }),
 			);

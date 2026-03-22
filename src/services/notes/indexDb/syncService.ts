@@ -1,5 +1,5 @@
-import { mapWithConcurrency } from "./asyncUtils";
 import { isIndexedNoteMarkdownPath } from "@/services/notes/templatePaths";
+import { mapWithConcurrency } from "./asyncUtils";
 import { getNotesIndexDb } from "./db";
 import { mapMarkdownPathToSqlItem } from "./mapper";
 import { deleteBatch, upsertBatch } from "./repository";

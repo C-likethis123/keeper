@@ -4,8 +4,8 @@ import {
 	createEmptyDocument,
 	documentToMarkdown,
 	getListItemNumber,
-	replaceBlocks,
 	removeBlock,
+	replaceBlocks,
 } from "../Document";
 
 function summarizeDocument(markdown: string) {

@@ -15,7 +15,9 @@ function normalizeKey(key: string, code: string): string {
 	return key;
 }
 
-export function normalizeKeyEvent(event: KeyboardEvent): NormalizedKeyEvent | null {
+export function normalizeKeyEvent(
+	event: KeyboardEvent,
+): NormalizedKeyEvent | null {
 	const key = normalizeKey(event.key, event.code);
 	if (["Meta", "Control", "Shift", "Alt"].includes(key)) {
 		return null;

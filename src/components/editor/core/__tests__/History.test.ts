@@ -30,10 +30,14 @@ describe("History", () => {
 		const redo = history.popRedo(restored);
 		expect(redo).not.toBeNull();
 		// biome-ignore lint/style/noNonNullAssertion: test assertion above guarantees presence
-		expect(documentToMarkdown(redo!.operations.reduce(
-			(document, operation) => operation.apply(document),
-			restored,
-		))).toBe(documentToMarkdown(updated));
+		expect(
+			documentToMarkdown(
+				redo!.operations.reduce(
+					(document, operation) => operation.apply(document),
+					restored,
+				),
+			),
+		).toBe(documentToMarkdown(updated));
 	});
 
 	it("groups transactions within the configured delay", () => {
@@ -42,12 +46,16 @@ describe("History", () => {
 
 		const history = new History({ groupingDelay: 500 });
 		const document = createDocumentFromMarkdown("Alpha");
-		const first = new TransactionBuilder().updateContent(0, "Alpha", "Beta").build();
-		const second = new TransactionBuilder().insertBlock(1, {
-			...document.blocks[0],
-			id: "block_static",
-			content: "Gamma",
-		}).build();
+		const first = new TransactionBuilder()
+			.updateContent(0, "Alpha", "Beta")
+			.build();
+		const second = new TransactionBuilder()
+			.insertBlock(1, {
+				...document.blocks[0],
+				id: "block_static",
+				content: "Gamma",
+			})
+			.build();
 
 		history.push(first, document);
 		jest.advanceTimersByTime(200);
@@ -65,9 +73,18 @@ describe("History", () => {
 		history.push(new TransactionBuilder().build(), document);
 		expect(history.undoDepth).toBe(0);
 
-		history.push(new TransactionBuilder().updateContent(0, "Alpha", "Beta").build(), document);
-		history.push(new TransactionBuilder().updateContent(0, "Beta", "Gamma").build(), document);
-		history.push(new TransactionBuilder().updateContent(0, "Gamma", "Delta").build(), document);
+		history.push(
+			new TransactionBuilder().updateContent(0, "Alpha", "Beta").build(),
+			document,
+		);
+		history.push(
+			new TransactionBuilder().updateContent(0, "Beta", "Gamma").build(),
+			document,
+		);
+		history.push(
+			new TransactionBuilder().updateContent(0, "Gamma", "Delta").build(),
+			document,
+		);
 
 		expect(history.undoDepth).toBe(2);
 	});

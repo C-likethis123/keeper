@@ -1,5 +1,5 @@
-import { NotesIndexService } from "@/services/notes/notesIndex";
 import { NoteService } from "@/services/notes/noteService";
+import { NotesIndexService } from "@/services/notes/notesIndex";
 import {
 	findExactWikiLinkMatch,
 	normalizeWikiLinkTitle,
@@ -69,7 +69,9 @@ describe("wikiLinkUtils", () => {
 	});
 
 	it("creates a note when a wiki link target does not exist", async () => {
-		jest.spyOn(NotesIndexService, "listNotes").mockResolvedValueOnce({ items: [] });
+		jest
+			.spyOn(NotesIndexService, "listNotes")
+			.mockResolvedValueOnce({ items: [] });
 		jest.spyOn(NoteService, "saveNote").mockResolvedValueOnce({
 			id: "new-note-id",
 			title: "Project Alpha",

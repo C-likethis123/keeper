@@ -66,7 +66,9 @@ describe("DefaultRepoBootstrapper.validateRepository", () => {
 	});
 
 	it("allows clone to proceed when the notes directory is missing or empty", async () => {
-		gitEngine.resolveHeadOid = jest.fn().mockRejectedValue(new Error("missing"));
+		gitEngine.resolveHeadOid = jest
+			.fn()
+			.mockRejectedValue(new Error("missing"));
 		mockDirectoryExists = true;
 		mockDirectoryEntries = [];
 

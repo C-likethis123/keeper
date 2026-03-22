@@ -1,11 +1,7 @@
 import { File } from "expo-file-system";
 import { NOTES_ROOT } from "../Notes";
 import { parseFrontmatter } from "../frontmatter";
-import type {
-	NoteIndexItem,
-	NoteIndexRow,
-	NoteIndexSqlItem,
-} from "./types";
+import type { NoteIndexItem, NoteIndexRow, NoteIndexSqlItem } from "./types";
 
 export function extractSummary(markdown: string, maxLines = 6): string {
 	const lines: string[] = [];

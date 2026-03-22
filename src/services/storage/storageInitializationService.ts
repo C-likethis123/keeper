@@ -1,5 +1,8 @@
-import { getStorageCapabilities, getStorageEngine } from "@/services/storage/storageEngine";
 import { setNotesRoot } from "@/services/notes/Notes";
+import {
+	getStorageCapabilities,
+	getStorageEngine,
+} from "@/services/storage/storageEngine";
 import { useStorageStore } from "@/stores/storageStore";
 
 interface StorageInitializationResult {

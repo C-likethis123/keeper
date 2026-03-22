@@ -1,7 +1,7 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
-import { NotesIndexService } from "@/services/notes/notesIndex";
 import { NoteService } from "@/services/notes/noteService";
+import { NotesIndexService } from "@/services/notes/notesIndex";
 import { useEditorState } from "@/stores/editorStore";
 import { nanoid } from "nanoid";
 import type React from "react";

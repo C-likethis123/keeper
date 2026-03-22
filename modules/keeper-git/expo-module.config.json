@@ -1,9 +1,9 @@
 {
-  "platforms": ["apple", "android"],
-  "apple": {
-    "modules": ["KeeperGitBridgeModule"]
-  },
-  "android": {
-    "modules": ["com.clikethis123.keeper.KeeperGitBridgeModule"]
-  }
+	"platforms": ["apple", "android"],
+	"apple": {
+		"modules": ["KeeperGitBridgeModule"]
+	},
+	"android": {
+		"modules": ["com.clikethis123.keeper.KeeperGitBridgeModule"]
+	}
 }

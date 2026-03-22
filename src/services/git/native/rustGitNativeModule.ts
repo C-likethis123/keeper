@@ -1,10 +1,10 @@
-import nativeBridgeModule from "../../../../modules/keeper-git";
 import type {
 	GitChangedPaths,
 	GitCheckoutOptions,
 	GitMergeOptions,
 	GitStatusItem,
 } from "@/services/git/engines/GitEngine";
+import nativeBridgeModule from "../../../../modules/keeper-git";
 
 interface KeeperGitBridgeSpec {
 	clone(url: string, path: string): Promise<void>;

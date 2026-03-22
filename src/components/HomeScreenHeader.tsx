@@ -4,13 +4,20 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { NoteStatus, NoteType } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
-import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import type React from "react";
+import {
+	StyleSheet,
+	Text,
+	type TextInput,
+	TouchableOpacity,
+	View,
+} from "react-native";
 
 export default function HomeScreenHeader({
 	searchQuery,
 	setSearchQuery,
 	searchEditable,
+	searchInputRef,
 	noteTypes,
 	status,
 	onNoteTypesChange,
@@ -21,6 +28,7 @@ export default function HomeScreenHeader({
 	searchQuery: string;
 	setSearchQuery: (query: string) => void;
 	searchEditable: boolean;
+	searchInputRef?: React.Ref<TextInput>;
 	noteTypes: NoteType[];
 	status?: NoteStatus;
 	onNoteTypesChange: (value: NoteType[]) => void;
@@ -47,6 +55,7 @@ export default function HomeScreenHeader({
 				<View style={styles.searchWrap}>
 					<View style={styles.searchRow}>
 						<SearchBar
+							ref={searchInputRef}
 							searchQuery={searchQuery}
 							setSearchQuery={setSearchQuery}
 							editable={searchEditable}

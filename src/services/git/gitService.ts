@@ -1,9 +1,9 @@
+import { NOTES_ROOT } from "@/services/notes/Notes";
 import {
 	AppState,
 	type AppStateStatus,
 	type NativeEventSubscription,
 } from "react-native";
-import { NOTES_ROOT } from "@/services/notes/Notes";
 import type { GitEngine } from "./engines/GitEngine";
 import { getGitEngine } from "./gitEngine";
 

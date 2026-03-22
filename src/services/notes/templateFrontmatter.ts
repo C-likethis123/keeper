@@ -1,4 +1,8 @@
-import type { NoteStatus, NoteTemplate, NoteType } from "@/services/notes/types";
+import type {
+	NoteStatus,
+	NoteTemplate,
+	NoteType,
+} from "@/services/notes/types";
 
 export interface ParsedTemplateFrontmatter {
 	id: string;

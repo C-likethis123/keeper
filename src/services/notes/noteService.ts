@@ -114,8 +114,7 @@ export class NoteService {
 				noteType: note.noteType,
 				status: note.status,
 			})),
-			cursor:
-				from + limit < filtered.length ? from + limit : undefined,
+			cursor: from + limit < filtered.length ? from + limit : undefined,
 		};
 	}
 }

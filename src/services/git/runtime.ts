@@ -1,7 +1,7 @@
-import Constants, { ExecutionEnvironment } from "expo-constants";
-import { Platform } from "react-native";
 import { hasRustGitNativeBridge } from "@/services/git/native/rustGitNativeModule";
 import { getTauriInvoke } from "@/services/storage/runtime";
+import Constants, { ExecutionEnvironment } from "expo-constants";
+import { Platform } from "react-native";
 
 export type GitRuntime = "desktop-tauri" | "mobile-native" | "unsupported";
 

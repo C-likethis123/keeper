@@ -1,4 +1,4 @@
-import { getTemplatesRoot, NOTES_ROOT } from "@/services/notes/Notes";
+import { NOTES_ROOT, getTemplatesRoot } from "@/services/notes/Notes";
 import {
 	parseFrontmatter,
 	stringifyFrontmatter,
@@ -17,7 +17,11 @@ import {
 	parseTemplateFrontmatter,
 	stringifyTemplateFrontmatter,
 } from "@/services/notes/templateFrontmatter";
-import type { Note, NoteListFilters, NoteTemplate } from "@/services/notes/types";
+import type {
+	Note,
+	NoteListFilters,
+	NoteTemplate,
+} from "@/services/notes/types";
 import type {
 	NoteFileEntry,
 	StorageEngine,

@@ -1,5 +1,5 @@
-import type { Note, NoteTemplate } from "@/services/notes/types";
 import type { NotesIndexRebuildMetrics } from "@/services/notes/notesIndexDb";
+import type { Note, NoteTemplate } from "@/services/notes/types";
 import type {
 	NoteIndexListResult,
 	NoteIndexPersistenceItem,

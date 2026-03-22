@@ -1,17 +1,15 @@
 {
-  "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignoreDependencies": [
-    "@welldone-software/why-did-you-render",
-    "react-native-svg"
-  ],
-  "ignoreFiles": [
-    "metro.config.js",
-    "src/components/editor/code/Strings.ts",
-    "src/services/notes/Notes.android.ts",
-    "src/services/notes/Notes.web.ts",
-    "wdyr.ts"
-  ],
-  "tags": [
-    "-lintignore"
-  ]
+	"$schema": "https://unpkg.com/knip@5/schema.json",
+	"ignoreDependencies": [
+		"@welldone-software/why-did-you-render",
+		"react-native-svg"
+	],
+	"ignoreFiles": [
+		"metro.config.js",
+		"src/components/editor/code/Strings.ts",
+		"src/services/notes/Notes.android.ts",
+		"src/services/notes/Notes.web.ts",
+		"wdyr.ts"
+	],
+	"tags": ["-lintignore"]
 }

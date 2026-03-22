@@ -55,7 +55,7 @@ Content`);
 			status: "done",
 		});
 
-		expect(markdown).toContain('pinned: true');
+		expect(markdown).toContain("pinned: true");
 		expect(markdown).toContain('title: "Roadmap"');
 		expect(markdown).toContain('id: "note-123"');
 		expect(markdown).toContain('type: "resource"');

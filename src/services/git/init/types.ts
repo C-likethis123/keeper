@@ -43,7 +43,10 @@ export interface InitializationResult {
 	metrics: StartupMetrics;
 }
 
-export type RemoteSyncMetrics = Omit<StartupMetrics, "validateRepoMs" | "totalMs">;
+export type RemoteSyncMetrics = Omit<
+	StartupMetrics,
+	"validateRepoMs" | "totalMs"
+>;
 
 export interface SyncWithRemoteResult {
 	success: boolean;

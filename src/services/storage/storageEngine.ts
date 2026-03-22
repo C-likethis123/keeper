@@ -1,7 +1,10 @@
 import { MobileStorageEngine } from "@/services/storage/engines/MobileStorageEngine";
 import type { StorageEngine } from "@/services/storage/engines/StorageEngine";
 import { TauriStorageEngine } from "@/services/storage/engines/TauriStorageEngine";
-import { getRuntimeStorageBackend, isTauriRuntime } from "@/services/storage/runtime";
+import {
+	getRuntimeStorageBackend,
+	isTauriRuntime,
+} from "@/services/storage/runtime";
 
 let storageEngine: StorageEngine | null = null;
 

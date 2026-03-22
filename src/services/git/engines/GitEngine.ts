@@ -30,7 +30,11 @@ export interface GitChangedPaths {
 export interface GitEngine {
 	clone(url: string, dir: string): Promise<void>;
 	fetch(dir: string): Promise<void>;
-	checkout(dir: string, ref: string, options?: GitCheckoutOptions): Promise<void>;
+	checkout(
+		dir: string,
+		ref: string,
+		options?: GitCheckoutOptions,
+	): Promise<void>;
 	currentBranch(dir: string): Promise<string | undefined>;
 	listBranches(dir: string, remote?: string): Promise<string[]>;
 	merge(dir: string, options: GitMergeOptions): Promise<void>;

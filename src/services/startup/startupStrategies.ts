@@ -1,11 +1,14 @@
 import type { GitRuntimeSupport } from "@/services/git/runtime";
 import { checkForUpdates } from "@/utils/checkForUpdates";
-import { createStartupTelemetry, type StartupTelemetry } from "./startupTelemetry";
 import {
 	initializeGitStep,
 	initializeStorageStep,
 	initializeUnsupportedRuntimeStep,
 } from "./startupSteps";
+import {
+	type StartupTelemetry,
+	createStartupTelemetry,
+} from "./startupTelemetry";
 
 type ShowToast = (message: string, duration?: number) => void;
 
@@ -72,11 +75,12 @@ const runUnsupportedStartup: StartupStrategy = async ({
 	telemetry.stepCompleted("unsupported.hydrate_ui", hydrationStart);
 };
 
-const startupStrategies: Record<GitRuntimeSupport["runtime"], StartupStrategy> = {
-	"desktop-tauri": runDesktopStartup,
-	"mobile-native": runMobileStartup,
-	unsupported: runUnsupportedStartup,
-};
+const startupStrategies: Record<GitRuntimeSupport["runtime"], StartupStrategy> =
+	{
+		"desktop-tauri": runDesktopStartup,
+		"mobile-native": runMobileStartup,
+		unsupported: runUnsupportedStartup,
+	};
 
 export async function runStartupStrategy(
 	context: Omit<StartupStrategyContext, "telemetry">,

@@ -1,8 +1,4 @@
-import {
-	BlockType,
-	createCodeBlock,
-	createParagraphBlock,
-} from "../BlockNode";
+import { BlockType, createCodeBlock, createParagraphBlock } from "../BlockNode";
 import { createDocumentFromMarkdown, documentToMarkdown } from "../Document";
 import {
 	TransactionBuilder,

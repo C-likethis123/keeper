@@ -56,11 +56,7 @@ export function ImageBlock({
 			if (handleVerticalArrow(key)) {
 				return;
 			}
-			if (
-				key === "Enter" &&
-				selection &&
-				selection.start === selection.end
-			) {
+			if (key === "Enter" && selection && selection.start === selection.end) {
 				onEnter(index, selection.end);
 			}
 

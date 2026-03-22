@@ -1,8 +1,11 @@
 import type { DocumentSelection } from "@/components/editor/core/Selection";
 import { useEditorSelection } from "@/stores/editorStore";
-import { Platform } from "react-native";
 import { useEffect, useRef } from "react";
-import { executeEditorCommand, type EditorCommandContext } from "./editorCommands";
+import { Platform } from "react-native";
+import {
+	type EditorCommandContext,
+	executeEditorCommand,
+} from "./editorCommands";
 import { normalizeKeyEvent } from "./normalizeKeyEvent";
 import { getShortcutCommand } from "./shortcutRegistry";
 import { getVerticalNavigationTarget } from "./verticalNavigation";

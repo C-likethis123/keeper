@@ -1,23 +1,23 @@
-import { getStorageEngine } from "@/services/storage/storageEngine";
 import {
-	createNoopStartupTelemetry,
 	type StartupTelemetry,
+	createNoopStartupTelemetry,
 } from "@/services/startup/startupTelemetry";
+import { getStorageEngine } from "@/services/storage/storageEngine";
 import { getGitEngine } from "./gitEngine";
-import { getGitRuntimeSupport } from "./runtime";
 import { DefaultDbSyncService } from "./init/dbSyncService";
 import { DefaultGitInitErrorMapper } from "./init/errorMapper";
 import { DefaultRemoteSyncService } from "./init/remoteSyncService";
 import { DefaultRepoBootstrapper } from "./init/repoBootstrapper";
 import { AsyncGitSyncStateStore } from "./init/stateStore";
 import {
-	createEmptyStartupMetrics,
 	type GitHubConfig,
 	type GitInitDependencies,
 	type InitializationResult,
 	type InitializeOptions,
 	type RemoteSyncMetrics,
+	createEmptyStartupMetrics,
 } from "./init/types";
+import { getGitRuntimeSupport } from "./runtime";
 
 function assertGitHubConfig(): GitHubConfig {
 	const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
@@ -100,7 +100,9 @@ export class GitInitializationService {
 		target.didDbSync = source.didDbSync;
 	}
 
-	async initialize(options: InitializeOptions = {}): Promise<InitializationResult> {
+	async initialize(
+		options: InitializeOptions = {},
+	): Promise<InitializationResult> {
 		const initStart = performance.now();
 		const metrics = createEmptyStartupMetrics();
 		const telemetry: StartupTelemetry =
@@ -146,7 +148,8 @@ export class GitInitializationService {
 				"[GitInitializationService] Checking if local repository exists and is valid...",
 			);
 			const tValidate = performance.now();
-			const repoValidation = await dependencies.repoBootstrapper.validateRepository();
+			const repoValidation =
+				await dependencies.repoBootstrapper.validateRepository();
 			metrics.validateRepoMs = Math.round(performance.now() - tValidate);
 			telemetry.trace("git.repository_validation", {
 				exists: repoValidation.exists,
@@ -180,7 +183,8 @@ export class GitInitializationService {
 
 				console.log("[GitInitializationService] Starting fresh clone...");
 				const cloneStart = performance.now();
-				const cloneResult = await dependencies.repoBootstrapper.cloneRepository();
+				const cloneResult =
+					await dependencies.repoBootstrapper.cloneRepository();
 				telemetry.trace("git.clone_completed", {
 					success: cloneResult.success,
 					durationMs: Math.round(performance.now() - cloneStart),
@@ -209,13 +213,14 @@ export class GitInitializationService {
 			console.log(
 				"[GitInitializationService] Valid repository already exists, skipping clone",
 			);
-			const syncResult = await dependencies.remoteSyncService.syncWithRemote(
-				telemetry,
-			);
+			const syncResult =
+				await dependencies.remoteSyncService.syncWithRemote(telemetry);
 			this.applySyncMetrics(metrics, syncResult.metrics);
 
 			if (syncResult.success) {
-				console.log("[GitInitializationService] Successfully synced with remote");
+				console.log(
+					"[GitInitializationService] Successfully synced with remote",
+				);
 				return {
 					success: true,
 					wasCloned: false,
