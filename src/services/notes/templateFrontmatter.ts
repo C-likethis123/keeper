@@ -1,9 +1,8 @@
-import type { Note, NoteStatus, NoteType } from "@/services/notes/types";
+import type { NoteStatus, NoteTemplate, NoteType } from "@/services/notes/types";
 
-export interface ParsedFrontmatter {
+export interface ParsedTemplateFrontmatter {
 	id: string;
 	title: string;
-	isPinned: boolean;
 	noteType: NoteType;
 	status?: NoteStatus;
 	content: string;
@@ -32,20 +31,20 @@ function parseYamlScalar(raw: string): string {
 	return trimmed;
 }
 
-export function parseFrontmatter(markdown: string): ParsedFrontmatter {
+export function parseTemplateFrontmatter(
+	markdown: string,
+): ParsedTemplateFrontmatter {
 	const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(markdown);
 	if (!match) {
 		return {
 			id: "",
 			title: "",
-			isPinned: false,
 			noteType: "note",
 			content: markdown,
 		};
 	}
 
 	let title = "";
-	let isPinned = false;
 	let noteType: NoteType = "note";
 	let status: NoteStatus | undefined;
 	let id = "";
@@ -64,8 +63,6 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 			title = value;
 		} else if (key === "id") {
 			id = value;
-		} else if (key === "pinned") {
-			isPinned = value.toLowerCase() === "true";
 		} else if (key === "type" && isNoteType(value)) {
 			noteType = value;
 		} else if (key === "status" && isNoteStatus(value)) {
@@ -76,27 +73,27 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	return {
 		id,
 		title,
-		isPinned,
 		noteType,
 		status: noteType === "todo" ? status : undefined,
 		content,
 	};
 }
 
-export function stringifyFrontmatter(note: Omit<Note, "lastUpdated">): string {
+export function stringifyTemplateFrontmatter(
+	template: Omit<NoteTemplate, "lastUpdated">,
+): string {
 	const frontmatterLines = [
 		"---",
-		`pinned: ${note.isPinned ? "true" : "false"}`,
-		`title: ${JSON.stringify((note.title ?? "").trim())}`,
-		`id: ${JSON.stringify(note.id)}`,
+		`title: ${JSON.stringify((template.title ?? "").trim())}`,
+		`id: ${JSON.stringify(template.id)}`,
 	];
-	if (note.noteType) {
-		frontmatterLines.push(`type: ${JSON.stringify(note.noteType)}`);
+	if (template.noteType) {
+		frontmatterLines.push(`type: ${JSON.stringify(template.noteType)}`);
 	}
-	if (note.noteType === "todo" && note.status) {
-		frontmatterLines.push(`status: ${JSON.stringify(note.status)}`);
+	if (template.noteType === "todo" && template.status) {
+		frontmatterLines.push(`status: ${JSON.stringify(template.status)}`);
 	}
 	frontmatterLines.push("---");
 
-	return `${frontmatterLines.join("\n")}\n${note.content}`;
+	return `${frontmatterLines.join("\n")}\n${template.content}`;
 }

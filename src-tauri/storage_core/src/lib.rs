@@ -9,6 +9,8 @@ use std::time::UNIX_EPOCH;
 
 const TABLE: &str = "note_index";
 const FTS_TABLE: &str = "note_index_fts";
+const NOTES_DIR: &str = "notes";
+const TEMPLATES_DIR: &str = "templates";
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,6 +38,8 @@ pub struct ReadNoteResult {
     pub status: Option<String>,
 }
 
+pub type ReadTemplateResult = ReadNoteResult;
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WriteNoteInput {
@@ -43,6 +47,16 @@ pub struct WriteNoteInput {
     pub title: String,
     pub content: String,
     pub is_pinned: bool,
+    pub note_type: String,
+    pub status: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WriteTemplateInput {
+    pub id: String,
+    pub title: String,
+    pub content: String,
     pub note_type: String,
     pub status: Option<String>,
 }
@@ -100,9 +114,20 @@ pub struct RebuildMetrics {
     pub note_count: usize,
 }
 
-pub fn ensure_storage_dirs(data_dir: &Path, notes_root: &Path) -> Result<(), String> {
+fn notes_root(data_dir: &Path) -> PathBuf {
+    data_dir.join(NOTES_DIR)
+}
+
+fn templates_root(notes_root: &Path) -> PathBuf {
+    notes_root.join(TEMPLATES_DIR)
+}
+
+pub fn ensure_storage_dirs(data_dir: &Path) -> Result<(), String> {
+    let notes_root = notes_root(data_dir);
     fs::create_dir_all(data_dir).map_err(|e| format!("failed to create app data dir: {e}"))?;
-    fs::create_dir_all(notes_root).map_err(|e| format!("failed to create notes dir: {e}"))?;
+    fs::create_dir_all(&notes_root).map_err(|e| format!("failed to create notes dir: {e}"))?;
+    fs::create_dir_all(templates_root(&notes_root))
+        .map_err(|e| format!("failed to create templates dir: {e}"))?;
     Ok(())
 }
 
@@ -126,7 +151,7 @@ pub fn reset_storage_dirs(
         }
     }
 
-    ensure_storage_dirs(data_dir, notes_root)
+    ensure_storage_dirs(data_dir)
 }
 
 fn sanitize_note_id(id: &str) -> Result<&str, String> {
@@ -140,7 +165,7 @@ fn sanitize_note_id(id: &str) -> Result<&str, String> {
     Ok(trimmed)
 }
 
-fn note_path_for_id(notes_root: &Path, id: &str) -> Result<PathBuf, String> {
+fn path_for_id(notes_root: &Path, id: &str) -> Result<PathBuf, String> {
     let clean_id = sanitize_note_id(id)?;
     Ok(notes_root.join(format!("{clean_id}.md")))
 }
@@ -191,35 +216,90 @@ fn parse_frontmatter(markdown: &str) -> (String, bool, String, Option<String>, S
     )
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct TemplateFrontmatter {
+    title: Option<String>,
+    #[serde(rename = "type")]
+    note_type: Option<String>,
+    status: Option<String>,
+}
+
+fn parse_template_frontmatter(markdown: &str) -> (String, String, Option<String>, String) {
+    let matter = Matter::<YAML>::new();
+    let parsed = match matter.parse::<TemplateFrontmatter>(markdown) {
+        Ok(parsed) => parsed,
+        Err(_) => return (String::new(), "note".to_string(), None, markdown.to_string()),
+    };
+
+    let frontmatter = parsed.data.unwrap_or_default();
+    (
+        frontmatter.title.unwrap_or_default(),
+        frontmatter.note_type.unwrap_or_else(|| "note".to_string()),
+        frontmatter.status,
+        parsed.content,
+    )
+}
+
 fn stringify_yaml_string(value: &str) -> Result<String, String> {
     serde_json::to_string(value).map_err(|e| format!("failed to serialize yaml string: {e}"))
 }
 
-fn serialize_note(input: &WriteNoteInput) -> Result<String, String> {
+fn serialize_entry(
+    title: &str,
+    id: &str,
+    content: &str,
+    note_type: &str,
+    status: Option<&str>,
+    is_pinned: Option<bool>,
+) -> Result<String, String> {
     let matter = Matter::<YAML>::new();
     let delimiter = matter.delimiter;
     let close_delimiter = matter.close_delimiter.unwrap_or_else(|| delimiter.clone());
-    let title = stringify_yaml_string(input.title.trim())?;
-    let id = stringify_yaml_string(input.id.trim())?;
+    let title = stringify_yaml_string(title.trim())?;
+    let id = stringify_yaml_string(id.trim())?;
+    let pinned = is_pinned.map(|value| {
+        format!("\npinned: {}", if value { "true" } else { "false" })
+    });
 
     Ok(format!(
-        "{delimiter}\npinned: {}\ntitle: {title}\nid: {id}{note_type}{status}\n{close_delimiter}\n{}",
-        if input.is_pinned { "true" } else { "false" },
-        input.content,
+        "{delimiter}{pinned}\ntitle: {title}\nid: {id}{note_type}{status}\n{close_delimiter}\n{content}",
+        pinned = pinned.unwrap_or_default(),
         note_type = format!(
             "\ntype: {}",
-            stringify_yaml_string(&input.note_type).unwrap_or_else(|_| "\"note\"".to_string())
+            stringify_yaml_string(note_type).unwrap_or_else(|_| "\"note\"".to_string())
         ),
-        status = if input.note_type == "todo" {
+        status = if note_type == "todo" {
             format!(
                 "\nstatus: {}",
-                stringify_yaml_string(input.status.as_deref().unwrap_or("open"))
+                stringify_yaml_string(status.unwrap_or("open"))
                     .unwrap_or_else(|_| "\"open\"".to_string())
             )
         } else {
             String::new()
         }
     ))
+}
+
+fn serialize_note(input: &WriteNoteInput) -> Result<String, String> {
+    serialize_entry(
+        &input.title,
+        &input.id,
+        &input.content,
+        &input.note_type,
+        input.status.as_deref(),
+        Some(input.is_pinned),
+    )
+}
+
+fn serialize_template(input: &WriteTemplateInput) -> Result<String, String> {
+    serialize_entry(
+        &input.title,
+        &input.id,
+        &input.content,
+        &input.note_type,
+        input.status.as_deref(),
+        None,
+    )
 }
 
 fn extract_summary(markdown_content: &str, max_lines: usize) -> String {
@@ -244,11 +324,14 @@ fn has_any_index_rows(conn: &Connection) -> Result<bool, String> {
     Ok(count > 0)
 }
 
-pub fn storage_initialize(notes_root: &Path, index_db_path: &Path) -> Result<StorageInitResult, String> {
+pub fn storage_initialize(
+    notes_root: &Path,
+    index_db_path: &Path,
+) -> Result<StorageInitResult, String> {
     let data_dir = notes_root
         .parent()
         .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
-    ensure_storage_dirs(data_dir, notes_root)?;
+    ensure_storage_dirs(data_dir)?;
     let conn = open_index_db(index_db_path)?;
     let needs_rebuild = !has_any_index_rows(&conn)?;
     Ok(StorageInitResult {
@@ -258,7 +341,7 @@ pub fn storage_initialize(notes_root: &Path, index_db_path: &Path) -> Result<Sto
 }
 
 pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>, String> {
-    let path = note_path_for_id(notes_root, &id)?;
+    let path = path_for_id(notes_root, &id)?;
     if !path.exists() {
         return Ok(None);
     }
@@ -279,15 +362,15 @@ pub fn write_note(notes_root: &Path, input: WriteNoteInput) -> Result<i64, Strin
     let data_dir = notes_root
         .parent()
         .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
-    ensure_storage_dirs(data_dir, notes_root)?;
-    let path = note_path_for_id(notes_root, &input.id)?;
+    ensure_storage_dirs(data_dir)?;
+    let path = path_for_id(notes_root, &input.id)?;
     let markdown = serialize_note(&input)?;
     fs::write(&path, markdown).map_err(|e| format!("failed to write note: {e}"))?;
     Ok(file_mtime_ms(&path))
 }
 
 pub fn delete_note(notes_root: &Path, id: String) -> Result<bool, String> {
-    let path = note_path_for_id(notes_root, &id)?;
+    let path = path_for_id(notes_root, &id)?;
     if !path.exists() {
         return Ok(false);
     }
@@ -295,11 +378,91 @@ pub fn delete_note(notes_root: &Path, id: String) -> Result<bool, String> {
     Ok(true)
 }
 
+fn read_entry<T, FParse, FBuild>(
+    root: &Path,
+    id: String,
+    path_for_id: fn(&Path, &str) -> Result<PathBuf, String>,
+    parse: FParse,
+    build: FBuild,
+) -> Result<Option<T>, String>
+where
+    FParse: Fn(&str) -> (String, String, Option<String>, String),
+    FBuild: Fn(String, String, String, i64, String, Option<String>) -> T,
+{
+    let path = path_for_id(root, &id)?;
+    if !path.exists() {
+        return Ok(None);
+    }
+    let markdown = fs::read_to_string(&path).map_err(|e| format!("failed to read entry: {e}"))?;
+    let (title, note_type, status, content) = parse(&markdown);
+    Ok(Some(build(
+        id,
+        title,
+        content,
+        file_mtime_ms(&path),
+        note_type,
+        status,
+    )))
+}
+
+fn write_entry(
+    root: &Path,
+    id: &str,
+    markdown: String,
+    path_for_id: fn(&Path, &str) -> Result<PathBuf, String>,
+) -> Result<i64, String> {
+    let path = path_for_id(root, id)?;
+    fs::write(&path, markdown).map_err(|e| format!("failed to write entry: {e}"))?;
+    Ok(file_mtime_ms(&path))
+}
+
+pub fn read_template(
+    templates_root: &Path,
+    id: String,
+) -> Result<Option<ReadTemplateResult>, String> {
+    read_entry(
+        templates_root,
+        id,
+        path_for_id,
+        parse_template_frontmatter,
+        |id, title, content, last_updated, note_type, status| ReadTemplateResult {
+            id,
+            title,
+            content,
+            is_pinned: false,
+            last_updated,
+            note_type,
+            status,
+        },
+    )
+}
+
+pub fn write_template(templates_root: &Path, input: WriteTemplateInput) -> Result<i64, String> {
+    let notes_root = templates_root
+        .parent()
+        .ok_or_else(|| "templates root is missing notes root parent".to_string())?;
+    let data_dir = notes_root
+        .parent()
+        .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
+    ensure_storage_dirs(data_dir)?;
+    let markdown = serialize_template(&input)?;
+    write_entry(templates_root, &input.id, markdown, path_for_id)
+}
+
+pub fn delete_template(templates_root: &Path, id: String) -> Result<bool, String> {
+    let path = path_for_id(templates_root, &id)?;
+    if !path.exists() {
+        return Ok(false);
+    }
+    fs::remove_file(path).map_err(|e| format!("failed to delete template: {e}"))?;
+    Ok(true)
+}
+
 pub fn list_note_files(notes_root: &Path) -> Result<Vec<NoteFileEntry>, String> {
     let data_dir = notes_root
         .parent()
         .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
-    ensure_storage_dirs(data_dir, notes_root)?;
+    ensure_storage_dirs(data_dir)?;
     let mut out = Vec::new();
     let entries =
         fs::read_dir(notes_root).map_err(|e| format!("failed to list notes dir: {e}"))?;
@@ -321,8 +484,45 @@ pub fn list_note_files(notes_root: &Path) -> Result<Vec<NoteFileEntry>, String> 
     Ok(out)
 }
 
+pub fn list_templates(templates_root: &Path) -> Result<Vec<ReadTemplateResult>, String> {
+    let notes_root = templates_root
+        .parent()
+        .ok_or_else(|| "templates root is missing notes root parent".to_string())?;
+    let data_dir = notes_root
+        .parent()
+        .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
+    ensure_storage_dirs(data_dir)?;
+    let mut out = Vec::new();
+    let entries =
+        fs::read_dir(templates_root).map_err(|e| format!("failed to list templates dir: {e}"))?;
+    for entry_result in entries {
+        let entry = entry_result.map_err(|e| format!("failed to read dir entry: {e}"))?;
+        let path = entry.path();
+        if path.extension().and_then(|x| x.to_str()) != Some("md") {
+            continue;
+        }
+        let Some(stem) = path.file_stem().and_then(|x| x.to_str()) else {
+            continue;
+        };
+        let markdown = fs::read_to_string(&path)
+            .map_err(|e| format!("failed to read template markdown: {e}"))?;
+        let (title, note_type, status, content) = parse_template_frontmatter(&markdown);
+        out.push(ReadTemplateResult {
+            id: stem.to_string(),
+            title,
+            content,
+            is_pinned: false,
+            last_updated: file_mtime_ms(&path),
+            note_type,
+            status,
+        });
+    }
+    out.sort_by(|a, b| b.last_updated.cmp(&a.last_updated));
+    Ok(out)
+}
+
 pub fn stat_note(notes_root: &Path, id: String) -> Result<Option<i64>, String> {
-    let path = note_path_for_id(notes_root, &id)?;
+    let path = path_for_id(notes_root, &id)?;
     if !path.exists() {
         return Ok(None);
     }
@@ -492,7 +692,7 @@ pub fn index_rebuild_from_disk(
     let data_dir = notes_root
         .parent()
         .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
-    ensure_storage_dirs(data_dir, notes_root)?;
+    ensure_storage_dirs(data_dir)?;
     let conn = open_index_db(index_db_path)?;
     let tx = conn
         .unchecked_transaction()
@@ -561,7 +761,10 @@ pub fn index_rebuild_from_disk(
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_frontmatter, serialize_note, WriteNoteInput};
+    use super::{
+        parse_frontmatter, parse_template_frontmatter, serialize_note, serialize_template,
+        WriteNoteInput, WriteTemplateInput,
+    };
 
     #[test]
     fn parse_frontmatter_unescapes_quoted_titles() {
@@ -618,5 +821,35 @@ mod tests {
         assert_eq!(status.as_deref(), Some("open"));
         assert_eq!(content, "# Heading\n- item");
         assert!(markdown.contains("\nid: \"note-1\"\n"));
+    }
+
+    #[test]
+    fn parse_template_frontmatter_reads_template_metadata() {
+        let markdown = "---\ntitle: \"Meeting\"\nid: \"template-1\"\ntype: \"todo\"\nstatus: \"doing\"\n---\n- agenda";
+        let (title, note_type, status, content) = parse_template_frontmatter(markdown);
+
+        assert_eq!(title, "Meeting");
+        assert_eq!(note_type, "todo");
+        assert_eq!(status.as_deref(), Some("doing"));
+        assert_eq!(content, "- agenda");
+    }
+
+    #[test]
+    fn serialize_template_writes_frontmatter_and_body() {
+        let markdown = serialize_template(&WriteTemplateInput {
+            id: "template-1".to_string(),
+            title: "Checklist".to_string(),
+            content: "- [ ] item".to_string(),
+            note_type: "todo".to_string(),
+            status: Some("open".to_string()),
+        })
+        .expect("template should serialize");
+
+        let (title, note_type, status, content) = parse_template_frontmatter(&markdown);
+        assert_eq!(title, "Checklist");
+        assert_eq!(note_type, "todo");
+        assert_eq!(status.as_deref(), Some("open"));
+        assert_eq!(content, "- [ ] item");
+        assert!(markdown.contains("\nid: \"template-1\"\n"));
     }
 }

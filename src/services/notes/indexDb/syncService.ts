@@ -1,4 +1,5 @@
 import { mapWithConcurrency } from "./asyncUtils";
+import { isIndexedNoteMarkdownPath } from "@/services/notes/templatePaths";
 import { getNotesIndexDb } from "./db";
 import { mapMarkdownPathToSqlItem } from "./mapper";
 import { deleteBatch, upsertBatch } from "./repository";
@@ -21,11 +22,11 @@ export async function syncChanges(
 	const markdownPaths = [
 		...changedPaths.added,
 		...changedPaths.modified,
-	].filter((path) => path.endsWith(".md"));
+	].filter(isIndexedNoteMarkdownPath);
 	const { items: upsertItems, readParseMs } =
 		await collectUpserts(markdownPaths);
 	const deleteIds = changedPaths.deleted
-		.filter((path) => path.endsWith(".md"))
+		.filter(isIndexedNoteMarkdownPath)
 		.map((path) => path.replace(/\.md$/, ""));
 
 	const sqlStart = performance.now();

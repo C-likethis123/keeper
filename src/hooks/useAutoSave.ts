@@ -1,5 +1,5 @@
 import type { SaveStatus } from "@/components/SaveIndicator";
-import { NoteService } from "@/services/notes/noteService";
+import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useStorageStore } from "@/stores/storageStore";
@@ -18,6 +18,8 @@ type AutoSaveInput = {
 	isPinned: boolean;
 	noteType: Note["noteType"];
 	status?: Note["status"];
+	initialNoteType?: Note["noteType"];
+	onPersisted?: (noteType: Note["noteType"]) => void;
 };
 
 export function useAutoSave({
@@ -27,6 +29,8 @@ export function useAutoSave({
 	isPinned,
 	noteType,
 	status: noteStatus,
+	initialNoteType,
+	onPersisted,
 }: AutoSaveInput) {
 	const canWrite = useStorageStore((s) => s.capabilities.canWrite);
 	const getContentForVersion = useEditorState((s) => s.getContentForVersion);
@@ -65,12 +69,20 @@ export function useAutoSave({
 				content: initialContent,
 				isPinned,
 				lastUpdated: Date.now(),
-				noteType,
+				noteType: initialNoteType ?? noteType,
 				status: noteStatus,
 			};
 			setStatus("idle");
 		}
-	}, [id, title, initialContent, isPinned, noteType, noteStatus]);
+	}, [
+		id,
+		title,
+		initialContent,
+		isPinned,
+		noteType,
+		noteStatus,
+		initialNoteType,
+	]);
 
 	useEffect(() => {
 		let lastDocumentVersion = useEditorState.getState().document.version;
@@ -181,7 +193,7 @@ export function useAutoSave({
 						});
 					}
 					try {
-						await NoteService.saveNote({
+						await persistEditorEntry({
 							id,
 							title: title.trim(),
 							content: currentContent,
@@ -189,6 +201,7 @@ export function useAutoSave({
 							lastUpdated: Date.now(),
 							noteType,
 							status,
+							previousNoteType: previousNoteType,
 						});
 					} catch {
 						if (AUTO_SAVE_PROFILE) {
@@ -217,6 +230,7 @@ export function useAutoSave({
 						noteType,
 						status,
 					};
+					onPersisted?.(noteType);
 					isSavingRef.current = false;
 					setStatus("saved");
 					statusTimeoutRef.current = setTimeout(() => {
@@ -247,7 +261,7 @@ export function useAutoSave({
 				intervalRef.current = null;
 			}
 		};
-	}, [canWrite, getContentForVersion]);
+	}, [canWrite, getContentForVersion, onPersisted]);
 
 	return { status };
 }

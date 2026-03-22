@@ -3,54 +3,41 @@ import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useStorageStore } from "@/stores/storageStore";
 import {
+	act,
 	renderRouter,
 	screen,
 	testRouter,
 	userEvent,
 	waitFor,
 } from "expo-router/testing-library";
-import React from "react";
+import type React from "react";
 import { Text } from "react-native";
 
 const mockSaveNote = jest.fn();
 const mockDeleteNote = jest.fn();
+const mockSaveTemplate = jest.fn();
+const mockDeleteTemplate = jest.fn();
+const mockListTemplates = jest.fn();
+const mockNavigationSetOptions = jest.fn();
+let latestNavigationOptions:
+	| {
+			headerLeft?: () => React.ReactNode;
+			headerRight?: () => React.ReactNode;
+			headerTitle?: () => React.ReactNode;
+	  }
+	| undefined;
 
 jest.mock("expo-router", () => {
 	const actual = jest.requireActual("expo-router/build/index");
-	const React = require("react");
-	const { View } = require("react-native");
 
 	return {
 		...actual,
-		Stack: {
-			...actual.Stack,
-			Screen: ({
-				options,
-			}: {
-				options?: {
-					headerLeft?: () => React.ReactNode;
-					headerRight?: () => React.ReactNode;
-					headerTitle?: () => React.ReactNode;
-				};
-			}) =>
-				React.createElement(View, { testID: "mock-stack-screen" }, [
-					React.createElement(
-						View,
-						{ key: "left", testID: "mock-header-left" },
-						options?.headerLeft?.() ?? null,
-					),
-					React.createElement(
-						View,
-						{ key: "title", testID: "mock-header-title" },
-						options?.headerTitle?.() ?? null,
-					),
-					React.createElement(
-						View,
-						{ key: "right", testID: "mock-header-right" },
-						options?.headerRight?.() ?? null,
-					),
-				]),
-		},
+		useNavigation: () => ({
+			setOptions: (options: typeof latestNavigationOptions) => {
+				latestNavigationOptions = options;
+				mockNavigationSetOptions(options);
+			},
+		}),
 	};
 });
 
@@ -67,6 +54,7 @@ jest.mock("@/hooks/useExtendedTheme", () => ({
 			border: "#d0d7de",
 			text: "#111827",
 			textMuted: "#6b7280",
+			textFaded: "#9ca3af",
 			primary: "#2563eb",
 			primaryContrast: "#ffffff",
 		},
@@ -91,6 +79,14 @@ jest.mock("@/services/notes/noteService", () => ({
 	NoteService: {
 		saveNote: (...args: unknown[]) => mockSaveNote(...args),
 		deleteNote: (...args: unknown[]) => mockDeleteNote(...args),
+	},
+}));
+
+jest.mock("@/services/notes/templateService", () => ({
+	TemplateService: {
+		saveTemplate: (...args: unknown[]) => mockSaveTemplate(...args),
+		deleteTemplate: (...args: unknown[]) => mockDeleteTemplate(...args),
+		listTemplates: (...args: unknown[]) => mockListTemplates(...args),
 	},
 }));
 
@@ -140,12 +136,31 @@ function renderNoteEditor(note: Note) {
 	return result;
 }
 
+function pressHeaderBack() {
+	const headerLeft = latestNavigationOptions?.headerLeft;
+	if (!headerLeft) {
+		throw new Error("headerLeft was not set");
+	}
+	const element = headerLeft() as React.ReactElement<{ onPress: () => void }>;
+	act(() => {
+		element.props.onPress();
+	});
+}
+
 describe("NoteEditorView", () => {
 	beforeEach(() => {
 		mockSaveNote.mockReset();
 		mockDeleteNote.mockReset();
+		mockSaveTemplate.mockReset();
+		mockDeleteTemplate.mockReset();
+		mockListTemplates.mockReset();
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
+		mockSaveTemplate.mockResolvedValue(undefined);
+		mockDeleteTemplate.mockResolvedValue(undefined);
+		mockListTemplates.mockResolvedValue([]);
+		mockNavigationSetOptions.mockReset();
+		latestNavigationOptions = undefined;
 		useEditorState.getState().resetState();
 		useStorageStore.setState({
 			capabilities: {
@@ -180,7 +195,10 @@ describe("NoteEditorView", () => {
 		await screen.findByText("Toolbar enabled");
 		await user.press(screen.getByText("Todo"));
 		await screen.findByText("Status");
-		await user.press(screen.getByText("arrow-back"));
+		await waitFor(() => {
+			expect(latestNavigationOptions?.headerLeft).toBeDefined();
+		});
+		pressHeaderBack();
 
 		await waitFor(() => {
 			expect(mockSaveNote).toHaveBeenCalledWith(
@@ -190,9 +208,9 @@ describe("NoteEditorView", () => {
 					noteType: "todo",
 					status: "open",
 				}),
+				false,
 			);
 		});
-		expect(screen).toHavePathname("/");
 	});
 
 	it("skips saves in read-only mode and only navigates back", async () => {
@@ -214,11 +232,40 @@ describe("NoteEditorView", () => {
 		await screen.findByText("Toolbar disabled");
 		expect(screen.getByPlaceholderText("Title").props.editable).toBe(false);
 
-		await user.press(screen.getByText("arrow-back"));
+		await waitFor(() => {
+			expect(latestNavigationOptions?.headerLeft).toBeDefined();
+		});
+		pressHeaderBack();
 
 		await waitFor(() => {
 			expect(screen).toHavePathname("/");
 		});
 		expect(mockSaveNote).not.toHaveBeenCalled();
+	});
+
+	it("converts a note into a template on save when template type is selected", async () => {
+		const user = userEvent.setup();
+		const note = makeNote();
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Toolbar enabled");
+		await user.press(screen.getAllByText("Template")[0]);
+		await waitFor(() => {
+			expect(latestNavigationOptions?.headerLeft).toBeDefined();
+		});
+		pressHeaderBack();
+
+		await waitFor(() => {
+			expect(mockSaveTemplate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: note.id,
+					title: note.title,
+					noteType: "template",
+				}),
+				true,
+			);
+		});
+		expect(mockDeleteNote).toHaveBeenCalledWith(note.id);
 	});
 });

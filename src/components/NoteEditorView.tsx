@@ -3,8 +3,10 @@ import type { EditorState } from "@/components/editor/core/EditorState";
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
-import type { Note } from "@/services/notes/types";
+import { TemplateService } from "@/services/notes/templateService";
+import type { Note, NoteTemplate } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
@@ -19,6 +21,9 @@ import React, {
 	useState,
 } from "react";
 import {
+	Alert,
+	Modal,
+	ScrollView,
 	StyleSheet,
 	Text,
 	TextInput,
@@ -45,6 +50,7 @@ const NOTE_TYPE_OPTIONS = [
 	{ label: "Journal", value: "journal" },
 	{ label: "Resource", value: "resource" },
 	{ label: "Todo", value: "todo" },
+	{ label: "Template", value: "template" },
 ] as const;
 
 const TODO_STATUS_OPTIONS = [
@@ -65,6 +71,9 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const [todoStatus, setTodoStatus] = useState<Note["status"]>(
 		note.noteType === "todo" ? (note.status ?? "open") : undefined,
 	);
+	const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
+	const [templates, setTemplates] = useState<NoteTemplate[]>([]);
+	const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 	const capabilities = useStorageStore((s) => s.capabilities);
 	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
@@ -75,6 +84,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		todoStatus,
 	});
 	const latestCapabilitiesRef = useRef(capabilities);
+	const lastPersistedTypeRef = useRef<Note["noteType"]>(note.noteType);
 
 	latestDraftRef.current = {
 		title,
@@ -104,17 +114,33 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		[id],
 	);
 
+	const persistCurrentEntry = useCallback(
+		async (overrides?: Partial<Note>) => {
+			const payload = buildCurrentNotePayload(overrides);
+			await persistEditorEntry({
+				...payload,
+				previousNoteType: lastPersistedTypeRef.current,
+			});
+			lastPersistedTypeRef.current = payload.noteType;
+			return payload;
+		},
+		[buildCurrentNotePayload],
+	);
+
 	const handleTogglePin = useCallback(async () => {
 		const currentCapabilities = latestCapabilitiesRef.current;
 		if (!currentCapabilities.canWrite) {
 			showToast(currentCapabilities.reason ?? "Read-only mode");
 			return;
 		}
+		if (latestDraftRef.current.noteType === "template") {
+			showToast("Templates can't be pinned");
+			return;
+		}
 		const nextIsPinned = !latestDraftRef.current.isPinned;
-		const newNote = buildCurrentNotePayload({ isPinned: nextIsPinned });
-		await NoteService.saveNote(newNote);
+		await persistCurrentEntry({ isPinned: nextIsPinned });
 		setIsPinned(nextIsPinned);
-	}, [buildCurrentNotePayload, showToast]);
+	}, [persistCurrentEntry, showToast]);
 
 	const handleBackPress = useCallback(async () => {
 		const currentCapabilities = latestCapabilitiesRef.current;
@@ -122,9 +148,9 @@ export default function NoteEditorView({ note }: { note: Note }) {
 			router.back();
 			return;
 		}
-		await NoteService.saveNote(buildCurrentNotePayload());
+		await persistCurrentEntry();
 		router.back();
-	}, [buildCurrentNotePayload, router]);
+	}, [persistCurrentEntry, router]);
 
 	const handleDeletePress = useCallback(async () => {
 		const currentCapabilities = latestCapabilitiesRef.current;
@@ -132,9 +158,60 @@ export default function NoteEditorView({ note }: { note: Note }) {
 			showToast(currentCapabilities.reason ?? "Read-only mode");
 			return;
 		}
-		await NoteService.deleteNote(id);
+		if (latestDraftRef.current.noteType === "template") {
+			await TemplateService.deleteTemplate(id);
+		} else {
+			await NoteService.deleteNote(id);
+		}
 		router.back();
 	}, [id, router, showToast]);
+
+	const openTemplateModal = useCallback(async () => {
+		if (!capabilities.canWrite) {
+			showToast(capabilities.reason ?? "Read-only mode");
+			return;
+		}
+		setIsTemplateModalVisible(true);
+		setIsLoadingTemplates(true);
+		try {
+			setTemplates(await TemplateService.listTemplates());
+		} catch (error) {
+			console.warn("Failed to load templates:", error);
+			showToast("Failed to load templates");
+		} finally {
+			setIsLoadingTemplates(false);
+		}
+	}, [capabilities.canWrite, capabilities.reason, showToast]);
+
+	const applyTemplate = useCallback(
+		(template: NoteTemplate) => {
+			const currentContent = useEditorState.getState().getContent();
+			const replaceBody = () => {
+				loadMarkdown(template.content);
+				setIsTemplateModalVisible(false);
+				showToast(`Applied template "${template.title || "Untitled"}"`);
+			};
+
+			if (currentContent.trim().length > 0) {
+				Alert.alert(
+					"Replace note body?",
+					`Use "${template.title || "Untitled"}" and replace the current body?`,
+					[
+						{ text: "Cancel", style: "cancel" },
+						{
+							text: "Replace",
+							style: "destructive",
+							onPress: replaceBody,
+						},
+					],
+				);
+				return;
+			}
+
+			replaceBody();
+		},
+		[loadMarkdown, showToast],
+	);
 
 	const { status } = useAutoSave({
 		...note,
@@ -142,6 +219,10 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		isPinned,
 		noteType,
 		status: noteType === "todo" ? (todoStatus ?? "open") : undefined,
+		initialNoteType: note.noteType,
+		onPersisted: (savedType) => {
+			lastPersistedTypeRef.current = savedType;
+		},
 	});
 
 	useFocusEffect(
@@ -149,7 +230,10 @@ export default function NoteEditorView({ note }: { note: Note }) {
 			setIsPinned(!!note.isPinned);
 			setTitle(note.title);
 			setNoteType(note.noteType);
-			setTodoStatus(note.noteType === "todo" ? (note.status ?? "open") : undefined);
+			setTodoStatus(
+				note.noteType === "todo" ? (note.status ?? "open") : undefined,
+			);
+			lastPersistedTypeRef.current = note.noteType;
 			loadMarkdown(note.content);
 		}, [loadMarkdown, note]),
 	);
@@ -178,12 +262,18 @@ export default function NoteEditorView({ note }: { note: Note }) {
 							void handleTogglePin();
 						}}
 						style={{ marginRight: 8 }}
-						disabled={!capabilities.canWrite}
+						disabled={!capabilities.canWrite || noteType === "template"}
 					>
 						<MaterialIcons
 							name="push-pin"
 							size={24}
-							color={isPinned ? theme.colors.primary : theme.colors.textMuted}
+							color={
+								noteType === "template"
+									? theme.colors.textFaded
+									: isPinned
+										? theme.colors.primary
+										: theme.colors.textMuted
+							}
 						/>
 					</TouchableOpacity>
 					<TouchableOpacity
@@ -211,8 +301,10 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		theme.colors.text,
 		theme.colors.primary,
 		theme.colors.textMuted,
+		theme.colors.textFaded,
 		capabilities.canWrite,
 		isPinned,
+		noteType,
 		status,
 	]);
 
@@ -250,6 +342,9 @@ export default function NoteEditorView({ note }: { note: Note }) {
 											} else {
 												setTodoStatus(undefined);
 											}
+											if (option.value === "template") {
+												setIsPinned(false);
+											}
 										}}
 										disabled={!capabilities.canWrite}
 									>
@@ -266,6 +361,29 @@ export default function NoteEditorView({ note }: { note: Note }) {
 							})}
 						</View>
 					</View>
+					{noteType !== "template" ? (
+						<View style={styles.metadataGroup}>
+							<Text style={styles.metadataLabel}>Template</Text>
+							<View style={styles.optionRow}>
+								<TouchableOpacity
+									style={styles.secondaryActionChip}
+									onPress={() => {
+										void openTemplateModal();
+									}}
+									disabled={!capabilities.canWrite}
+								>
+									<MaterialIcons
+										name="content-copy"
+										size={16}
+										color={theme.colors.text}
+									/>
+									<Text style={styles.secondaryActionChipText}>
+										Insert from template
+									</Text>
+								</TouchableOpacity>
+							</View>
+						</View>
+					) : null}
 					{noteType === "todo" ? (
 						<View style={styles.metadataGroup}>
 							<Text style={styles.metadataLabel}>Status</Text>
@@ -308,6 +426,63 @@ export default function NoteEditorView({ note }: { note: Note }) {
 					</EditorScrollProvider>
 				</Suspense>
 			</View>
+
+			<Modal
+				visible={isTemplateModalVisible}
+				animationType="slide"
+				transparent
+				onRequestClose={() => {
+					setIsTemplateModalVisible(false);
+				}}
+			>
+				<View style={styles.modalBackdrop}>
+					<View style={styles.modalCard}>
+						<View style={styles.modalHeader}>
+							<Text style={styles.modalTitle}>Choose template</Text>
+							<TouchableOpacity
+								onPress={() => {
+									setIsTemplateModalVisible(false);
+								}}
+							>
+								<MaterialIcons
+									name="close"
+									size={22}
+									color={theme.colors.text}
+								/>
+							</TouchableOpacity>
+						</View>
+						{isLoadingTemplates ? (
+							<Loader />
+						) : templates.length === 0 ? (
+							<Text style={styles.emptyTemplatesText}>
+								No templates yet. Change a note type to Template to create one.
+							</Text>
+						) : (
+							<ScrollView contentContainerStyle={styles.templateList}>
+								{templates.map((template) => (
+									<TouchableOpacity
+										key={template.id}
+										style={styles.templateCard}
+										onPress={() => {
+											applyTemplate(template);
+										}}
+									>
+										<Text style={styles.templateCardTitle}>
+											{template.title || "Untitled template"}
+										</Text>
+										<Text
+											style={styles.templateCardContent}
+											numberOfLines={4}
+										>
+											{template.content || "Empty template"}
+										</Text>
+									</TouchableOpacity>
+								))}
+							</ScrollView>
+						)}
+					</View>
+				</View>
+			</Modal>
 		</View>
 	);
 }
@@ -322,14 +497,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			padding: 16,
 			paddingBottom: 16 + TOOLBAR_HEIGHT,
 			backgroundColor: theme.colors.background,
-		},
-		toolbarWrapper: {
-			position: "absolute",
-			left: 0,
-			right: 0,
-			backgroundColor: theme.colors.background,
-			borderTopWidth: 1,
-			borderTopColor: theme.colors.border,
 		},
 		titleInput: {
 			fontSize: 20,
@@ -377,6 +544,73 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		optionChipTextSelected: {
 			color: theme.colors.primaryContrast,
+		},
+		secondaryActionChip: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 6,
+			paddingHorizontal: 12,
+			paddingVertical: 8,
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+			backgroundColor: theme.colors.card,
+		},
+		secondaryActionChipText: {
+			fontSize: 13,
+			fontWeight: "600",
+			color: theme.colors.text,
+		},
+		modalBackdrop: {
+			flex: 1,
+			backgroundColor: "rgba(0, 0, 0, 0.35)",
+			justifyContent: "center",
+			padding: 20,
+		},
+		modalCard: {
+			maxHeight: "80%",
+			borderRadius: 16,
+			padding: 16,
+			backgroundColor: theme.colors.background,
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+		},
+		modalHeader: {
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "space-between",
+			marginBottom: 12,
+		},
+		modalTitle: {
+			fontSize: 18,
+			fontWeight: "700",
+			color: theme.colors.text,
+		},
+		emptyTemplatesText: {
+			fontSize: 14,
+			lineHeight: 20,
+			color: theme.colors.textMuted,
+		},
+		templateList: {
+			gap: 10,
+		},
+		templateCard: {
+			borderRadius: 12,
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+			backgroundColor: theme.colors.card,
+			padding: 12,
+			gap: 6,
+		},
+		templateCardTitle: {
+			fontSize: 15,
+			fontWeight: "600",
+			color: theme.colors.text,
+		},
+		templateCardContent: {
+			fontSize: 13,
+			lineHeight: 18,
+			color: theme.colors.textMuted,
 		},
 	});
 }

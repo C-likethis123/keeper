@@ -1,4 +1,5 @@
 import type { GitChangedPaths } from "@/services/git/engines/GitEngine";
+import { isIndexedNoteMarkdownPath } from "@/services/notes/templatePaths";
 import type { NoteListFilters } from "@/services/notes/types";
 import { getRuntimeStorageBackend } from "@/services/storage/runtime";
 import { getStorageEngine } from "@/services/storage/storageEngine";
@@ -27,16 +28,16 @@ export interface NotesIndexSyncResult {
 
 export class NotesIndexService {
 	static instance = new NotesIndexService();
+	private static readonly storageEngine = getStorageEngine();
 
 	private constructor() {}
 
-	// REVIEW: can we cache getStorageEngine() as a instance level method?
 	static async upsertNote(item: NoteIndexItem): Promise<void> {
-		await getStorageEngine().indexUpsert(item);
+		await NotesIndexService.storageEngine.indexUpsert(item);
 	}
 
 	static async deleteNote(noteId: string): Promise<void> {
-		await getStorageEngine().indexDelete(noteId);
+		await NotesIndexService.storageEngine.indexDelete(noteId);
 	}
 
 	static async listNotes(
@@ -45,11 +46,16 @@ export class NotesIndexService {
 		offset?: number,
 		filters?: NoteListFilters,
 	): Promise<ListNotesResult> {
-		return getStorageEngine().indexList(query, limit, offset, filters);
+		return NotesIndexService.storageEngine.indexList(
+			query,
+			limit,
+			offset,
+			filters,
+		);
 	}
 
 	static async rebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
-		return getStorageEngine().indexRebuildFromDisk();
+		return NotesIndexService.storageEngine.indexRebuildFromDisk();
 	}
 
 	static async syncChangedPaths(
@@ -63,7 +69,7 @@ export class NotesIndexService {
 			...changedPaths.added,
 			...changedPaths.modified,
 			...changedPaths.deleted,
-		].filter((path) => path.endsWith(".md")).length;
+		].filter(isIndexedNoteMarkdownPath).length;
 		if (getRuntimeStorageBackend() === "mobile-native") {
 			return {
 				mode: "incremental",
