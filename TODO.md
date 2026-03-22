@@ -10,7 +10,7 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **Phase 4**: Editor core test foundation complete with passing `Document`, `Transaction`, and `History` coverage under `vitest`
 - **Phase 5**: Test expansion complete for the first lightweight slice; `EditorState`, selected `editorStore` flows, `frontmatter`, and `startupSteps` now have `vitest` coverage
 - **Phase 6**: In progress; `jest-expo` + React Native Testing Library are in place, with coverage for `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, and focused `NoteGrid` load-more behavior
-- **Next keyboard work**: better code-block vertical navigation, cursor selection fixes, code-block brace auto-completion fixes, app-level shortcuts
+- **Next keyboard work**: better code-block vertical navigation, cursor selection fixes, code-block brace auto-completion fixes; app-level shortcuts (`Cmd+K/N/S`) shipped — quick-switcher overlay for `Cmd+P` still unbuilt
 - **Critical issues**: No currently confirmed P1 items; desktop hydration was fixed in the storage-init follow-up
 - **Wikilinks**: exact-title resolution and create-from-`[[...]]` helpers are implemented; next checks are clickable desktop/web validation, UX polish, and device validation
 - **Native bridge**: Android and iOS now use the local Expo module in `modules/keeper-git`

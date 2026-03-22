@@ -76,17 +76,23 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
 - `Cmd/Ctrl+Enter` toggle checkbox state for the focused checkbox block on web/desktop
 - Cross-block `ArrowUp` / `ArrowDown` navigation for paragraph, heading, list, math, and image blocks
 
+**Also shipped (app-level shortcuts)**:
+
+- `Cmd/Ctrl+K` / `Cmd/Ctrl+P` — Focus search (both chords map to `focusSearch`)
+- `Cmd/Ctrl+N` — New note
+- `Cmd/Ctrl+S` — Force save / flush autosave
+- Lightweight `appEvents` pub/sub system for cross-route shortcut dispatch
+- `appShortcutRegistry` + `useAppKeyboardShortcuts` hook wired into the app layout and home/editor routes
+
+**Key files**: `src/hooks/appShortcutRegistry.ts`, `src/hooks/useAppKeyboardShortcuts.ts`, `src/services/appEvents.ts`, `src/app/_layout.tsx`, `src/app/index.tsx`, `src/components/NoteEditorView.tsx`
+
 **What remains next for keyboard work**:
 
 - **Tier 2: Common block-editor shortcuts**
   - Better vertical caret preservation in complex blocks such as code blocks
   - Fix cursor selection stability during editor navigation and editing flows
   - Fix brace auto-completion behavior in code blocks
-- **Tier 4: App-level productivity shortcuts**
-  - `Cmd/Ctrl+K` — Focus search
-  - `Cmd/Ctrl+N` — New note
-  - `Cmd/Ctrl+P` — Quick switcher
-  - `Cmd/Ctrl+S` — Force save / flush autosave
+- **Quick switcher**: `Cmd/Ctrl+P` currently maps to focus search; a dedicated quick-switcher overlay (fuzzy note search) remains unbuilt
 
 **Recommendation**:
 
@@ -232,6 +238,9 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, a
 
 **Status**: On hold
 **Issue**: Typing lag is still tracked in `docs/PLAN-editor-typing-lag.md`, but planning for this workstream is paused and it should not be auto-selected for new work until reprioritized.
+**Options**:
+
+1. Install the storybook plugin from Github on performance metrics, isolate the note editor view as a storybook component and track the performance
 
 ### App Updates
 
