@@ -131,4 +131,97 @@ describe("editorStore", () => {
 			createCollapsedSelection({ blockIndex: 0, offset: 5 }),
 		);
 	});
+
+	it("wraps selected text with bold markdown markers", () => {
+		useEditorState.getState().setDocument(createDocumentFromMarkdown("Alpha Beta"));
+		useEditorState.getState().setSelection({
+			anchor: { blockIndex: 0, offset: 0 },
+			focus: { blockIndex: 0, offset: 5 },
+		});
+
+		const handled = useEditorState.getState().toggleInlineStyle("**");
+
+		const state = useEditorState.getState();
+		expect(handled).toBe(true);
+		expect(state.document.blocks[0]?.content).toBe("**Alpha** Beta");
+		expect(state.selection).toEqual({
+			anchor: { blockIndex: 0, offset: 2 },
+			focus: { blockIndex: 0, offset: 7 },
+		});
+	});
+
+	it("unwraps selected text when the same inline markers already surround it", () => {
+		useEditorState.getState().setDocument(
+			createDocumentFromMarkdown("**Alpha** Beta"),
+		);
+		useEditorState.getState().setSelection({
+			anchor: { blockIndex: 0, offset: 2 },
+			focus: { blockIndex: 0, offset: 7 },
+		});
+
+		const handled = useEditorState.getState().toggleInlineStyle("**");
+
+		const state = useEditorState.getState();
+		expect(handled).toBe(true);
+		expect(state.document.blocks[0]?.content).toBe("Alpha Beta");
+		expect(state.selection).toEqual({
+			anchor: { blockIndex: 0, offset: 0 },
+			focus: { blockIndex: 0, offset: 5 },
+		});
+	});
+
+	it("inserts paired markers for collapsed inline formatting shortcuts", () => {
+		useEditorState.getState().setDocument(createDocumentFromMarkdown("Alpha"));
+		useEditorState.getState().setSelection(
+			createCollapsedSelection({ blockIndex: 0, offset: 3 }),
+		);
+
+		const handled = useEditorState.getState().toggleInlineStyle("*");
+
+		const state = useEditorState.getState();
+		expect(handled).toBe(true);
+		expect(state.document.blocks[0]?.content).toBe("Alp**ha");
+		expect(state.selection).toEqual(
+			createCollapsedSelection({ blockIndex: 0, offset: 4 }),
+		);
+	});
+
+	it("toggles heading shortcuts back to paragraph on repeat", () => {
+		useEditorState.getState().setDocument(createDocumentFromMarkdown("Alpha"));
+		useEditorState.getState().setSelection(
+			createCollapsedSelection({ blockIndex: 0, offset: 5 }),
+		);
+
+		expect(
+			useEditorState.getState().toggleCurrentBlockType(BlockType.heading2),
+		).toBe(true);
+		expect(useEditorState.getState().document.blocks[0]?.type).toBe(
+			BlockType.heading2,
+		);
+
+		expect(
+			useEditorState.getState().toggleCurrentBlockType(BlockType.heading2),
+		).toBe(true);
+		expect(useEditorState.getState().document.blocks[0]?.type).toBe(
+			BlockType.paragraph,
+		);
+	});
+
+	it("toggles list shortcuts onto the focused block", () => {
+		useEditorState.getState().setDocument(createDocumentFromMarkdown("Alpha"));
+		useEditorState.getState().setSelection(
+			createCollapsedSelection({ blockIndex: 0, offset: 5 }),
+		);
+
+		const handled = useEditorState
+			.getState()
+			.toggleCurrentBlockType(BlockType.checkboxList);
+
+		const state = useEditorState.getState();
+		expect(handled).toBe(true);
+		expect(state.document.blocks[0]?.type).toBe(BlockType.checkboxList);
+		expect(state.document.blocks[0]?.attributes).toMatchObject({
+			checked: false,
+		});
+	});
 });

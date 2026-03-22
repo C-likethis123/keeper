@@ -23,6 +23,10 @@ export function useEditorCommandContext(
 	const getHasBlockSelection = useEditorState((state) => state.getHasBlockSelection);
 	const updateBlockListLevel = useEditorState((state) => state.updateBlockListLevel);
 	const updateBlockType = useEditorState((state) => state.updateBlockType);
+	const toggleInlineStyle = useEditorState((state) => state.toggleInlineStyle);
+	const toggleCurrentBlockType = useEditorState(
+		(state) => state.toggleCurrentBlockType,
+	);
 	const toggleCheckbox = useEditorState((state) => state.toggleCheckbox);
 	const insertSoftLineBreak = useEditorState(
 		(state) => state.insertSoftLineBreak,
@@ -49,6 +53,17 @@ export function useEditorCommandContext(
 			focusBlockAt,
 			runUndo: () => undoFromStore(),
 			runRedo: () => redoFromStore(),
+			runToggleBold: () => toggleInlineStyle("**"),
+			runToggleItalic: () => toggleInlineStyle("*"),
+			runToggleHeading1: () => toggleCurrentBlockType(BlockType.heading1),
+			runToggleHeading2: () => toggleCurrentBlockType(BlockType.heading2),
+			runToggleHeading3: () => toggleCurrentBlockType(BlockType.heading3),
+			runToggleBulletList: () =>
+				toggleCurrentBlockType(BlockType.bulletList),
+			runToggleNumberedList: () =>
+				toggleCurrentBlockType(BlockType.numberedList),
+			runToggleCheckboxList: () =>
+				toggleCurrentBlockType(BlockType.checkboxList),
 			runToggleCheckbox: () => {
 				const index = getFocusedBlockIndex();
 				if (index === null) return false;
@@ -106,6 +121,8 @@ export function useEditorCommandContext(
 			redoFromStore,
 			selectAllBlocksFromStore,
 			toggleCheckbox,
+			toggleCurrentBlockType,
+			toggleInlineStyle,
 			undoFromStore,
 			updateBlockListLevel,
 			updateBlockType,

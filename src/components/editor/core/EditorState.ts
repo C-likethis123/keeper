@@ -33,7 +33,11 @@ export interface EditorState extends EditorStateSlice {
 	applyTransaction: (transaction: Transaction) => void;
 	undo: () => boolean;
 	redo: () => boolean;
-	updateBlockContent: (index: number, newContent: string, selectionOffset?: number) => void;
+	updateBlockContent: (
+		index: number,
+		newContent: string,
+		selectionOffset?: number,
+	) => void;
 	updateBlockType: (
 		index: number,
 		newType: BlockType,
@@ -41,6 +45,8 @@ export interface EditorState extends EditorStateSlice {
 	) => void;
 	updateBlockListLevel: (index: number, newLevel: number) => void;
 	toggleCheckbox: (index: number) => void;
+	toggleInlineStyle: (marker: string) => boolean;
+	toggleCurrentBlockType: (targetType: BlockType) => boolean;
 	insertSoftLineBreak: () => boolean;
 	insertBlockAfter: (index: number, block: BlockNode) => void;
 	deleteBlock: (index: number) => void;
