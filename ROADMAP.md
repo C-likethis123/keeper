@@ -92,8 +92,6 @@ A centralized keyboard shortcut system now exists for the editor instead of scat
   - Better vertical caret preservation in complex blocks such as code blocks
   - Fix cursor selection stability during editor navigation and editing flows
   - Fix brace auto-completion behavior in code blocks
-- **Quick switcher**: `Cmd/Ctrl+P` currently maps to focus search; a dedicated quick-switcher overlay (fuzzy note search) remains unbuilt
-
 **Recommendation**:
 
 - Keep editor-scoped shortcuts in the command registry
@@ -353,7 +351,6 @@ Use tabs to toggle between different views without leaving the current workspace
 iOS native support now comes from the local Expo module in `modules/keeper-git`. To build:
 
 - Dev: `npm run ios` (requires Xcode + valid signing)
-- Prod: `eas build --platform ios --profile production`
 
 Dev/prod variants use the same `APP_VARIANT` pattern as Android (`com.clikethis123.keeper.dev` vs `com.clikethis123.keeper`).
 
