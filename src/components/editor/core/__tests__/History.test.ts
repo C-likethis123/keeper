@@ -13,13 +13,15 @@ describe("History", () => {
 		history.push(transaction, original);
 		const undo = history.popUndo(original);
 		expect(undo).not.toBeNull();
+		if (!undo) {
+			throw new Error("Expected undo transaction");
+		}
 
 		const updated = transaction.operations.reduce(
 			(document, operation) => operation.apply(document),
 			original,
 		);
-		// biome-ignore lint/style/noNonNullAssertion: test assertion above guarantees presence
-		const restored = undo!.operations.reduce(
+		const restored = undo.operations.reduce(
 			(document, operation) => operation.apply(document),
 			updated,
 		);
@@ -29,10 +31,12 @@ describe("History", () => {
 
 		const redo = history.popRedo(restored);
 		expect(redo).not.toBeNull();
-		// biome-ignore lint/style/noNonNullAssertion: test assertion above guarantees presence
+		if (!redo) {
+			throw new Error("Expected redo transaction");
+		}
 		expect(
 			documentToMarkdown(
-				redo!.operations.reduce(
+				redo.operations.reduce(
 					(document, operation) => operation.apply(document),
 					restored,
 				),
