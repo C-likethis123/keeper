@@ -106,7 +106,7 @@ The first automated test slice is now in place for the immutable editor core.
 **Status**: Implemented
 **Shipped in this phase**:
 
-- Added `vitest` as the initial unit test runner for pure TypeScript modules
+- Added Jest coverage for the first pure TypeScript editor-core modules
 - Added coverage for `Document` markdown parsing, serialization, numbered-list numbering, and empty-document invariants
 - Added coverage for `Transaction` application, inverse generation, and builder metadata
 - Added coverage for `History` undo/redo behavior, transaction grouping, and undo-stack trimming
@@ -135,7 +135,7 @@ Build on the new editor-core test foundation by extending coverage into reducer/
 - Added reducer-level coverage for `EditorState` selection normalization, select-all, transaction application, and undo/redo restoration
 - Added focused `editorStore` coverage for prepared-content invalidation, block-range deletion, split/merge behavior, and reset/history cleanup
 - Added service-level coverage for notes frontmatter parsing/stringifying and startup-step rebuild/error handling
-- Added a lightweight `vitest` alias config so source modules can be exercised through their existing `@/` imports
+- Added Jest alias/config support so source modules can be exercised through their existing `@/` imports
 **Objectives**:
 
 - Add reducer-level tests for `EditorState`
@@ -150,11 +150,13 @@ Build on the new editor-core test foundation by extending coverage into reducer/
 - `src/services/notes/frontmatter.ts`
 - `src/services/startup/startupStrategies.ts`
 - `src/services/startup/startupSteps.ts`
+- `src/services/git/init/repoBootstrapper.ts`
 - `src/components/editor/core/__tests__/EditorState.test.ts`
 - `src/stores/__tests__/editorStore.test.ts`
 - `src/services/notes/__tests__/frontmatter.test.ts`
 - `src/services/startup/__tests__/startupSteps.test.ts`
-- `vitest.config.ts`
+- `src/services/git/init/__tests__/repoBootstrapper.test.ts`
+- `jest.config.js`
 
 **Follow-up**:
 
@@ -177,6 +179,7 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 - Added `NoteEditorView` coverage for note loading, todo-status defaulting on save, and read-only back-navigation behavior
 - Added focused component coverage for `NoteFiltersDropdown`
 - Added `NoteGrid` component coverage for load-more triggering and duplicate end-reached suppression
+- Added wikilink modal and overlay coverage for search, create-option behavior, keyboard submission, cancellation, and result selection
 **Objectives**:
 
 - Use `jest-expo` with React Native Testing Library for component coverage
@@ -189,7 +192,6 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 - React Native / Expo component tests should use `jest-expo` plus React Native Testing Library
 **Follow-up**:
 
-- Add a TODO to migrate the remaining `vitest` suites to `jest` over time for test-runner consistency
 - How much storage and git behavior should be mocked versus exercised through higher-level service seams
 - Add `HybridEditor` integration coverage for keyboard shortcuts, split/merge flows, block selection deletion, paragraph-space handling, and scroll/focus coordination
 - Add `EditorToolbar` coverage for formatting actions and block type changes
@@ -202,18 +204,19 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 
 ### Wikilink Follow-up
 
-The wiki link flow now covers exact-title resolution, create-on-miss behavior, and desktop/web activation helpers, but end-to-end UI validation is still incomplete.
+The wiki link flow now covers exact-title resolution, create-on-miss behavior, desktop/web activation helpers, and focused modal/overlay UI behavior, but full editor-level integration validation is still incomplete.
 
 **Status**: Partially implemented
 **Current implementation evidence**:
 
 - Added shared wiki link resolution helpers for exact-match lookup and create-if-missing note creation
 - Added unit coverage for normalization, existing-note resolution, create-on-miss behavior, and platform-specific activation rules
+- Added component coverage for modal search, create-option rendering, keyboard submission, cancellation, and overlay selection behavior
 - Editor follow-up work touched `NoteEditorView`, `HybridEditor`, and block rendering paths to support the newer activation flow
 **Next**:
 
 - Manually validate clickable wiki links on desktop, including the expected modifier-key behavior on web/Tauri
-- Add component/integration coverage for wiki link activation, overlay selection, and navigation after note creation
+- Add editor-level integration coverage for wiki link activation from rendered blocks and navigation after note creation
 - Confirm device behavior stays consistent across desktop and mobile surfaces
 
 ---
@@ -289,7 +292,7 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, a
 ### Testing Architecture
 
 **Status**: In progress
-**Current**: The project now has both `vitest` coverage for pure modules and a `jest-expo` + React Native Testing Library layer for UI/routes. Current coverage includes `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, startup-step orchestration, `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, and focused `NoteGrid` pagination behavior.
+**Current**: The project now uses Jest as the primary test runner, with `jest-expo` + React Native Testing Library covering both pure modules and UI/routes. Current coverage includes `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, `repoBootstrapper`, startup-step orchestration, `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, focused `NoteGrid` pagination behavior, and wikilink modal/overlay flows.
 **Next**:
 
 - Expand tests gradually into remaining startup/runtime seams, especially `startupStrategies`, as follow-on work rather than a prerequisite for this phase
@@ -297,7 +300,7 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, a
 
 **Current constraints**:
 
-- UI/integration coverage is still partial and split across `vitest` and `jest-expo`
+- UI/integration coverage is still partial even though the runner is now unified on Jest
 - Native/mobile behavior still needs a different strategy than pure TypeScript modules
 
 ---
