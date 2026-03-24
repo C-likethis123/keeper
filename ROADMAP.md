@@ -180,6 +180,7 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 - Added focused component coverage for `NoteFiltersDropdown`
 - Added `NoteGrid` component coverage for load-more triggering and duplicate end-reached suppression
 - Added wikilink modal and overlay coverage for search, create-option behavior, keyboard submission, cancellation, and result selection
+- Added `HybridEditor` platform coverage for rendered wikilink activation on web, iOS, and Android, including open-existing and create-on-miss navigation flows
 **Objectives**:
 
 - Use `jest-expo` with React Native Testing Library for component coverage
@@ -193,7 +194,7 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 **Follow-up**:
 
 - How much storage and git behavior should be mocked versus exercised through higher-level service seams
-- Add `HybridEditor` integration coverage for keyboard shortcuts, split/merge flows, block selection deletion, paragraph-space handling, and scroll/focus coordination
+- Expand `HybridEditor` integration coverage beyond wikilink activation into keyboard shortcuts, split/merge flows, block selection deletion, paragraph-space handling, and scroll/focus coordination
 - Add `EditorToolbar` coverage for formatting actions and block type changes
 - Add `useAutoSave` coverage for idle timing, save dedupe, error handling, and `SaveIndicator` state transitions
 - Add `useLoadNote` hook coverage for pending, failed init, note-not-found, and thrown-error paths
@@ -212,11 +213,12 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 - Added shared wiki link resolution helpers for exact-match lookup and create-if-missing note creation
 - Added unit coverage for normalization, existing-note resolution, create-on-miss behavior, and platform-specific activation rules
 - Added component coverage for modal search, create-option rendering, keyboard submission, cancellation, and overlay selection behavior
+- Added `HybridEditor` platform tests covering rendered wikilink activation, including modifier-key behavior on web and create-on-miss navigation on iOS/Android
 - Editor follow-up work touched `NoteEditorView`, `HybridEditor`, and block rendering paths to support the newer activation flow
 **Next**:
 
 - Manually validate clickable wiki links on desktop, including the expected modifier-key behavior on web/Tauri
-- Add editor-level integration coverage for wiki link activation from rendered blocks and navigation after note creation
+- Expand editor-level integration coverage beyond the current rendered-link activation tests into surrounding editing/navigation flows
 - Confirm device behavior stays consistent across desktop and mobile surfaces
 
 ---
@@ -245,8 +247,10 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 
 ### App Updates
 
-**Issue**: Expo OTA (Over-The-Air) updates not working
-**Impact**: Desktop/mobile app updates require full rebuild
+**Status**: On hold
+**Issue**: Expo OTA (Over-The-Air) updates are not a reliable near-term fit for this project
+**Reason**: Keeper makes frequent major changes, including native-code changes, and OTA updates cannot cover builds that require new native binaries
+**Impact**: Desktop/mobile app updates that include native changes still require full rebuilds, so this should not be auto-selected for active work until the native surface stabilizes
 
 ### Wikilink Create Flow ✅
 
@@ -292,7 +296,7 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 ### Testing Architecture
 
 **Status**: In progress
-**Current**: The project now uses Jest as the primary test runner, with `jest-expo` + React Native Testing Library covering both pure modules and UI/routes. Current coverage includes `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, `repoBootstrapper`, startup-step orchestration, `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, focused `NoteGrid` pagination behavior, and wikilink modal/overlay flows.
+**Current**: The project now uses Jest as the primary test runner, with `jest-expo` + React Native Testing Library covering both pure modules and UI/routes. Current coverage includes `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, `repoBootstrapper`, startup-step orchestration, `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, focused `NoteGrid` pagination behavior, wikilink modal/overlay flows, and `HybridEditor` rendered-wikilink activation behavior across web/iOS/Android.
 **Next**:
 
 - Expand tests gradually into remaining startup/runtime seams, especially `startupStrategies`, as follow-on work rather than a prerequisite for this phase

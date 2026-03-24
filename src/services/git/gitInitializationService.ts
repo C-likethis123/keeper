@@ -169,16 +169,9 @@ export class GitInitializationService {
 			if (!repoValidation.isValid) {
 				if (repoValidation.exists) {
 					console.log(
-						"[GitInitializationService] Invalid repository detected, please clear your cache manually and try again",
+						"[GitInitializationService] Invalid/partial repository detected, cleaning up and re-cloning...",
 					);
-					return {
-						success: false,
-						wasCloned: true,
-						supported: true,
-						error:
-							"Invalid repository detected, please clear your cache manually and try again",
-						metrics,
-					};
+					await getStorageEngine().resetAllData();
 				}
 
 				console.log("[GitInitializationService] Starting fresh clone...");
