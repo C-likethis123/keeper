@@ -87,7 +87,7 @@ export function getResumeEmbedUrl(
 	source: EmbeddedVideoSource,
 	startSeconds: number,
 ): string {
-	if (startSeconds <= 0) {
+	if (!Number.isFinite(startSeconds) || startSeconds <= 0) {
 		return source.embedUrl;
 	}
 	const start = Math.floor(startSeconds);

@@ -63,4 +63,13 @@ describe("videoUtils", () => {
 			"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&enablejsapi=1",
 		);
 	});
+
+	it("returns the base embed url unchanged when startSeconds is NaN", () => {
+		const source = parseEmbeddedVideoUrl(
+			"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		)!;
+		expect(getResumeEmbedUrl(source, Number.NaN)).toBe(
+			"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&enablejsapi=1",
+		);
+	});
 });
