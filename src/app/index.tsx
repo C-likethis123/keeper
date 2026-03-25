@@ -2,7 +2,7 @@ import HomeQuickComposer from "@/components/HomeQuickComposer";
 import HomeScreenHeader from "@/components/HomeScreenHeader";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
 import { appEvents } from "@/services/appEvents";
@@ -38,7 +38,6 @@ export default function Index() {
 		setNoteTypeFilter,
 		setStatusFilter,
 	} = useNotes();
-	const theme = useExtendedTheme();
 	const showToast = useToastStore((state) => state.showToast);
 	const canSearch = useStorageStore((s) => s.capabilities.canSearch);
 	const [isResetting, setIsResetting] = React.useState(false);
@@ -185,7 +184,7 @@ export default function Index() {
 		<View style={styles.container}>
 			<Stack.Screen
 				options={{
-					header: (options) => (
+					header: () => (
 						<HomeScreenHeader
 							searchQuery={query}
 							setSearchQuery={setQuery}

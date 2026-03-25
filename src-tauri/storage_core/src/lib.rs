@@ -578,6 +578,7 @@ pub fn index_delete(index_db_path: &Path, note_id: String) -> Result<(), String>
     Ok(())
 }
 
+// TODO: I'm sure I passed the correct filters to the frontend. But it's not showing up in backend
 pub fn index_list(index_db_path: &Path, input: IndexListInput) -> Result<IndexListResult, String> {
     let conn = open_index_db(index_db_path)?;
     let offset = input.offset.unwrap_or(0).max(0);

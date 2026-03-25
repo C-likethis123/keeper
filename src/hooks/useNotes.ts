@@ -54,7 +54,6 @@ export default function useNotes() {
 		[noteTypeFilter, statusFilter],
 	);
 	const latestQueryRef = useRef(debouncedQuery);
-	const latestFiltersRef = useRef(filters);
 
 	const fetchNotes = useCallback(
 		async (
@@ -66,12 +65,10 @@ export default function useNotes() {
 		) => {
 			if (initializationStatus !== "ready") return;
 			const searchQuery = overrides?.searchQuery ?? latestQueryRef.current;
-			const nextFilters = overrides?.filters ?? latestFiltersRef.current;
 			if (loadingRef.current) {
 				if (!append) {
 					pendingRefreshRef.current = true;
 					latestQueryRef.current = searchQuery;
-					latestFiltersRef.current = nextFilters;
 				}
 				return;
 			}
@@ -84,18 +81,19 @@ export default function useNotes() {
 					setError(null);
 				}
 				const normalizedQuery = capabilities.canSearch ? searchQuery : "";
+				console.log(filters);
 				const results = capabilities.canSearch
 					? await NotesIndexService.listNotes(
 							normalizedQuery,
 							PAGE_SIZE,
 							offset,
-							nextFilters,
+							filters,
 						)
 					: await NoteService.listNotesFallback(
 							normalizedQuery,
 							PAGE_SIZE,
 							offset,
-							nextFilters,
+							filters,
 						);
 				nextOffsetRef.current = results.cursor;
 				const newNotes = results.items.map(toNote);
@@ -118,7 +116,7 @@ export default function useNotes() {
 				}
 			}
 		},
-		[capabilities.canSearch, initializationStatus],
+		[capabilities.canSearch, initializationStatus, filters],
 	);
 
 	const loadMoreNotes = useCallback(async () => {
@@ -132,8 +130,7 @@ export default function useNotes() {
 
 	useEffect(() => {
 		latestQueryRef.current = debouncedQuery;
-		latestFiltersRef.current = filters;
-	}, [debouncedQuery, filters]);
+	}, [debouncedQuery]);
 
 	useEffect(() => {
 		if (initializationStatus === "pending") {
