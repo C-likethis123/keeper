@@ -128,7 +128,7 @@ pub fn index_rebuild_from_disk(app: tauri::AppHandle) -> Result<RebuildMetrics, 
 #[tauri::command]
 pub fn notes_root_path_command(app: tauri::AppHandle) -> Result<String, String> {
     let notes_root = notes_root_path(&app)?;
-    storage_core::ensure_storage_dirs(
+    storage_core::ensure_notes_dir(
         notes_root
             .parent()
             .ok_or_else(|| "notes root is missing parent data dir".to_string())?,

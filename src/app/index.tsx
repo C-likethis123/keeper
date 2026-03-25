@@ -81,6 +81,7 @@ export default function Index() {
 		}
 	}, [handleRefresh, isResetting, showToast]);
 
+	// REVIEW: this is different from web...
 	const confirmReset = useCallback(() => {
 		if (isResetting) {
 			return;

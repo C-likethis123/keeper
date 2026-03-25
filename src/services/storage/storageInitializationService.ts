@@ -14,7 +14,7 @@ export class StorageInitializationService {
 
 	private constructor() {}
 
-	async initialize(): Promise<StorageInitializationResult> {
+	async initialize(force = false): Promise<StorageInitializationResult> {
 		useStorageStore.getState().setInitializationPending();
 		try {
 			const result = await getStorageEngine().initialize();

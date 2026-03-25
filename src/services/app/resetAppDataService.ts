@@ -23,7 +23,6 @@ export async function resetAppData(): Promise<void> {
 	resetInFlight = (async () => {
 		GitService.clearQueuedChanges();
 		useEditorState.getState().resetState();
-
 		await getStorageEngine().resetAllData();
 		await clearAsyncStorage();
 		await AsyncStorage.setItem(FORCE_REPO_RESET_KEY, "1");

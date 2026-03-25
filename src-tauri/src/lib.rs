@@ -3,7 +3,20 @@ mod storage;
 
 #[tauri::command]
 fn git_clone_repo(url: String, path: String) -> Result<(), String> {
-    git_core::clone_repo(&url, &path)
+    let result = git_core::clone_repo(&url, &path);
+    if let Err(ref e) = result {
+        eprintln!("[git_clone_repo] FAILED: {e}");
+    }
+    result
+}
+
+#[tauri::command]
+fn git_head_oid_repo(repo_path: String) -> Result<String, String> {
+    let result = git_core::head_oid(&repo_path);
+    if let Err(ref e) = result {
+        eprintln!("[git_head_oid_repo] FAILED: {e}");
+    }
+    result
 }
 
 #[tauri::command]
@@ -74,11 +87,6 @@ fn git_push_repo(repo_path: String) -> Result<(), String> {
 #[tauri::command]
 fn git_status_repo(repo_path: String) -> Result<Vec<GitStatusItem>, String> {
     git_core::status(&repo_path)
-}
-
-#[tauri::command]
-fn git_head_oid_repo(repo_path: String) -> Result<String, String> {
-    git_core::head_oid(&repo_path)
 }
 
 #[tauri::command]

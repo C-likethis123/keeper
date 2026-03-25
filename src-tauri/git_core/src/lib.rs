@@ -759,7 +759,7 @@ pub extern "C" fn git_current_branch_json(repo_path: *const c_char) -> *mut c_ch
 
     match current_branch(&repo_path) {
         Ok(branch) => c_json_result(&branch),
-        Err(_) => std::ptr::null_mut(),
+        Err(e) => { set_last_error(e); std::ptr::null_mut() }
     }
 }
 
@@ -784,7 +784,7 @@ pub extern "C" fn git_list_branches_json(
 
     match list_branches(&repo_path, remote_value.as_deref()) {
         Ok(branches) => c_json_result(&branches),
-        Err(_) => std::ptr::null_mut(),
+        Err(e) => { set_last_error(e); std::ptr::null_mut() }
     }
 }
 
@@ -848,7 +848,7 @@ pub extern "C" fn git_status_json(repo_path: *const c_char) -> *mut c_char {
 
     match status(&repo_path) {
         Ok(items) => c_json_result(&items),
-        Err(_) => std::ptr::null_mut(),
+        Err(e) => { set_last_error(e); std::ptr::null_mut() }
     }
 }
 
@@ -861,7 +861,7 @@ pub extern "C" fn git_head_oid_json(repo_path: *const c_char) -> *mut c_char {
 
     match head_oid(&repo_path) {
         Ok(oid) => c_json_result(&oid),
-        Err(_) => std::ptr::null_mut(),
+        Err(e) => { set_last_error(e); std::ptr::null_mut() }
     }
 }
 
@@ -886,7 +886,7 @@ pub extern "C" fn git_changed_markdown_paths_json(
 
     match changed_markdown_paths(&repo_path, &from_oid, &to_oid) {
         Ok(changed) => c_json_result(&changed),
-        Err(_) => std::ptr::null_mut(),
+        Err(e) => { set_last_error(e); std::ptr::null_mut() }
     }
 }
 

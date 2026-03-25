@@ -40,6 +40,7 @@ export class DefaultRepoBootstrapper implements RepoBootstrapper {
 
 	async validateRepository(): Promise<RepositoryValidationResult> {
 		try {
+			console.log("[GitInitializationService] Validating repo at path:", NOTES_ROOT);
 			await this.gitEngine.resolveHeadOid(NOTES_ROOT);
 			return { exists: true, isValid: true };
 		} catch (error) {

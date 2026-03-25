@@ -136,7 +136,8 @@ class KeeperGitBridgeModule : Module() {
 
   private fun settlePayload(op: String, payload: String?, promise: Promise) {
     if (payload == null) {
-      promise.reject("E_GIT_${op.uppercase()}", "Rust git $op failed", null)
+      val detail = consumeLastRustError()?.let { ": $it" } ?: ""
+      promise.reject("E_GIT_${op.uppercase()}", "Rust git $op failed$detail", null)
       return
     }
     promise.resolve(parseJsonValue(payload))

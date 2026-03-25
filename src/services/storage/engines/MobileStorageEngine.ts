@@ -56,10 +56,6 @@ export class MobileStorageEngine implements StorageEngine {
 		if (!dir.exists) {
 			dir.create({ intermediates: true });
 		}
-		const templatesDir = new Directory(getTemplatesRoot());
-		if (!templatesDir.exists) {
-			templatesDir.create({ intermediates: true });
-		}
 
 		const hasRows = await notesIndexDbHasRows();
 		const hasMarkdownFiles = dir

@@ -122,10 +122,16 @@ fn templates_root(notes_root: &Path) -> PathBuf {
     notes_root.join(TEMPLATES_DIR)
 }
 
-pub fn ensure_storage_dirs(data_dir: &Path) -> Result<(), String> {
+pub fn ensure_notes_dir(data_dir: &Path) -> Result<(), String> {
     let notes_root = notes_root(data_dir);
     fs::create_dir_all(data_dir).map_err(|e| format!("failed to create app data dir: {e}"))?;
     fs::create_dir_all(&notes_root).map_err(|e| format!("failed to create notes dir: {e}"))?;
+    Ok(())
+}
+
+pub fn ensure_storage_dirs(data_dir: &Path) -> Result<(), String> {
+    let notes_root = notes_root(data_dir);
+    ensure_notes_dir(data_dir)?;
     fs::create_dir_all(templates_root(&notes_root))
         .map_err(|e| format!("failed to create templates dir: {e}"))?;
     Ok(())
@@ -151,7 +157,7 @@ pub fn reset_storage_dirs(
         }
     }
 
-    ensure_storage_dirs(data_dir)
+    ensure_notes_dir(data_dir)
 }
 
 fn sanitize_note_id(id: &str) -> Result<&str, String> {
@@ -331,7 +337,7 @@ pub fn storage_initialize(
     let data_dir = notes_root
         .parent()
         .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
-    ensure_storage_dirs(data_dir)?;
+    ensure_notes_dir(data_dir)?;
     let conn = open_index_db(index_db_path)?;
     let needs_rebuild = !has_any_index_rows(&conn)?;
     Ok(StorageInitResult {
@@ -362,7 +368,7 @@ pub fn write_note(notes_root: &Path, input: WriteNoteInput) -> Result<i64, Strin
     let data_dir = notes_root
         .parent()
         .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
-    ensure_storage_dirs(data_dir)?;
+    ensure_notes_dir(data_dir)?;
     let path = path_for_id(notes_root, &input.id)?;
     let markdown = serialize_note(&input)?;
     fs::write(&path, markdown).map_err(|e| format!("failed to write note: {e}"))?;
@@ -692,7 +698,7 @@ pub fn index_rebuild_from_disk(
     let data_dir = notes_root
         .parent()
         .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
-    ensure_storage_dirs(data_dir)?;
+    ensure_notes_dir(data_dir)?;
     let conn = open_index_db(index_db_path)?;
     let tx = conn
         .unchecked_transaction()
