@@ -185,25 +185,26 @@ export default function Index() {
 		<View style={styles.container}>
 			<Stack.Screen
 				options={{
-					headerShown: false,
+					header: (options) => (
+						<HomeScreenHeader
+							searchQuery={query}
+							setSearchQuery={setQuery}
+							searchEditable={canSearch}
+							searchInputRef={searchInputRef}
+							noteTypes={noteTypeFilter}
+							status={statusFilter}
+							onNoteTypesChange={(values) => {
+								setNoteTypeFilter(values);
+								if (!values.includes("todo")) {
+									setStatusFilter(undefined);
+								}
+							}}
+							onStatusChange={setStatusFilter}
+							onReset={confirmReset}
+							resetDisabled={isResetting}
+						/>
+					),
 				}}
-			/>
-			<HomeScreenHeader
-				searchQuery={query}
-				setSearchQuery={setQuery}
-				searchEditable={canSearch}
-				searchInputRef={searchInputRef}
-				noteTypes={noteTypeFilter}
-				status={statusFilter}
-				onNoteTypesChange={(values) => {
-					setNoteTypeFilter(values);
-					if (!values.includes("todo")) {
-						setStatusFilter(undefined);
-					}
-				}}
-				onStatusChange={setStatusFilter}
-				onReset={confirmReset}
-				resetDisabled={isResetting}
 			/>
 			<React.Suspense fallback={<Loader />}>
 				<LazyNoteGrid
