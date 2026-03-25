@@ -21,6 +21,14 @@ const mockSaveTemplate = jest.fn();
 const mockDeleteTemplate = jest.fn();
 const mockListTemplates = jest.fn();
 const mockNavigationSetOptions = jest.fn();
+const mockSaveVideoPosition = jest.fn();
+const mockGetVideoPosition = jest.fn();
+
+jest.mock("@/components/editor/video/videoPositionStore", () => ({
+	saveVideoPosition: (...args: unknown[]) => mockSaveVideoPosition(...args),
+	getVideoPosition: (...args: unknown[]) => mockGetVideoPosition(...args),
+}));
+
 let latestNavigationOptions:
 	| {
 			headerLeft?: () => React.ReactNode;
@@ -54,6 +62,7 @@ jest.mock("@/hooks/useExtendedTheme", () => ({
 		colors: {
 			background: "#ffffff",
 			border: "#d0d7de",
+			card: "#f9fafb",
 			text: "#111827",
 			textMuted: "#6b7280",
 			textFaded: "#9ca3af",
@@ -74,6 +83,14 @@ jest.mock("@expo/vector-icons", () => {
 	return {
 		MaterialIcons: ({ name }: { name: string }) =>
 			React.createElement(Text, null, name),
+	};
+});
+
+jest.mock("react-native-webview", () => {
+	const React = require("react");
+	const { Text } = require("react-native");
+	return {
+		WebView: () => React.createElement(Text, null, "Mock WebView"),
 	};
 });
 
@@ -151,11 +168,15 @@ describe("NoteEditorView", () => {
 		mockSaveTemplate.mockReset();
 		mockDeleteTemplate.mockReset();
 		mockListTemplates.mockReset();
+		mockGetVideoPosition.mockReset();
+		mockSaveVideoPosition.mockReset();
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
 		mockSaveTemplate.mockResolvedValue(undefined);
 		mockDeleteTemplate.mockResolvedValue(undefined);
 		mockListTemplates.mockResolvedValue([]);
+		mockGetVideoPosition.mockResolvedValue(0);
+		mockSaveVideoPosition.mockResolvedValue(undefined);
 		mockNavigationSetOptions.mockReset();
 		latestNavigationOptions = undefined;
 		useEditorState.getState().resetState();
@@ -262,5 +283,56 @@ describe("NoteEditorView", () => {
 			);
 		});
 		expect(mockDeleteNote).toHaveBeenCalledWith(note.id);
+	});
+
+	it("opens and closes an embedded video panel from a pasted URL", async () => {
+		const user = userEvent.setup();
+
+		renderNoteEditor(makeNote());
+
+		await screen.findByText("Toolbar");
+		await user.press(screen.getByText("Open video"));
+		await screen.findByText("Paste video URL");
+		await user.type(
+			screen.getByTestId("video-url-input"),
+			"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		);
+		await user.press(screen.getAllByText("Open video")[1]);
+
+		await screen.findByText("YouTube video");
+		await screen.findByText("Close video");
+		await user.press(screen.getByText("Close video"));
+
+		await waitFor(() => {
+			expect(screen.queryByText("YouTube video")).toBeNull();
+		});
+	});
+
+	it("saves playback position when the video panel is closed", async () => {
+		const user = userEvent.setup();
+		mockGetVideoPosition.mockResolvedValue(0);
+		mockSaveVideoPosition.mockResolvedValue(undefined);
+
+		renderNoteEditor(makeNote());
+
+		await screen.findByText("Toolbar");
+		await user.press(screen.getByText("Open video"));
+		await screen.findByText("Paste video URL");
+		await user.type(
+			screen.getByTestId("video-url-input"),
+			"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		);
+		await user.press(screen.getAllByText("Open video")[1]);
+		await screen.findByTestId(/embedded-video-panel/);
+
+		// Close the panel
+		await user.press(screen.getByText("Close video"));
+
+		await waitFor(() => {
+			expect(mockSaveVideoPosition).toHaveBeenCalledWith(
+				"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+				expect.any(Number),
+			);
+		});
 	});
 });

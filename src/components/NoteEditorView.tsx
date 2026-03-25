@@ -1,6 +1,18 @@
 import { SaveIndicator } from "@/components/SaveIndicator";
 import type { EditorState } from "@/components/editor/core/EditorState";
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
+import { EmbeddedVideoPanel } from "@/components/editor/video/EmbeddedVideoPanel";
+import {
+	clearVideoPosition,
+	getVideoPosition,
+	saveVideoPosition,
+} from "@/components/editor/video/videoPositionStore";
+import {
+	type EmbeddedVideoSource,
+	getEmbeddedVideoLayout,
+	getResumeEmbedUrl,
+	parseEmbeddedVideoUrl,
+} from "@/components/editor/video/videoUtils";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { appEvents } from "@/services/appEvents";
@@ -9,6 +21,7 @@ import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import { TemplateService } from "@/services/notes/templateService";
 import type { Note, NoteTemplate } from "@/services/notes/types";
+import { isTauriRuntime } from "@/services/storage/runtime";
 import { useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -25,12 +38,14 @@ import React, {
 import {
 	Alert,
 	Modal,
+	Platform,
 	ScrollView,
 	StyleSheet,
 	Text,
 	TextInput,
 	TouchableOpacity,
 	View,
+	useWindowDimensions,
 } from "react-native";
 import { EditorScrollProvider } from "./editor/EditorScrollContext";
 import Loader from "./shared/Loader";
@@ -81,8 +96,18 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
 	const [templates, setTemplates] = useState<NoteTemplate[]>([]);
 	const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+	const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
+	const [videoInput, setVideoInput] = useState("");
+	const [embeddedVideo, setEmbeddedVideo] = useState<EmbeddedVideoSource | null>(
+		null,
+	);
+	const [desktopVideoPanelWidth, setDesktopVideoPanelWidth] = useState(420);
+	const [stackedSplitRatio, setStackedSplitRatio] = useState(0.45);
+	const [videoStartSeconds, setVideoStartSeconds] = useState(0);
+	const latestVideoTimeRef = useRef(0);
 	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
+	const { width } = useWindowDimensions();
 	const latestDraftRef = useRef({
 		title,
 		isPinned,
@@ -90,6 +115,11 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		todoStatus,
 	});
 	const lastPersistedTypeRef = useRef<Note["noteType"]>(note.noteType);
+	const videoLayout = getEmbeddedVideoLayout(
+		width,
+		Platform.OS,
+		isTauriRuntime(),
+	);
 
 	latestDraftRef.current = {
 		title,
@@ -145,9 +175,12 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	}, [persistCurrentEntry, showToast]);
 
 	const handleBackPress = useCallback(async () => {
+		if (embeddedVideo) {
+			await saveVideoPosition(embeddedVideo.rawUrl, latestVideoTimeRef.current);
+		}
 		await persistCurrentEntry();
 		router.back();
-	}, [persistCurrentEntry, router]);
+	}, [persistCurrentEntry, router, embeddedVideo]);
 
 	const handleDeletePress = useCallback(async () => {
 		if (latestDraftRef.current.noteType === "template") {
@@ -200,6 +233,49 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		},
 		[loadMarkdown, showToast],
 	);
+
+	const openVideoModal = useCallback(() => {
+		setVideoInput(embeddedVideo?.rawUrl ?? "");
+		setIsVideoModalVisible(true);
+	}, [embeddedVideo?.rawUrl]);
+
+	const handleSubmitVideoUrl = useCallback(async () => {
+		const parsed = parseEmbeddedVideoUrl(videoInput);
+		if (!parsed) {
+			showToast("Enter a valid video URL");
+			return;
+		}
+
+		const savedTime = await getVideoPosition(parsed.rawUrl);
+		setVideoStartSeconds(savedTime);
+		latestVideoTimeRef.current = savedTime;
+		setEmbeddedVideo(parsed);
+		setIsVideoModalVisible(false);
+		showToast(`Opened ${parsed.label}`);
+	}, [showToast, videoInput]);
+
+	const handleCloseVideo = useCallback(async () => {
+		if (embeddedVideo) {
+			await saveVideoPosition(embeddedVideo.rawUrl, latestVideoTimeRef.current);
+		}
+		setEmbeddedVideo(null);
+	}, [embeddedVideo]);
+
+	const handleIncreasePanelWidth = useCallback(() => {
+		setDesktopVideoPanelWidth((current) => Math.min(current + 40, 720));
+	}, []);
+
+	const handleDecreasePanelWidth = useCallback(() => {
+		setDesktopVideoPanelWidth((current) => Math.max(current - 40, 280));
+	}, []);
+
+	const handleIncreaseStackedRatio = useCallback(() => {
+		setStackedSplitRatio((r) => Math.min(r + 0.05, 0.65));
+	}, []);
+
+	const handleDecreaseStackedRatio = useCallback(() => {
+		setStackedSplitRatio((r) => Math.max(r - 0.05, 0.25));
+	}, []);
 
 	const { status } = useAutoSave({
 		...note,
@@ -295,6 +371,54 @@ export default function NoteEditorView({ note }: { note: Note }) {
 
 	const styles = useMemo(() => createStyles(theme), [theme]);
 
+	const editorPane = (
+		<Suspense fallback={<Loader />}>
+			<LazyEditorToolbar />
+			<EditorScrollProvider>
+				<LazyHybridEditor />
+			</EditorScrollProvider>
+		</Suspense>
+	);
+
+	const videoAndEditorBlock =
+		embeddedVideo && videoLayout === "side" ? (
+			<View style={styles.sideBySideShell}>
+				<View style={styles.editorPane}>{editorPane}</View>
+				<View style={{ width: desktopVideoPanelWidth }}>
+					<EmbeddedVideoPanel
+						layout={videoLayout}
+						onClose={() => void handleCloseVideo()}
+						onGrow={handleIncreasePanelWidth}
+						onShrink={handleDecreasePanelWidth}
+						onTimeUpdate={(t) => {
+							latestVideoTimeRef.current = t;
+						}}
+						source={embeddedVideo}
+						startSeconds={videoStartSeconds}
+					/>
+				</View>
+			</View>
+		) : embeddedVideo && videoLayout === "stacked" ? (
+			<View style={styles.stackedSplitShell}>
+				<View style={{ flex: stackedSplitRatio }}>
+					<EmbeddedVideoPanel
+						layout={videoLayout}
+						onClose={() => void handleCloseVideo()}
+						onGrow={handleIncreaseStackedRatio}
+						onShrink={handleDecreaseStackedRatio}
+						onTimeUpdate={(t) => {
+							latestVideoTimeRef.current = t;
+						}}
+						source={embeddedVideo}
+						startSeconds={videoStartSeconds}
+					/>
+				</View>
+				<View style={{ flex: 1 - stackedSplitRatio }}>{editorPane}</View>
+			</View>
+		) : (
+			editorPane
+		);
+
 	return (
 		<View style={styles.screen}>
 			<View style={styles.content}>
@@ -360,14 +484,40 @@ export default function NoteEditorView({ note }: { note: Note }) {
 							</View>
 						</View>
 					) : null}
+					<View style={styles.metadataGroup}>
+						<Text style={styles.metadataLabel}>Video</Text>
+						<View style={styles.optionRow}>
+							<TouchableOpacity
+								style={styles.secondaryActionChip}
+								onPress={openVideoModal}
+							>
+								<MaterialIcons
+									name="smart-display"
+									size={16}
+									color={theme.colors.text}
+								/>
+								<Text style={styles.secondaryActionChipText}>
+									{embeddedVideo ? "Change video" : "Open video"}
+								</Text>
+							</TouchableOpacity>
+							{embeddedVideo ? (
+								<TouchableOpacity
+									style={styles.secondaryActionChip}
+									onPress={handleCloseVideo}
+								>
+									<MaterialIcons
+										name="close"
+										size={16}
+										color={theme.colors.text}
+									/>
+									<Text style={styles.secondaryActionChipText}>Close video</Text>
+								</TouchableOpacity>
+							) : null}
+						</View>
+					</View>
 				</View>
 
-				<Suspense fallback={<Loader />}>
-					<LazyEditorToolbar />
-					<EditorScrollProvider>
-						<LazyHybridEditor />
-					</EditorScrollProvider>
-				</Suspense>
+				{videoAndEditorBlock}
 			</View>
 
 			<Modal
@@ -423,6 +573,64 @@ export default function NoteEditorView({ note }: { note: Note }) {
 					</View>
 				</View>
 			</Modal>
+
+			<Modal
+				visible={isVideoModalVisible}
+				animationType="fade"
+				transparent
+				onRequestClose={() => {
+					setIsVideoModalVisible(false);
+				}}
+			>
+				<View style={styles.modalBackdrop}>
+					<View style={styles.modalCard}>
+						<View style={styles.modalHeader}>
+							<Text style={styles.modalTitle}>Paste video URL</Text>
+							<TouchableOpacity
+								onPress={() => {
+									setIsVideoModalVisible(false);
+								}}
+							>
+								<MaterialIcons
+									name="close"
+									size={22}
+									color={theme.colors.text}
+								/>
+							</TouchableOpacity>
+						</View>
+						<Text style={styles.emptyTemplatesText}>
+							Paste a YouTube link or another embeddable video URL.
+						</Text>
+						<TextInput
+							autoCapitalize="none"
+							autoCorrect={false}
+							keyboardType="url"
+							onChangeText={setVideoInput}
+							placeholder="https://www.youtube.com/watch?v=..."
+							placeholderTextColor={theme.custom.editor.placeholder}
+							style={styles.videoUrlInput}
+							testID="video-url-input"
+							value={videoInput}
+						/>
+						<View style={styles.videoModalActions}>
+							<TouchableOpacity
+								onPress={() => {
+									setIsVideoModalVisible(false);
+								}}
+								style={styles.secondaryActionChip}
+							>
+								<Text style={styles.secondaryActionChipText}>Cancel</Text>
+							</TouchableOpacity>
+							<TouchableOpacity
+								onPress={handleSubmitVideoUrl}
+								style={styles.primaryActionChip}
+							>
+								<Text style={styles.primaryActionChipText}>Open video</Text>
+							</TouchableOpacity>
+						</View>
+					</View>
+				</View>
+			</Modal>
 		</View>
 	);
 }
@@ -437,11 +645,11 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			padding: 16,
 			paddingBottom: 16 + TOOLBAR_HEIGHT,
 			backgroundColor: theme.colors.background,
+			gap: 14,
 		},
 		titleInput: {
 			fontSize: 20,
 			fontWeight: "600",
-			marginBottom: 8,
 			borderBottomWidth: 1,
 			borderBottomColor: theme.colors.border,
 			paddingVertical: 4,
@@ -501,6 +709,37 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			fontWeight: "600",
 			color: theme.colors.text,
 		},
+		primaryActionChip: {
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "center",
+			paddingHorizontal: 12,
+			paddingVertical: 8,
+			borderRadius: 999,
+			backgroundColor: theme.colors.primary,
+		},
+		primaryActionChipText: {
+			fontSize: 13,
+			fontWeight: "700",
+			color: theme.colors.primaryContrast,
+		},
+		sideBySideShell: {
+			flex: 1,
+			flexDirection: "row",
+			alignItems: "stretch",
+			gap: 16,
+			minHeight: 0,
+		},
+		editorPane: {
+			flex: 1,
+			minWidth: 0,
+		},
+		stackedSplitShell: {
+			flex: 1,
+			flexDirection: "column",
+			gap: 8,
+			minHeight: 0,
+		},
 		modalBackdrop: {
 			flex: 1,
 			backgroundColor: "rgba(0, 0, 0, 0.35)",
@@ -551,6 +790,21 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			fontSize: 13,
 			lineHeight: 18,
 			color: theme.colors.textMuted,
+		},
+		videoUrlInput: {
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+			borderRadius: 12,
+			paddingHorizontal: 12,
+			paddingVertical: 10,
+			color: theme.colors.text,
+			backgroundColor: theme.colors.card,
+		},
+		videoModalActions: {
+			flexDirection: "row",
+			justifyContent: "flex-end",
+			gap: 8,
+			marginTop: 12,
 		},
 	});
 }

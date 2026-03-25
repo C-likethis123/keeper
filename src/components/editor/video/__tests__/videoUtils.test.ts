@@ -42,14 +42,16 @@ describe("videoUtils", () => {
 	it("appends start parameter to a YouTube embed url when a resume time is given", () => {
 		const source = parseEmbeddedVideoUrl(
 			"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-		)!;
+		);
+		if (!source) throw new Error("Source not found");
 		expect(getResumeEmbedUrl(source, 42)).toBe(
 			"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&enablejsapi=1&start=42",
 		);
 	});
 
 	it("appends time fragment to a generic embed url", () => {
-		const source = parseEmbeddedVideoUrl("https://example.com/video.mp4")!;
+		const source = parseEmbeddedVideoUrl("https://example.com/video.mp4");
+		if (!source) throw new Error("Source not found");
 		expect(getResumeEmbedUrl(source, 90)).toBe(
 			"https://example.com/video.mp4#t=90",
 		);
@@ -58,7 +60,8 @@ describe("videoUtils", () => {
 	it("returns the base embed url unchanged when start time is 0 or below", () => {
 		const source = parseEmbeddedVideoUrl(
 			"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-		)!;
+		);
+		if (!source) throw new Error("Source not found");
 		expect(getResumeEmbedUrl(source, 0)).toBe(
 			"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&enablejsapi=1",
 		);
@@ -67,7 +70,8 @@ describe("videoUtils", () => {
 	it("returns the base embed url unchanged when startSeconds is NaN", () => {
 		const source = parseEmbeddedVideoUrl(
 			"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-		)!;
+		);
+		if (!source) throw new Error("Source not found");
 		expect(getResumeEmbedUrl(source, Number.NaN)).toBe(
 			"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&enablejsapi=1",
 		);
