@@ -7,7 +7,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import type React from "react";
 import {
 	StyleSheet,
-	Text,
 	type TextInput,
 	TouchableOpacity,
 	View,
@@ -44,46 +43,36 @@ export default function HomeScreenHeader({
 	return (
 		<View style={[styles.shell, { paddingTop: insets.top + 12 }]}>
 			<View style={styles.row}>
-				<View style={styles.brandGroup}>
-					<View style={styles.brandBadge}>
-						<MaterialIcons
-							name="sticky-note-2"
-							size={24}
-							color={theme.colors.primaryContrast}
-						/>
-					</View>
-					<Text style={styles.brandText}>Keeper</Text>
-				</View>
-				<View style={styles.searchWrap}>
-					<View style={styles.searchRow}>
-						<SearchBar
-							ref={searchInputRef}
-							searchQuery={searchQuery}
-							setSearchQuery={setSearchQuery}
-							editable={searchEditable}
-							compact
-						/>
-						<NoteFiltersDropdown
-							noteTypes={noteTypes}
-							status={status}
-							onNoteTypesChange={onNoteTypesChange}
-							onStatusChange={onStatusChange}
-						/>
-					</View>
-				</View>
+				<MaterialIcons
+					name="sticky-note-2"
+					size={24}
+					color={theme.colors.primaryContrast}
+				/>
+				<SearchBar
+					ref={searchInputRef}
+					searchQuery={searchQuery}
+					setSearchQuery={setSearchQuery}
+					editable={searchEditable}
+					compact
+				/>
+				<NoteFiltersDropdown
+					noteTypes={noteTypes}
+					status={status}
+					onNoteTypesChange={onNoteTypesChange}
+					onStatusChange={onStatusChange}
+				/>
 				<View style={styles.actions}>
 					<TouchableOpacity
 						testID="home-reset-button"
 						accessibilityRole="button"
 						onPress={onReset}
 						disabled={resetDisabled}
-						style={styles.actionButton}
 					>
 						<MaterialIcons
 							name="delete-forever"
 							size={22}
 							color={
-								resetDisabled ? theme.colors.textFaded : theme.colors.textMuted
+								resetDisabled ? theme.colors.textFaded : theme.colors.error
 							}
 						/>
 					</TouchableOpacity>
@@ -112,48 +101,11 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			alignItems: "center",
 			gap: 12,
 		},
-		brandGroup: {
-			flexDirection: "row",
-			alignItems: "center",
-			minWidth: 132,
-			gap: 10,
-		},
-		brandBadge: {
-			width: 40,
-			height: 40,
-			borderRadius: 12,
-			backgroundColor: theme.colors.primary,
-			alignItems: "center",
-			justifyContent: "center",
-		},
-		brandText: {
-			fontSize: 28,
-			fontWeight: "600",
-			color: theme.colors.text,
-		},
-		searchWrap: {
-			flex: 1,
-			maxWidth: 960,
-			overflow: "visible",
-		},
-		searchRow: {
-			flexDirection: "row",
-			alignItems: "center",
-			gap: 12,
-			overflow: "visible",
-		},
 		actions: {
 			flexDirection: "row",
 			alignItems: "center",
 			justifyContent: "flex-end",
 			minWidth: 48,
-		},
-		actionButton: {
-			width: 40,
-			height: 40,
-			borderRadius: 20,
-			alignItems: "center",
-			justifyContent: "center",
 		},
 	});
 }
