@@ -48,12 +48,13 @@ export default function Index() {
 				const success = await NoteService.deleteNote(note.id);
 				if (!success) throw new Error("Failed to delete note");
 				showToast(`Deleted "${note.title}"`);
+				await handleRefresh();
 			} catch (e) {
 				console.warn("Failed to delete note:", e);
 				showToast("Failed to delete note");
 			}
 		},
-		[showToast],
+		[showToast, handleRefresh],
 	);
 
 	const runReset = useCallback(async () => {
@@ -107,9 +108,13 @@ export default function Index() {
 		]);
 	}, [isResetting, runReset]);
 
-	const handlePinToggle = useCallback(async (updated: Note) => {
-		await NoteService.saveNote(updated);
-	}, []);
+	const handlePinToggle = useCallback(
+		async (updated: Note) => {
+			await NoteService.saveNote(updated);
+			await handleRefresh();
+		},
+		[handleRefresh],
+	);
 
 	const handleCreateNote = useCallback(async () => {
 		const newNote = {
