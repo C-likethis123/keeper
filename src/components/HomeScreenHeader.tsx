@@ -12,6 +12,7 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function HomeScreenHeader({
 	searchQuery,
@@ -38,9 +39,10 @@ export default function HomeScreenHeader({
 }) {
 	const theme = useExtendedTheme();
 	const styles = useStyles(createStyles);
+	const insets = useSafeAreaInsets();
 
 	return (
-		<View style={styles.shell}>
+		<View style={[styles.shell, { paddingTop: insets.top + 12 }]}>
 			<View style={styles.row}>
 				<View style={styles.brandGroup}>
 					<View style={styles.brandBadge}>
