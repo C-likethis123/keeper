@@ -10,6 +10,7 @@ import { NoteService } from "@/services/notes/noteService";
 import type { NoteType } from "@/services/notes/types";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { ThemeProvider } from "@react-navigation/native";
+import * as Updates from "expo-updates";
 import { Stack, router } from "expo-router";
 import { nanoid } from "nanoid";
 import {
@@ -32,10 +33,16 @@ export default function RootLayout() {
 	}
 	const themeMode = useColorScheme();
 	const { isHydrated, initError } = useAppStartup();
+	const { isUpdatePending, isDownloading } = Updates.useUpdates();
 
 	return (
 		<ThemeProvider value={themeMode === "light" ? lightTheme : darkTheme}>
-			<App isHydrated={isHydrated} initError={initError} />
+			<App
+				isHydrated={isHydrated}
+				initError={initError}
+				isDownloadingUpdate={isDownloading}
+				isUpdatePending={isUpdatePending}
+			/>
 		</ThemeProvider>
 	);
 }
@@ -43,7 +50,14 @@ export default function RootLayout() {
 const App = ({
 	isHydrated,
 	initError,
-}: { isHydrated: boolean; initError: string | null }) => {
+	isDownloadingUpdate,
+	isUpdatePending,
+}: {
+	isHydrated: boolean;
+	initError: string | null;
+	isDownloadingUpdate: boolean;
+	isUpdatePending: boolean;
+}) => {
 	const styles = useStyles(createStyles);
 
 	useAppKeyboardShortcuts({
@@ -64,6 +78,17 @@ const App = ({
 		onForceSave: () => appEvents.emit("forceSave"),
 	});
 
+	if (isDownloadingUpdate || isUpdatePending) {
+		return (
+			<View style={styles.splash}>
+				<Text style={styles.title}>Keeper</Text>
+				<ActivityIndicator size="large" style={styles.activityIndicator} />
+				<Text style={styles.updateText}>
+					{isUpdatePending ? "Applying update..." : "Downloading update..."}
+				</Text>
+			</View>
+		);
+	}
 	if (!isHydrated) {
 		return (
 			<View style={styles.splash}>
@@ -109,6 +134,11 @@ function createStyles(theme: ExtendedTheme) {
 			marginTop: 16,
 			paddingHorizontal: 24,
 			textAlign: "center",
+			color: theme.colors.text,
+		},
+		updateText: {
+			marginTop: 12,
+			fontSize: 14,
 			color: theme.colors.text,
 		},
 	});
