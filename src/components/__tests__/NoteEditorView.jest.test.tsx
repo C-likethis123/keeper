@@ -190,7 +190,9 @@ describe("NoteEditorView", () => {
 		renderNoteEditor(note);
 
 		await screen.findByText("Toolbar");
-		await user.press(screen.getByText("Todo"));
+		const titleInput = screen.getByPlaceholderText("Title");
+		await user.clear(titleInput);
+		await user.type(titleInput, "Todo My tasks");
 		await waitFor(() => {
 			expect(latestNavigationOptions?.headerLeft).toBeDefined();
 		});
@@ -200,7 +202,7 @@ describe("NoteEditorView", () => {
 			expect(mockSaveNote).toHaveBeenCalledWith(
 				expect.objectContaining({
 					id: note.id,
-					title: note.title,
+					title: "Todo My tasks",
 					noteType: "todo",
 					status: "open",
 				}),
@@ -241,7 +243,9 @@ describe("NoteEditorView", () => {
 		renderNoteEditor(note);
 
 		await screen.findByText("Toolbar");
-		await user.press(screen.getAllByText("Template")[0]);
+		const titleInput = screen.getByPlaceholderText("Title");
+		await user.clear(titleInput);
+		await user.type(titleInput, "Template: Weekly Review");
 		await waitFor(() => {
 			expect(latestNavigationOptions?.headerLeft).toBeDefined();
 		});
@@ -251,7 +255,7 @@ describe("NoteEditorView", () => {
 			expect(mockSaveTemplate).toHaveBeenCalledWith(
 				expect.objectContaining({
 					id: note.id,
-					title: note.title,
+					title: "Template: Weekly Review",
 					noteType: "template",
 				}),
 				true,

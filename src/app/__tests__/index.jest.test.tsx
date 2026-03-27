@@ -253,7 +253,7 @@ describe("Index", () => {
 			expect(NoteService.saveNote).toHaveBeenCalledWith(
 				expect.objectContaining({
 					id: "new-note-id",
-					title: "",
+					title: "Todo ",
 					content: "",
 					isPinned: false,
 					noteType: "todo",
@@ -279,7 +279,7 @@ describe("Index", () => {
 			expect(NoteService.saveNote).toHaveBeenCalledWith(
 				expect.objectContaining({
 					id: "new-note-id",
-					title: "",
+					title: "Journal ",
 					content: "",
 					isPinned: false,
 					noteType: "journal",
@@ -304,7 +304,7 @@ describe("Index", () => {
 			expect(NoteService.saveNote).toHaveBeenCalledWith(
 				expect.objectContaining({
 					id: "new-note-id",
-					title: "",
+					title: "Resource ",
 					content: "",
 					isPinned: false,
 					noteType: "resource",
