@@ -6,6 +6,7 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { appEvents } from "@/services/appEvents";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
+import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import { TemplateService } from "@/services/notes/templateService";
 import type { Note, NoteTemplate } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
@@ -46,14 +47,6 @@ const LazyHybridEditor = React.lazy(() =>
 	})),
 );
 
-const NOTE_TYPE_OPTIONS = [
-	{ label: "Note", value: "note" },
-	{ label: "Journal", value: "journal" },
-	{ label: "Resource", value: "resource" },
-	{ label: "Todo", value: "todo" },
-	{ label: "Template", value: "template" },
-] as const;
-
 const TODO_STATUS_OPTIONS = [
 	{ label: "Open", value: "open" },
 	{ label: "Doing", value: "doing" },
@@ -68,10 +61,23 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const id = note.id;
 	const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
 	const [title, setTitle] = useState<string>(note.title);
-	const [noteType, setNoteType] = useState<Note["noteType"]>(note.noteType);
+	const [noteType, setNoteType] = useState<Note["noteType"]>(() =>
+		deriveNoteType(note.title),
+	);
 	const [todoStatus, setTodoStatus] = useState<Note["status"]>(
 		note.noteType === "todo" ? (note.status ?? "open") : undefined,
 	);
+	useEffect(() => {
+		const derived = deriveNoteType(title);
+		setNoteType(derived);
+		setTodoStatus((current) =>
+			derived === "todo" ? (current ?? "open") : undefined,
+		);
+		if (derived === "template") {
+			setIsPinned(false);
+		}
+	}, [title]);
+
 	const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
 	const [templates, setTemplates] = useState<NoteTemplate[]>([]);
 	const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
@@ -211,11 +217,10 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		useCallback(() => {
 			setIsPinned(!!note.isPinned);
 			setTitle(note.title);
-			setNoteType(note.noteType);
-			setTodoStatus(
-				note.noteType === "todo" ? (note.status ?? "open") : undefined,
-			);
-			lastPersistedTypeRef.current = note.noteType;
+			const derived = deriveNoteType(note.title);
+			setNoteType(derived);
+			setTodoStatus(derived === "todo" ? (note.status ?? "open") : undefined);
+			lastPersistedTypeRef.current = derived;
 			loadMarkdown(note.content);
 		}, [loadMarkdown, note]),
 	);
@@ -302,43 +307,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 					placeholderTextColor={theme.custom.editor.placeholder}
 				/>
 				<View style={styles.metadataSection}>
-					<View style={styles.metadataGroup}>
-						<Text style={styles.metadataLabel}>Type</Text>
-						<View style={styles.optionRow}>
-							{NOTE_TYPE_OPTIONS.map((option) => {
-								const selected = noteType === option.value;
-								return (
-									<TouchableOpacity
-										key={option.value}
-										style={[
-											styles.optionChip,
-											selected && styles.optionChipSelected,
-										]}
-										onPress={() => {
-											setNoteType(option.value);
-											if (option.value === "todo") {
-												setTodoStatus((current) => current ?? "open");
-											} else {
-												setTodoStatus(undefined);
-											}
-											if (option.value === "template") {
-												setIsPinned(false);
-											}
-										}}
-									>
-										<Text
-											style={[
-												styles.optionChipText,
-												selected && styles.optionChipTextSelected,
-											]}
-										>
-											{option.label}
-										</Text>
-									</TouchableOpacity>
-								);
-							})}
-						</View>
-					</View>
 					{noteType !== "template" ? (
 						<View style={styles.metadataGroup}>
 							<Text style={styles.metadataLabel}>Template</Text>
