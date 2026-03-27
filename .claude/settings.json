@@ -3,8 +3,10 @@
 		"allow": [
 			"Bash(cat:*)",
 			"Bash(ls:*)",
+			"Bash(grep:*)",
 			"Bash(mkdir:*)",
 			"Bash(npm run:*)",
+			"Bash(npx biome:*)",
 			"Bash(npm test:*)",
 			"Bash(git add:*)",
 			"Bash(git status:*)",
