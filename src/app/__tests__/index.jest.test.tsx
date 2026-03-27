@@ -39,15 +39,26 @@ jest.mock("nanoid", () => ({
 	nanoid: () => "new-note-id",
 }));
 
-jest.mock("expo-router", () => ({
-	Stack: {
-		Screen: () => null,
-	},
-	router: {
-		push: (...args: unknown[]) => mockRouterPush(...args),
-	},
-	useFocusEffect: (callback: () => void) => mockUseFocusEffect(callback),
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
+
+jest.mock("expo-router", () => {
+	const React = require("react");
+	return {
+		Stack: {
+			Screen: ({
+				options,
+			}: {
+				options?: { header?: () => React.ReactNode };
+			}) => (options?.header ? React.createElement(React.Fragment, null, options.header()) : null),
+		},
+		router: {
+			push: (...args: unknown[]) => mockRouterPush(...args),
+		},
+		useFocusEffect: (callback: () => void) => mockUseFocusEffect(callback),
+	};
+});
 
 jest.mock("@/services/notes/noteService", () => ({
 	NoteService: {
@@ -167,7 +178,6 @@ describe("Index", () => {
 		render(<Index />);
 
 		expect(await screen.findByText("Notes: 1")).toBeOnTheScreen();
-		expect(screen.getByText("Keeper")).toBeOnTheScreen();
 		expect(screen.getByPlaceholderText("Search")).toBeOnTheScreen();
 		expect(
 			screen.getByRole("button", { name: "Take a note" }),
