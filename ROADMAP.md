@@ -2,6 +2,11 @@
 
 This is the central planning document for Keeper. It outlines critical issues, development phases, and high-level features. Refer to this document before starting new work.
 
+## Yet to prioritise
+
+This section contains todo items that have not been prioritised. When seeing items in this section, figure out its priority and move them into the relevant buckets.
+1. figure out how to make API queries use react suspense (eg the use hook?)
+2. Create video embed blocks
 ## Critical Issues (P1)
 
 No currently confirmed P1 issues.

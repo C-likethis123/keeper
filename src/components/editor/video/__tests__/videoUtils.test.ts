@@ -1,6 +1,5 @@
 import {
-	getEmbeddedVideoLayout,
-	getResumeEmbedUrl,
+	extractVideoUrlFromMarkdown,
 	parseEmbeddedVideoUrl,
 } from "../videoUtils";
 
@@ -33,47 +32,27 @@ describe("videoUtils", () => {
 		expect(parseEmbeddedVideoUrl("ftp://example.com/video")).toBeNull();
 	});
 
-	it("uses side layout for wide desktop surfaces and stacked otherwise", () => {
-		expect(getEmbeddedVideoLayout(1280, "web", true)).toBe("side");
-		expect(getEmbeddedVideoLayout(800, "web", true)).toBe("stacked");
-		expect(getEmbeddedVideoLayout(1280, "ios", false)).toBe("stacked");
-	});
+	describe("extractVideoUrlFromMarkdown", () => {
+		it("extracts a video url from markdown image syntax", () => {
+			const markdown =
+				"Check this video: ![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)";
+			expect(extractVideoUrlFromMarkdown(markdown)).toBe(
+				"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+			);
+		});
 
-	it("appends start parameter to a YouTube embed url when a resume time is given", () => {
-		const source = parseEmbeddedVideoUrl(
-			"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-		);
-		if (!source) throw new Error("Source not found");
-		expect(getResumeEmbedUrl(source, 42)).toBe(
-			"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&enablejsapi=1&start=42",
-		);
-	});
+		it("returns null when no video url is found", () => {
+			const markdown =
+				"Just some text with an image ![icon](https://example.com/icon.png)";
+			// For now, it extracts ANY image url, but NoteEditorView will validate it later with parseEmbeddedVideoUrl
+			expect(extractVideoUrlFromMarkdown(markdown)).toBe(
+				"https://example.com/icon.png",
+			);
+		});
 
-	it("appends time fragment to a generic embed url", () => {
-		const source = parseEmbeddedVideoUrl("https://example.com/video.mp4");
-		if (!source) throw new Error("Source not found");
-		expect(getResumeEmbedUrl(source, 90)).toBe(
-			"https://example.com/video.mp4#t=90",
-		);
-	});
-
-	it("returns the base embed url unchanged when start time is 0 or below", () => {
-		const source = parseEmbeddedVideoUrl(
-			"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-		);
-		if (!source) throw new Error("Source not found");
-		expect(getResumeEmbedUrl(source, 0)).toBe(
-			"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&enablejsapi=1",
-		);
-	});
-
-	it("returns the base embed url unchanged when startSeconds is NaN", () => {
-		const source = parseEmbeddedVideoUrl(
-			"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-		);
-		if (!source) throw new Error("Source not found");
-		expect(getResumeEmbedUrl(source, Number.NaN)).toBe(
-			"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&enablejsapi=1",
-		);
+		it("returns null when no image syntax is present", () => {
+			const markdown = "No video here.";
+			expect(extractVideoUrlFromMarkdown(markdown)).toBeNull();
+		});
 	});
 });

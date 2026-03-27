@@ -10,10 +10,10 @@ import {
 	userEvent,
 	waitFor,
 } from "expo-router/testing-library";
-
-jest.useFakeTimers();
 import type React from "react";
 import { Text } from "react-native";
+
+jest.useFakeTimers();
 
 const mockSaveNote = jest.fn();
 const mockDeleteNote = jest.fn();
@@ -23,11 +23,6 @@ const mockListTemplates = jest.fn();
 const mockNavigationSetOptions = jest.fn();
 const mockSaveVideoPosition = jest.fn();
 const mockGetVideoPosition = jest.fn();
-
-jest.mock("@/components/editor/video/videoPositionStore", () => ({
-	saveVideoPosition: (...args: unknown[]) => mockSaveVideoPosition(...args),
-	getVideoPosition: (...args: unknown[]) => mockGetVideoPosition(...args),
-}));
 
 let latestNavigationOptions:
 	| {
@@ -305,34 +300,6 @@ describe("NoteEditorView", () => {
 
 		await waitFor(() => {
 			expect(screen.queryByText("YouTube video")).toBeNull();
-		});
-	});
-
-	it("saves playback position when the video panel is closed", async () => {
-		const user = userEvent.setup();
-		mockGetVideoPosition.mockResolvedValue(0);
-		mockSaveVideoPosition.mockResolvedValue(undefined);
-
-		renderNoteEditor(makeNote());
-
-		await screen.findByText("Toolbar");
-		await user.press(screen.getByText("Open video"));
-		await screen.findByText("Paste video URL");
-		await user.type(
-			screen.getByTestId("video-url-input"),
-			"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-		);
-		await user.press(screen.getAllByText("Open video")[1]);
-		await screen.findByTestId(/embedded-video-panel/);
-
-		// Close the panel
-		await user.press(screen.getByText("Close video"));
-
-		await waitFor(() => {
-			expect(mockSaveVideoPosition).toHaveBeenCalledWith(
-				"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-				expect.any(Number),
-			);
 		});
 	});
 });

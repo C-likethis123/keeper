@@ -130,6 +130,7 @@ export function getVerticalNavigationTarget(
 			return getPlainTextNavigationTarget(options);
 		case BlockType.mathBlock:
 		case BlockType.image:
+		case BlockType.video:
 			return getSimpleBoundaryTarget(options);
 		default:
 			return null;
