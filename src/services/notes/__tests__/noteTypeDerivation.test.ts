@@ -48,7 +48,9 @@ describe("deriveNoteType", () => {
 			expect(deriveNoteType("Article: React Patterns")).toBe("resource");
 		});
 		it("matches 'Reddit:' prefix", () => {
-			expect(deriveNoteType("Reddit: best practices compilation")).toBe("resource");
+			expect(deriveNoteType("Reddit: best practices compilation")).toBe(
+				"resource",
+			);
 		});
 		it("matches 'Video:' prefix", () => {
 			expect(deriveNoteType("Video: TypeScript deep dive")).toBe("resource");
@@ -63,13 +65,17 @@ describe("deriveNoteType", () => {
 			expect(deriveNoteType("Ref: MDN documentation")).toBe("resource");
 		});
 		it("matches 'Paper:' prefix", () => {
-			expect(deriveNoteType("Paper: Attention Is All You Need")).toBe("resource");
+			expect(deriveNoteType("Paper: Attention Is All You Need")).toBe(
+				"resource",
+			);
 		});
 		it("matches 'Source:' prefix", () => {
 			expect(deriveNoteType("Source: internal wiki")).toBe("resource");
 		});
 		it("matches https URL in title", () => {
-			expect(deriveNoteType("https://reddit.com/r/programming")).toBe("resource");
+			expect(deriveNoteType("https://reddit.com/r/programming")).toBe(
+				"resource",
+			);
 		});
 		it("matches http URL in title", () => {
 			expect(deriveNoteType("http://example.com/article")).toBe("resource");
