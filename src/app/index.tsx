@@ -7,6 +7,7 @@ import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
 import { appEvents } from "@/services/appEvents";
 import { NoteService } from "@/services/notes/noteService";
+import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import type { Note, NoteType } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
@@ -129,15 +130,24 @@ export default function Index() {
 		router.push(`/editor?id=${newNote.id}`);
 	}, []);
 
+	const TYPE_TITLE_PREFIX: Record<
+		Extract<NoteType, "journal" | "resource">,
+		string
+	> = {
+		journal: "Journal ",
+		resource: "Resource ",
+	};
+
 	const handleCreateTypedNote = useCallback(
 		async (noteType: Extract<NoteType, "journal" | "resource">) => {
+			const title = TYPE_TITLE_PREFIX[noteType];
 			const newNote = {
 				id: nanoid(),
-				title: "",
+				title,
 				content: "",
 				lastUpdated: Date.now(),
 				isPinned: false,
-				noteType,
+				noteType: deriveNoteType(title),
 			};
 			await NoteService.saveNote(newNote, true);
 			router.push(`/editor?id=${newNote.id}`);
@@ -146,9 +156,10 @@ export default function Index() {
 	);
 
 	const handleCreateTodo = useCallback(async () => {
+		const title = "Todo ";
 		const newTodo = {
 			id: nanoid(),
-			title: "",
+			title,
 			content: "",
 			lastUpdated: Date.now(),
 			isPinned: false,
