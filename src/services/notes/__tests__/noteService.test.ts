@@ -143,5 +143,11 @@ describe("NoteService", () => {
 
 			expect(mockQueueChange).toHaveBeenCalledWith("note-1.md", "delete");
 		});
+
+		it("does not queue git change when storage delete fails", async () => {
+			mockDeleteNote.mockResolvedValue(false);
+			await NoteService.deleteNote("note-1");
+			expect(mockQueueChange).not.toHaveBeenCalled();
+		});
 	});
 });
