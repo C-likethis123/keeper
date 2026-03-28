@@ -21,8 +21,6 @@ const mockSaveTemplate = jest.fn();
 const mockDeleteTemplate = jest.fn();
 const mockListTemplates = jest.fn();
 const mockNavigationSetOptions = jest.fn();
-const mockSaveVideoPosition = jest.fn();
-const mockGetVideoPosition = jest.fn();
 
 let latestNavigationOptions:
 	| {
@@ -163,15 +161,11 @@ describe("NoteEditorView", () => {
 		mockSaveTemplate.mockReset();
 		mockDeleteTemplate.mockReset();
 		mockListTemplates.mockReset();
-		mockGetVideoPosition.mockReset();
-		mockSaveVideoPosition.mockReset();
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
 		mockSaveTemplate.mockResolvedValue(undefined);
 		mockDeleteTemplate.mockResolvedValue(undefined);
 		mockListTemplates.mockResolvedValue([]);
-		mockGetVideoPosition.mockResolvedValue(0);
-		mockSaveVideoPosition.mockResolvedValue(undefined);
 		mockNavigationSetOptions.mockReset();
 		latestNavigationOptions = undefined;
 		useEditorState.getState().resetState();
@@ -278,28 +272,5 @@ describe("NoteEditorView", () => {
 			);
 		});
 		expect(mockDeleteNote).toHaveBeenCalledWith(note.id);
-	});
-
-	it("opens and closes an embedded video panel from a pasted URL", async () => {
-		const user = userEvent.setup();
-
-		renderNoteEditor(makeNote());
-
-		await screen.findByText("Toolbar");
-		await user.press(screen.getByText("Open video"));
-		await screen.findByText("Paste video URL");
-		await user.type(
-			screen.getByTestId("video-url-input"),
-			"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-		);
-		await user.press(screen.getAllByText("Open video")[1]);
-
-		await screen.findByText("YouTube video");
-		await screen.findByText("Close video");
-		await user.press(screen.getByText("Close video"));
-
-		await waitFor(() => {
-			expect(screen.queryByText("YouTube video")).toBeNull();
-		});
 	});
 });

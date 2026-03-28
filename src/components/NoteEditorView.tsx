@@ -322,12 +322,13 @@ export default function NoteEditorView({ note }: { note: Note }) {
 										size={16}
 										color={theme.colors.text}
 									/>
-									<Text style={styles.secondaryActionChipText}>Template</Text>
+									<Text style={styles.secondaryActionChipText}>
+										Insert from template
+									</Text>
 								</TouchableOpacity>
 							</View>
 						</View>
 					) : null}
-
 					{noteType === "todo" ? (
 						<View style={styles.metadataGroup}>
 							<Text style={styles.metadataLabel}>Status</Text>

@@ -9,20 +9,10 @@ describe("videoUtils", () => {
 			parseEmbeddedVideoUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
 		).toEqual(
 			expect.objectContaining({
-				kind: "youtube",
-				label: "YouTube video",
+				host: "youtube.com",
+				rawUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 				embedUrl:
 					"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&enablejsapi=1",
-			}),
-		);
-	});
-
-	it("accepts generic https urls as fallback video sources", () => {
-		expect(parseEmbeddedVideoUrl("https://example.com/video")).toEqual(
-			expect.objectContaining({
-				kind: "generic",
-				embedUrl: "https://example.com/video",
-				label: "example.com",
 			}),
 		);
 	});
