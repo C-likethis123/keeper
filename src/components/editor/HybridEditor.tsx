@@ -5,10 +5,11 @@ import { resolveOrCreateWikiLinkNoteId } from "@/components/editor/wikilinks/wik
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
 import { useRouter } from "expo-router";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { BlockRow } from "./BlockRow";
 import { blockRegistry } from "./blocks/BlockRegistry";
+import { EmbeddedVideoPreview } from "./blocks/VideoBlock";
 import { BlockType, createParagraphBlock } from "./core/BlockNode";
 import {
 	WikiLinkProvider,
@@ -34,6 +35,7 @@ export function HybridEditor() {
 function HybridEditorContent() {
 	const router = useRouter();
 	const blockIds = useEditorBlockIds();
+	const blocks = useEditorState((s) => s.document.blocks);
 	const setSelection = useEditorState((s) => s.setSelection);
 	const selection = useEditorState((s) => s.selection);
 	const updateBlockType = useEditorState((s) => s.updateBlockType);
@@ -47,7 +49,12 @@ function HybridEditorContent() {
 	const ignoreNextContentChangeRef = useRef<number | null>(null);
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
-	const { scrollViewRef, scrollYRef, viewHeightRef } = useEditorScrollView();
+	const { scrollViewRef, scrollYRef, viewHeightRef, viewportHeight } =
+		useEditorScrollView();
+	const [scrollY, setScrollY] = useState(0);
+	const [videoLayouts, setVideoLayouts] = useState<
+		Record<number, { height: number; y: number }>
+	>({});
 	const { focusBlock } = useFocusBlock();
 	const wikiLinks = useWikiLinkContext();
 	const commandContext = useEditorCommandContext({
@@ -329,6 +336,48 @@ function HybridEditorContent() {
 		],
 	);
 
+	const stickyVideo = useMemo(() => {
+		let activeVideo: { content: string; index: number } | null = null;
+
+		for (const [index, block] of blocks.entries()) {
+			if (block.type !== BlockType.video) {
+				continue;
+			}
+
+			const layout = videoLayouts[index];
+			if (!layout) {
+				continue;
+			}
+
+			if (scrollY >= layout.y + layout.height) {
+				activeVideo = { content: block.content, index };
+			}
+		}
+
+		return activeVideo;
+	}, [blocks, scrollY, videoLayouts]);
+
+	const handleVideoLayout = useCallback(
+		(index: number, y: number, height: number) => {
+			setVideoLayouts((current) => {
+				const existing = current[index];
+				if (existing?.y === y && existing.height === height) {
+					return current;
+				}
+
+				return {
+					...current,
+					[index]: { y, height },
+				};
+			});
+		},
+		[],
+	);
+
+	const stickyVideoMaxHeight = viewportHeight
+		? Math.max(0, viewportHeight / 2)
+		: undefined;
+
 	return (
 		<View style={styles.container}>
 			<ScrollView
@@ -338,25 +387,64 @@ function HybridEditorContent() {
 				keyboardShouldPersistTaps="handled"
 				scrollEventThrottle={16}
 				onScroll={(e) => {
-					scrollYRef.current = e.nativeEvent.contentOffset.y;
+					const nextScrollY = e.nativeEvent.contentOffset.y;
+					scrollYRef.current = nextScrollY;
+					setScrollY(nextScrollY);
 				}}
 				onLayout={(e) => {
-					viewHeightRef.current = e.nativeEvent.layout.height;
+					const { height } = e.nativeEvent.layout;
+					viewHeightRef.current = height;
 				}}
 			>
+				{blockIds.map((id, index) => {
+					const isVideoBlock = blocks[index]?.type === BlockType.video;
+
+					return (
+						<View
+							key={id}
+							testID={isVideoBlock ? `video-block-row-${index}` : undefined}
+							onLayout={
+								isVideoBlock
+									? (e) => {
+											const { height, y } = e.nativeEvent.layout;
+											handleVideoLayout(index, y, height);
+										}
+									: undefined
+							}
+						>
+							<BlockRow index={index} handlers={handlers} />
+						</View>
+					);
+				})}
 				<Pressable
-					style={styles.pressableArea}
+					style={styles.endCap}
 					onPress={() => {
 						const blocks = useEditorState.getState().document.blocks;
 						const lastIndex = Math.max(0, blocks.length - 1);
 						focusBlock(lastIndex);
 					}}
-				>
-					{blockIds.map((id, index) => (
-						<BlockRow key={id} index={index} handlers={handlers} />
-					))}
-				</Pressable>
+				/>
 			</ScrollView>
+			{stickyVideo ? (
+				<View pointerEvents="box-none" style={styles.stickyVideoOverlay}>
+					<View
+						style={[
+							styles.stickyVideoCard,
+							stickyVideoMaxHeight ? { maxHeight: stickyVideoMaxHeight } : null,
+						]}
+						testID="sticky-video-overlay"
+					>
+						<EmbeddedVideoPreview
+							url={stickyVideo.content}
+							style={[
+								stickyVideoMaxHeight
+									? { maxHeight: stickyVideoMaxHeight }
+									: null,
+							]}
+						/>
+					</View>
+				</View>
+			) : null}
 			<WikiLinkModal />
 		</View>
 	);
@@ -374,7 +462,20 @@ const styles = StyleSheet.create({
 		flexGrow: 1,
 		paddingBottom: 20,
 	},
-	pressableArea: {
-		flex: 1,
+	endCap: {
+		flexGrow: 1,
+		minHeight: 120,
+	},
+	stickyVideoOverlay: {
+		left: 0,
+		paddingHorizontal: 16,
+		position: "absolute",
+		right: 0,
+		top: 0,
+	},
+	stickyVideoCard: {
+		shadowColor: "#000000",
+		shadowOpacity: 0.12,
+		shadowRadius: 12,
 	},
 });

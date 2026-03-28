@@ -45,21 +45,27 @@ jest.mock("nanoid", () => ({
 	nanoid: () => "generated-note-id",
 }));
 
-jest.mock("@react-native-async-storage/async-storage", () => {
-	let store: Record<string, string> = {};
+jest.mock("@react-native-async-storage/async-storage", () => ({
+	__esModule: true,
+	default: {
+		getItem: jest.fn(),
+		setItem: jest.fn(),
+		removeItem: jest.fn(),
+		clear: jest.fn(),
+	},
+}));
+
+jest.mock("react-native-webview", () => {
+	const React = require("react");
+	const { View } = require("react-native");
+
 	return {
-		__esModule: true,
-		default: {
-			getItem: jest.fn(async (key: string) => store[key] ?? null),
-			setItem: jest.fn(async (key: string, value: string) => {
-				store[key] = value;
+		WebView: React.forwardRef((props: Record<string, unknown>, ref) =>
+			React.createElement(View, {
+				...props,
+				ref,
+				testID: props.testID ?? "mock-webview",
 			}),
-			removeItem: jest.fn(async (key: string) => {
-				delete store[key];
-			}),
-			clear: jest.fn(async () => {
-				store = {};
-			}),
-		},
+		),
 	};
 });

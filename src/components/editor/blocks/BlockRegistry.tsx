@@ -43,6 +43,11 @@ interface BlockBuilder {
 	type: BlockType;
 	triggerPrefix?: RegExp;
 	markdownPrefix: string;
+	detect?: (text: string) => {
+		prefix: string;
+		remainingContent: string;
+		language?: string;
+	} | null;
 	build: (config: BlockConfig) => React.ReactElement;
 }
 
@@ -96,6 +101,16 @@ class BlockRegistry {
 		language?: string;
 	} | null {
 		for (const builder of this.builders.values()) {
+			const detected = builder.detect?.(text);
+			if (detected) {
+				return {
+					type: builder.type,
+					prefix: detected.prefix,
+					remainingContent: detected.remainingContent,
+					language: detected.language,
+				};
+			}
+
 			const prefix = builder.triggerPrefix;
 			if (!prefix) {
 				continue;
@@ -208,7 +223,27 @@ blockRegistry.registerAll([
 	},
 	{
 		type: BlockType.video,
+		triggerPrefix: /^video:\s/i,
 		markdownPrefix: "![video](",
+		detect: (text) => {
+			const markdownEmbedMatch = text.match(/^!\[video\]\((.+)\)$/i);
+			if (markdownEmbedMatch) {
+				return {
+					prefix: markdownEmbedMatch[0],
+					remainingContent: markdownEmbedMatch[1],
+				};
+			}
+
+			const prefixMatch = text.match(/^video:\s/i);
+			if (prefixMatch) {
+				return {
+					prefix: prefixMatch[0],
+					remainingContent: text.substring(prefixMatch[0].length),
+				};
+			}
+
+			return null;
+		},
 		build: (config) => renderLazyBlock(LazyVideoBlock, config),
 	},
 ]);

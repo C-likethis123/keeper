@@ -100,9 +100,15 @@ export function createDocumentFromMarkdown(markdown: string): Document {
 		}
 
 		// Check for video
-		if (line.startsWith("![video](")) {
-			const videoPath = line.substring(9, line.length - 1);
-			blocks.push(createVideoBlock(videoPath));
+		const imageStyleVideoMatch = line.match(/^!\[video\]\((.+)\)$/i);
+		if (imageStyleVideoMatch) {
+			blocks.push(createVideoBlock(imageStyleVideoMatch[1]));
+			i++;
+			continue;
+		}
+
+		if (line.toLowerCase().startsWith("video: ")) {
+			blocks.push(createVideoBlock(line.substring(7).trim()));
 			i++;
 			continue;
 		}

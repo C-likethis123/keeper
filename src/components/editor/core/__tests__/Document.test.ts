@@ -42,6 +42,7 @@ const answer = 42;
 $$
 x^2
 $$
+![video](https://youtu.be/dQw4w9WgXcQ)
 ![](images/photo.png)`);
 
 		expect(blocks).toEqual([
@@ -80,6 +81,11 @@ $$
 			},
 			{ type: BlockType.paragraph, content: "", attributes: {} },
 			{ type: BlockType.mathBlock, content: "x^2", attributes: {} },
+			{
+				type: BlockType.video,
+				content: "https://youtu.be/dQw4w9WgXcQ",
+				attributes: {},
+			},
 			{ type: BlockType.image, content: "images/photo.png", attributes: {} },
 		]);
 	});
@@ -93,7 +99,8 @@ const answer = 42;
 \`\`\`
 $$
 x^2
-$$`);
+$$
+![video](https://youtu.be/dQw4w9WgXcQ)`);
 
 		expect(getListItemNumber(document, 0)).toBe(1);
 		expect(getListItemNumber(document, 1)).toBe(2);
@@ -107,7 +114,9 @@ const answer = 42;
 
 $$
 x^2
-$$`);
+$$
+
+![video](https://youtu.be/dQw4w9WgXcQ)`);
 	});
 
 	it("keeps the document non-empty when removing or replacing every block", () => {

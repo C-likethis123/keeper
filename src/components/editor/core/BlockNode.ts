@@ -120,11 +120,12 @@ export function createImageBlock(path: string): BlockNode {
 	};
 }
 
-export function createVideoBlock(path: string): BlockNode {
+/// Creates a new video block
+export function createVideoBlock(url: string): BlockNode {
 	return {
 		id: generateId(),
 		type: BlockType.video,
-		content: path,
+		content: url,
 		attributes: {},
 	};
 }

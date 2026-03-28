@@ -18,6 +18,7 @@
 			"Bash(grove create:*)",
 			"Bash(grove update:*)",
 			"Bash(grove list:*)",
+			"Bash(command -v grove)",
 			"Edit(/src/**)",
 			"Edit(docs/**)",
 			"mcp__ide__getDiagnostics",

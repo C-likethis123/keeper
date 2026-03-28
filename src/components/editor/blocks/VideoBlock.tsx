@@ -1,68 +1,142 @@
+import { useEditorScrollView } from "@/components/editor/EditorScrollContext";
 import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
-import {
-	type VideoMode,
-	parseEmbeddedVideoUrl,
-} from "@/components/editor/video/videoUtils";
-import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import { useStyles } from "@/hooks/useStyles";
-import { useEditorBlockSelection } from "@/stores/editorStore";
-import React, { useCallback, useRef, useState } from "react";
+import { useEditorBlockSelection, useEditorState } from "@/stores/editorStore";
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	type NativeSyntheticEvent,
+	Platform,
 	Pressable,
+	type StyleProp,
 	StyleSheet,
+	Text,
 	TextInput,
 	type TextInputKeyPressEventData,
 	type TextInputSelectionChangeEventData,
 	View,
+	type ViewStyle,
 } from "react-native";
-import { EmbeddedVideoPanel } from "../video/EmbeddedVideoPanel";
+import { WebView } from "react-native-webview";
 import type { BlockConfig } from "./BlockRegistry";
+import { getYouTubeEmbedUrl } from "./videoUtils";
 
-// TODO: maybe integrate this with the UnifiedBlock?
+export function EmbeddedVideoPreview({
+	url,
+	testID,
+	style,
+}: {
+	url: string;
+	testID?: string;
+	style?: StyleProp<ViewStyle>;
+}) {
+	const theme = useExtendedTheme();
+	const styles = useMemo(() => createStyles(theme), [theme]);
+	const embedUrl = getYouTubeEmbedUrl(url);
+
+	if (!embedUrl) {
+		return (
+			<View style={[styles.preview, style]} testID={testID}>
+				<View style={styles.placeholder}>
+					<Text style={styles.placeholderTitle}>Paste a YouTube URL</Text>
+					{url ? <Text style={styles.placeholderUrl}>{url}</Text> : null}
+				</View>
+			</View>
+		);
+	}
+
+	if (Platform.OS === "web") {
+		return (
+			<View style={[styles.preview, style]} testID={testID}>
+				{React.createElement("iframe", {
+					allow:
+						"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
+					allowFullScreen: true,
+					src: embedUrl,
+					style: {
+						border: 0,
+						width: "100%",
+						height: "100%",
+					},
+					title: "Embedded YouTube video",
+				})}
+			</View>
+		);
+	}
+
+	return (
+		<View style={[styles.preview, style]} testID={testID}>
+			<WebView
+				allowsFullscreenVideo
+				javaScriptEnabled
+				scrollEnabled={false}
+				source={{ uri: embedUrl }}
+				style={styles.webview}
+			/>
+		</View>
+	);
+}
+
 export function VideoBlock({
 	block,
 	index,
 	isFocused,
-	onEnter,
 	onContentChange,
 	onBackspaceAtStart,
+	onEnter,
 	onSelectionChange,
 }: BlockConfig) {
-	const { focusBlock } = useFocusBlock();
-	const inputRef = useRef<TextInput | null>(null);
+	const { focusBlock, blurBlock } = useFocusBlock();
 	const selection = useEditorBlockSelection(index);
-	const styles = useStyles(createStyles);
-	const videoSource = parseEmbeddedVideoUrl(block.content);
-	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
-	const handleFocus = useCallback(() => {
-		if (isFocused) {
-			return;
-		}
-		focusBlock(index);
-	}, [focusBlock, index, isFocused]);
-	const handleKeyPress = useCallback(
-		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
-			const key = e.nativeEvent.key;
-			if (handleVerticalArrow(key)) {
-				return;
-			}
-			if (key === "Enter" && selection && selection.start === selection.end) {
-				onEnter(index, selection.end);
-			}
-
-			if (
-				key === "Backspace" &&
-				selection?.start === 0 &&
-				selection?.end === 0
-			) {
-				onBackspaceAtStart(index);
-				return;
-			}
-		},
-		[handleVerticalArrow, index, onBackspaceAtStart, onEnter, selection],
+	const getFocusedBlockIndex = useEditorState(
+		(state) => state.getFocusedBlockIndex,
 	);
+	const inputRef = useRef<TextInput | null>(null);
+	const [value, setValue] = useState(block.content);
+	const theme = useExtendedTheme();
+	const styles = useMemo(() => createStyles(theme), [theme]);
+	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
+	const { viewportHeight } = useEditorScrollView();
+	const previewMaxHeight = viewportHeight
+		? Math.max(0, viewportHeight / 2)
+		: undefined;
+	const previewMinHeight = viewportHeight
+		? Math.max(0, viewportHeight * 0.4)
+		: 220;
+
+	useEffect(() => {
+		if (block.content !== value) {
+			setValue(block.content);
+		}
+	}, [block.content, value]);
+
+	useEffect(() => {
+		onContentChange(index, value);
+	}, [index, onContentChange, value]);
+
+	useEffect(() => {
+		if (isFocused) {
+			inputRef.current?.focus();
+		}
+	}, [isFocused]);
+
+	const handleFocus = useCallback(() => {
+		if (!isFocused) {
+			focusBlock(index);
+		}
+	}, [focusBlock, index, isFocused]);
+
+	const handleBlur = useCallback(() => {
+		if (getFocusedBlockIndex() === index) {
+			blurBlock();
+		}
+	}, [blurBlock, getFocusedBlockIndex, index]);
 
 	const handleSelectionChange = useCallback(
 		(e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
@@ -72,9 +146,33 @@ export function VideoBlock({
 				e.nativeEvent.selection.end,
 			);
 		},
-		[onSelectionChange, index],
+		[index, onSelectionChange],
 	);
-	const [videoMode, setVideoMode] = useState<VideoMode>("normal");
+
+	const handleKeyPress = useCallback(
+		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+			const key = e.nativeEvent.key;
+
+			if (handleVerticalArrow(key)) {
+				return;
+			}
+
+			if (key === "Enter" && selection && selection.start === selection.end) {
+				onEnter(index, selection.end);
+				return;
+			}
+
+			if (
+				key === "Backspace" &&
+				selection?.start === 0 &&
+				selection?.end === 0
+			) {
+				onBackspaceAtStart(index);
+			}
+		},
+		[handleVerticalArrow, index, onBackspaceAtStart, onEnter, selection],
+	);
+
 	return (
 		<Pressable
 			style={({ pressed }) => [
@@ -84,21 +182,15 @@ export function VideoBlock({
 			]}
 			onPress={handleFocus}
 		>
-			{!isFocused && videoSource && (
-				<View style={styles.stackedSplitShell}>
-					<EmbeddedVideoPanel
-						source={videoSource}
-						style={
-							videoMode === "normal"
-								? styles.videoPanel
-								: styles.videoPanelMinimised
-						}
-						mode={videoMode}
-						onToggleMode={() =>
-							setVideoMode((m) => (m === "normal" ? "minimised" : "normal"))
-						}
-					/>
-				</View>
+			{!isFocused && (
+				<EmbeddedVideoPreview
+					url={value}
+					style={[
+						styles.inlinePreview,
+						{ minHeight: previewMinHeight },
+						previewMaxHeight ? { maxHeight: previewMaxHeight } : null,
+					]}
+				/>
 			)}
 			<TextInput
 				ref={inputRef}
@@ -106,10 +198,16 @@ export function VideoBlock({
 					styles.input,
 					isFocused ? styles.inputVisible : styles.inputHidden,
 				]}
-				value={block.content}
-				onChangeText={(text) => onContentChange(index, text)}
+				value={value}
+				onBlur={handleBlur}
+				onChangeText={setValue}
+				onFocus={handleFocus}
 				onKeyPress={handleKeyPress}
 				onSelectionChange={handleSelectionChange}
+				autoCapitalize="none"
+				autoCorrect={false}
+				placeholder="Paste a YouTube URL"
+				placeholderTextColor={theme.custom.editor.placeholder}
 			/>
 		</Pressable>
 	);
@@ -118,40 +216,65 @@ export function VideoBlock({
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		container: {
-			minHeight: 40,
 			paddingHorizontal: 16,
 			paddingVertical: 8,
+			backgroundColor: theme.colors.background,
+		},
+		focused: {
+			backgroundColor: theme.custom.editor.blockFocused,
+		},
+		pressed: {
+			opacity: 0.95,
+		},
+		preview: {
+			borderRadius: 12,
+			overflow: "hidden",
+			backgroundColor: theme.colors.card,
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+			aspectRatio: 16 / 9,
+			minHeight: 220,
+			justifyContent: "center",
+			maxWidth: "100%",
+		},
+		inlinePreview: {
+			alignSelf: "center",
+		},
+		placeholder: {
+			flex: 1,
+			alignItems: "center",
+			justifyContent: "center",
+			padding: 20,
+			gap: 8,
+		},
+		placeholderTitle: {
+			color: theme.colors.text,
+			fontSize: 16,
+			fontWeight: "600",
+		},
+		placeholderUrl: {
+			color: theme.colors.textMuted,
+			fontSize: 13,
+			textAlign: "center",
 		},
 		input: {
 			minHeight: 24,
 			color: theme.colors.text,
 		},
 		inputVisible: {
+			marginTop: 8,
 			opacity: 1,
 		},
 		inputHidden: {
+			position: "absolute",
+			left: -9999,
+			width: 1,
+			height: 1,
 			opacity: 0,
 		},
-		focused: {
-			backgroundColor: theme.custom.editor.blockFocused,
-		},
-		pressed: {
-			opacity: 0.8,
-		},
-		stackedSplitShell: {
+		webview: {
 			flex: 1,
-			flexDirection: "column",
-			gap: 8,
-		},
-		videoPanel: {},
-		videoPanelMinimised: {
-			flex: 0,
-		},
-		videoModalActions: {
-			flexDirection: "row",
-			justifyContent: "flex-end",
-			gap: 8,
-			marginTop: 12,
+			backgroundColor: "#000000",
 		},
 	});
 }

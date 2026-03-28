@@ -61,7 +61,9 @@ function isInlineFormattingUnsupported(type: BlockType): boolean {
 		BlockType.mathBlock,
 		BlockType.image,
 		BlockType.video,
-	].includes(type);
+	].includes(
+		type,
+	);
 }
 
 const history = new History();
