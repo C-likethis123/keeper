@@ -22,6 +22,14 @@ type ReadEntryResult = {
 	status: Note["status"];
 };
 
+type WriteTemplateInput = {
+	id: string;
+	title: string;
+	content: string;
+	noteType: Note["noteType"];
+	status: Note["status"];
+};
+
 type TauriInvoke = NonNullable<ReturnType<typeof getTauriInvoke>>;
 
 export class TauriStorageEngine implements StorageEngine {
@@ -44,10 +52,41 @@ export class TauriStorageEngine implements StorageEngine {
 	}
 
 	async loadNote(id: string): Promise<Note | null> {
-		return this.invoke<ReadEntryResult | null>("read_note", { id });
+		const note = await this.invoke<ReadEntryResult | null>("read_note", { id });
+		if (note) return note;
+		// Check templates directory
+		const template = await this.invoke<ReadEntryResult | null>(
+			"read_template",
+			{ id },
+		);
+		if (!template) return null;
+		return {
+			id: template.id,
+			title: template.title,
+			content: template.content,
+			isPinned: false,
+			lastUpdated: template.lastUpdated,
+			noteType: "template",
+			status: null,
+		};
 	}
 
 	async saveNote(note: NoteSaveInput): Promise<Note> {
+		if (note.noteType === "template") {
+			const input: WriteTemplateInput = {
+				id: note.id,
+				title: note.title,
+				content: note.content,
+				noteType: "template",
+				status: null,
+			};
+			const updatedAt = await this.invoke<number>("write_template", { input });
+			return {
+				...note,
+				isPinned: false,
+				lastUpdated: updatedAt || Date.now(),
+			};
+		}
 		const updatedAt = await this.invoke<number>("write_note", {
 			input: {
 				id: note.id,
@@ -65,7 +104,9 @@ export class TauriStorageEngine implements StorageEngine {
 	}
 
 	async deleteNote(id: string): Promise<boolean> {
-		return this.invoke<boolean>("delete_note", { id });
+		const deleted = await this.invoke<boolean>("delete_note", { id });
+		if (deleted) return true;
+		return this.invoke<boolean>("delete_template", { id });
 	}
 
 	async listNoteFiles(): Promise<NoteFileEntry[]> {
