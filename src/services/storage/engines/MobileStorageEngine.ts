@@ -1,10 +1,9 @@
-import { NOTES_ROOT, getTemplatesRoot } from "@/services/notes/Notes";
+import { NOTES_ROOT } from "@/services/notes/Notes";
 import {
 	parseFrontmatter,
 	stringifyFrontmatter,
 } from "@/services/notes/frontmatter";
 import { resetNotesIndexDb } from "@/services/notes/indexDb/db";
-import { extractSummary } from "@/services/notes/indexDb/mapper";
 import { rebuildFromDisk } from "@/services/notes/indexDb/rebuildService";
 import {
 	type NotesIndexRebuildMetrics,
@@ -13,17 +12,7 @@ import {
 	notesIndexDbListAll,
 	notesIndexDbUpsert,
 } from "@/services/notes/notesIndexDb";
-import {
-	parseTemplateFrontmatter,
-	stringifyTemplateFrontmatter,
-} from "@/services/notes/templateFrontmatter";
-import type {
-	Note,
-	NoteListFilters,
-	NoteSaveInput,
-	NoteTemplate,
-	NoteTemplateSaveInput,
-} from "@/services/notes/types";
+import type { Note, NoteSaveInput } from "@/services/notes/types";
 import type {
 	NoteFileEntry,
 	StorageEngine,
@@ -174,110 +163,5 @@ export class MobileStorageEngine implements StorageEngine {
 
 	async indexRebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
 		return rebuildFromDisk();
-	}
-
-	async loadTemplate(id: string): Promise<NoteTemplate | null> {
-		try {
-			const file = new File(getTemplatesRoot(), `${id}.md`);
-			if (!file.exists) return null;
-			const parsed = parseTemplateFrontmatter(await file.text());
-			return {
-				id,
-				title: parsed.title,
-				content: parsed.content,
-				lastUpdated: file.modificationTime ?? 0,
-				noteType: parsed.noteType,
-				status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
-			};
-		} catch {
-			return null;
-		}
-	}
-
-	async saveTemplate(template: NoteTemplateSaveInput): Promise<NoteTemplate> {
-		const dir = new Directory(getTemplatesRoot());
-		if (!dir.exists) {
-			dir.create({ intermediates: true });
-		}
-		const file = new File(getTemplatesRoot(), `${template.id}.md`);
-		const content = stringifyTemplateFrontmatter(template);
-		await file.write(content);
-		const updatedAt = file.modificationTime ?? Date.now();
-		return {
-			...template,
-			title: (template.title ?? "").trim(),
-			lastUpdated: updatedAt,
-		};
-	}
-
-	async deleteTemplate(id: string): Promise<boolean> {
-		const file = new File(getTemplatesRoot(), `${id}.md`);
-		if (!file.exists) return false;
-		file.delete();
-		return true;
-	}
-
-	async listTemplates(): Promise<NoteTemplate[]> {
-		const dir = new Directory(getTemplatesRoot());
-		if (!dir.exists) {
-			return [];
-		}
-		const files = dir
-			.list()
-			.filter(
-				(entry): entry is File =>
-					entry instanceof File && entry.name.endsWith(".md"),
-			)
-			.sort((a, b) => (b.modificationTime ?? 0) - (a.modificationTime ?? 0));
-		const templates = await Promise.all(
-			files.map(async (entry) => {
-				const parsed = parseTemplateFrontmatter(await entry.text());
-				return {
-					id: entry.name.replace(/\.md$/, ""),
-					title: parsed.title,
-					content: parsed.content,
-					lastUpdated: entry.modificationTime ?? 0,
-					noteType: parsed.noteType,
-					status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
-				} satisfies NoteTemplate;
-			}),
-		);
-		return templates;
-	}
-
-	async listNotesFallback(
-		limit: number,
-		offset?: number,
-		query?: string,
-		filters?: NoteListFilters,
-	): Promise<Note[]> {
-		const normalizedQuery = query?.trim().toLowerCase() ?? "";
-		const files = await this.listNoteFiles();
-		const filtered: Note[] = [];
-		for (const file of files) {
-			const loaded = await this.loadNote(file.id);
-			if (!loaded) continue;
-			const matches =
-				normalizedQuery.length === 0 ||
-				loaded.title.toLowerCase().includes(normalizedQuery) ||
-				loaded.content.toLowerCase().includes(normalizedQuery);
-			const matchesType =
-				!filters?.noteTypes ||
-				filters.noteTypes.length === 0 ||
-				filters.noteTypes.includes(loaded.noteType);
-			const matchesStatus =
-				!filters?.status || loaded.status === filters.status;
-			if (!matches || !matchesType || !matchesStatus) continue;
-			filtered.push({
-				...loaded,
-				content: extractSummary(loaded.content),
-			});
-		}
-		filtered.sort((a, b) => {
-			if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-			return b.lastUpdated - a.lastUpdated;
-		});
-		const from = Math.max(0, offset ?? 0);
-		return filtered.slice(from, from + limit);
 	}
 }
