@@ -1,5 +1,6 @@
 import { GitService } from "@/services/git/gitService";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
+import { getTemplateRelativePath } from "@/services/notes/templatePaths";
 import { getStorageEngine } from "@/services/storage/storageEngine";
 import type { ListNotesResult } from "./notesIndex";
 import type { Note, NoteListFilters, NoteSaveInput } from "./types";
@@ -20,13 +21,18 @@ export class NoteService {
 		// mobile/web will lazily create notes root through expo-file-system on write.
 	}
 
+	private static getGitPath(id: string, noteType: string): string {
+		return noteType === "template" ? getTemplateRelativePath(id) : `${id}.md`;
+	}
+
 	static async loadNote(id: string): Promise<Note | null> {
 		return getStorageEngine().loadNote(id);
 	}
 
 	static async saveNote(note: NoteSaveInput, isNewNote = false): Promise<Note> {
 		const id = note.id.trim();
-		const pinnedState = !!note.isPinned;
+		const isTemplate = note.noteType === "template";
+		const pinnedState = isTemplate ? false : !!note.isPinned;
 		const title = (note.title ?? "").trim();
 		const saved = await getStorageEngine().saveNote({
 			...note,
@@ -34,25 +40,30 @@ export class NoteService {
 			isPinned: pinnedState,
 			title,
 		});
-		const summary = extractSummary(note.content);
 
-		await NotesIndexService.upsertNote({
-			noteId: id,
-			summary,
-			title,
-			isPinned: pinnedState,
-			updatedAt: saved.lastUpdated,
-			noteType: saved.noteType,
-			status: saved.status ?? null,
-		});
+		if (!isTemplate) {
+			const summary = extractSummary(note.content);
+			await NotesIndexService.upsertNote({
+				noteId: id,
+				summary,
+				title,
+				isPinned: pinnedState,
+				updatedAt: saved.lastUpdated,
+				noteType: saved.noteType,
+				status: saved.status ?? null,
+			});
+		}
 
-		GitService.queueChange(`${id}.md`, isNewNote ? "add" : "modify");
+		GitService.queueChange(
+			NoteService.getGitPath(id, note.noteType),
+			isNewNote ? "add" : "modify",
+		);
 		GitService.scheduleCommitBatch();
 
 		return saved;
 	}
 
-	static async deleteNote(id: string): Promise<boolean> {
+	static async deleteNote(id: string, noteType?: string): Promise<boolean> {
 		try {
 			const deleted = await getStorageEngine().deleteNote(id);
 			if (!deleted) return false;
@@ -61,7 +72,10 @@ export class NoteService {
 			} catch (err) {
 				console.warn("Failed to delete note from index:", err);
 			}
-			GitService.queueChange(`${id}.md`, "delete");
+			GitService.queueChange(
+				NoteService.getGitPath(id, noteType ?? "note"),
+				"delete",
+			);
 			GitService.scheduleCommitBatch();
 			return true;
 		} catch (e) {
