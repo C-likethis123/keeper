@@ -36,7 +36,7 @@ export default {
 		},
 		plugins: [
 			"expo-router",
-			"expo-dev-client",
+			...(IS_DEV ? ["expo-dev-client"] : []),
 			[
 				"expo-splash-screen",
 				{

@@ -216,7 +216,7 @@ function HybridEditorContent() {
 			// Merge with previous block if at start, or focus previous when it's non-mergeable (e.g. image)
 			if (index > 0) {
 				const prevType = prevBlock?.type;
-				if (prevType === BlockType.image) {
+				if (prevType && [BlockType.image, BlockType.video].includes(prevType)) {
 					focusBlock(index - 1);
 					return;
 				}

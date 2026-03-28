@@ -10,10 +10,10 @@ import {
 	userEvent,
 	waitFor,
 } from "expo-router/testing-library";
-
-jest.useFakeTimers();
 import type React from "react";
 import { Text } from "react-native";
+
+jest.useFakeTimers();
 
 const mockSaveNote = jest.fn();
 const mockDeleteNote = jest.fn();
@@ -21,6 +21,7 @@ const mockSaveTemplate = jest.fn();
 const mockDeleteTemplate = jest.fn();
 const mockListTemplates = jest.fn();
 const mockNavigationSetOptions = jest.fn();
+
 let latestNavigationOptions:
 	| {
 			headerLeft?: () => React.ReactNode;
@@ -54,6 +55,7 @@ jest.mock("@/hooks/useExtendedTheme", () => ({
 		colors: {
 			background: "#ffffff",
 			border: "#d0d7de",
+			card: "#f9fafb",
 			text: "#111827",
 			textMuted: "#6b7280",
 			textFaded: "#9ca3af",
@@ -74,6 +76,14 @@ jest.mock("@expo/vector-icons", () => {
 	return {
 		MaterialIcons: ({ name }: { name: string }) =>
 			React.createElement(Text, null, name),
+	};
+});
+
+jest.mock("react-native-webview", () => {
+	const React = require("react");
+	const { Text } = require("react-native");
+	return {
+		WebView: () => React.createElement(Text, null, "Mock WebView"),
 	};
 });
 

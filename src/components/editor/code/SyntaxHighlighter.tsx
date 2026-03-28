@@ -9,8 +9,49 @@ import {
 } from "react-native";
 import Highlighter, {
 	type SyntaxHighlighterProps as HighlighterProps,
-} from "react-syntax-highlighter";
-import * as HLJSSyntaxStyles from "react-syntax-highlighter/dist/esm/styles/hljs";
+} from "react-syntax-highlighter/dist/esm/light";
+import atomOneDark from "react-syntax-highlighter/dist/esm/styles/hljs/atom-one-dark";
+
+// Register only the languages used in LanguageRegistry — keeps the bundle lean.
+import langBash from "react-syntax-highlighter/dist/esm/languages/hljs/bash";
+import langCpp from "react-syntax-highlighter/dist/esm/languages/hljs/cpp";
+import langCs from "react-syntax-highlighter/dist/esm/languages/hljs/csharp";
+import langCss from "react-syntax-highlighter/dist/esm/languages/hljs/css";
+import langDart from "react-syntax-highlighter/dist/esm/languages/hljs/dart";
+import langGo from "react-syntax-highlighter/dist/esm/languages/hljs/go";
+import langJava from "react-syntax-highlighter/dist/esm/languages/hljs/java";
+import langJs from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
+import langJson from "react-syntax-highlighter/dist/esm/languages/hljs/json";
+import langKotlin from "react-syntax-highlighter/dist/esm/languages/hljs/kotlin";
+import langPlaintext from "react-syntax-highlighter/dist/esm/languages/hljs/plaintext";
+import langPython from "react-syntax-highlighter/dist/esm/languages/hljs/python";
+import langRust from "react-syntax-highlighter/dist/esm/languages/hljs/rust";
+import langShell from "react-syntax-highlighter/dist/esm/languages/hljs/shell";
+import langSql from "react-syntax-highlighter/dist/esm/languages/hljs/sql";
+import langSwift from "react-syntax-highlighter/dist/esm/languages/hljs/swift";
+import langTs from "react-syntax-highlighter/dist/esm/languages/hljs/typescript";
+import langXml from "react-syntax-highlighter/dist/esm/languages/hljs/xml";
+import langYaml from "react-syntax-highlighter/dist/esm/languages/hljs/yaml";
+
+Highlighter.registerLanguage("bash", langBash);
+Highlighter.registerLanguage("cpp", langCpp);
+Highlighter.registerLanguage("csharp", langCs);
+Highlighter.registerLanguage("css", langCss);
+Highlighter.registerLanguage("dart", langDart);
+Highlighter.registerLanguage("go", langGo);
+Highlighter.registerLanguage("html", langXml);
+Highlighter.registerLanguage("java", langJava);
+Highlighter.registerLanguage("javascript", langJs);
+Highlighter.registerLanguage("json", langJson);
+Highlighter.registerLanguage("kotlin", langKotlin);
+Highlighter.registerLanguage("plaintext", langPlaintext);
+Highlighter.registerLanguage("python", langPython);
+Highlighter.registerLanguage("rust", langRust);
+Highlighter.registerLanguage("shell", langShell);
+Highlighter.registerLanguage("sql", langSql);
+Highlighter.registerLanguage("swift", langSwift);
+Highlighter.registerLanguage("typescript", langTs);
+Highlighter.registerLanguage("yaml", langYaml);
 
 type Node = {
 	children?: Node[];
@@ -76,8 +117,6 @@ type SyntaxHighlighterStyleType = {
 	highlighterColor?: ColorValue;
 };
 
-const SyntaxHighlighterSyntaxStyles = HLJSSyntaxStyles;
-
 type SyntaxHighlighterProps = HighlighterProps & {
 	/**
 	 * Code to display.
@@ -88,7 +127,7 @@ type SyntaxHighlighterProps = HighlighterProps & {
 	 * Syntax highlighting style.
 	 * @See https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_STYLES_HLJS.MD
 	 */
-	syntaxStyle?: typeof SyntaxHighlighterSyntaxStyles;
+	syntaxStyle?: Record<string, React.CSSProperties>;
 
 	/**
 	 * Extra styling options for the syntax highlighter.
@@ -112,7 +151,7 @@ type PropsWithForwardRef = SyntaxHighlighterProps & {
 
 const SyntaxHighlighter = (props: PropsWithForwardRef): JSX.Element => {
 	const {
-		syntaxStyle = SyntaxHighlighterSyntaxStyles.atomOneDark,
+		syntaxStyle = atomOneDark,
 		addedStyle,
 		scrollEnabled,
 		showLineNumbers = false,

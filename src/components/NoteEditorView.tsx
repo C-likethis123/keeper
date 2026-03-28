@@ -1,6 +1,5 @@
 import { SaveIndicator } from "@/components/SaveIndicator";
 import type { EditorState } from "@/components/editor/core/EditorState";
-import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { appEvents } from "@/services/appEvents";
@@ -86,18 +85,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		noteType,
 		todoStatus,
 	};
-
-	const applyTitleChange = useCallback((nextTitle: string) => {
-		const derivedType = deriveNoteType(nextTitle);
-		setTitle(nextTitle);
-		setNoteType(derivedType);
-		setTodoStatus((current) =>
-			derivedType === "todo" ? (current ?? "open") : undefined,
-		);
-		if (derivedType === "template") {
-			setIsPinned(false);
-		}
-	}, []);
 
 	const buildCurrentNotePayload = useCallback(
 		(overrides?: Partial<Note>): Note => {
@@ -438,8 +425,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	const bottomPadding = Platform.OS === "web" ? 16 : 16 + TOOLBAR_HEIGHT;
-
 	return StyleSheet.create({
 		screen: {
 			flex: 1,
@@ -447,13 +432,12 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		content: {
 			flex: 1,
 			padding: 16,
-			paddingBottom: bottomPadding,
 			backgroundColor: theme.colors.background,
+			gap: 14,
 		},
 		titleInput: {
 			fontSize: 20,
 			fontWeight: "600",
-			marginBottom: 8,
 			borderBottomWidth: 1,
 			borderBottomColor: theme.colors.border,
 			paddingVertical: 4,

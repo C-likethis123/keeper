@@ -9,7 +9,8 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **Phase 3**: Editor keyboard shortcut foundation (desktop + web) complete
 - **Phase 4**: Editor core test foundation complete with passing Jest coverage for `Document`, `Transaction`, and `History`
 - **Phase 5**: Test expansion complete for the first lightweight slice; `EditorState`, selected `editorStore` flows, `frontmatter`, `repoBootstrapper`, and `startupSteps` now have Jest coverage
-- **Phase 6**: In progress; `jest-expo` + React Native Testing Library are in place, with coverage for `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, focused `NoteGrid` load-more behavior, wikilink modal/overlay flows, `HybridEditor` rendered-wikilink activation across web/iOS/Android, and `noteTypeDerivation` prefix rules
+- **Phase 6**: In progress; `jest-expo` + React Native Testing Library are in place, with coverage for `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, focused `NoteGrid` load-more behavior, wikilink modal/overlay flows, and `HybridEditor` rendered-wikilink activation across web/iOS/Android
+- **Phase 7**: Embedded video player complete with stacked/side layouts and playback position persistence; manual validation on device remains next
 - **Next keyboard work**: better code-block vertical navigation, cursor selection fixes, code-block brace auto-completion fixes; app-level shortcuts (`Cmd+K/N/S`) shipped
 - **Critical issues**: No currently confirmed P1 items; desktop hydration was fixed in the storage-init follow-up
 - **Wikilinks**: exact-title resolution and create-from-`[[...]]` helpers are implemented, and `HybridEditor` now has platform tests for rendered-link activation; next checks are clickable desktop/web validation, broader editor-flow coverage, UX polish, and device validation

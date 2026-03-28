@@ -34,6 +34,7 @@ Paragraph text
   1. nested number
 - [x] finished task
 ![](ignored)
+![video](ignored)
 \`\`\`ts
 const answer = 42;
 \`\`\`
@@ -65,6 +66,11 @@ $$
 			},
 			{
 				type: BlockType.image,
+				content: "ignored",
+				attributes: {},
+			},
+			{
+				type: BlockType.video,
 				content: "ignored",
 				attributes: {},
 			},

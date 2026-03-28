@@ -111,7 +111,6 @@ export function createMathBlock(content = ""): BlockNode {
 	};
 }
 
-/// Creates a new image block
 export function createImageBlock(path: string): BlockNode {
 	return {
 		id: generateId(),

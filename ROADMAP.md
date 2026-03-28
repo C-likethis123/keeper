@@ -2,6 +2,11 @@
 
 This is the central planning document for Keeper. It outlines critical issues, development phases, and high-level features. Refer to this document before starting new work.
 
+## Yet to prioritise
+
+This section contains todo items that have not been prioritised. When seeing items in this section, figure out its priority and move them into the relevant buckets.
+1. figure out how to make API queries use react suspense (eg the use hook?)
+2. Create video embed blocks
 ## Critical Issues (P1)
 
 No currently confirmed P1 issues.
@@ -316,22 +321,24 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 
 Move old journal entries out of active workspace.
 
-### Embedded Video Player
+### Phase 7: Embedded Video Player ✅
 
 Watch YouTube (and other videos) while editing notes, without leaving the app.
 
-**Layout**:
+**Status**: Implemented
+**Features**:
+- Stacked (mobile) and side (desktop) split-screen layouts
+- YouTube URL parsing and generic embed fallback
+- Playback position persistence via AsyncStorage
+- Resume from last watched position on re-open
+- Flexible split resizing via UI controls
+- Integrated position tracking (native WebView + Web iframe)
 
-- Mobile: video panel above the note editor (stacked vertically)
-- Desktop: video panel to the side of the editor (split view, horizontal)
-
-**Scope**:
-
-- YouTube URL detection or manual paste to open video panel
-- Resizable/dismissible panel
-- Playback controls visible while editing
-
-**TODO**: Remove read-only view guards
+**Key files**:
+- `src/components/editor/video/videoUtils.ts`: URL parsing and layout logic
+- `src/components/editor/video/videoPositionStore.ts`: AsyncStorage-backed position storage
+- `src/components/editor/video/EmbeddedVideoPanel.tsx`: Resizable video panel with time tracking
+- `src/components/NoteEditorView.tsx`: Split-screen orchestration and persistence wiring
 
 ### Tabs
 
