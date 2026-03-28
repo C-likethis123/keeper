@@ -97,7 +97,7 @@ describe("NoteService", () => {
 			expect(mockQueueChange).toHaveBeenCalledWith("note-1.md", "add");
 		});
 
-		it("does not index templates in SQLite", async () => {
+		it("indexes templates in SQLite", async () => {
 			const { NotesIndexService } = jest.requireMock(
 				"@/services/notes/notesIndex",
 			);
@@ -120,7 +120,15 @@ describe("NoteService", () => {
 				status: null,
 			});
 
-			expect(NotesIndexService.upsertNote).not.toHaveBeenCalled();
+			expect(NotesIndexService.upsertNote).toHaveBeenCalledWith({
+				noteId: "tmpl-1",
+				summary: "body",
+				title: "My Template",
+				isPinned: false,
+				updatedAt: 1000,
+				noteType: "template",
+				status: null,
+			});
 		});
 	});
 

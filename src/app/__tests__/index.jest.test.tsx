@@ -160,7 +160,6 @@ describe("Index", () => {
 		useStorageStore.setState({
 			capabilities: {
 				backend: "mobile-native",
-				canSearch: true,
 			},
 			initializationStatus: "ready",
 			initializationError: undefined,

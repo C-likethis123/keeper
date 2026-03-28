@@ -41,18 +41,16 @@ export class NoteService {
 			title,
 		});
 
-		if (!isTemplate) {
-			const summary = extractSummary(note.content);
-			await NotesIndexService.upsertNote({
-				noteId: id,
-				summary,
-				title,
-				isPinned: pinnedState,
-				updatedAt: saved.lastUpdated,
-				noteType: saved.noteType,
-				status: saved.status ?? null,
-			});
-		}
+		const summary = extractSummary(saved.content);
+		await NotesIndexService.upsertNote({
+			noteId: id,
+			summary,
+			title,
+			isPinned: pinnedState,
+			updatedAt: saved.lastUpdated,
+			noteType: saved.noteType,
+			status: saved.status ?? null,
+		});
 
 		GitService.queueChange(
 			NoteService.getGitPath(id, note.noteType),

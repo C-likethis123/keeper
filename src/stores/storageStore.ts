@@ -19,7 +19,6 @@ interface StorageState {
 
 const defaultCapabilities: StorageCapabilities = {
 	backend: "mobile-native",
-	canSearch: true,
 };
 
 export const useStorageStore = create<StorageState>((set) => ({

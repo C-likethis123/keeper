@@ -1,6 +1,5 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
-import { NoteService } from "@/services/notes/noteService";
 import {
 	type NoteIndexItem,
 	NotesIndexService,
@@ -27,7 +26,6 @@ function toNote(item: NoteIndexItem): Note {
 }
 
 export default function useNotes() {
-	const capabilities = useStorageStore((s) => s.capabilities);
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
 	const initializationError = useStorageStore((s) => s.initializationError);
 	const contentVersion = useStorageStore((s) => s.contentVersion);
@@ -80,20 +78,12 @@ export default function useNotes() {
 					nextOffsetRef.current = undefined;
 					setError(null);
 				}
-				const normalizedQuery = capabilities.canSearch ? searchQuery : "";
-				const results = capabilities.canSearch
-					? await NotesIndexService.listNotes(
-							normalizedQuery,
-							PAGE_SIZE,
-							offset,
-							filters,
-						)
-					: await NoteService.listNotesFallback(
-							normalizedQuery,
-							PAGE_SIZE,
-							offset,
-							filters,
-						);
+				const results = await NotesIndexService.listNotes(
+					searchQuery,
+					PAGE_SIZE,
+					offset,
+					filters,
+				);
 				nextOffsetRef.current = results.cursor;
 				const newNotes = results.items.map(toNote);
 				if (append) {
@@ -115,7 +105,7 @@ export default function useNotes() {
 				}
 			}
 		},
-		[capabilities.canSearch, initializationStatus, filters],
+		[initializationStatus, filters],
 	);
 
 	const loadMoreNotes = useCallback(async () => {

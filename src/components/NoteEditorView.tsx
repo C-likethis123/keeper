@@ -3,11 +3,13 @@ import type { EditorState } from "@/components/editor/core/EditorState";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { appEvents } from "@/services/appEvents";
+import { NotesIndexService } from "@/services/notes/notesIndex";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
+import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
@@ -57,6 +59,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const navigation = useNavigation();
 	const router = useRouter();
 	const theme = useExtendedTheme();
+	const capabilities = useStorageStore((s) => s.capabilities);
 	const id = note.id;
 	const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
 	const [title, setTitle] = useState<string>(note.title);
@@ -173,13 +176,24 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		router.back();
 	}, [id, router]);
 
+	const applyTitleChange = useCallback((nextTitle: string) => {
+		setTitle(nextTitle);
+		const nextType = deriveNoteType(nextTitle);
+		setNoteType(nextType);
+		setTodoStatus(nextType === "todo" ? (todoStatus ?? "open") : null);
+	}, [todoStatus]);
+
 	const openTemplateModal = useCallback(async () => {
 		setIsTemplateModalVisible(true);
 		setIsLoadingTemplates(true);
 		try {
-			const result = await NoteService.listNotesFallback("", 100, 0, {
-				noteTypes: ["template"],
-			});
+			const result = capabilities.canSearch
+				? await NotesIndexService.listNotes("", 100, 0, {
+						noteTypes: ["template"],
+					})
+				: await NoteService.listNotesFallback("", 100, 0, {
+						noteTypes: ["template"],
+					});
 			const notes: Note[] = result.items.map((item) => ({
 				id: item.noteId,
 				title: item.title,
@@ -196,7 +210,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		} finally {
 			setIsLoadingTemplates(false);
 		}
-	}, [showToast]);
+	}, [capabilities.canSearch, showToast]);
 
 	const applyTemplate = useCallback(
 		(template: Note) => {

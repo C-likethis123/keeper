@@ -9,7 +9,6 @@ import { appEvents } from "@/services/appEvents";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import type { Note, NoteType } from "@/services/notes/types";
-import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import { Stack, router, useFocusEffect } from "expo-router";
 import { nanoid } from "nanoid";
@@ -40,7 +39,6 @@ export default function Index() {
 		setStatusFilter,
 	} = useNotes();
 	const showToast = useToastStore((state) => state.showToast);
-	const canSearch = useStorageStore((s) => s.capabilities.canSearch);
 	const [isResetting, setIsResetting] = React.useState(false);
 
 	const handleDeleteNote = useCallback(
@@ -201,7 +199,6 @@ export default function Index() {
 						<HomeScreenHeader
 							searchQuery={query}
 							setSearchQuery={setQuery}
-							searchEditable={canSearch}
 							searchInputRef={searchInputRef}
 							noteTypes={noteTypeFilter}
 							status={statusFilter}

@@ -253,9 +253,9 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 
 1. Install the storybook plugin from Github on performance metrics, isolate the note editor view as a storybook component and track the performance
 
-### App Updates
+### App Updates ✅
 
-**Status**: Not done yet
+**Status**: Implemented
 **Issue**: Expo OTA (Over-The-Air) updates are not a reliable near-term fit for this project
 **Reason**: Keeper makes frequent major changes, including native-code changes, and OTA updates cannot cover builds that require new native binaries
 **Impact**: Desktop/mobile app updates that include native changes still require full rebuilds, so this should not be auto-selected for active work until the native surface stabilizes

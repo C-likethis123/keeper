@@ -19,6 +19,7 @@ const mockSaveNote = jest.fn();
 const mockLoadNote = jest.fn();
 const mockDeleteNote = jest.fn();
 const mockListNotesFallback = jest.fn();
+const mockIndexListNotes = jest.fn();
 const mockNavigationSetOptions = jest.fn();
 
 let latestNavigationOptions:
@@ -92,6 +93,12 @@ jest.mock("@/services/notes/noteService", () => ({
 	},
 }));
 
+jest.mock("@/services/notes/notesIndex", () => ({
+	NotesIndexService: {
+		listNotes: (...args: unknown[]) => mockIndexListNotes(...args),
+	},
+}));
+
 jest.mock("@/components/editor/EditorToolbar", () => {
 	const React = require("react");
 	const { Text } = require("react-native");
@@ -150,17 +157,18 @@ describe("NoteEditorView", () => {
 		mockSaveNote.mockReset();
 		mockDeleteNote.mockReset();
 		mockListNotesFallback.mockReset();
+		mockIndexListNotes.mockReset();
 		mockLoadNote.mockImplementation(async (id: string) => makeNote({ id }));
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
 		mockListNotesFallback.mockResolvedValue({ items: [], cursor: undefined });
+		mockIndexListNotes.mockResolvedValue({ items: [], cursor: undefined });
 		mockNavigationSetOptions.mockReset();
 		latestNavigationOptions = undefined;
 		useEditorState.getState().resetState();
 		useStorageStore.setState({
 			capabilities: {
 				backend: "mobile-native",
-				canSearch: true,
 			},
 			initializationStatus: "ready",
 			initializationError: undefined,
@@ -277,4 +285,5 @@ describe("NoteEditorView", () => {
 		});
 		expect(mockDeleteNote).toHaveBeenCalledWith(note.id, "note");
 	});
+
 });

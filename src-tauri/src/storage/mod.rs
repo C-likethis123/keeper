@@ -3,11 +3,10 @@ use tauri::Manager;
 
 pub use storage_core::{
     IndexListInput, IndexListResult, IndexUpsertInput, NoteFileEntry, ReadNoteResult,
-    ReadTemplateResult, RebuildMetrics, StorageInitResult, WriteNoteInput, WriteTemplateInput,
+    RebuildMetrics, StorageInitResult, WriteNoteInput,
 };
 
 const NOTES_DIR: &str = "notes";
-const TEMPLATES_DIR: &str = "templates";
 const INDEX_DB_NAME: &str = "notes-index.db";
 
 fn app_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -22,10 +21,6 @@ fn notes_root_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 
 fn index_db_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(app_data_dir(app)?.join(INDEX_DB_NAME))
-}
-
-fn templates_root_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    Ok(notes_root_path(app)?.join(TEMPLATES_DIR))
 }
 
 #[tauri::command]
@@ -50,24 +45,9 @@ pub fn read_note(app: tauri::AppHandle, id: String) -> Result<Option<ReadNoteRes
 }
 
 #[tauri::command]
-pub fn read_template(
-    app: tauri::AppHandle,
-    id: String,
-) -> Result<Option<ReadTemplateResult>, String> {
-    let templates_root = templates_root_path(&app)?;
-    storage_core::read_template(&templates_root, id)
-}
-
-#[tauri::command]
 pub fn write_note(app: tauri::AppHandle, input: WriteNoteInput) -> Result<i64, String> {
     let notes_root = notes_root_path(&app)?;
     storage_core::write_note(&notes_root, input)
-}
-
-#[tauri::command]
-pub fn write_template(app: tauri::AppHandle, input: WriteTemplateInput) -> Result<i64, String> {
-    let templates_root = templates_root_path(&app)?;
-    storage_core::write_template(&templates_root, input)
 }
 
 #[tauri::command]
@@ -77,21 +57,9 @@ pub fn delete_note(app: tauri::AppHandle, id: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub fn delete_template(app: tauri::AppHandle, id: String) -> Result<bool, String> {
-    let templates_root = templates_root_path(&app)?;
-    storage_core::delete_template(&templates_root, id)
-}
-
-#[tauri::command]
 pub fn list_note_files(app: tauri::AppHandle) -> Result<Vec<NoteFileEntry>, String> {
     let notes_root = notes_root_path(&app)?;
     storage_core::list_note_files(&notes_root)
-}
-
-#[tauri::command]
-pub fn list_templates(app: tauri::AppHandle) -> Result<Vec<ReadTemplateResult>, String> {
-    let templates_root = templates_root_path(&app)?;
-    storage_core::list_templates(&templates_root)
 }
 
 #[tauri::command]

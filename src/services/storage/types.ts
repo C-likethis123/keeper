@@ -8,7 +8,6 @@ export type StorageBackend = "desktop-native" | "mobile-native";
 
 export interface StorageCapabilities {
 	backend: StorageBackend;
-	canSearch: boolean;
 }
 
 export interface NoteIndexPersistenceItem {

@@ -22,14 +22,6 @@ type ReadEntryResult = {
 	status: Note["status"];
 };
 
-type WriteTemplateInput = {
-	id: string;
-	title: string;
-	content: string;
-	noteType: Note["noteType"];
-	status: Note["status"];
-};
-
 type TauriInvoke = NonNullable<ReturnType<typeof getTauriInvoke>>;
 
 export class TauriStorageEngine implements StorageEngine {
@@ -52,61 +44,29 @@ export class TauriStorageEngine implements StorageEngine {
 	}
 
 	async loadNote(id: string): Promise<Note | null> {
-		const note = await this.invoke<ReadEntryResult | null>("read_note", { id });
-		if (note) return note;
-		// Check templates directory
-		const template = await this.invoke<ReadEntryResult | null>(
-			"read_template",
-			{ id },
-		);
-		if (!template) return null;
-		return {
-			id: template.id,
-			title: template.title,
-			content: template.content,
-			isPinned: false,
-			lastUpdated: template.lastUpdated,
-			noteType: "template",
-			status: null,
-		};
+		return this.invoke<ReadEntryResult | null>("read_note", { id });
 	}
 
 	async saveNote(note: NoteSaveInput): Promise<Note> {
-		if (note.noteType === "template") {
-			const input: WriteTemplateInput = {
-				id: note.id,
-				title: note.title,
-				content: note.content,
-				noteType: "template",
-				status: null,
-			};
-			const updatedAt = await this.invoke<number>("write_template", { input });
-			return {
-				...note,
-				isPinned: false,
-				lastUpdated: updatedAt || Date.now(),
-			};
-		}
 		const updatedAt = await this.invoke<number>("write_note", {
 			input: {
 				id: note.id,
 				title: note.title,
 				content: note.content,
-				isPinned: note.isPinned,
+				isPinned: note.noteType === "template" ? false : note.isPinned,
 				noteType: note.noteType,
 				status: note.status,
 			},
 		});
 		return {
 			...note,
+			isPinned: note.noteType === "template" ? false : note.isPinned,
 			lastUpdated: updatedAt || Date.now(),
 		};
 	}
 
 	async deleteNote(id: string): Promise<boolean> {
-		const deleted = await this.invoke<boolean>("delete_note", { id });
-		if (deleted) return true;
-		return this.invoke<boolean>("delete_template", { id });
+		return this.invoke<boolean>("delete_note", { id });
 	}
 
 	async listNoteFiles(): Promise<NoteFileEntry[]> {

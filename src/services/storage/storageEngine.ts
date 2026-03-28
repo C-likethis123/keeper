@@ -22,6 +22,5 @@ export function getStorageEngine(): StorageEngine {
 export function getStorageCapabilities() {
 	return {
 		backend: getRuntimeStorageBackend(),
-		canSearch: true,
 	} as const;
 }
