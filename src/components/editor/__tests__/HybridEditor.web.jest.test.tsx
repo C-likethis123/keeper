@@ -1,6 +1,7 @@
 import { useEditorState } from "@/stores/editorStore";
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
+import { ScrollView } from "react-native";
 import {
 	mockListNotes,
 	mockPush,
@@ -62,5 +63,32 @@ describe("HybridEditor wikilinks on web", () => {
 		});
 		expect(preventDefault).toHaveBeenCalled();
 		expect(stopPropagation).toHaveBeenCalled();
+	});
+
+	it("shows a sticky video overlay after scrolling past a video block", () => {
+		const rendered = renderEditor(
+			"Paragraph\n![video](https://youtu.be/dQw4w9WgXcQ)\nMore content",
+		);
+		const scrollView = rendered.UNSAFE_getByType(ScrollView);
+		const videoRow = screen.getByTestId("video-block-row-1");
+
+		expect(scrollView.props.stickyHeaderIndices).toBeUndefined();
+		expect(screen.queryByTestId("sticky-video-overlay")).toBeNull();
+
+		fireEvent(videoRow, "layout", {
+			nativeEvent: { layout: { height: 220, width: 320, x: 0, y: 120 } },
+		});
+		fireEvent(scrollView, "layout", {
+			nativeEvent: { layout: { height: 400, width: 320, x: 0, y: 0 } },
+		});
+		fireEvent.scroll(scrollView, {
+			nativeEvent: { contentOffset: { y: 341 } },
+		});
+
+		const stickyOverlay = screen.getByTestId("sticky-video-overlay");
+		const maxHeightStyle = stickyOverlay.props.style.find(
+			(style: { maxHeight?: number }) => typeof style?.maxHeight === "number",
+		);
+		expect(maxHeightStyle?.maxHeight).toBeGreaterThan(0);
 	});
 });

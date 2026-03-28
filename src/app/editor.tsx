@@ -6,7 +6,7 @@ import { useLoadNote } from "@/hooks/useLoadNote";
 import { useStyles } from "@/hooks/useStyles";
 import { useLocalSearchParams } from "expo-router";
 import React, { Suspense } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 
 const LazyNoteEditorView = React.lazy(
 	() => import("@/components/NoteEditorView"),
@@ -53,6 +53,8 @@ export default function NoteEditorScreen() {
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+	const bottomPadding = Platform.OS === "web" ? 16 : 16 + TOOLBAR_HEIGHT;
+
 	return StyleSheet.create({
 		screen: {
 			flex: 1,
@@ -60,7 +62,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		content: {
 			flex: 1,
 			padding: 16,
-			paddingBottom: 16 + TOOLBAR_HEIGHT,
+			paddingBottom: bottomPadding,
 			backgroundColor: theme.colors.background,
 		},
 		toolbarWrapper: {

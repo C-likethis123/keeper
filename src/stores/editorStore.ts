@@ -56,7 +56,12 @@ function createSelectionForRange(
 }
 
 function isInlineFormattingUnsupported(type: BlockType): boolean {
-	return [BlockType.codeBlock, BlockType.mathBlock, BlockType.image].includes(
+	return [
+		BlockType.codeBlock,
+		BlockType.mathBlock,
+		BlockType.image,
+		BlockType.video,
+	].includes(
 		type,
 	);
 }
@@ -326,6 +331,7 @@ export const useEditorState = create<EditorState>()((set, get) => {
 				BlockType.codeBlock,
 				BlockType.mathBlock,
 				BlockType.image,
+				BlockType.video,
 			].includes(block.type);
 			if (isSoftLineBreakNotSupported) {
 				return false;
@@ -444,7 +450,8 @@ export const useEditorState = create<EditorState>()((set, get) => {
 			if (
 				currentBlock.type === BlockType.codeBlock ||
 				previousBlock.type === BlockType.codeBlock ||
-				previousBlock.type === BlockType.image
+				previousBlock.type === BlockType.image ||
+				previousBlock.type === BlockType.video
 			)
 				return;
 			const mergedContent = previousBlock.content + currentBlock.content;

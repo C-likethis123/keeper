@@ -25,6 +25,7 @@ import React, {
 import {
 	Alert,
 	Modal,
+	Platform,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -61,22 +62,10 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const id = note.id;
 	const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
 	const [title, setTitle] = useState<string>(note.title);
-	const [noteType, setNoteType] = useState<Note["noteType"]>(() =>
-		deriveNoteType(note.title),
-	);
+	const [noteType, setNoteType] = useState<Note["noteType"]>(note.noteType);
 	const [todoStatus, setTodoStatus] = useState<Note["status"]>(
 		note.noteType === "todo" ? (note.status ?? "open") : undefined,
 	);
-	useEffect(() => {
-		const derived = deriveNoteType(title);
-		setNoteType(derived);
-		setTodoStatus((current) =>
-			derived === "todo" ? (current ?? "open") : undefined,
-		);
-		if (derived === "template") {
-			setIsPinned(false);
-		}
-	}, [title]);
 
 	const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
 	const [templates, setTemplates] = useState<NoteTemplate[]>([]);
@@ -97,18 +86,38 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		noteType,
 		todoStatus,
 	};
+
+	const applyTitleChange = useCallback((nextTitle: string) => {
+		const derivedType = deriveNoteType(nextTitle);
+		setTitle(nextTitle);
+		setNoteType(derivedType);
+		setTodoStatus((current) =>
+			derivedType === "todo" ? (current ?? "open") : undefined,
+		);
+		if (derivedType === "template") {
+			setIsPinned(false);
+		}
+	}, []);
+
 	const buildCurrentNotePayload = useCallback(
 		(overrides?: Partial<Note>): Note => {
 			const draft = latestDraftRef.current;
+			const resolvedNoteType =
+				overrides?.noteType ?? deriveNoteType(draft.title);
+			const resolvedIsPinned =
+				(overrides?.isPinned ?? draft.isPinned) &&
+				resolvedNoteType !== "template";
 			return {
 				id,
 				title: draft.title,
 				content: useEditorState.getState().getContent(),
-				isPinned: draft.isPinned,
+				isPinned: resolvedIsPinned,
 				lastUpdated: Date.now(),
-				noteType: draft.noteType,
+				noteType: resolvedNoteType,
 				status:
-					draft.noteType === "todo" ? (draft.todoStatus ?? "open") : undefined,
+					resolvedNoteType === "todo"
+						? (overrides?.status ?? draft.todoStatus ?? "open")
+						: undefined,
 				...overrides,
 			};
 		},
@@ -217,10 +226,11 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		useCallback(() => {
 			setIsPinned(!!note.isPinned);
 			setTitle(note.title);
-			const derived = deriveNoteType(note.title);
-			setNoteType(derived);
-			setTodoStatus(derived === "todo" ? (note.status ?? "open") : undefined);
-			lastPersistedTypeRef.current = derived;
+			setNoteType(note.noteType);
+			setTodoStatus(
+				note.noteType === "todo" ? (note.status ?? "open") : undefined,
+			);
+			lastPersistedTypeRef.current = note.noteType;
 			loadMarkdown(note.content);
 		}, [loadMarkdown, note]),
 	);
@@ -301,7 +311,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 				<TextInput
 					style={styles.titleInput}
 					value={title}
-					onChangeText={setTitle}
+					onChangeText={applyTitleChange}
 					editable
 					placeholder="Title"
 					placeholderTextColor={theme.custom.editor.placeholder}
@@ -428,6 +438,8 @@ export default function NoteEditorView({ note }: { note: Note }) {
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+	const bottomPadding = Platform.OS === "web" ? 16 : 16 + TOOLBAR_HEIGHT;
+
 	return StyleSheet.create({
 		screen: {
 			flex: 1,
@@ -435,7 +447,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		content: {
 			flex: 1,
 			padding: 16,
-			paddingBottom: 16 + TOOLBAR_HEIGHT,
+			paddingBottom: bottomPadding,
 			backgroundColor: theme.colors.background,
 		},
 		titleInput: {

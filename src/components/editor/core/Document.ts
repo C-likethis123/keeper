@@ -9,6 +9,7 @@ import {
 	createListBlock,
 	createMathBlock,
 	createParagraphBlock,
+	createVideoBlock,
 	getListLevel,
 	isCodeBlock,
 } from "./BlockNode";
@@ -94,6 +95,20 @@ export function createDocumentFromMarkdown(markdown: string): Document {
 		if (line.startsWith("![](")) {
 			const imagePath = line.substring(4, line.length - 1);
 			blocks.push(createImageBlock(imagePath));
+			i++;
+			continue;
+		}
+
+		// Check for video
+		const imageStyleVideoMatch = line.match(/^!\[video\]\((.+)\)$/i);
+		if (imageStyleVideoMatch) {
+			blocks.push(createVideoBlock(imageStyleVideoMatch[1]));
+			i++;
+			continue;
+		}
+
+		if (line.toLowerCase().startsWith("video: ")) {
+			blocks.push(createVideoBlock(line.substring(7).trim()));
 			i++;
 			continue;
 		}

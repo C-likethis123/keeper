@@ -54,3 +54,18 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 		clear: jest.fn(),
 	},
 }));
+
+jest.mock("react-native-webview", () => {
+	const React = require("react");
+	const { View } = require("react-native");
+
+	return {
+		WebView: React.forwardRef((props: Record<string, unknown>, ref) =>
+			React.createElement(View, {
+				...props,
+				ref,
+				testID: props.testID ?? "mock-webview",
+			}),
+		),
+	};
+});

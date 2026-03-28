@@ -5,11 +5,12 @@ import {
 	useContext,
 	useRef,
 } from "react";
-import type { ScrollView } from "react-native";
+import { Dimensions, type ScrollView } from "react-native";
 interface EditorScrollContextValue {
 	scrollViewRef: RefObject<ScrollView | null>;
 	scrollYRef: RefObject<number>;
 	viewHeightRef: RefObject<number>;
+	viewportHeight: number;
 }
 const EditorScrollContext = createContext<EditorScrollContextValue>({
 	scrollViewRef: {
@@ -21,6 +22,7 @@ const EditorScrollContext = createContext<EditorScrollContextValue>({
 	viewHeightRef: {
 		current: 0,
 	},
+	viewportHeight: 0,
 });
 
 export function useEditorScrollView(): EditorScrollContextValue {
@@ -31,9 +33,15 @@ export function EditorScrollProvider({ children }: PropsWithChildren) {
 	const scrollViewRef = useRef<ScrollView>(null);
 	const scrollYRef = useRef(0);
 	const viewHeightRef = useRef(0);
+	const viewportHeight = Dimensions.get("window").height;
 	return (
 		<EditorScrollContext.Provider
-			value={{ scrollViewRef, scrollYRef, viewHeightRef }}
+			value={{
+				scrollViewRef,
+				scrollYRef,
+				viewHeightRef,
+				viewportHeight,
+			}}
 		>
 			{children}
 		</EditorScrollContext.Provider>
