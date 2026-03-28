@@ -139,12 +139,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	});
 
 	useEffect(() => {
-		return () => {
-			void forceSave();
-		};
-	}, [forceSave]);
-
-	useEffect(() => {
 		return appEvents.on("forceSave", () => {
 			void forceSave();
 		});
@@ -155,9 +149,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 			setIsPinned(!!note.isPinned);
 			setTitle(note.title);
 			setNoteType(note.noteType);
-			setTodoStatus(
-				note.noteType === "todo" ? (note.status ?? "open") : null,
-			);
+			setTodoStatus(note.noteType === "todo" ? (note.status ?? "open") : null);
 			lastPersistedTypeRef.current = note.noteType;
 			loadMarkdown(note.content);
 		}, [loadMarkdown, note]),
