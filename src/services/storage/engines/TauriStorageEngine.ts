@@ -1,10 +1,5 @@
 import type { NotesIndexRebuildMetrics } from "@/services/notes/notesIndexDb";
-import type {
-	Note,
-	NoteSaveInput,
-	NoteTemplate,
-	NoteTemplateSaveInput,
-} from "@/services/notes/types";
+import type { Note, NoteSaveInput } from "@/services/notes/types";
 import type {
 	NoteFileEntry,
 	StorageEngine,
@@ -25,14 +20,6 @@ type ReadEntryResult = {
 	lastUpdated: number;
 	noteType: Note["noteType"];
 	status: Note["status"];
-};
-
-type WriteTemplateInput = {
-	id: string;
-	title: string;
-	content: string;
-	noteType: NoteTemplate["noteType"];
-	status: NoteTemplate["status"];
 };
 
 type TauriInvoke = NonNullable<ReturnType<typeof getTauriInvoke>>;
@@ -87,61 +74,6 @@ export class TauriStorageEngine implements StorageEngine {
 
 	async statNote(id: string): Promise<number | null> {
 		return this.invoke<number | null>("stat_note", { id });
-	}
-
-	async loadTemplate(id: string): Promise<NoteTemplate | null> {
-		const template = await this.invoke<ReadEntryResult | null>(
-			"read_template",
-			{
-				id,
-			},
-		);
-		if (!template) {
-			return null;
-		}
-		return {
-			id: template.id,
-			title: template.title,
-			content: template.content,
-			lastUpdated: template.lastUpdated,
-			noteType: "template",
-			status: null,
-		};
-	}
-
-	async saveTemplate(template: NoteTemplateSaveInput): Promise<NoteTemplate> {
-		const input: WriteTemplateInput = {
-			id: template.id,
-			title: template.title,
-			content: template.content,
-			noteType: "template",
-			status: null,
-		};
-		const updatedAt = await this.invoke<number>("write_template", {
-			input,
-		});
-		return {
-			...template,
-			noteType: "template",
-			status: null,
-			lastUpdated: updatedAt || Date.now(),
-		};
-	}
-
-	async deleteTemplate(id: string): Promise<boolean> {
-		return this.invoke<boolean>("delete_template", { id });
-	}
-
-	async listTemplates(): Promise<NoteTemplate[]> {
-		const templates = await this.invoke<ReadEntryResult[]>("list_templates");
-		return templates.map((template) => ({
-			id: template.id,
-			title: template.title,
-			content: template.content,
-			lastUpdated: template.lastUpdated,
-			noteType: "template",
-			status: null,
-		}));
 	}
 
 	async indexUpsert(item: NoteIndexPersistenceItem): Promise<void> {
