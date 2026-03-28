@@ -10,6 +10,7 @@ export enum BlockType {
 	codeBlock = "codeBlock",
 	mathBlock = "mathBlock",
 	image = "image",
+	video = "video",
 }
 
 /// Immutable node representing a block of content in the document.
@@ -110,11 +111,19 @@ export function createMathBlock(content = ""): BlockNode {
 	};
 }
 
-/// Creates a new image block
 export function createImageBlock(path: string): BlockNode {
 	return {
 		id: generateId(),
 		type: BlockType.image,
+		content: path,
+		attributes: {},
+	};
+}
+
+export function createVideoBlock(path: string): BlockNode {
+	return {
+		id: generateId(),
+		type: BlockType.video,
 		content: path,
 		attributes: {},
 	};
@@ -160,6 +169,8 @@ export function blockToMarkdown(block: BlockNode, listNumber?: number): string {
 			return `$$\n${block.content}\n$$`;
 		case BlockType.image:
 			return `![](${block.content})`;
+		case BlockType.video:
+			return `![video](${block.content})`;
 		case BlockType.paragraph:
 			return block.content;
 	}

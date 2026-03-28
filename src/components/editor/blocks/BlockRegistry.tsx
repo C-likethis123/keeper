@@ -15,6 +15,10 @@ const LazyImageBlock = React.lazy(() =>
 	import("./ImageBlock").then((module) => ({ default: module.ImageBlock })),
 );
 
+const LazyVideoBlock = React.lazy(() =>
+	import("./VideoBlock").then((module) => ({ default: module.VideoBlock })),
+);
+
 export interface BlockConfig {
 	block: BlockNode;
 	index: number;
@@ -201,5 +205,10 @@ blockRegistry.registerAll([
 		type: BlockType.image,
 		markdownPrefix: "![](",
 		build: (config) => renderLazyBlock(LazyImageBlock, config),
+	},
+	{
+		type: BlockType.video,
+		markdownPrefix: "![video](",
+		build: (config) => renderLazyBlock(LazyVideoBlock, config),
 	},
 ]);

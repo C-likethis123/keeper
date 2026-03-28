@@ -1,6 +1,5 @@
 import { SaveIndicator } from "@/components/SaveIndicator";
 import type { EditorState } from "@/components/editor/core/EditorState";
-import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { appEvents } from "@/services/appEvents";
@@ -97,6 +96,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		noteType,
 		todoStatus,
 	};
+
 	const buildCurrentNotePayload = useCallback(
 		(overrides?: Partial<Note>): Note => {
 			const draft = latestDraftRef.current;
@@ -435,13 +435,12 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		content: {
 			flex: 1,
 			padding: 16,
-			paddingBottom: 16 + TOOLBAR_HEIGHT,
 			backgroundColor: theme.colors.background,
+			gap: 14,
 		},
 		titleInput: {
 			fontSize: 20,
 			fontWeight: "600",
-			marginBottom: 8,
 			borderBottomWidth: 1,
 			borderBottomColor: theme.colors.border,
 			paddingVertical: 4,
