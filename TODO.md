@@ -18,8 +18,9 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **App updates**: OTA is not working
 - **Templates**: reusable templates now work inside the editor flow; remaining work is starting new notes from a template and deciding how templates should surface outside the editor
 - **Quick composer**: wire the brush action to create a drawing note once drawing support lands
-- **Testing status**: `npm test` covers the immutable editor core plus `EditorState`, selected `editorStore` flows, `frontmatter`, `repoBootstrapper`, `startupSteps`, `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, focused `NoteGrid` pagination behavior, wikilink modal/overlay interactions, and `HybridEditor` rendered-wikilink activation on web/iOS/Android
+- **Testing status**: `npm test` covers the immutable editor core plus `EditorState`, selected `editorStore` flows, `frontmatter`, `repoBootstrapper`, `startupSteps`, `noteTypeDerivation`, `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, focused `NoteGrid` pagination behavior, wikilink modal/overlay interactions, and `HybridEditor` rendered-wikilink activation on web/iOS/Android
 - **Testing TODO**: Add missing Jest coverage for `EditorToolbar`, `useAutoSave`, `useLoadNote`, startup UI/runtime flows, broader `NoteGrid` and note-list states, deeper `HybridEditor` editing flows beyond rendered wikilinks, and additional `editorStore` flows
+- **Recently shipped**: note type is now derived automatically from the title prefix (journal, todo, resource/URL patterns) via `deriveNoteType`; home screen pre-populates the matching prefix when creating typed notes
 - **Recently fixed**: desktop note-list scrolling now loads additional notes again after the Tauri index cursor returned to a plain numeric offset
 
 For full context on each item, see `ROADMAP.md`.
