@@ -1,5 +1,3 @@
-import type { HighlightResult } from "highlight.js";
-
 /// Configuration for a programming language
 export interface LanguageConfig {
 	name: string;
@@ -289,20 +287,4 @@ export class LanguageRegistry {
 		return Array.from(names).sort();
 	}
 
-	/// Highlights code and returns the result
-	highlightCode(code: string, language: string): HighlightResult | null {
-		try {
-			const hljs = require("highlight.js");
-			const result = hljs.highlight(code, { language });
-			return result;
-		} catch (e) {
-			try {
-				const hljs = require("highlight.js");
-				const result = hljs.highlightAuto(code);
-				return result;
-			} catch (_) {
-				return null;
-			}
-		}
-	}
 }
