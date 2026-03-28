@@ -4,11 +4,11 @@ import type { EditorState } from "@/components/editor/core/EditorState";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { appEvents } from "@/services/appEvents";
+import { NotesIndexService } from "@/services/notes/notesIndex";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
-import { TemplateService } from "@/services/notes/templateService";
-import type { Note, NoteTemplate } from "@/services/notes/types";
+import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -79,7 +79,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	}, [title]);
 
 	const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
-	const [templates, setTemplates] = useState<NoteTemplate[]>([]);
+	const [templates, setTemplates] = useState<Note[]>([]);
 	const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
@@ -99,17 +99,23 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	};
 
 	const buildCurrentNotePayload = useCallback(
-		(overrides?: Partial<Note>): Note => {
+		(overrides?: Partial<NoteSaveInput>): NoteSaveInput => {
 			const draft = latestDraftRef.current;
+			const resolvedNoteType =
+				overrides?.noteType ?? deriveNoteType(draft.title);
+			const resolvedIsPinned =
+				(overrides?.isPinned ?? draft.isPinned) &&
+				resolvedNoteType !== "template";
 			return {
 				id,
 				title: draft.title,
 				content: useEditorState.getState().getContent(),
-				isPinned: draft.isPinned,
-				lastUpdated: Date.now(),
-				noteType: draft.noteType,
+				isPinned: resolvedIsPinned,
+				noteType: resolvedNoteType,
 				status:
-					draft.noteType === "todo" ? (draft.todoStatus ?? "open") : undefined,
+					resolvedNoteType === "todo"
+						? (overrides?.status ?? draft.todoStatus ?? "open")
+						: null,
 				...overrides,
 			};
 		},
@@ -117,7 +123,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	);
 
 	const persistCurrentEntry = useCallback(
-		async (overrides?: Partial<Note>) => {
+		async (overrides?: Partial<NoteSaveInput>) => {
 			const payload = buildCurrentNotePayload(overrides);
 			await persistEditorEntry({
 				...payload,
@@ -129,11 +135,36 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		[buildCurrentNotePayload],
 	);
 
+	const handlePersisted = useCallback((savedType: Note["noteType"]) => {
+		lastPersistedTypeRef.current = savedType;
+	}, []);
+
+	const { status, forceSave } = useAutoSave({
+		...note,
+		title,
+		isPinned,
+		noteType,
+		status: noteType === "todo" ? (todoStatus ?? "open") : null,
+		initialNoteType: note.noteType,
+		onPersisted: handlePersisted,
+	});
+
 	useEffect(() => {
 		return appEvents.on("forceSave", () => {
-			void persistCurrentEntry();
+			void forceSave();
 		});
-	}, [persistCurrentEntry]);
+	}, [forceSave]);
+
+	useFocusEffect(
+		useCallback(() => {
+			setIsPinned(!!note.isPinned);
+			setTitle(note.title);
+			setNoteType(note.noteType);
+			setTodoStatus(note.noteType === "todo" ? (note.status ?? "open") : null);
+			lastPersistedTypeRef.current = note.noteType;
+			loadMarkdown(note.content);
+		}, [loadMarkdown, note]),
+	);
 
 	const handleTogglePin = useCallback(async () => {
 		if (latestDraftRef.current.noteType === "template") {
@@ -146,24 +177,38 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	}, [persistCurrentEntry, showToast]);
 
 	const handleBackPress = useCallback(async () => {
-		await persistCurrentEntry();
 		router.back();
-	}, [persistCurrentEntry, router]);
+	}, [router]);
 
 	const handleDeletePress = useCallback(async () => {
-		if (latestDraftRef.current.noteType === "template") {
-			await TemplateService.deleteTemplate(id);
-		} else {
-			await NoteService.deleteNote(id);
-		}
+		await NoteService.deleteNote(id, latestDraftRef.current.noteType);
 		router.back();
 	}, [id, router]);
+
+	const applyTitleChange = useCallback((nextTitle: string) => {
+		setTitle(nextTitle);
+		const nextType = deriveNoteType(nextTitle);
+		setNoteType(nextType);
+		setTodoStatus(nextType === "todo" ? (todoStatus ?? "open") : null);
+	}, [todoStatus]);
 
 	const openTemplateModal = useCallback(async () => {
 		setIsTemplateModalVisible(true);
 		setIsLoadingTemplates(true);
 		try {
-			setTemplates(await TemplateService.listTemplates());
+			const result = await NotesIndexService.listNotes("", 100, 0, {
+				noteTypes: ["template"],
+			});
+			const notes: Note[] = result.items.map((item) => ({
+				id: item.noteId,
+				title: item.title,
+				content: item.summary ?? "",
+				lastUpdated: item.updatedAt,
+				isPinned: item.isPinned,
+				noteType: item.noteType,
+				status: item.status,
+			}));
+			setTemplates(notes);
 		} catch (error) {
 			console.warn("Failed to load templates:", error);
 			showToast("Failed to load templates");
@@ -173,7 +218,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	}, [showToast]);
 
 	const applyTemplate = useCallback(
-		(template: NoteTemplate) => {
+		(template: Note) => {
 			const currentContent = useEditorState.getState().getContent();
 			const replaceBody = () => {
 				loadMarkdown(template.content);
@@ -201,31 +246,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		},
 		[loadMarkdown, showToast],
 	);
-
-	const { status } = useAutoSave({
-		...note,
-		title,
-		isPinned,
-		noteType,
-		status: noteType === "todo" ? (todoStatus ?? "open") : undefined,
-		initialNoteType: note.noteType,
-		onPersisted: (savedType) => {
-			lastPersistedTypeRef.current = savedType;
-		},
-	});
-
-	useFocusEffect(
-		useCallback(() => {
-			setIsPinned(!!note.isPinned);
-			setTitle(note.title);
-			const derived = deriveNoteType(note.title);
-			setNoteType(derived);
-			setTodoStatus(derived === "todo" ? (note.status ?? "open") : undefined);
-			lastPersistedTypeRef.current = derived;
-			loadMarkdown(note.content);
-		}, [loadMarkdown, note]),
-	);
-
 	useLayoutEffect(() => {
 		navigation.setOptions({
 			title: "Editor",
@@ -302,10 +322,11 @@ export default function NoteEditorView({ note }: { note: Note }) {
 				<TextInput
 					style={styles.titleInput}
 					value={title}
-					onChangeText={setTitle}
+					onChangeText={applyTitleChange}
 					editable
 					placeholder="Title"
 					placeholderTextColor={theme.custom.editor.placeholder}
+					onBlur={() => setNoteType(deriveNoteType(title))}
 				/>
 				<View style={styles.metadataSection}>
 					{noteType !== "template" ? (

@@ -7,9 +7,7 @@ import {
 	type TextStyle,
 	View,
 } from "react-native";
-import Highlighter, {
-	type SyntaxHighlighterProps as HighlighterProps,
-} from "react-syntax-highlighter/dist/esm/light";
+import Highlighter from "react-syntax-highlighter/dist/esm/light";
 import atomOneDark from "react-syntax-highlighter/dist/esm/styles/hljs/atom-one-dark";
 
 // Register only the languages used in LanguageRegistry — keeps the bundle lean.
@@ -51,22 +49,20 @@ Highlighter.registerLanguage("shell", langShell);
 Highlighter.registerLanguage("sql", langSql);
 Highlighter.registerLanguage("swift", langSwift);
 Highlighter.registerLanguage("typescript", langTs);
+Highlighter.registerLanguage("xml", langXml);
 Highlighter.registerLanguage("yaml", langYaml);
 
 type Node = {
-	children?: Node[];
+	type: string;
+	value?: string;
 	properties?: {
 		className: string[];
 	};
-	tagName?: string;
-	type: string;
-	value?: string;
+	children?: Node[];
 };
 
 type StyleSheet = {
-	[key: string]: TextStyle & {
-		background?: string;
-	};
+	[key: string]: TextStyle;
 };
 
 type RendererParams = {
@@ -117,7 +113,7 @@ type SyntaxHighlighterStyleType = {
 	highlighterColor?: ColorValue;
 };
 
-type SyntaxHighlighterProps = HighlighterProps & {
+type SyntaxHighlighterProps = any & {
 	/**
 	 * Code to display.
 	 */
@@ -149,7 +145,7 @@ type PropsWithForwardRef = SyntaxHighlighterProps & {
 	forwardedRef: React.Ref<ScrollView>;
 };
 
-const SyntaxHighlighter = (props: PropsWithForwardRef): JSX.Element => {
+const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 	const {
 		syntaxStyle = atomOneDark,
 		addedStyle,
@@ -172,91 +168,77 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): JSX.Element => {
 		highlighterColor = undefined,
 	} = addedStyle || {};
 
-	// Only when line numbers are showing
-	const lineNumbersPadding = showLineNumbers ? 1.75 * fontSize : undefined;
-	const lineNumbersFontSize = 0.7 * fontSize;
-
-	// Prevents the last line from clipping when scrolling
-	highlighterProps.children += "\n\n";
-
 	const cleanStyle = (style: TextStyle) => {
-		const clean: TextStyle = {
-			...style,
-			display: undefined,
-		};
-		return clean;
+		const {
+			display: _display,
+			...rest
+		} = style as any;
+		return rest;
 	};
 
-	const stylesheet: StyleSheet = Object.fromEntries(
-		Object.entries(syntaxStyle as StyleSheet).map(([className, style]) => [
-			className,
-			cleanStyle(style),
+	const stylesheet = Object.fromEntries(
+		Object.entries(syntaxStyle).map(([key, value]) => [
+			key,
+			cleanStyle(value as any),
 		]),
 	);
 
-	const renderLineNumbersBackground = () => (
-		<View
-			style={{
-				position: "absolute",
-				top: -padding,
-				left: 0,
-				bottom: 0,
-				width: lineNumbersPadding ? lineNumbersPadding - 5 : 0,
-				backgroundColor: lineNumbersBackgroundColor,
-			}}
-		/>
-	);
-
-	const renderNode = (nodes: Node[], key = "0") =>
+	const renderNode = (nodes: Node[], key = "0"): React.ReactNode[] =>
 		nodes.reduce<React.ReactNode[]>((acc, node, index) => {
 			if (node.children) {
+				const nodeStyle = node.properties?.className.reduce(
+					(merged, className) => ({
+						...merged,
+						...stylesheet[className],
+					}),
+					{} as TextStyle,
+				);
+
 				const textElement = (
 					<Text
-						// biome-ignore lint/suspicious/noArrayIndexKey: syntax tree order is stable
-						key={`${key}.${index}`}
+						key={`${key}-${index}-text`}
 						style={[
 							{
-								color: highlighterColor || stylesheet.hljs.color,
-							},
-							...(node.properties?.className || []).map((c) => stylesheet[c]),
-							{
-								lineHeight: highlighterLineHeight,
 								fontFamily,
 								fontSize,
-								paddingLeft: lineNumbersPadding ?? padding,
+								color: highlighterColor || stylesheet.hljs.color,
 							},
+							nodeStyle,
 						]}
 					>
-						{renderNode(node.children, `${key}.${index}`)}
+						{renderNode(node.children, `${key}-${index}`)}
 					</Text>
 				);
 
-				const lineNumberElement =
-					key !== "0" || index >= nodes.length - 2 ? undefined : (
+				const lineNumberElement = showLineNumbers ? (
+					<View
+						key={`${key}-${index}-line-number-container`}
+						style={{
+							backgroundColor: lineNumbersBackgroundColor,
+							paddingRight: 10,
+							paddingLeft: 10,
+						}}
+					>
 						<Text
-							// biome-ignore lint/suspicious/noArrayIndexKey: syntax tree order is stable
-							key={`$line.${index}`}
+							key={`${key}-${index}-line-number`}
 							style={{
-								position: "absolute",
-								top: 5,
-								bottom: 0,
-								paddingHorizontal: nodes.length - 2 < 100 ? 5 : 0,
-								textAlign: "center",
-								color: lineNumbersColor,
 								fontFamily,
-								fontSize: lineNumbersFontSize,
-								width: lineNumbersPadding ? lineNumbersPadding - 5 : 0,
+								fontSize,
+								color: lineNumbersColor,
 							}}
 						>
-							{index + 1}
+							{parseInt(key, 10) + 1}
 						</Text>
-					);
+					</View>
+				) : null;
 
 				acc.push(
-					showLineNumbers && lineNumberElement ? (
+					showLineNumbers ? (
 						<View
-							// biome-ignore lint/suspicious/noArrayIndexKey: syntax tree order is stable
-							key={`view.line.${index}`}
+							key={`${key}-${index}-row`}
+							style={{
+								flexDirection: "row",
+							}}
 						>
 							{lineNumberElement}
 							{textElement}
@@ -286,20 +268,18 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): JSX.Element => {
 					{
 						width: "100%",
 						height: "100%",
-						fontFamily: "monospace",
-						backgroundColor: backgroundColor || stylesheet.hljs.background,
+						backgroundColor: (backgroundColor || stylesheet.hljs.background) as ColorValue,
 						// Prevents YGValue error
 						padding: 0,
 						paddingTop: padding,
 						paddingRight: padding,
 						paddingBottom: padding,
-					},
+					} as any,
 				]}
 				testID={`${testID}-scroll-view`}
 				ref={forwardedRef}
 				scrollEnabled={scrollEnabled}
 			>
-				{showLineNumbers && renderLineNumbersBackground()}
 				{renderNode(rows)}
 			</ScrollView>
 		);
@@ -308,21 +288,15 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): JSX.Element => {
 	return (
 		<Highlighter
 			{...highlighterProps}
-			customStyle={{
-				padding: 0,
-			}}
-			CodeTag={View}
-			PreTag={View}
+			key={testID}
+			language={highlighterProps.language || "plaintext"}
+			style={syntaxStyle}
+			horizontal={false}
 			renderer={nativeRenderer}
-			testID={testID}
-			style={stylesheet}
 		/>
 	);
 };
 
-const SyntaxHighlighterWithForwardRef = React.forwardRef<
-	ScrollView,
-	SyntaxHighlighterProps
->((props, ref) => <SyntaxHighlighter {...props} forwardedRef={ref} />);
-
-export default SyntaxHighlighterWithForwardRef;
+export default React.forwardRef<ScrollView, SyntaxHighlighterProps>(
+	(props, ref) => <SyntaxHighlighter {...props} forwardedRef={ref} />,
+);

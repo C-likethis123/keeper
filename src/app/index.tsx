@@ -4,8 +4,8 @@ import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import useSuspenseNotes from "@/hooks/useSuspenseNotes";
 import { useStyles } from "@/hooks/useStyles";
+import useSuspenseNotes from "@/hooks/useSuspenseNotes";
 import { appEvents } from "@/services/appEvents";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
@@ -128,7 +128,6 @@ function IndexContent() {
 			id: nanoid(),
 			title: "",
 			content: "",
-			lastUpdated: Date.now(),
 			isPinned: false,
 			noteType: "note" as NoteType,
 		};
@@ -151,7 +150,6 @@ function IndexContent() {
 				id: nanoid(),
 				title,
 				content: "",
-				lastUpdated: Date.now(),
 				isPinned: false,
 				noteType: deriveNoteType(title),
 			};
@@ -167,7 +165,6 @@ function IndexContent() {
 			id: nanoid(),
 			title,
 			content: "",
-			lastUpdated: Date.now(),
 			isPinned: false,
 			noteType: "todo" as NoteType,
 			status: "open" as const,
@@ -202,7 +199,6 @@ function IndexContent() {
 						<HomeScreenHeader
 							searchQuery={query}
 							setSearchQuery={setQuery}
-							searchEditable
 							searchInputRef={searchInputRef}
 							noteTypes={noteTypeFilter}
 							status={statusFilter}
@@ -248,7 +244,9 @@ function IndexContent() {
 					}
 				/>
 			</Suspense>
-			{error ? <ErrorScreen errorMessage={error} onRetry={handleRefresh} /> : null}
+			{error ? (
+				<ErrorScreen errorMessage={error} onRetry={handleRefresh} />
+			) : null}
 		</View>
 	);
 }

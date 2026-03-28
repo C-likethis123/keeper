@@ -4,6 +4,11 @@ import type {
 	NoteType,
 } from "@/services/notes/types";
 
+export type StorageBackend = "desktop-native" | "mobile-native";
+
+export interface StorageCapabilities {
+	backend: StorageBackend;
+}
 export interface NoteIndexPersistenceItem {
 	noteId: string;
 	summary: string;
@@ -11,7 +16,7 @@ export interface NoteIndexPersistenceItem {
 	isPinned: boolean;
 	updatedAt: number;
 	noteType: NoteType;
-	status?: NoteStatus;
+	status?: NoteStatus | null;
 }
 
 export interface NoteIndexListResult {

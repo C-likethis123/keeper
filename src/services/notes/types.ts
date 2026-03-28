@@ -13,16 +13,7 @@ export interface Note {
 	lastUpdated: number;
 	isPinned: boolean;
 	noteType: NoteType;
-	status?: NoteStatus;
+	status?: NoteStatus | null;
 }
 
-export type NoteToSave = Omit<Note, "lastUpdated">;
-
-export interface NoteTemplate {
-	id: string;
-	title: string;
-	content: string;
-	lastUpdated: number;
-	noteType: NoteType;
-	status?: NoteStatus;
-}
+export type NoteSaveInput = Omit<Note, "lastUpdated">;

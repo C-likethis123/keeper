@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function HomeScreenHeader({
 	searchQuery,
 	setSearchQuery,
-	searchEditable,
 	searchInputRef,
 	noteTypes,
 	status,
@@ -27,7 +26,6 @@ export default function HomeScreenHeader({
 }: {
 	searchQuery: string;
 	setSearchQuery: (query: string) => void;
-	searchEditable: boolean;
 	searchInputRef?: React.Ref<TextInput>;
 	noteTypes: NoteType[];
 	status?: NoteStatus;
@@ -52,7 +50,6 @@ export default function HomeScreenHeader({
 					ref={searchInputRef}
 					searchQuery={searchQuery}
 					setSearchQuery={setSearchQuery}
-					editable={searchEditable}
 					compact
 				/>
 				<NoteFiltersDropdown

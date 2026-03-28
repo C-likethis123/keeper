@@ -12,11 +12,7 @@ import {
 	notesIndexDbListAll,
 	notesIndexDbUpsert,
 } from "@/services/notes/notesIndexDb";
-import {
-	parseTemplateFrontmatter,
-	stringifyTemplateFrontmatter,
-} from "@/services/notes/templateFrontmatter";
-import type { Note, NoteTemplate } from "@/services/notes/types";
+import type { Note, NoteSaveInput } from "@/services/notes/types";
 import type {
 	NoteFileEntry,
 	StorageEngine,
@@ -82,31 +78,48 @@ export class MobileStorageEngine implements StorageEngine {
 	async loadNote(id: string): Promise<Note | null> {
 		try {
 			const file = new File(NOTES_ROOT, `${id}.md`);
-			if (!file.exists) return null;
-			const parsed = parseFrontmatter(await file.text());
-			return {
-				id,
-				title: parsed.title,
-				content: parsed.content,
-				lastUpdated: file.modificationTime ?? 0,
-				isPinned: parsed.isPinned,
-				noteType: parsed.noteType,
-				status: parsed.noteType === "todo" ? parsed.status : undefined,
-			};
+			if (file.exists) {
+				const parsed = parseFrontmatter(await file.text());
+				return {
+					id,
+					title: parsed.title,
+					content: parsed.content,
+					lastUpdated: file.modificationTime ?? 0,
+					isPinned: parsed.isPinned,
+					noteType: parsed.noteType,
+					status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
+				};
+			}
+			const templateFile = new File(getTemplatesRoot(), `${id}.md`);
+			if (templateFile.exists) {
+				const parsed = parseFrontmatter(await templateFile.text());
+				return {
+					id,
+					title: parsed.title,
+					content: parsed.content,
+					lastUpdated: templateFile.modificationTime ?? 0,
+					isPinned: false,
+					noteType: parsed.noteType,
+					status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
+				};
+			}
+			return null;
 		} catch {
 			return null;
 		}
 	}
 
-	async saveNote(note: Note): Promise<Note> {
-		const dir = new Directory(NOTES_ROOT);
+	async saveNote(note: NoteSaveInput): Promise<Note> {
+		const isTemplate = note.noteType === "template";
+		const root = isTemplate ? getTemplatesRoot() : NOTES_ROOT;
+		const dir = new Directory(root);
 		if (!dir.exists) {
 			dir.create({ intermediates: true });
 		}
-		const file = new File(NOTES_ROOT, `${note.id}.md`);
+		const file = new File(root, `${note.id}.md`);
 		const content = stringifyFrontmatter(note);
 		await file.write(content);
-		const updatedAt = file.modificationTime ?? note.lastUpdated;
+		const updatedAt = file.modificationTime ?? Date.now();
 		return {
 			...note,
 			title: (note.title ?? "").trim(),
@@ -116,26 +129,45 @@ export class MobileStorageEngine implements StorageEngine {
 
 	async deleteNote(id: string): Promise<boolean> {
 		const file = new File(NOTES_ROOT, `${id}.md`);
-		if (!file.exists) return false;
-		file.delete();
-		return true;
+		if (file.exists) {
+			file.delete();
+			return true;
+		}
+		const templateFile = new File(getTemplatesRoot(), `${id}.md`);
+		if (templateFile.exists) {
+			templateFile.delete();
+			return true;
+		}
+		return false;
 	}
 
 	async listNoteFiles(): Promise<NoteFileEntry[]> {
-		const dir = new Directory(NOTES_ROOT);
-		if (!dir.exists) {
-			return [];
+		const items: NoteFileEntry[] = [];
+
+		const notesDir = new Directory(NOTES_ROOT);
+		if (notesDir.exists) {
+			for (const entry of notesDir.list()) {
+				if (entry instanceof File && entry.name.endsWith(".md")) {
+					items.push({
+						id: entry.name.replace(/\.md$/, ""),
+						updatedAt: entry.modificationTime ?? 0,
+					});
+				}
+			}
 		}
-		const items = dir
-			.list()
-			.filter(
-				(entry): entry is File =>
-					entry instanceof File && entry.name.endsWith(".md"),
-			)
-			.map((entry) => ({
-				id: entry.name.replace(/\.md$/, ""),
-				updatedAt: entry.modificationTime ?? 0,
-			}));
+
+		const templatesDir = new Directory(getTemplatesRoot());
+		if (templatesDir.exists) {
+			for (const entry of templatesDir.list()) {
+				if (entry instanceof File && entry.name.endsWith(".md")) {
+					items.push({
+						id: entry.name.replace(/\.md$/, ""),
+						updatedAt: entry.modificationTime ?? 0,
+					});
+				}
+			}
+		}
+
 		items.sort((a, b) => b.updatedAt - a.updatedAt);
 		return items;
 	}
@@ -167,74 +199,5 @@ export class MobileStorageEngine implements StorageEngine {
 
 	async indexRebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
 		return rebuildFromDisk();
-	}
-
-	async loadTemplate(id: string): Promise<NoteTemplate | null> {
-		try {
-			const file = new File(getTemplatesRoot(), `${id}.md`);
-			if (!file.exists) return null;
-			const parsed = parseTemplateFrontmatter(await file.text());
-			return {
-				id,
-				title: parsed.title,
-				content: parsed.content,
-				lastUpdated: file.modificationTime ?? 0,
-				noteType: parsed.noteType,
-				status: parsed.noteType === "todo" ? parsed.status : undefined,
-			};
-		} catch {
-			return null;
-		}
-	}
-
-	async saveTemplate(template: NoteTemplate): Promise<NoteTemplate> {
-		const dir = new Directory(getTemplatesRoot());
-		if (!dir.exists) {
-			dir.create({ intermediates: true });
-		}
-		const file = new File(getTemplatesRoot(), `${template.id}.md`);
-		const content = stringifyTemplateFrontmatter(template);
-		await file.write(content);
-		const updatedAt = file.modificationTime ?? template.lastUpdated;
-		return {
-			...template,
-			title: (template.title ?? "").trim(),
-			lastUpdated: updatedAt,
-		};
-	}
-
-	async deleteTemplate(id: string): Promise<boolean> {
-		const file = new File(getTemplatesRoot(), `${id}.md`);
-		if (!file.exists) return false;
-		file.delete();
-		return true;
-	}
-
-	async listTemplates(): Promise<NoteTemplate[]> {
-		const dir = new Directory(getTemplatesRoot());
-		if (!dir.exists) {
-			return [];
-		}
-		const files = dir
-			.list()
-			.filter(
-				(entry): entry is File =>
-					entry instanceof File && entry.name.endsWith(".md"),
-			)
-			.sort((a, b) => (b.modificationTime ?? 0) - (a.modificationTime ?? 0));
-		const templates = await Promise.all(
-			files.map(async (entry) => {
-				const parsed = parseTemplateFrontmatter(await entry.text());
-				return {
-					id: entry.name.replace(/\.md$/, ""),
-					title: parsed.title,
-					content: parsed.content,
-					lastUpdated: entry.modificationTime ?? 0,
-					noteType: parsed.noteType,
-					status: parsed.noteType === "todo" ? parsed.status : undefined,
-				} satisfies NoteTemplate;
-			}),
-		);
-		return templates;
 	}
 }

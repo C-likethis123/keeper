@@ -38,8 +38,6 @@ pub struct ReadNoteResult {
     pub status: Option<String>,
 }
 
-pub type ReadTemplateResult = ReadNoteResult;
-
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WriteNoteInput {
@@ -47,16 +45,6 @@ pub struct WriteNoteInput {
     pub title: String,
     pub content: String,
     pub is_pinned: bool,
-    pub note_type: String,
-    pub status: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WriteTemplateInput {
-    pub id: String,
-    pub title: String,
-    pub content: String,
     pub note_type: String,
     pub status: Option<String>,
 }
@@ -112,6 +100,12 @@ pub struct IndexListResult {
 #[serde(rename_all = "camelCase")]
 pub struct RebuildMetrics {
     pub note_count: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EntryLocation {
+    Note,
+    Template,
 }
 
 fn notes_root(data_dir: &Path) -> PathBuf {
@@ -176,6 +170,38 @@ fn path_for_id(notes_root: &Path, id: &str) -> Result<PathBuf, String> {
     Ok(notes_root.join(format!("{clean_id}.md")))
 }
 
+fn template_path_for_id(notes_root: &Path, id: &str) -> Result<PathBuf, String> {
+    let clean_id = sanitize_note_id(id)?;
+    Ok(templates_root(notes_root).join(format!("{clean_id}.md")))
+}
+
+fn path_for_note_type(notes_root: &Path, id: &str, note_type: &str) -> Result<PathBuf, String> {
+    if note_type == "template" {
+        template_path_for_id(notes_root, id)
+    } else {
+        path_for_id(notes_root, id)
+    }
+}
+
+fn resolve_existing_entry_path(
+    notes_root: &Path,
+    id: &str,
+) -> Result<Option<(EntryLocation, PathBuf)>, String> {
+    let note_path = path_for_id(notes_root, id)?;
+    let template_path = template_path_for_id(notes_root, id)?;
+    let has_note = note_path.exists();
+    let has_template = template_path.exists();
+
+    match (has_note, has_template) {
+        (false, false) => Ok(None),
+        (true, false) => Ok(Some((EntryLocation::Note, note_path))),
+        (false, true) => Ok(Some((EntryLocation::Template, template_path))),
+        (true, true) => Err(format!(
+            "duplicate note entries found for id '{id}' in notes and templates"
+        )),
+    }
+}
+
 fn file_mtime_ms(path: &Path) -> i64 {
     let modified = match fs::metadata(path).and_then(|m| m.modified()) {
         Ok(v) => v,
@@ -216,30 +242,6 @@ fn parse_frontmatter(markdown: &str) -> (String, bool, String, Option<String>, S
     (
         frontmatter.title.unwrap_or_default(),
         frontmatter.pinned.unwrap_or(false),
-        frontmatter.note_type.unwrap_or_else(|| "note".to_string()),
-        frontmatter.status,
-        parsed.content,
-    )
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct TemplateFrontmatter {
-    title: Option<String>,
-    #[serde(rename = "type")]
-    note_type: Option<String>,
-    status: Option<String>,
-}
-
-fn parse_template_frontmatter(markdown: &str) -> (String, String, Option<String>, String) {
-    let matter = Matter::<YAML>::new();
-    let parsed = match matter.parse::<TemplateFrontmatter>(markdown) {
-        Ok(parsed) => parsed,
-        Err(_) => return (String::new(), "note".to_string(), None, markdown.to_string()),
-    };
-
-    let frontmatter = parsed.data.unwrap_or_default();
-    (
-        frontmatter.title.unwrap_or_default(),
         frontmatter.note_type.unwrap_or_else(|| "note".to_string()),
         frontmatter.status,
         parsed.content,
@@ -293,18 +295,11 @@ fn serialize_note(input: &WriteNoteInput) -> Result<String, String> {
         &input.content,
         &input.note_type,
         input.status.as_deref(),
-        Some(input.is_pinned),
-    )
-}
-
-fn serialize_template(input: &WriteTemplateInput) -> Result<String, String> {
-    serialize_entry(
-        &input.title,
-        &input.id,
-        &input.content,
-        &input.note_type,
-        input.status.as_deref(),
-        None,
+        if input.note_type == "template" {
+            None
+        } else {
+            Some(input.is_pinned)
+        },
     )
 }
 
@@ -337,7 +332,7 @@ pub fn storage_initialize(
     let data_dir = notes_root
         .parent()
         .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
-    ensure_notes_dir(data_dir)?;
+    ensure_storage_dirs(data_dir)?;
     let conn = open_index_db(index_db_path)?;
     let needs_rebuild = !has_any_index_rows(&conn)?;
     Ok(StorageInitResult {
@@ -347,20 +342,31 @@ pub fn storage_initialize(
 }
 
 pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>, String> {
-    let path = path_for_id(notes_root, &id)?;
-    if !path.exists() {
+    let Some((location, path)) = resolve_existing_entry_path(notes_root, &id)? else {
         return Ok(None);
-    }
+    };
     let markdown = fs::read_to_string(&path).map_err(|e| format!("failed to read note: {e}"))?;
     let (title, is_pinned, note_type, status, content) = parse_frontmatter(&markdown);
     Ok(Some(ReadNoteResult {
         id,
         title,
         content,
-        is_pinned,
+        is_pinned: if location == EntryLocation::Template {
+            false
+        } else {
+            is_pinned
+        },
         last_updated: file_mtime_ms(&path),
-        note_type,
-        status,
+        note_type: if location == EntryLocation::Template {
+            "template".to_string()
+        } else {
+            note_type.clone()
+        },
+        status: if location == EntryLocation::Template && note_type != "todo" {
+            None
+        } else {
+            status
+        },
     }))
 }
 
@@ -368,99 +374,18 @@ pub fn write_note(notes_root: &Path, input: WriteNoteInput) -> Result<i64, Strin
     let data_dir = notes_root
         .parent()
         .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
-    ensure_notes_dir(data_dir)?;
-    let path = path_for_id(notes_root, &input.id)?;
+    ensure_storage_dirs(data_dir)?;
+    let path = path_for_note_type(notes_root, &input.id, &input.note_type)?;
     let markdown = serialize_note(&input)?;
     fs::write(&path, markdown).map_err(|e| format!("failed to write note: {e}"))?;
     Ok(file_mtime_ms(&path))
 }
 
 pub fn delete_note(notes_root: &Path, id: String) -> Result<bool, String> {
-    let path = path_for_id(notes_root, &id)?;
-    if !path.exists() {
+    let Some((_, path)) = resolve_existing_entry_path(notes_root, &id)? else {
         return Ok(false);
-    }
+    };
     fs::remove_file(path).map_err(|e| format!("failed to delete note: {e}"))?;
-    Ok(true)
-}
-
-fn read_entry<T, FParse, FBuild>(
-    root: &Path,
-    id: String,
-    path_for_id: fn(&Path, &str) -> Result<PathBuf, String>,
-    parse: FParse,
-    build: FBuild,
-) -> Result<Option<T>, String>
-where
-    FParse: Fn(&str) -> (String, String, Option<String>, String),
-    FBuild: Fn(String, String, String, i64, String, Option<String>) -> T,
-{
-    let path = path_for_id(root, &id)?;
-    if !path.exists() {
-        return Ok(None);
-    }
-    let markdown = fs::read_to_string(&path).map_err(|e| format!("failed to read entry: {e}"))?;
-    let (title, note_type, status, content) = parse(&markdown);
-    Ok(Some(build(
-        id,
-        title,
-        content,
-        file_mtime_ms(&path),
-        note_type,
-        status,
-    )))
-}
-
-fn write_entry(
-    root: &Path,
-    id: &str,
-    markdown: String,
-    path_for_id: fn(&Path, &str) -> Result<PathBuf, String>,
-) -> Result<i64, String> {
-    let path = path_for_id(root, id)?;
-    fs::write(&path, markdown).map_err(|e| format!("failed to write entry: {e}"))?;
-    Ok(file_mtime_ms(&path))
-}
-
-pub fn read_template(
-    templates_root: &Path,
-    id: String,
-) -> Result<Option<ReadTemplateResult>, String> {
-    read_entry(
-        templates_root,
-        id,
-        path_for_id,
-        parse_template_frontmatter,
-        |id, title, content, last_updated, note_type, status| ReadTemplateResult {
-            id,
-            title,
-            content,
-            is_pinned: false,
-            last_updated,
-            note_type,
-            status,
-        },
-    )
-}
-
-pub fn write_template(templates_root: &Path, input: WriteTemplateInput) -> Result<i64, String> {
-    let notes_root = templates_root
-        .parent()
-        .ok_or_else(|| "templates root is missing notes root parent".to_string())?;
-    let data_dir = notes_root
-        .parent()
-        .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
-    ensure_storage_dirs(data_dir)?;
-    let markdown = serialize_template(&input)?;
-    write_entry(templates_root, &input.id, markdown, path_for_id)
-}
-
-pub fn delete_template(templates_root: &Path, id: String) -> Result<bool, String> {
-    let path = path_for_id(templates_root, &id)?;
-    if !path.exists() {
-        return Ok(false);
-    }
-    fs::remove_file(path).map_err(|e| format!("failed to delete template: {e}"))?;
     Ok(true)
 }
 
@@ -486,22 +411,9 @@ pub fn list_note_files(notes_root: &Path) -> Result<Vec<NoteFileEntry>, String> 
             updated_at: file_mtime_ms(&path),
         });
     }
-    out.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-    Ok(out)
-}
-
-pub fn list_templates(templates_root: &Path) -> Result<Vec<ReadTemplateResult>, String> {
-    let notes_root = templates_root
-        .parent()
-        .ok_or_else(|| "templates root is missing notes root parent".to_string())?;
-    let data_dir = notes_root
-        .parent()
-        .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
-    ensure_storage_dirs(data_dir)?;
-    let mut out = Vec::new();
-    let entries =
-        fs::read_dir(templates_root).map_err(|e| format!("failed to list templates dir: {e}"))?;
-    for entry_result in entries {
+    let template_entries = fs::read_dir(templates_root(notes_root))
+        .map_err(|e| format!("failed to list templates dir: {e}"))?;
+    for entry_result in template_entries {
         let entry = entry_result.map_err(|e| format!("failed to read dir entry: {e}"))?;
         let path = entry.path();
         if path.extension().and_then(|x| x.to_str()) != Some("md") {
@@ -510,20 +422,12 @@ pub fn list_templates(templates_root: &Path) -> Result<Vec<ReadTemplateResult>, 
         let Some(stem) = path.file_stem().and_then(|x| x.to_str()) else {
             continue;
         };
-        let markdown = fs::read_to_string(&path)
-            .map_err(|e| format!("failed to read template markdown: {e}"))?;
-        let (title, note_type, status, content) = parse_template_frontmatter(&markdown);
-        out.push(ReadTemplateResult {
+        out.push(NoteFileEntry {
             id: stem.to_string(),
-            title,
-            content,
-            is_pinned: false,
-            last_updated: file_mtime_ms(&path),
-            note_type,
-            status,
+            updated_at: file_mtime_ms(&path),
         });
     }
-    out.sort_by(|a, b| b.last_updated.cmp(&a.last_updated));
+    out.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
     Ok(out)
 }
 
@@ -699,7 +603,7 @@ pub fn index_rebuild_from_disk(
     let data_dir = notes_root
         .parent()
         .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
-    ensure_notes_dir(data_dir)?;
+    ensure_storage_dirs(data_dir)?;
     let conn = open_index_db(index_db_path)?;
     let tx = conn
         .unchecked_transaction()
@@ -755,6 +659,44 @@ pub fn index_rebuild_from_disk(
         count += 1;
     }
 
+    let template_entries = fs::read_dir(templates_root(notes_root))
+        .map_err(|e| format!("failed to list templates dir: {e}"))?;
+    for entry_result in template_entries {
+        let entry = entry_result.map_err(|e| format!("failed to read dir entry: {e}"))?;
+        let path = entry.path();
+        if path.extension().and_then(|x| x.to_str()) != Some("md") {
+            continue;
+        }
+        let Some(id) = path.file_stem().and_then(|x| x.to_str()) else {
+            continue;
+        };
+        let markdown =
+            fs::read_to_string(&path).map_err(|e| format!("failed to read markdown: {e}"))?;
+        let (title, _, embedded_type, status, content) = parse_frontmatter(&markdown);
+        let summary = extract_summary(&content, 6);
+        let status = if embedded_type == "todo" {
+            Some(status.as_deref().unwrap_or("open"))
+        } else {
+            None
+        };
+        tx.execute(
+            &format!(
+                "INSERT INTO {TABLE} (id, title, summary, is_pinned, updated_at, note_type, status)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                 ON CONFLICT(id) DO UPDATE SET
+                   title = excluded.title,
+                   summary = excluded.summary,
+                   is_pinned = excluded.is_pinned,
+                   updated_at = excluded.updated_at,
+                   note_type = excluded.note_type,
+                   status = excluded.status"
+            ),
+            params![id, title, summary, 0, file_mtime_ms(&path), "template", status],
+        )
+        .map_err(|e| format!("failed to insert template index row: {e}"))?;
+        count += 1;
+    }
+
     tx.execute(
         &format!("INSERT INTO {FTS_TABLE}({FTS_TABLE}) VALUES('rebuild')"),
         [],
@@ -769,9 +711,59 @@ pub fn index_rebuild_from_disk(
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_frontmatter, parse_template_frontmatter, serialize_note, serialize_template,
-        WriteNoteInput, WriteTemplateInput,
+        delete_note, index_rebuild_from_disk, list_note_files, parse_frontmatter, read_note,
+        serialize_note, storage_initialize, template_path_for_id, write_note, WriteNoteInput,
+        NOTES_DIR,
     };
+    use rusqlite::{params, Connection};
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    static NEXT_TEST_ID: AtomicU64 = AtomicU64::new(0);
+
+    struct TestStoragePaths {
+        root: PathBuf,
+        notes_root: PathBuf,
+        index_db_path: PathBuf,
+    }
+
+    impl TestStoragePaths {
+        fn new() -> Self {
+            let unique = format!(
+                "keeper-storage-core-{}-{}",
+                std::process::id(),
+                NEXT_TEST_ID.fetch_add(1, Ordering::Relaxed)
+                    + SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("time went backwards")
+                        .as_nanos() as u64
+            );
+            let root = std::env::temp_dir().join(unique);
+            let notes_root = root.join(NOTES_DIR);
+            let index_db_path = root.join("notes-index.db");
+            fs::create_dir_all(&root).expect("create temp root");
+            Self {
+                root,
+                notes_root,
+                index_db_path,
+            }
+        }
+    }
+
+    impl Drop for TestStoragePaths {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.root);
+        }
+    }
+
+    fn write_markdown(path: &Path, markdown: &str) {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("create parent");
+        }
+        fs::write(path, markdown).expect("write markdown");
+    }
 
     #[test]
     fn parse_frontmatter_unescapes_quoted_titles() {
@@ -831,32 +823,176 @@ mod tests {
     }
 
     #[test]
-    fn parse_template_frontmatter_reads_template_metadata() {
+    fn parse_frontmatter_reads_template_metadata() {
         let markdown = "---\ntitle: \"Meeting\"\nid: \"template-1\"\ntype: \"todo\"\nstatus: \"doing\"\n---\n- agenda";
-        let (title, note_type, status, content) = parse_template_frontmatter(markdown);
+        let (title, is_pinned, note_type, status, content) = parse_frontmatter(markdown);
 
         assert_eq!(title, "Meeting");
+        assert!(!is_pinned);
         assert_eq!(note_type, "todo");
         assert_eq!(status.as_deref(), Some("doing"));
         assert_eq!(content, "- agenda");
     }
 
     #[test]
-    fn serialize_template_writes_frontmatter_and_body() {
-        let markdown = serialize_template(&WriteTemplateInput {
+    fn serialize_note_omits_pinned_for_templates() {
+        let markdown = serialize_note(&WriteNoteInput {
             id: "template-1".to_string(),
             title: "Checklist".to_string(),
             content: "- [ ] item".to_string(),
-            note_type: "todo".to_string(),
+            is_pinned: true,
+            note_type: "template".to_string(),
             status: Some("open".to_string()),
         })
         .expect("template should serialize");
 
-        let (title, note_type, status, content) = parse_template_frontmatter(&markdown);
+        let (title, is_pinned, note_type, status, content) = parse_frontmatter(&markdown);
         assert_eq!(title, "Checklist");
-        assert_eq!(note_type, "todo");
-        assert_eq!(status.as_deref(), Some("open"));
+        assert!(!is_pinned);
+        assert_eq!(note_type, "template");
+        assert_eq!(status, None);
         assert_eq!(content, "- [ ] item");
         assert!(markdown.contains("\nid: \"template-1\"\n"));
+        assert!(!markdown.contains("\npinned:"));
+    }
+
+    #[test]
+    fn write_note_routes_templates_into_templates_directory() {
+        let paths = TestStoragePaths::new();
+        storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
+
+        write_note(
+            &paths.notes_root,
+            WriteNoteInput {
+                id: "template-1".to_string(),
+                title: "Checklist".to_string(),
+                content: "- [ ] item".to_string(),
+                is_pinned: true,
+                note_type: "template".to_string(),
+                status: None,
+            },
+        )
+        .expect("write template");
+
+        assert!(template_path_for_id(&paths.notes_root, "template-1")
+            .expect("template path")
+            .exists());
+        assert!(!paths.notes_root.join("template-1.md").exists());
+    }
+
+    #[test]
+    fn write_note_routes_regular_notes_into_notes_directory() {
+        let paths = TestStoragePaths::new();
+        storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
+
+        write_note(
+            &paths.notes_root,
+            WriteNoteInput {
+                id: "note-1".to_string(),
+                title: "Note".to_string(),
+                content: "body".to_string(),
+                is_pinned: true,
+                note_type: "note".to_string(),
+                status: None,
+            },
+        )
+        .expect("write note");
+
+        assert!(paths.notes_root.join("note-1.md").exists());
+    }
+
+    #[test]
+    fn read_note_reads_template_entry_through_unified_api() {
+        let paths = TestStoragePaths::new();
+        storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
+        write_markdown(
+            &template_path_for_id(&paths.notes_root, "template-1").expect("template path"),
+            "---\ntitle: \"Checklist\"\nid: \"template-1\"\ntype: \"todo\"\nstatus: \"doing\"\n---\n- agenda",
+        );
+
+        let note = read_note(&paths.notes_root, "template-1".to_string())
+            .expect("read template")
+            .expect("template exists");
+
+        assert_eq!(note.note_type, "template");
+        assert!(!note.is_pinned);
+        assert_eq!(note.status.as_deref(), Some("doing"));
+    }
+
+    #[test]
+    fn read_note_errors_when_duplicate_note_and_template_exist() {
+        let paths = TestStoragePaths::new();
+        storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
+        write_markdown(&paths.notes_root.join("shared.md"), "---\ntitle: \"Note\"\n---\nbody");
+        write_markdown(
+            &template_path_for_id(&paths.notes_root, "shared").expect("template path"),
+            "---\ntitle: \"Template\"\n---\nbody",
+        );
+
+        let err = read_note(&paths.notes_root, "shared".to_string()).expect_err("duplicate error");
+        assert!(err.contains("duplicate note entries found"));
+    }
+
+    #[test]
+    fn delete_note_errors_when_duplicate_note_and_template_exist() {
+        let paths = TestStoragePaths::new();
+        storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
+        write_markdown(&paths.notes_root.join("shared.md"), "---\ntitle: \"Note\"\n---\nbody");
+        write_markdown(
+            &template_path_for_id(&paths.notes_root, "shared").expect("template path"),
+            "---\ntitle: \"Template\"\n---\nbody",
+        );
+
+        let err =
+            delete_note(&paths.notes_root, "shared".to_string()).expect_err("duplicate error");
+        assert!(err.contains("duplicate note entries found"));
+    }
+
+    #[test]
+    fn list_note_files_includes_templates() {
+        let paths = TestStoragePaths::new();
+        storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
+        write_markdown(&paths.notes_root.join("note-1.md"), "---\ntitle: \"Note\"\n---\nbody");
+        write_markdown(
+            &template_path_for_id(&paths.notes_root, "template-1").expect("template path"),
+            "---\ntitle: \"Template\"\n---\nbody",
+        );
+
+        let items = list_note_files(&paths.notes_root).expect("list note files");
+        let ids: Vec<String> = items.into_iter().map(|item| item.id).collect();
+        assert!(ids.contains(&"note-1".to_string()));
+        assert!(ids.contains(&"template-1".to_string()));
+    }
+
+    #[test]
+    fn index_rebuild_from_disk_indexes_templates() {
+        let paths = TestStoragePaths::new();
+        storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
+        write_markdown(
+            &template_path_for_id(&paths.notes_root, "template-1").expect("template path"),
+            "---\ntitle: \"Template\"\nid: \"template-1\"\ntype: \"todo\"\nstatus: \"open\"\n---\n- agenda",
+        );
+
+        let metrics =
+            index_rebuild_from_disk(&paths.notes_root, &paths.index_db_path).expect("rebuild");
+        assert_eq!(metrics.note_count, 1);
+
+        let conn = Connection::open(&paths.index_db_path).expect("open sqlite");
+        let row = conn
+            .query_row(
+                "SELECT note_type, is_pinned, status FROM note_index WHERE id = ?1",
+                params!["template-1"],
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, i64>(1)?,
+                        row.get::<_, Option<String>>(2)?,
+                    ))
+                },
+            )
+            .expect("read indexed row");
+        assert_eq!(row.0, "template");
+        assert_eq!(row.1, 0);
+        assert_eq!(row.2.as_deref(), Some("open"));
     }
 }

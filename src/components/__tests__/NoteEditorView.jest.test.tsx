@@ -16,10 +16,9 @@ import { Text } from "react-native";
 jest.useFakeTimers();
 
 const mockSaveNote = jest.fn();
+const mockLoadNote = jest.fn();
 const mockDeleteNote = jest.fn();
-const mockSaveTemplate = jest.fn();
-const mockDeleteTemplate = jest.fn();
-const mockListTemplates = jest.fn();
+const mockIndexListNotes = jest.fn();
 const mockNavigationSetOptions = jest.fn();
 
 let latestNavigationOptions:
@@ -44,11 +43,8 @@ jest.mock("expo-router", () => {
 	};
 });
 
-jest.mock("@/hooks/useAutoSave", () => ({
-	useAutoSave: () => ({
-		status: "idle",
-	}),
-}));
+// Use actual useAutoSave hook to test consolidation
+jest.mock("@/hooks/useAutoSave", () => jest.requireActual("@/hooks/useAutoSave"));
 
 jest.mock("@/hooks/useExtendedTheme", () => ({
 	useExtendedTheme: () => ({
@@ -89,16 +85,15 @@ jest.mock("react-native-webview", () => {
 
 jest.mock("@/services/notes/noteService", () => ({
 	NoteService: {
+		loadNote: (...args: unknown[]) => mockLoadNote(...args),
 		saveNote: (...args: unknown[]) => mockSaveNote(...args),
 		deleteNote: (...args: unknown[]) => mockDeleteNote(...args),
 	},
 }));
 
-jest.mock("@/services/notes/templateService", () => ({
-	TemplateService: {
-		saveTemplate: (...args: unknown[]) => mockSaveTemplate(...args),
-		deleteTemplate: (...args: unknown[]) => mockDeleteTemplate(...args),
-		listTemplates: (...args: unknown[]) => mockListTemplates(...args),
+jest.mock("@/services/notes/notesIndex", () => ({
+	NotesIndexService: {
+		listNotes: (...args: unknown[]) => mockIndexListNotes(...args),
 	},
 }));
 
@@ -126,7 +121,7 @@ function makeNote(overrides?: Partial<Note>): Note {
 		lastUpdated: 1710000000000,
 		isPinned: false,
 		noteType: "note",
-		status: undefined,
+		status: null,
 		...overrides,
 	};
 }
@@ -156,20 +151,21 @@ function pressHeaderBack() {
 
 describe("NoteEditorView", () => {
 	beforeEach(() => {
+		mockLoadNote.mockReset();
 		mockSaveNote.mockReset();
 		mockDeleteNote.mockReset();
-		mockSaveTemplate.mockReset();
-		mockDeleteTemplate.mockReset();
-		mockListTemplates.mockReset();
+		mockIndexListNotes.mockReset();
+		mockLoadNote.mockImplementation(async (id: string) => makeNote({ id }));
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
-		mockSaveTemplate.mockResolvedValue(undefined);
-		mockDeleteTemplate.mockResolvedValue(undefined);
-		mockListTemplates.mockResolvedValue([]);
+		mockIndexListNotes.mockResolvedValue({ items: [], cursor: undefined });
 		mockNavigationSetOptions.mockReset();
 		latestNavigationOptions = undefined;
 		useEditorState.getState().resetState();
 		useStorageStore.setState({
+			capabilities: {
+				backend: "mobile-native",
+			},
 			initializationStatus: "ready",
 			initializationError: undefined,
 			contentVersion: 0,
@@ -212,13 +208,14 @@ describe("NoteEditorView", () => {
 					noteType: "todo",
 					status: "open",
 				}),
-				false,
+				true,
 			);
 		});
 	});
 
-	it("saves and navigates back when pressing the header back action", async () => {
+	it("does not save when pressing back without any note changes", async () => {
 		const note = makeNote();
+		mockLoadNote.mockResolvedValue(note);
 
 		const result = renderNoteEditor(note);
 
@@ -233,13 +230,28 @@ describe("NoteEditorView", () => {
 		await waitFor(() => {
 			expect(result.getPathname()).toBe("/");
 		});
-		expect(mockSaveNote).toHaveBeenCalledWith(
-			expect.objectContaining({
-				id: note.id,
-				title: note.title,
-			}),
-			false,
-		);
+		expect(mockSaveNote).not.toHaveBeenCalled();
+	});
+
+	it("preserves an existing stored note type on mount instead of re-deriving it", async () => {
+		const note = makeNote({
+			title: "Weekly reading list",
+			noteType: "resource",
+		});
+		mockLoadNote.mockResolvedValue(note);
+
+		const result = renderNoteEditor(note);
+
+		await screen.findByText("Toolbar");
+		await waitFor(() => {
+			expect(latestNavigationOptions?.headerLeft).toBeDefined();
+		});
+		pressHeaderBack();
+
+		await waitFor(() => {
+			expect(result.getPathname()).toBe("/");
+		});
+		expect(mockSaveNote).not.toHaveBeenCalled();
 	});
 
 	it("converts a note into a template on save when template type is selected", async () => {
@@ -258,7 +270,7 @@ describe("NoteEditorView", () => {
 		pressHeaderBack();
 
 		await waitFor(() => {
-			expect(mockSaveTemplate).toHaveBeenCalledWith(
+			expect(mockSaveNote).toHaveBeenCalledWith(
 				expect.objectContaining({
 					id: note.id,
 					title: "Template: Weekly Review",
@@ -267,6 +279,7 @@ describe("NoteEditorView", () => {
 				true,
 			);
 		});
-		expect(mockDeleteNote).toHaveBeenCalledWith(note.id);
+		expect(mockDeleteNote).toHaveBeenCalledWith(note.id, "note");
 	});
+
 });

@@ -1,6 +1,5 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
-import { NoteService } from "@/services/notes/noteService";
 import {
 	type NoteIndexItem,
 	NotesIndexService,

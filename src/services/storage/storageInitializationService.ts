@@ -1,5 +1,8 @@
 import { setNotesRoot } from "@/services/notes/Notes";
-import { getStorageEngine } from "@/services/storage/storageEngine";
+import {
+	getStorageCapabilities,
+	getStorageEngine,
+} from "@/services/storage/storageEngine";
 import { useStorageStore } from "@/stores/storageStore";
 
 interface StorageInitializationResult {
@@ -15,6 +18,7 @@ export class StorageInitializationService {
 		useStorageStore.getState().setInitializationPending();
 		try {
 			const result = await getStorageEngine().initialize();
+			useStorageStore.getState().setCapabilities(getStorageCapabilities());
 			setNotesRoot(result.notesRoot);
 			useStorageStore.getState().setNotesRoot(result.notesRoot);
 			useStorageStore.getState().setInitializationReady();
