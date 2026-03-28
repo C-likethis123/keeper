@@ -122,7 +122,6 @@ export default function Index() {
 			id: nanoid(),
 			title: "",
 			content: "",
-			lastUpdated: Date.now(),
 			isPinned: false,
 			noteType: "note" as NoteType,
 		};
@@ -145,7 +144,6 @@ export default function Index() {
 				id: nanoid(),
 				title,
 				content: "",
-				lastUpdated: Date.now(),
 				isPinned: false,
 				noteType: deriveNoteType(title),
 			};
@@ -161,7 +159,6 @@ export default function Index() {
 			id: nanoid(),
 			title,
 			content: "",
-			lastUpdated: Date.now(),
 			isPinned: false,
 			noteType: "todo" as NoteType,
 			status: "open" as const,

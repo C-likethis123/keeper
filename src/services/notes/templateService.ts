@@ -1,7 +1,7 @@
 import { GitService } from "@/services/git/gitService";
 import { getTemplateRelativePath } from "@/services/notes/templatePaths";
 import { getStorageEngine } from "@/services/storage/storageEngine";
-import type { NoteTemplate } from "./types";
+import type { NoteTemplate, NoteTemplateSaveInput } from "./types";
 
 export class TemplateService {
 	static instance = new TemplateService();
@@ -13,7 +13,7 @@ export class TemplateService {
 	}
 
 	static async saveTemplate(
-		template: NoteTemplate,
+		template: NoteTemplateSaveInput,
 		isNewTemplate = false,
 	): Promise<NoteTemplate> {
 		const saved = await getStorageEngine().saveTemplate({

@@ -1,5 +1,10 @@
 import type { NotesIndexRebuildMetrics } from "@/services/notes/notesIndexDb";
-import type { Note, NoteTemplate } from "@/services/notes/types";
+import type {
+	Note,
+	NoteSaveInput,
+	NoteTemplate,
+	NoteTemplateSaveInput,
+} from "@/services/notes/types";
 import type {
 	NoteIndexListResult,
 	NoteIndexPersistenceItem,
@@ -20,12 +25,12 @@ export interface StorageEngine {
 	initialize(): Promise<StorageInitializeResult>;
 	resetAllData(): Promise<void>;
 	loadNote(id: string): Promise<Note | null>;
-	saveNote(note: Note): Promise<Note>;
+	saveNote(note: NoteSaveInput): Promise<Note>;
 	deleteNote(id: string): Promise<boolean>;
 	listNoteFiles(): Promise<NoteFileEntry[]>;
 	statNote(id: string): Promise<number | null>;
 	loadTemplate(id: string): Promise<NoteTemplate | null>;
-	saveTemplate(template: NoteTemplate): Promise<NoteTemplate>;
+	saveTemplate(template: NoteTemplateSaveInput): Promise<NoteTemplate>;
 	deleteTemplate(id: string): Promise<boolean>;
 	listTemplates(): Promise<NoteTemplate[]>;
 	indexUpsert(item: NoteIndexPersistenceItem): Promise<void>;

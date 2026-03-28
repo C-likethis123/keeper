@@ -1,5 +1,10 @@
 import type { NotesIndexRebuildMetrics } from "@/services/notes/notesIndexDb";
-import type { Note, NoteTemplate } from "@/services/notes/types";
+import type {
+	Note,
+	NoteSaveInput,
+	NoteTemplate,
+	NoteTemplateSaveInput,
+} from "@/services/notes/types";
 import type {
 	NoteFileEntry,
 	StorageEngine,
@@ -55,7 +60,7 @@ export class TauriStorageEngine implements StorageEngine {
 		return this.invoke<ReadEntryResult | null>("read_note", { id });
 	}
 
-	async saveNote(note: Note): Promise<Note> {
+	async saveNote(note: NoteSaveInput): Promise<Note> {
 		const updatedAt = await this.invoke<number>("write_note", {
 			input: {
 				id: note.id,
@@ -68,7 +73,7 @@ export class TauriStorageEngine implements StorageEngine {
 		});
 		return {
 			...note,
-			lastUpdated: updatedAt || note.lastUpdated,
+			lastUpdated: updatedAt || Date.now(),
 		};
 	}
 
@@ -100,17 +105,17 @@ export class TauriStorageEngine implements StorageEngine {
 			content: template.content,
 			lastUpdated: template.lastUpdated,
 			noteType: "template",
-			status: undefined,
+			status: null,
 		};
 	}
 
-	async saveTemplate(template: NoteTemplate): Promise<NoteTemplate> {
+	async saveTemplate(template: NoteTemplateSaveInput): Promise<NoteTemplate> {
 		const input: WriteTemplateInput = {
 			id: template.id,
 			title: template.title,
 			content: template.content,
 			noteType: "template",
-			status: undefined,
+			status: null,
 		};
 		const updatedAt = await this.invoke<number>("write_template", {
 			input,
@@ -118,8 +123,8 @@ export class TauriStorageEngine implements StorageEngine {
 		return {
 			...template,
 			noteType: "template",
-			status: undefined,
-			lastUpdated: updatedAt || template.lastUpdated,
+			status: null,
+			lastUpdated: updatedAt || Date.now(),
 		};
 	}
 
@@ -135,7 +140,7 @@ export class TauriStorageEngine implements StorageEngine {
 			content: template.content,
 			lastUpdated: template.lastUpdated,
 			noteType: "template",
-			status: undefined,
+			status: null,
 		}));
 	}
 

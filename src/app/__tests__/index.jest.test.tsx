@@ -51,7 +51,10 @@ jest.mock("expo-router", () => {
 				options,
 			}: {
 				options?: { header?: () => React.ReactNode };
-			}) => (options?.header ? React.createElement(React.Fragment, null, options.header()) : null),
+			}) =>
+				options?.header
+					? React.createElement(React.Fragment, null, options.header())
+					: null,
 		},
 		router: {
 			push: (...args: unknown[]) => mockRouterPush(...args),
@@ -242,7 +245,6 @@ describe("Index", () => {
 					content: "",
 					isPinned: false,
 					noteType: "note",
-					lastUpdated: expect.any(Number),
 				}),
 				true,
 			);
@@ -268,7 +270,6 @@ describe("Index", () => {
 					isPinned: false,
 					noteType: "todo",
 					status: "open",
-					lastUpdated: expect.any(Number),
 				}),
 				true,
 			);
@@ -293,7 +294,6 @@ describe("Index", () => {
 					content: "",
 					isPinned: false,
 					noteType: "journal",
-					lastUpdated: expect.any(Number),
 				}),
 				true,
 			);
@@ -318,7 +318,6 @@ describe("Index", () => {
 					content: "",
 					isPinned: false,
 					noteType: "resource",
-					lastUpdated: expect.any(Number),
 				}),
 				true,
 			);
@@ -343,7 +342,6 @@ describe("Index", () => {
 					content: "",
 					isPinned: false,
 					noteType: "note",
-					lastUpdated: expect.any(Number),
 				}),
 				true,
 			);

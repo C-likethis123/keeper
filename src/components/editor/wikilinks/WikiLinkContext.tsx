@@ -190,7 +190,6 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 							id: nanoid(),
 							title: result.title,
 							content: "",
-							lastUpdated: Date.now(),
 							isPinned: false,
 							noteType: "note",
 						},

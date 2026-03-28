@@ -1,14 +1,16 @@
 import type { SaveStatus } from "@/components/SaveIndicator";
-import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
+import {
+	normalizeMarkdownForPersistence,
+	persistEditorEntry,
+} from "@/services/notes/editorEntryPersistence";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { InteractionManager } from "react-native";
 
 const AUTO_SAVE_INTERVAL_MS = 60000;
 const INPUT_IDLE_BEFORE_SAVE_MS = 1500;
 const SAVE_INDICATOR_DELAY_MS = 1000;
-const AUTO_SAVE_PROFILE = process.env.NODE_ENV === "development";
 
 type AutoSaveInput = {
 	id: string;
@@ -66,7 +68,7 @@ export function useAutoSave({
 			lastSavedRef.current = {
 				id,
 				title: title.trim(),
-				content: initialContent,
+				content: normalizeMarkdownForPersistence(initialContent),
 				isPinned,
 				lastUpdated: Date.now(),
 				noteType: initialNoteType ?? noteType,
@@ -83,6 +85,120 @@ export function useAutoSave({
 		noteStatus,
 		initialNoteType,
 	]);
+
+	const forceSave = useCallback(async () => {
+		if (isSavingRef.current) {
+			return;
+		}
+
+		const currentNote = latestNoteRef.current;
+		const currentContent = getContentForVersion(
+			latestDocumentVersionRef.current,
+		);
+		const trimmedTitle = currentNote.title.trim();
+
+		const previousId = lastSavedRef.current?.id;
+		const previousTitle = lastSavedRef.current?.title;
+		const previousContent = lastSavedRef.current?.content;
+		const previousIsPinned = lastSavedRef.current?.isPinned;
+		const previousNoteType = lastSavedRef.current?.noteType;
+		const previousStatus = lastSavedRef.current?.status;
+
+		const isMatch =
+			currentNote.id === previousId &&
+			trimmedTitle === previousTitle &&
+			currentContent === previousContent &&
+			currentNote.isPinned === previousIsPinned &&
+			currentNote.noteType === previousNoteType &&
+			currentNote.status === previousStatus;
+
+		if (isMatch) {
+			return;
+		}
+
+		console.debug("[AutoSave] Dirty detected:", {
+			id: {
+				match: currentNote.id === previousId,
+				a: currentNote.id,
+				b: previousId,
+			},
+			title: {
+				match: trimmedTitle === previousTitle,
+				a: trimmedTitle,
+				b: previousTitle,
+			},
+			content: {
+				match: currentContent === previousContent,
+				aLen: currentContent?.length,
+				bLen: previousContent?.length,
+			},
+			pinned: {
+				match: currentNote.isPinned === previousIsPinned,
+				a: currentNote.isPinned,
+				b: previousIsPinned,
+			},
+			type: {
+				match: currentNote.noteType === previousNoteType,
+				a: currentNote.noteType,
+				b: previousNoteType,
+			},
+			status: {
+				match: currentNote.status === previousStatus,
+				a: currentNote.status,
+				b: previousStatus,
+			},
+		});
+
+		isSavingRef.current = true;
+		setStatus("saving");
+		const saveStart = performance.now();
+		console.debug("[AutoSaveProfile] saveNote:start", {
+			id: currentNote.id,
+			titleLength: trimmedTitle.length,
+			contentLength: currentContent.length,
+			documentVersion: latestDocumentVersionRef.current,
+		});
+		try {
+			await persistEditorEntry({
+				id: currentNote.id,
+				title: trimmedTitle,
+				content: currentContent,
+				isPinned: currentNote.isPinned,
+				noteType: currentNote.noteType,
+				status: currentNote.status,
+				previousNoteType: previousNoteType,
+			});
+		} catch {
+			console.debug("[AutoSaveProfile] saveNote:error", {
+				id: currentNote.id,
+				durationMs: Math.round(performance.now() - saveStart),
+			});
+			setStatus("idle");
+			isSavingRef.current = false;
+			return;
+		}
+		console.debug("[AutoSaveProfile] saveNote:done", {
+			id: currentNote.id,
+			durationMs: Math.round(performance.now() - saveStart),
+		});
+
+		lastSavedRef.current = {
+			id: currentNote.id,
+			title: trimmedTitle,
+			content: currentContent,
+			isPinned: currentNote.isPinned,
+			lastUpdated: Date.now(),
+			noteType: currentNote.noteType,
+			status: currentNote.status,
+		};
+		onPersisted?.(currentNote.noteType);
+		isSavingRef.current = false;
+		setStatus("saved");
+		statusTimeoutRef.current = setTimeout(() => {
+			setStatus("idle");
+			statusTimeoutRef.current = null;
+		}, SAVE_INDICATOR_DELAY_MS);
+	}, [getContentForVersion, onPersisted]);
 
 	useEffect(() => {
 		let lastDocumentVersion = useEditorState.getState().document.version;
@@ -103,12 +219,10 @@ export function useAutoSave({
 				void InteractionManager.runAfterInteractions(async () => {
 					const prepareStart = performance.now();
 					prepareContent();
-					if (AUTO_SAVE_PROFILE) {
-						console.log("[AutoSaveProfile] prepareContent", {
-							documentVersion: latestDocumentVersionRef.current,
-							durationMs: Math.round(performance.now() - prepareStart),
-						});
-					}
+					console.debug("[AutoSaveProfile] prepareContent", {
+						documentVersion: latestDocumentVersionRef.current,
+						durationMs: Math.round(performance.now() - prepareStart),
+					});
 				});
 			}, INPUT_IDLE_BEFORE_SAVE_MS);
 		});
@@ -155,89 +269,7 @@ export function useAutoSave({
 			idleTimeoutRef.current = setTimeout(() => {
 				idleTimeoutRef.current = null;
 				void InteractionManager.runAfterInteractions(async () => {
-					if (isSavingRef.current) {
-						return;
-					}
-
-					const { id, title, isPinned, noteType, status } =
-						latestNoteRef.current;
-					const currentContent = getContentForVersion(
-						latestDocumentVersionRef.current,
-					);
-					const previousId = lastSavedRef.current?.id;
-					const previousTitle = lastSavedRef.current?.title;
-					const previousContent = lastSavedRef.current?.content;
-					const previousIsPinned = lastSavedRef.current?.isPinned;
-					const previousNoteType = lastSavedRef.current?.noteType;
-					const previousStatus = lastSavedRef.current?.status;
-
-					if (
-						id === previousId &&
-						title === previousTitle &&
-						currentContent === previousContent &&
-						isPinned === previousIsPinned &&
-						noteType === previousNoteType &&
-						status === previousStatus
-					) {
-						return;
-					}
-
-					isSavingRef.current = true;
-					setStatus("saving");
-					const saveStart = performance.now();
-					if (AUTO_SAVE_PROFILE) {
-						console.log("[AutoSaveProfile] saveNote:start", {
-							id,
-							titleLength: title.length,
-							contentLength: currentContent.length,
-							documentVersion: latestDocumentVersionRef.current,
-						});
-					}
-					try {
-						await persistEditorEntry({
-							id,
-							title: title.trim(),
-							content: currentContent,
-							isPinned,
-							lastUpdated: Date.now(),
-							noteType,
-							status,
-							previousNoteType: previousNoteType,
-						});
-					} catch {
-						if (AUTO_SAVE_PROFILE) {
-							console.log("[AutoSaveProfile] saveNote:error", {
-								id,
-								durationMs: Math.round(performance.now() - saveStart),
-							});
-						}
-						setStatus("idle");
-						isSavingRef.current = false;
-						return;
-					}
-					if (AUTO_SAVE_PROFILE) {
-						console.log("[AutoSaveProfile] saveNote:done", {
-							id,
-							durationMs: Math.round(performance.now() - saveStart),
-						});
-					}
-
-					lastSavedRef.current = {
-						id,
-						title: title.trim(),
-						content: currentContent,
-						isPinned,
-						lastUpdated: Date.now(),
-						noteType,
-						status,
-					};
-					onPersisted?.(noteType);
-					isSavingRef.current = false;
-					setStatus("saved");
-					statusTimeoutRef.current = setTimeout(() => {
-						setStatus("idle");
-						statusTimeoutRef.current = null;
-					}, SAVE_INDICATOR_DELAY_MS);
+					await forceSave();
 				});
 			}, waitMs);
 		};
@@ -264,8 +296,13 @@ export function useAutoSave({
 				clearInterval(intervalRef.current);
 				intervalRef.current = null;
 			}
-		};
-	}, [getContentForVersion, onPersisted]);
 
-	return { status };
+			// Final save on unmount
+			void InteractionManager.runAfterInteractions(async () => {
+				await forceSave();
+			});
+		};
+	}, [forceSave]);
+
+	return { status, forceSave };
 }

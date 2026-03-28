@@ -7,7 +7,7 @@ import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import { TemplateService } from "@/services/notes/templateService";
-import type { Note, NoteTemplate } from "@/services/notes/types";
+import type { Note, NoteSaveInput, NoteTemplate } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -87,7 +87,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	};
 
 	const buildCurrentNotePayload = useCallback(
-		(overrides?: Partial<Note>): Note => {
+		(overrides?: Partial<NoteSaveInput>): NoteSaveInput => {
 			const draft = latestDraftRef.current;
 			const resolvedNoteType =
 				overrides?.noteType ?? deriveNoteType(draft.title);
@@ -104,7 +104,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 				status:
 					resolvedNoteType === "todo"
 						? (overrides?.status ?? draft.todoStatus ?? "open")
-						: undefined,
+						: null,
 				...overrides,
 			};
 		},
@@ -112,7 +112,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	);
 
 	const persistCurrentEntry = useCallback(
-		async (overrides?: Partial<Note>) => {
+		async (overrides?: Partial<NoteSaveInput>) => {
 			const payload = buildCurrentNotePayload(overrides);
 			await persistEditorEntry({
 				...payload,
@@ -124,11 +124,44 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		[buildCurrentNotePayload],
 	);
 
+	const handlePersisted = useCallback((savedType: Note["noteType"]) => {
+		lastPersistedTypeRef.current = savedType;
+	}, []);
+
+	const { status, forceSave } = useAutoSave({
+		...note,
+		title,
+		isPinned,
+		noteType,
+		status: noteType === "todo" ? (todoStatus ?? "open") : null,
+		initialNoteType: note.noteType,
+		onPersisted: handlePersisted,
+	});
+
+	useEffect(() => {
+		return () => {
+			void forceSave();
+		};
+	}, [forceSave]);
+
 	useEffect(() => {
 		return appEvents.on("forceSave", () => {
-			void persistCurrentEntry();
+			void forceSave();
 		});
-	}, [persistCurrentEntry]);
+	}, [forceSave]);
+
+	useFocusEffect(
+		useCallback(() => {
+			setIsPinned(!!note.isPinned);
+			setTitle(note.title);
+			setNoteType(note.noteType);
+			setTodoStatus(
+				note.noteType === "todo" ? (note.status ?? "open") : null,
+			);
+			lastPersistedTypeRef.current = note.noteType;
+			loadMarkdown(note.content);
+		}, [loadMarkdown, note]),
+	);
 
 	const handleTogglePin = useCallback(async () => {
 		if (latestDraftRef.current.noteType === "template") {
@@ -141,9 +174,8 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	}, [persistCurrentEntry, showToast]);
 
 	const handleBackPress = useCallback(async () => {
-		await persistCurrentEntry();
 		router.back();
-	}, [persistCurrentEntry, router]);
+	}, [router]);
 
 	const handleDeletePress = useCallback(async () => {
 		if (latestDraftRef.current.noteType === "template") {
@@ -195,31 +227,6 @@ export default function NoteEditorView({ note }: { note: Note }) {
 			replaceBody();
 		},
 		[loadMarkdown, showToast],
-	);
-
-	const { status } = useAutoSave({
-		...note,
-		title,
-		isPinned,
-		noteType,
-		status: noteType === "todo" ? (todoStatus ?? "open") : undefined,
-		initialNoteType: note.noteType,
-		onPersisted: (savedType) => {
-			lastPersistedTypeRef.current = savedType;
-		},
-	});
-
-	useFocusEffect(
-		useCallback(() => {
-			setIsPinned(!!note.isPinned);
-			setTitle(note.title);
-			setNoteType(note.noteType);
-			setTodoStatus(
-				note.noteType === "todo" ? (note.status ?? "open") : undefined,
-			);
-			lastPersistedTypeRef.current = note.noteType;
-			loadMarkdown(note.content);
-		}, [loadMarkdown, note]),
 	);
 
 	useLayoutEffect(() => {
@@ -302,6 +309,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 					editable
 					placeholder="Title"
 					placeholderTextColor={theme.custom.editor.placeholder}
+					onBlur={() => setNoteType(deriveNoteType(title))}
 				/>
 				<View style={styles.metadataSection}>
 					{noteType !== "template" ? (

@@ -81,7 +81,6 @@ export default function useNotes() {
 					setError(null);
 				}
 				const normalizedQuery = capabilities.canSearch ? searchQuery : "";
-				console.log(filters);
 				const results = capabilities.canSearch
 					? await NotesIndexService.listNotes(
 							normalizedQuery,

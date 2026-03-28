@@ -20,7 +20,9 @@ import {
 import type {
 	Note,
 	NoteListFilters,
+	NoteSaveInput,
 	NoteTemplate,
+	NoteTemplateSaveInput,
 } from "@/services/notes/types";
 import type {
 	NoteFileEntry,
@@ -96,14 +98,14 @@ export class MobileStorageEngine implements StorageEngine {
 				lastUpdated: file.modificationTime ?? 0,
 				isPinned: parsed.isPinned,
 				noteType: parsed.noteType,
-				status: parsed.noteType === "todo" ? parsed.status : undefined,
+				status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
 			};
 		} catch {
 			return null;
 		}
 	}
 
-	async saveNote(note: Note): Promise<Note> {
+	async saveNote(note: NoteSaveInput): Promise<Note> {
 		const dir = new Directory(NOTES_ROOT);
 		if (!dir.exists) {
 			dir.create({ intermediates: true });
@@ -111,7 +113,7 @@ export class MobileStorageEngine implements StorageEngine {
 		const file = new File(NOTES_ROOT, `${note.id}.md`);
 		const content = stringifyFrontmatter(note);
 		await file.write(content);
-		const updatedAt = file.modificationTime ?? note.lastUpdated;
+		const updatedAt = file.modificationTime ?? Date.now();
 		return {
 			...note,
 			title: (note.title ?? "").trim(),
@@ -185,14 +187,14 @@ export class MobileStorageEngine implements StorageEngine {
 				content: parsed.content,
 				lastUpdated: file.modificationTime ?? 0,
 				noteType: parsed.noteType,
-				status: parsed.noteType === "todo" ? parsed.status : undefined,
+				status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
 			};
 		} catch {
 			return null;
 		}
 	}
 
-	async saveTemplate(template: NoteTemplate): Promise<NoteTemplate> {
+	async saveTemplate(template: NoteTemplateSaveInput): Promise<NoteTemplate> {
 		const dir = new Directory(getTemplatesRoot());
 		if (!dir.exists) {
 			dir.create({ intermediates: true });
@@ -200,7 +202,7 @@ export class MobileStorageEngine implements StorageEngine {
 		const file = new File(getTemplatesRoot(), `${template.id}.md`);
 		const content = stringifyTemplateFrontmatter(template);
 		await file.write(content);
-		const updatedAt = file.modificationTime ?? template.lastUpdated;
+		const updatedAt = file.modificationTime ?? Date.now();
 		return {
 			...template,
 			title: (template.title ?? "").trim(),
@@ -236,7 +238,7 @@ export class MobileStorageEngine implements StorageEngine {
 					content: parsed.content,
 					lastUpdated: entry.modificationTime ?? 0,
 					noteType: parsed.noteType,
-					status: parsed.noteType === "todo" ? parsed.status : undefined,
+					status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
 				} satisfies NoteTemplate;
 			}),
 		);

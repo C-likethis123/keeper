@@ -18,7 +18,7 @@ export interface NoteIndexPersistenceItem {
 	isPinned: boolean;
 	updatedAt: number;
 	noteType: NoteType;
-	status?: NoteStatus;
+	status?: NoteStatus | null;
 }
 
 export interface NoteIndexListResult {
