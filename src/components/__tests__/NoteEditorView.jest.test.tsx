@@ -18,10 +18,7 @@ jest.useFakeTimers();
 const mockSaveNote = jest.fn();
 const mockLoadNote = jest.fn();
 const mockDeleteNote = jest.fn();
-const mockSaveTemplate = jest.fn();
-const mockLoadTemplate = jest.fn();
-const mockDeleteTemplate = jest.fn();
-const mockListTemplates = jest.fn();
+const mockListNotesFallback = jest.fn();
 const mockNavigationSetOptions = jest.fn();
 
 let latestNavigationOptions:
@@ -91,15 +88,7 @@ jest.mock("@/services/notes/noteService", () => ({
 		loadNote: (...args: unknown[]) => mockLoadNote(...args),
 		saveNote: (...args: unknown[]) => mockSaveNote(...args),
 		deleteNote: (...args: unknown[]) => mockDeleteNote(...args),
-	},
-}));
-
-jest.mock("@/services/notes/templateService", () => ({
-	TemplateService: {
-		loadTemplate: (...args: unknown[]) => mockLoadTemplate(...args),
-		saveTemplate: (...args: unknown[]) => mockSaveTemplate(...args),
-		deleteTemplate: (...args: unknown[]) => mockDeleteTemplate(...args),
-		listTemplates: (...args: unknown[]) => mockListTemplates(...args),
+		listNotesFallback: (...args: unknown[]) => mockListNotesFallback(...args),
 	},
 }));
 
@@ -160,17 +149,11 @@ describe("NoteEditorView", () => {
 		mockLoadNote.mockReset();
 		mockSaveNote.mockReset();
 		mockDeleteNote.mockReset();
-		mockLoadTemplate.mockReset();
-		mockSaveTemplate.mockReset();
-		mockDeleteTemplate.mockReset();
-		mockListTemplates.mockReset();
+		mockListNotesFallback.mockReset();
 		mockLoadNote.mockImplementation(async (id: string) => makeNote({ id }));
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
-		mockLoadTemplate.mockResolvedValue(null);
-		mockSaveTemplate.mockResolvedValue(undefined);
-		mockDeleteTemplate.mockResolvedValue(undefined);
-		mockListTemplates.mockResolvedValue([]);
+		mockListNotesFallback.mockResolvedValue({ items: [], cursor: undefined });
 		mockNavigationSetOptions.mockReset();
 		latestNavigationOptions = undefined;
 		useEditorState.getState().resetState();
@@ -221,7 +204,7 @@ describe("NoteEditorView", () => {
 					noteType: "todo",
 					status: "open",
 				}),
-				false,
+				true,
 			);
 		});
 	});
@@ -283,7 +266,7 @@ describe("NoteEditorView", () => {
 		pressHeaderBack();
 
 		await waitFor(() => {
-			expect(mockSaveTemplate).toHaveBeenCalledWith(
+			expect(mockSaveNote).toHaveBeenCalledWith(
 				expect.objectContaining({
 					id: note.id,
 					title: "Template: Weekly Review",
@@ -292,6 +275,6 @@ describe("NoteEditorView", () => {
 				true,
 			);
 		});
-		expect(mockDeleteNote).toHaveBeenCalledWith(note.id);
+		expect(mockDeleteNote).toHaveBeenCalledWith(note.id, "note");
 	});
 });

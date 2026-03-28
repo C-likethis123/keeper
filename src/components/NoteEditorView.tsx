@@ -6,8 +6,7 @@ import { appEvents } from "@/services/appEvents";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
-import { TemplateService } from "@/services/notes/templateService";
-import type { Note, NoteSaveInput, NoteTemplate } from "@/services/notes/types";
+import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -67,7 +66,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	);
 
 	const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
-	const [templates, setTemplates] = useState<NoteTemplate[]>([]);
+	const [templates, setTemplates] = useState<Note[]>([]);
 	const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
@@ -170,11 +169,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	}, [router]);
 
 	const handleDeletePress = useCallback(async () => {
-		if (latestDraftRef.current.noteType === "template") {
-			await TemplateService.deleteTemplate(id);
-		} else {
-			await NoteService.deleteNote(id);
-		}
+		await NoteService.deleteNote(id, latestDraftRef.current.noteType);
 		router.back();
 	}, [id, router]);
 
@@ -182,7 +177,19 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		setIsTemplateModalVisible(true);
 		setIsLoadingTemplates(true);
 		try {
-			setTemplates(await TemplateService.listTemplates());
+			const result = await NoteService.listNotesFallback("", 100, 0, {
+				noteTypes: ["template"],
+			});
+			const notes: Note[] = result.items.map((item) => ({
+				id: item.noteId,
+				title: item.title,
+				content: item.summary ?? "",
+				lastUpdated: item.updatedAt,
+				isPinned: item.isPinned,
+				noteType: item.noteType,
+				status: item.status,
+			}));
+			setTemplates(notes);
 		} catch (error) {
 			console.warn("Failed to load templates:", error);
 			showToast("Failed to load templates");
@@ -192,7 +199,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	}, [showToast]);
 
 	const applyTemplate = useCallback(
-		(template: NoteTemplate) => {
+		(template: Note) => {
 			const currentContent = useEditorState.getState().getContent();
 			const replaceBody = () => {
 				loadMarkdown(template.content);
