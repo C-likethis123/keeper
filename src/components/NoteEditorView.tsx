@@ -1,4 +1,4 @@
-import { SaveIndicator } from "@/components/SaveIndicator";
+import NoteEditorHeader from "@/components/NoteEditorHeader";
 import type { EditorState } from "@/components/editor/core/EditorState";
 import { FilterChip } from "@/components/shared/FilterChip";
 import { useAutoSave } from "@/hooks/useAutoSave";
@@ -28,7 +28,6 @@ import {
 	ScrollView,
 	StyleSheet,
 	Text,
-	TextInput,
 	TouchableOpacity,
 	View,
 } from "react-native";
@@ -58,6 +57,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const navigation = useNavigation();
 	const router = useRouter();
 	const theme = useExtendedTheme();
+	const styles = useMemo(() => createStyles(theme), [theme]);
 	const id = note.id;
 	const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
 	const [title, setTitle] = useState<string>(note.title);
@@ -251,86 +251,30 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	);
 	useLayoutEffect(() => {
 		navigation.setOptions({
-			title: "Editor",
-			headerLeft: () => (
-				<TouchableOpacity
-					onPress={() => {
-						void handleBackPress();
-					}}
-					style={{ marginLeft: 8, marginRight: 8 }}
-				>
-					<MaterialIcons
-						name="arrow-back"
-						size={24}
-						color={theme.colors.text}
-					/>
-				</TouchableOpacity>
-			),
-			headerRight: () => (
-				<>
-					<TouchableOpacity
-						onPress={() => {
-							void handleTogglePin();
-						}}
-						style={{ marginRight: 8 }}
-						disabled={noteType === "template"}
-					>
-						<MaterialIcons
-							name="push-pin"
-							size={24}
-							color={
-								noteType === "template"
-									? theme.colors.textFaded
-									: isPinned
-										? theme.colors.primary
-										: theme.colors.textMuted
-							}
-						/>
-					</TouchableOpacity>
-					<TouchableOpacity
-						onPress={() => {
-							void handleDeletePress();
-						}}
-						style={{ marginRight: 8 }}
-					>
-						<MaterialIcons
-							name="delete"
-							size={24}
-							color={theme.colors.textMuted}
-						/>
-					</TouchableOpacity>
-				</>
-			),
-			headerTitle: () => <SaveIndicator status={status} />,
+			headerShown: false,
 		});
-	}, [
-		navigation,
-		handleBackPress,
-		handleDeletePress,
-		handleTogglePin,
-		theme.colors.text,
-		theme.colors.primary,
-		theme.colors.textMuted,
-		theme.colors.textFaded,
-		isPinned,
-		noteType,
-		status,
-	]);
-
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	}, [navigation]);
 
 	return (
 		<View style={styles.screen}>
+			<NoteEditorHeader
+				title={title}
+				status={status}
+				isPinned={isPinned}
+				noteType={noteType}
+				onChangeTitle={applyTitleChange}
+				onBlurTitle={() => setNoteType(deriveNoteType(title))}
+				onBack={() => {
+					void handleBackPress();
+				}}
+				onTogglePin={() => {
+					void handleTogglePin();
+				}}
+				onDelete={() => {
+					void handleDeletePress();
+				}}
+			/>
 			<View style={styles.content}>
-				<TextInput
-					style={styles.titleInput}
-					value={title}
-					onChangeText={applyTitleChange}
-					editable
-					placeholder="Title"
-					placeholderTextColor={theme.custom.editor.placeholder}
-					onBlur={() => setNoteType(deriveNoteType(title))}
-				/>
 				{noteType === "todo" ? (
 					<View style={styles.metadataGroup}>
 						<Text style={styles.metadataLabel}>Status</Text>
@@ -426,14 +370,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			paddingHorizontal: 16,
 			backgroundColor: theme.colors.background,
 			gap: 8,
-		},
-		titleInput: {
-			fontSize: 20,
-			fontWeight: "600",
-			borderBottomWidth: 1,
-			borderBottomColor: theme.colors.border,
-			paddingVertical: 4,
-			color: theme.colors.text,
 		},
 		metadataGroup: {
 			gap: 6,

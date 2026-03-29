@@ -1,9 +1,11 @@
 import NoteEditorView from "@/components/NoteEditorView";
+import { SaveIndicator } from "@/components/SaveIndicator";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useStorageStore } from "@/stores/storageStore";
 import {
 	act,
+	fireEvent,
 	renderRouter,
 	screen,
 	testRouter,
@@ -11,7 +13,7 @@ import {
 	waitFor,
 } from "expo-router/testing-library";
 import type React from "react";
-import { Text } from "react-native";
+import { Text, TextInput } from "react-native";
 
 jest.useFakeTimers();
 
@@ -26,6 +28,7 @@ let latestNavigationOptions:
 			headerLeft?: () => React.ReactNode;
 			headerRight?: () => React.ReactNode;
 			headerTitle?: () => React.ReactNode;
+			headerTitleContainerStyle?: unknown;
 	  }
 	| undefined;
 
@@ -40,6 +43,14 @@ jest.mock("expo-router", () => {
 				mockNavigationSetOptions(options);
 			},
 		}),
+	};
+});
+
+jest.mock("react-native-safe-area-context", () => {
+	const actual = jest.requireActual("react-native-safe-area-context");
+	return {
+		...actual,
+		useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 	};
 });
 
@@ -156,14 +167,48 @@ function renderNoteEditor(note: Note) {
 }
 
 function pressHeaderBack() {
-	const headerLeft = latestNavigationOptions?.headerLeft;
-	if (!headerLeft) {
-		throw new Error("headerLeft was not set");
-	}
-	const element = headerLeft() as React.ReactElement<{ onPress: () => void }>;
 	act(() => {
-		element.props.onPress();
+		fireEvent.press(screen.getByLabelText("Back"));
 	});
+}
+
+function findElementByType(
+	node: React.ReactNode,
+	type: unknown,
+): React.ReactElement | null {
+	if (!node || typeof node === "string" || typeof node === "number") {
+		return null;
+	}
+	if (Array.isArray(node)) {
+		for (const child of node) {
+			const result = findElementByType(child, type);
+			if (result) {
+				return result;
+			}
+		}
+		return null;
+	}
+	if (!("props" in node)) {
+		return null;
+	}
+	const element = node as React.ReactElement;
+	if (element.type === type) {
+		return element;
+	}
+	const children = element.props?.children;
+	if (!children) {
+		return null;
+	}
+	return findElementByType(children, type);
+}
+
+function getHeaderTitleInput() {
+	return screen.getByPlaceholderText("Title") as React.ReactElement<{
+		onChangeText: (value: string) => void;
+		value: string;
+		placeholder?: string;
+		editable?: boolean;
+	}>;
 }
 
 describe("NoteEditorView", () => {
@@ -203,17 +248,13 @@ describe("NoteEditorView", () => {
 	});
 
 	it("defaults todo status to open when switching a note to todo and saving", async () => {
-		const user = userEvent.setup();
 		const note = makeNote();
 
 		renderNoteEditor(note);
 
 		await screen.findByText("Toolbar");
-		const titleInput = screen.getByPlaceholderText("Title");
-		await user.clear(titleInput);
-		await user.type(titleInput, "Todo My tasks");
-		await waitFor(() => {
-			expect(latestNavigationOptions?.headerLeft).toBeDefined();
+		act(() => {
+			getHeaderTitleInput().props.onChangeText("Todo My tasks");
 		});
 		pressHeaderBack();
 
@@ -237,11 +278,8 @@ describe("NoteEditorView", () => {
 		const result = renderNoteEditor(note);
 
 		await screen.findByText("Toolbar");
-		expect(screen.getByPlaceholderText("Title")).toHaveProp("editable", true);
+		expect(getHeaderTitleInput().props.editable).toBe(true);
 
-		await waitFor(() => {
-			expect(latestNavigationOptions?.headerLeft).toBeDefined();
-		});
 		pressHeaderBack();
 
 		await waitFor(() => {
@@ -260,9 +298,6 @@ describe("NoteEditorView", () => {
 		const result = renderNoteEditor(note);
 
 		await screen.findByText("Toolbar");
-		await waitFor(() => {
-			expect(latestNavigationOptions?.headerLeft).toBeDefined();
-		});
 		pressHeaderBack();
 
 		await waitFor(() => {
@@ -272,17 +307,13 @@ describe("NoteEditorView", () => {
 	});
 
 	it("converts a note into a template on save when template type is selected", async () => {
-		const user = userEvent.setup();
 		const note = makeNote();
 
 		renderNoteEditor(note);
 
 		await screen.findByText("Toolbar");
-		const titleInput = screen.getByPlaceholderText("Title");
-		await user.clear(titleInput);
-		await user.type(titleInput, "Template: Weekly Review");
-		await waitFor(() => {
-			expect(latestNavigationOptions?.headerLeft).toBeDefined();
+		act(() => {
+			getHeaderTitleInput().props.onChangeText("Template: Weekly Review");
 		});
 		pressHeaderBack();
 
@@ -327,5 +358,31 @@ describe("NoteEditorView", () => {
 			noteTypes: ["template"],
 		});
 		expect(screen.getByText("Daily template")).toBeTruthy();
+	});
+
+	it("renders the note title input in the navigation header and keeps save status on the left", async () => {
+		const note = makeNote();
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Toolbar");
+
+		const titleInput = getHeaderTitleInput();
+		expect(titleInput.props.placeholder).toBe("Title");
+		expect(titleInput.props.value).toBe(note.title);
+		expect(mockNavigationSetOptions).toHaveBeenCalledWith(
+			expect.objectContaining({ headerShown: false }),
+		);
+
+		act(() => {
+			titleInput.props.onChangeText("Renamed note");
+		});
+
+		await waitFor(() => {
+			expect(getHeaderTitleInput().props.value).toBe("Renamed note");
+		});
+		expect(screen.getByLabelText("Back")).toBeTruthy();
+		expect(screen.getByLabelText("Pin note")).toBeTruthy();
+		expect(screen.getByLabelText("Delete note")).toBeTruthy();
 	});
 });
