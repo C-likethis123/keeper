@@ -1,7 +1,15 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
 	"files": {
-		"ignore": ["dist", "node_modules", ".expo"]
+		"ignore": [
+			"dist",
+			"node_modules",
+			".expo",
+			"ios/Pods",
+			"ios/build",
+			"android/build",
+			"android/app/build"
+		]
 	},
 	"formatter": {
 		"enabled": true

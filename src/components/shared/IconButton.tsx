@@ -1,6 +1,6 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { MaterialIcons } from "@expo/vector-icons";
-import React from "react";
+import type React from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import type { ExtendedTheme } from "@/constants/themes/types";
 

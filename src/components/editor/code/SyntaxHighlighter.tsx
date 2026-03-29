@@ -6,6 +6,7 @@ import {
 	Text,
 	type TextStyle,
 	View,
+	type ViewStyle,
 } from "react-native";
 import Highlighter from "react-syntax-highlighter/dist/esm/light";
 import atomOneDark from "react-syntax-highlighter/dist/esm/styles/hljs/atom-one-dark";
@@ -70,6 +71,10 @@ type RendererParams = {
 	stylesheet: StyleSheet;
 };
 
+type SyntaxStyleEntry = TextStyle & {
+	display?: unknown;
+};
+
 type SyntaxHighlighterStyleType = {
 	/**
 	 * Default is Menlo-Regular (iOS) and Monospace (Android).
@@ -113,7 +118,7 @@ type SyntaxHighlighterStyleType = {
 	highlighterColor?: ColorValue;
 };
 
-type SyntaxHighlighterProps = any & {
+type SyntaxHighlighterProps = React.ComponentProps<typeof Highlighter> & {
 	/**
 	 * Code to display.
 	 */
@@ -123,7 +128,7 @@ type SyntaxHighlighterProps = any & {
 	 * Syntax highlighting style.
 	 * @See https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_STYLES_HLJS.MD
 	 */
-	syntaxStyle?: Record<string, React.CSSProperties>;
+	syntaxStyle?: Record<string, SyntaxStyleEntry>;
 
 	/**
 	 * Extra styling options for the syntax highlighter.
@@ -168,35 +173,32 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 		highlighterColor = undefined,
 	} = addedStyle || {};
 
-	const cleanStyle = (style: TextStyle) => {
-		const {
-			display: _display,
-			...rest
-		} = style as any;
+	const cleanStyle = (style: SyntaxStyleEntry) => {
+		const { display: _display, ...rest } = style;
 		return rest;
 	};
 
 	const stylesheet = Object.fromEntries(
 		Object.entries(syntaxStyle).map(([key, value]) => [
 			key,
-			cleanStyle(value as any),
+			cleanStyle(value),
 		]),
 	);
 
-	const renderNode = (nodes: Node[], key = "0"): React.ReactNode[] =>
-		nodes.reduce<React.ReactNode[]>((acc, node, index) => {
+	const renderNode = (nodes: Node[], key = "0"): React.ReactNode[] => {
+		const renderedNodes: React.ReactNode[] = [];
+
+		for (const node of nodes) {
+			const nodeKey = `${key}-${node.type}-${node.value ?? "group"}-${renderedNodes.length}`;
 			if (node.children) {
-				const nodeStyle = node.properties?.className.reduce(
-					(merged, className) => ({
-						...merged,
-						...stylesheet[className],
-					}),
-					{} as TextStyle,
-				);
+				const nodeStyle: TextStyle = {};
+				for (const className of node.properties?.className ?? []) {
+					Object.assign(nodeStyle, stylesheet[className]);
+				}
 
 				const textElement = (
 					<Text
-						key={`${key}-${index}-text`}
+						key={`${nodeKey}-text`}
 						style={[
 							{
 								fontFamily,
@@ -206,13 +208,13 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 							nodeStyle,
 						]}
 					>
-						{renderNode(node.children, `${key}-${index}`)}
+						{renderNode(node.children, nodeKey)}
 					</Text>
 				);
 
 				const lineNumberElement = showLineNumbers ? (
 					<View
-						key={`${key}-${index}-line-number-container`}
+						key={`${nodeKey}-line-number-container`}
 						style={{
 							backgroundColor: lineNumbersBackgroundColor,
 							paddingRight: 10,
@@ -220,22 +222,22 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 						}}
 					>
 						<Text
-							key={`${key}-${index}-line-number`}
+							key={`${nodeKey}-line-number`}
 							style={{
 								fontFamily,
 								fontSize,
 								color: lineNumbersColor,
 							}}
 						>
-							{parseInt(key, 10) + 1}
+							{Number.parseInt(key, 10) + 1}
 						</Text>
 					</View>
 				) : null;
 
-				acc.push(
+				renderedNodes.push(
 					showLineNumbers ? (
 						<View
-							key={`${key}-${index}-row`}
+							key={`${nodeKey}-row`}
 							style={{
 								flexDirection: "row",
 							}}
@@ -254,28 +256,29 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 				node.value = node.value.replace("\n", "");
 				// To render blank lines at an equal font height
 				node.value = node.value.length ? node.value : " ";
-				acc.push(node.value);
+				renderedNodes.push(node.value);
 			}
+		}
 
-			return acc;
-		}, []);
+		return renderedNodes;
+	};
+
+	const scrollStyle: ViewStyle = {
+		width: "100%",
+		height: "100%",
+		backgroundColor:
+			(backgroundColor || stylesheet.hljs.background) as ColorValue,
+		// Prevents YGValue error
+		padding: 0,
+		paddingTop: padding,
+		paddingRight: padding,
+		paddingBottom: padding,
+	};
 
 	const nativeRenderer = ({ rows }: RendererParams) => {
 		return (
 			<ScrollView
-				style={[
-					stylesheet.hljs,
-					{
-						width: "100%",
-						height: "100%",
-						backgroundColor: (backgroundColor || stylesheet.hljs.background) as ColorValue,
-						// Prevents YGValue error
-						padding: 0,
-						paddingTop: padding,
-						paddingRight: padding,
-						paddingBottom: padding,
-					} as any,
-				]}
+				style={[stylesheet.hljs, scrollStyle]}
 				testID={`${testID}-scroll-view`}
 				ref={forwardedRef}
 				scrollEnabled={scrollEnabled}
