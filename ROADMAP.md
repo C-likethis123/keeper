@@ -278,9 +278,9 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 ### Note Organization & Relevance
 
 **Status**: In progress
-**Current implementation evidence**: note type and todo-status metadata are now persisted in frontmatter and storage indexes, editable in the note editor, filterable from the note list UI, and selectable from the home quick composer when creating new journal, resource, and todo entries. Note type is now derived automatically from title prefixes (e.g. "journal", "todo", "book:", "article:", URL patterns → resource) via `deriveNoteType`; the home screen pre-populates the matching title prefix when creating typed notes.
+**Current implementation evidence**: note type and todo-status metadata are now persisted in frontmatter and storage indexes, editable in the note editor, filterable from the note list UI, and selectable from the home quick composer when creating new journal, resource, and todo entries. Template notes are now also persisted as first-class note types, indexed alongside other notes, and reusable from the editor's "Insert from template" flow. Note type is now derived automatically from title prefixes (e.g. "journal", "todo", "template", "book:", "article:", URL patterns → resource) via `deriveNoteType`; the home screen pre-populates the matching title prefix when creating typed notes.
 **Key files**: `src/services/notes/frontmatter.ts`, `src/services/notes/notesIndexDb.ts`, `src/services/notes/noteTypeDerivation.ts`, `src/components/NoteEditorView.tsx`, `src/components/NoteFiltersDropdown.tsx`, `src/components/HomeQuickComposer.tsx`, `src/app/index.tsx`, `src/hooks/useNotes.ts`, `src/migrations/003_add_note_metadata.ts`, `src-tauri/src/storage/migrations/v3_add_note_metadata.rs`
-**Next**: validate migration/backfill behavior on existing notes, decide how metadata should affect default sorting/relevance, and add higher-level organization views beyond the current filters.
+**Next**: validate migration/backfill behavior on existing notes, decide how metadata should affect default sorting/relevance, add support for starting a new note from a template outside the editor flow, and add higher-level organization views beyond the current filters.
 
 **Goals**:
 
@@ -299,6 +299,7 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 - Journals (time-based)
 - Resources (reference material)
 - Todos (action items)
+- Templates (reusable note bodies)
 
 ### Testing Architecture
 

@@ -16,7 +16,7 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **Wikilinks**: exact-title resolution and create-from-`[[...]]` helpers are implemented, and `HybridEditor` now has platform tests for rendered-link activation; next checks are clickable desktop/web validation, broader editor-flow coverage, UX polish, and device validation
 - **Native bridge**: Android and iOS now use the local Expo module in `modules/keeper-git`
 - **App updates**: OTA is not working
-- **Templates**: reusable templates now work inside the editor flow; remaining work is starting new notes from a template and deciding how templates should surface outside the editor
+- **Templates**: reusable templates are first-class note types, indexed with the shared notes index, and now work inside the editor flow; remaining work is starting new notes from a template and deciding how templates should surface outside the editor
 - **Quick composer**: wire the brush action to create a drawing note once drawing support lands
 - **Testing status**: `npm test` covers the immutable editor core plus `EditorState`, selected `editorStore` flows, `frontmatter`, `repoBootstrapper`, `startupSteps`, `noteTypeDerivation`, `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, focused `NoteGrid` pagination behavior, wikilink modal/overlay interactions, and `HybridEditor` rendered-wikilink activation on web/iOS/Android
 - **Testing TODO**: Add missing Jest coverage for `EditorToolbar`, `useAutoSave`, `useLoadNote`, startup UI/runtime flows, broader `NoteGrid` and note-list states, deeper `HybridEditor` editing flows beyond rendered wikilinks, and additional `editorStore` flows
