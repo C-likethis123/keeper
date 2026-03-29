@@ -2,7 +2,7 @@ import { GitService } from "@/services/git/gitService";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { getStorageEngine } from "@/services/storage/storageEngine";
-import type { Note } from "./types";
+import type { Note, NoteToSave } from "./types";
 
 // Persists notes to the file system
 
@@ -24,7 +24,7 @@ export class NoteService {
 		return getStorageEngine().loadNote(id);
 	}
 
-	static async saveNote(note: Note, isNewNote = false): Promise<Note> {
+	static async saveNote(note: NoteToSave, isNewNote = false): Promise<Note> {
 		const id = note.id.trim();
 		const pinnedState = !!note.isPinned;
 		const title = (note.title ?? "").trim();

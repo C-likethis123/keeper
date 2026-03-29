@@ -65,7 +65,6 @@ export async function resolveOrCreateWikiLinkNoteId(
 			id: nanoid(),
 			title: query,
 			content: "",
-			lastUpdated: Date.now(),
 			isPinned: false,
 			noteType: "note",
 		},

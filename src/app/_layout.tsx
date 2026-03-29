@@ -53,7 +53,6 @@ const App = ({
 				id: nanoid(),
 				title: "",
 				content: "",
-				lastUpdated: Date.now(),
 				isPinned: false,
 				noteType: "note" as NoteType,
 			};

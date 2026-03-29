@@ -1,5 +1,5 @@
 import type { NotesIndexRebuildMetrics } from "@/services/notes/notesIndexDb";
-import type { Note, NoteTemplate } from "@/services/notes/types";
+import type { Note, NoteTemplate, NoteToSave } from "@/services/notes/types";
 import type {
 	NoteFileEntry,
 	StorageEngine,
@@ -55,7 +55,7 @@ export class TauriStorageEngine implements StorageEngine {
 		return this.invoke<ReadEntryResult | null>("read_note", { id });
 	}
 
-	async saveNote(note: Note): Promise<Note> {
+	async saveNote(note: NoteToSave): Promise<Note> {
 		const updatedAt = await this.invoke<number>("write_note", {
 			input: {
 				id: note.id,
@@ -68,7 +68,7 @@ export class TauriStorageEngine implements StorageEngine {
 		});
 		return {
 			...note,
-			lastUpdated: updatedAt || note.lastUpdated,
+			lastUpdated: updatedAt,
 		};
 	}
 

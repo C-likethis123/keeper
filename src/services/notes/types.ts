@@ -16,6 +16,8 @@ export interface Note {
 	status?: NoteStatus;
 }
 
+export type NoteToSave = Omit<Note, "lastUpdated">;
+
 export interface NoteTemplate {
 	id: string;
 	title: string;
