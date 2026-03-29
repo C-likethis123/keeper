@@ -6,7 +6,10 @@ This is the central planning document for Keeper. It outlines critical issues, d
 
 This section contains todo items that have not been prioritised. When seeing items in this section, figure out its priority and move them into the relevant buckets.
 
-1. When I press enter on an empty block, that enter should be retained and I create a new empty block beneath it. However now it seems that that empty block is collapsed.
+1. Implement block selection
+2. Implement block moving
+3. Implement selection between blocks!
+4. react-native-enriched uses Fabric native modules so it acts as an uncontrolled component. It is not recommended to change TextInput to a native component because the bottleneck might be in syncing the document state with the stores.
 
 ## Critical Issues (P1)
 
