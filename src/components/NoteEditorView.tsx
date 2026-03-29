@@ -177,8 +177,9 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	}, [persistCurrentEntry, showToast]);
 
 	const handleBackPress = useCallback(async () => {
+		await forceSave();
 		router.back();
-	}, [router]);
+	}, [forceSave, router]);
 
 	const handleDeletePress = useCallback(async () => {
 		await NoteService.deleteNote(id, latestDraftRef.current.noteType);

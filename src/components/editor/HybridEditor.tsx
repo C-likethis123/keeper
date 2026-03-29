@@ -91,6 +91,10 @@ function HybridEditorContent() {
 	});
 	useEditorKeyboardShortcuts({ context: commandContext });
 
+	const getBlockAtIndex = useCallback((index: number) => {
+		return useEditorState.getState().document.blocks[index] ?? null;
+	}, []);
+
 	const stickyVideoBlock = useEditorState((state) =>
 		stickyVideoIndex === null ? null : state.document.blocks[stickyVideoIndex] ?? null,
 	);
@@ -217,7 +221,7 @@ function HybridEditorContent() {
 
 	const handleBackspaceAtStart = useCallback(
 		(index: number) => {
-			const block = getFocusedBlock();
+			const block = getBlockAtIndex(index);
 			if (!block) {
 				return;
 			}
@@ -258,7 +262,7 @@ function HybridEditorContent() {
 		[
 			focusBlock,
 			deleteBlock,
-			getFocusedBlock,
+			getBlockAtIndex,
 			mergeWithPrevious,
 			updateBlockType,
 		],
@@ -266,7 +270,7 @@ function HybridEditorContent() {
 
 	const handleEnter = useCallback(
 		(index: number, cursorOffset: number) => {
-			const block = getFocusedBlock();
+			const block = getBlockAtIndex(index);
 			if (!block) {
 				return;
 			}
@@ -304,7 +308,7 @@ function HybridEditorContent() {
 			focusBlock,
 			updateBlockType,
 			splitBlock,
-			getFocusedBlock,
+			getBlockAtIndex,
 		],
 	);
 

@@ -266,7 +266,7 @@ describe("NoteEditorView", () => {
 					noteType: "todo",
 					status: "open",
 				}),
-				true,
+				false,
 			);
 		});
 	});
@@ -286,6 +286,33 @@ describe("NoteEditorView", () => {
 			expect(result.getPathname()).toBe("/");
 		});
 		expect(mockSaveNote).not.toHaveBeenCalled();
+	});
+
+	it("forces a save before navigating back when the title changes", async () => {
+		const note = makeNote();
+
+		const result = renderNoteEditor(note);
+
+		await screen.findByText("Toolbar");
+		act(() => {
+			getHeaderTitleInput().props.onChangeText("Renamed note");
+		});
+
+		pressHeaderBack();
+
+		await waitFor(() => {
+			expect(mockSaveNote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: note.id,
+					title: "Renamed note",
+					noteType: "note",
+				}),
+				false,
+			);
+		});
+		await waitFor(() => {
+			expect(result.getPathname()).toBe("/");
+		});
 	});
 
 	it("preserves an existing stored note type on mount instead of re-deriving it", async () => {

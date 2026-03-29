@@ -152,4 +152,26 @@ describe("persistEditorEntry", () => {
 		expect(mockSaveNote).toHaveBeenCalled();
 		expect(mockDeleteNote).toHaveBeenCalledWith("tmpl-1", "template");
 	});
+
+	it("does not delete the note when transitioning between note types that share storage", async () => {
+		mockLoadNote.mockResolvedValue(null);
+
+		await persistEditorEntry({
+			id: "note-1",
+			title: "Video: Containers from scratch",
+			content: "body",
+			isPinned: false,
+			noteType: "resource",
+			previousNoteType: "note",
+		});
+
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "note-1",
+				noteType: "resource",
+			}),
+			false,
+		);
+		expect(mockDeleteNote).not.toHaveBeenCalled();
+	});
 });

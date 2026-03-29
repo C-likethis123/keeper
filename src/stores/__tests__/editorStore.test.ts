@@ -65,6 +65,25 @@ describe("editorStore", () => {
 		expect(blocks[1].attributes).toEqual({ listLevel: 2, checked: false });
 	});
 
+	it("splits an empty paragraph into a second empty paragraph", () => {
+		useEditorState.getState().setDocument(createDocumentFromMarkdown(""));
+		useEditorState
+			.getState()
+			.setSelection(createCollapsedSelection({ blockIndex: 0, offset: 0 }));
+
+		useEditorState.getState().splitBlock(0, 0);
+
+		const state = useEditorState.getState();
+		expect(state.document.blocks).toHaveLength(2);
+		expect(state.document.blocks[0].type).toBe(BlockType.paragraph);
+		expect(state.document.blocks[0].content).toBe("");
+		expect(state.document.blocks[1].type).toBe(BlockType.paragraph);
+		expect(state.document.blocks[1].content).toBe("");
+		expect(state.selection).toEqual(
+			createCollapsedSelection({ blockIndex: 1, offset: 0 }),
+		);
+	});
+
 	it("does not merge into code blocks or image blocks", () => {
 		useEditorState.getState().setDocument({
 			...createDocumentFromMarkdown(""),

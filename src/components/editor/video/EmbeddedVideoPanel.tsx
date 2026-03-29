@@ -6,6 +6,7 @@ import {
 	Pressable,
 	StyleSheet,
 	Text,
+	useWindowDimensions,
 	View,
 	type ViewStyle,
 } from "react-native";
@@ -27,8 +28,15 @@ export function EmbeddedVideoPanel({
 }: EmbeddedVideoPanelProps) {
 	const theme = useExtendedTheme();
 	const styles = useMemo(() => createStyles(theme), [theme]);
+	const { height: viewportHeight } = useWindowDimensions();
 
 	const isMinimised = mode === "minimised";
+	const playerFrameStyle = useMemo(
+		() => ({
+			height: Platform.OS === "web" ? ("50vh" as const) : viewportHeight * 0.5,
+		}),
+		[viewportHeight],
+	);
 
 	return (
 		<View
@@ -60,7 +68,7 @@ export function EmbeddedVideoPanel({
 
 			{!isMinimised && (
 				<>
-					<View style={styles.playerFrame}>
+					<View style={[styles.playerFrame, playerFrameStyle]}>
 						{Platform.OS === "web" ? (
 							<iframe
 								src={source.embedUrl}
@@ -145,7 +153,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			backgroundColor: theme.colors.background,
 		},
 		playerFrame: {
-			height: 220,
 			overflow: "hidden",
 			borderRadius: 12,
 			backgroundColor: "#000000",
