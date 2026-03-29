@@ -1,7 +1,8 @@
+import { FilterChip } from "@/components/shared/FilterChip";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import type { NoteStatus, NoteType } from "@/services/notes/types";
 import React, { useMemo } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 type FilterOption<T extends string> = {
 	label: string;
@@ -23,31 +24,6 @@ const TODO_STATUS_OPTIONS: FilterOption<NoteStatus>[] = [
 	{ label: "Blocked", value: "blocked" },
 	{ label: "Done", value: "done" },
 ];
-
-function FilterChip<T extends string>({
-	label,
-	selected,
-	onPress,
-}: {
-	label: string;
-	selected: boolean;
-	onPress: () => void;
-}) {
-	const theme = useExtendedTheme();
-	const styles = useMemo(() => createStyles(theme), [theme]);
-
-	return (
-		<TouchableOpacity
-			style={[styles.chip, selected && styles.chipSelected]}
-			onPress={onPress}
-			activeOpacity={0.8}
-		>
-			<Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-				{label}
-			</Text>
-		</TouchableOpacity>
-	);
-}
 
 export function NoteFiltersBar({
 	noteType,
