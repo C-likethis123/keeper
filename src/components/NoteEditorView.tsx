@@ -1,4 +1,5 @@
 import { SaveIndicator } from "@/components/SaveIndicator";
+import { FilterChip } from "@/components/shared/FilterChip";
 import type { EditorState } from "@/components/editor/core/EditorState";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
@@ -333,30 +334,14 @@ export default function NoteEditorView({ note }: { note: Note }) {
 						<View style={styles.metadataGroup}>
 							<Text style={styles.metadataLabel}>Status</Text>
 							<View style={styles.optionRow}>
-								{TODO_STATUS_OPTIONS.map((option) => {
-									const selected = (todoStatus ?? "open") === option.value;
-									return (
-										<TouchableOpacity
-											key={option.value}
-											style={[
-												styles.optionChip,
-												selected && styles.optionChipSelected,
-											]}
-											onPress={() => {
-												setTodoStatus(option.value);
-											}}
-										>
-											<Text
-												style={[
-													styles.optionChipText,
-													selected && styles.optionChipTextSelected,
-												]}
-											>
-												{option.label}
-											</Text>
-										</TouchableOpacity>
-									);
-								})}
+								{TODO_STATUS_OPTIONS.map((option) => (
+									<FilterChip
+										key={option.value}
+										label={option.label}
+										selected={(todoStatus ?? "open") === option.value}
+										onPress={() => setTodoStatus(option.value)}
+									/>
+								))}
 							</View>
 						</View>
 					) : null}
@@ -463,26 +448,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			flexDirection: "row",
 			flexWrap: "wrap",
 			gap: 8,
-		},
-		optionChip: {
-			borderRadius: 999,
-			borderWidth: 1,
-			borderColor: theme.colors.border,
-			paddingHorizontal: 10,
-			paddingVertical: 6,
-			backgroundColor: theme.colors.card,
-		},
-		optionChipSelected: {
-			backgroundColor: theme.colors.primary,
-			borderColor: theme.colors.primary,
-		},
-		optionChipText: {
-			fontSize: 13,
-			fontWeight: "600",
-			color: theme.colors.textMuted,
-		},
-		optionChipTextSelected: {
-			color: theme.colors.primaryContrast,
 		},
 		secondaryActionChip: {
 			flexDirection: "row",
