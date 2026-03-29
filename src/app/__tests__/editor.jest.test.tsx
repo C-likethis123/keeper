@@ -3,10 +3,10 @@ import type { Note } from "@/services/notes/types";
 import { renderRouter, screen } from "expo-router/testing-library";
 import React from "react";
 
-const mockUseLoadNote = jest.fn();
+const mockUseSuspenseLoadNote = jest.fn();
 
-jest.mock("@/hooks/useLoadNote", () => ({
-	useLoadNote: (...args: unknown[]) => mockUseLoadNote(...args),
+jest.mock("@/hooks/useSuspenseLoadNote", () => ({
+	useSuspenseLoadNote: (...args: unknown[]) => mockUseSuspenseLoadNote(...args),
 }));
 
 jest.mock("@/hooks/useExtendedTheme", () => ({
@@ -66,14 +66,12 @@ function makeNote(overrides?: Partial<Note>): Note {
 
 describe("NoteEditorScreen", () => {
 	beforeEach(() => {
-		mockUseLoadNote.mockReset();
+		mockUseSuspenseLoadNote.mockReset();
 	});
 
 	it("shows the loading state while the note request is pending", async () => {
-		mockUseLoadNote.mockReturnValue({
-			isLoading: true,
-			error: null,
-			note: null,
+		mockUseSuspenseLoadNote.mockImplementation(() => {
+			throw new Promise(() => {});
 		});
 
 		const result = renderRouter(
@@ -85,16 +83,14 @@ describe("NoteEditorScreen", () => {
 		);
 
 		expect(await screen.findByText("Loading note")).toBeTruthy();
-		expect(mockUseLoadNote).toHaveBeenCalledWith("note-1");
+		expect(mockUseSuspenseLoadNote).toHaveBeenCalledWith("note-1");
 		expect(result.getPathname()).toBe("/editor");
 		expect(result.getSearchParams()).toEqual({ id: "note-1" });
 	});
 
 	it("shows the error screen when loading fails", async () => {
-		mockUseLoadNote.mockReturnValue({
-			isLoading: false,
-			error: "Storage is unavailable",
-			note: null,
+		mockUseSuspenseLoadNote.mockImplementation(() => {
+			throw new Error("Storage is unavailable");
 		});
 
 		const result = renderRouter(
@@ -110,11 +106,7 @@ describe("NoteEditorScreen", () => {
 	});
 
 	it("shows the fallback not-found message when no note is returned", async () => {
-		mockUseLoadNote.mockReturnValue({
-			isLoading: false,
-			error: null,
-			note: null,
-		});
+		mockUseSuspenseLoadNote.mockReturnValue(null);
 
 		const result = renderRouter(
 			{
@@ -128,11 +120,7 @@ describe("NoteEditorScreen", () => {
 	});
 
 	it("renders the note editor once the note loads", async () => {
-		mockUseLoadNote.mockReturnValue({
-			isLoading: false,
-			error: null,
-			note: makeNote({ title: "Loaded draft" }),
-		});
+		mockUseSuspenseLoadNote.mockReturnValue(makeNote({ title: "Loaded draft" }));
 
 		const result = renderRouter(
 			{

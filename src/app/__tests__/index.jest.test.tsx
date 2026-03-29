@@ -10,14 +10,14 @@ import {
 } from "@testing-library/react-native";
 import React from "react";
 
-const mockUseNotes = jest.fn();
+const mockUseSuspenseNotes = jest.fn();
 const mockShowToast = jest.fn();
 const mockRouterPush = jest.fn();
 const mockUseFocusEffect = jest.fn();
 
-jest.mock("@/hooks/useNotes", () => ({
+jest.mock("@/hooks/useSuspenseNotes", () => ({
 	__esModule: true,
-	default: (...args: unknown[]) => mockUseNotes(...args),
+	default: (...args: unknown[]) => mockUseSuspenseNotes(...args),
 }));
 
 jest.mock("@/stores/toastStore", () => ({
@@ -127,7 +127,7 @@ jest.mock("@/hooks/useExtendedTheme", () => ({
 }));
 
 function makeUseNotesResult(
-	overrides?: Partial<ReturnType<typeof mockUseNotes>>,
+	overrides?: Partial<ReturnType<typeof mockUseSuspenseNotes>>,
 ) {
 	return {
 		notes: [{ id: "note-1", title: "First note" }],
@@ -148,17 +148,13 @@ function makeUseNotesResult(
 
 describe("Index", () => {
 	beforeEach(() => {
-		mockUseNotes.mockReset();
+		mockUseSuspenseNotes.mockReset();
 		mockShowToast.mockReset();
 		mockRouterPush.mockReset();
 		mockUseFocusEffect.mockReset();
 		(NoteService.saveNote as jest.Mock).mockReset();
 		(NoteService.saveNote as jest.Mock).mockResolvedValue(undefined);
 		useStorageStore.setState({
-			capabilities: {
-				backend: "mobile-native",
-				canSearch: true,
-			},
 			initializationStatus: "ready",
 			initializationError: undefined,
 			contentVersion: 0,
@@ -169,7 +165,7 @@ describe("Index", () => {
 	it("renders the custom home header and composer", async () => {
 		const handleRefresh = jest.fn();
 		mockUseFocusEffect.mockImplementation((callback: () => void) => callback());
-		mockUseNotes.mockReturnValue(
+		mockUseSuspenseNotes.mockReturnValue(
 			makeUseNotesResult({
 				handleRefresh,
 			}),
@@ -191,7 +187,7 @@ describe("Index", () => {
 	it("updates the search query through the header search input", async () => {
 		const setQuery = jest.fn();
 		mockUseFocusEffect.mockImplementation(() => {});
-		mockUseNotes.mockReturnValue(
+		mockUseSuspenseNotes.mockReturnValue(
 			makeUseNotesResult({
 				setQuery,
 			}),
@@ -209,7 +205,7 @@ describe("Index", () => {
 		const setNoteTypeFilter = jest.fn();
 		const setStatusFilter = jest.fn();
 		mockUseFocusEffect.mockImplementation(() => {});
-		mockUseNotes.mockReturnValue(
+		mockUseSuspenseNotes.mockReturnValue(
 			makeUseNotesResult({
 				setNoteTypeFilter,
 				setStatusFilter,
@@ -228,7 +224,7 @@ describe("Index", () => {
 	it("creates a blank note and routes into the editor from the quick composer", async () => {
 		const user = userEvent.setup();
 		mockUseFocusEffect.mockImplementation(() => {});
-		mockUseNotes.mockReturnValue(makeUseNotesResult());
+		mockUseSuspenseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
 
@@ -253,7 +249,7 @@ describe("Index", () => {
 	it("creates a todo note from the checkbox action", async () => {
 		const user = userEvent.setup();
 		mockUseFocusEffect.mockImplementation(() => {});
-		mockUseNotes.mockReturnValue(makeUseNotesResult());
+		mockUseSuspenseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
 
@@ -279,7 +275,7 @@ describe("Index", () => {
 	it("creates a journal note from the quick composer", async () => {
 		const user = userEvent.setup();
 		mockUseFocusEffect.mockImplementation(() => {});
-		mockUseNotes.mockReturnValue(makeUseNotesResult());
+		mockUseSuspenseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
 
@@ -304,7 +300,7 @@ describe("Index", () => {
 	it("creates a resource note from the quick composer", async () => {
 		const user = userEvent.setup();
 		mockUseFocusEffect.mockImplementation(() => {});
-		mockUseNotes.mockReturnValue(makeUseNotesResult());
+		mockUseSuspenseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
 
@@ -329,7 +325,7 @@ describe("Index", () => {
 	it("creates a quick note from the composer", async () => {
 		const user = userEvent.setup();
 		mockUseFocusEffect.mockImplementation(() => {});
-		mockUseNotes.mockReturnValue(makeUseNotesResult());
+		mockUseSuspenseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
 

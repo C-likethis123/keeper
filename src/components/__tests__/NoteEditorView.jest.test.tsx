@@ -170,10 +170,6 @@ describe("NoteEditorView", () => {
 		latestNavigationOptions = undefined;
 		useEditorState.getState().resetState();
 		useStorageStore.setState({
-			capabilities: {
-				backend: "mobile-native",
-				canSearch: true,
-			},
 			initializationStatus: "ready",
 			initializationError: undefined,
 			contentVersion: 0,

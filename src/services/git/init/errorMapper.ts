@@ -1,5 +1,5 @@
 import { NOTES_ROOT } from "@/services/notes/Notes";
-import { useStorageStore } from "@/stores/storageStore";
+import { getRuntimeStorageBackend } from "@/services/storage/runtime";
 import { Directory } from "expo-file-system";
 import type { CloneErrorResolution, GitInitErrorMapper } from "./types";
 
@@ -48,8 +48,7 @@ export class DefaultGitInitErrorMapper implements GitInitErrorMapper {
 			console.error(
 				"[GitInitializationService] Attempting to clean up corrupted repository...",
 			);
-			const capabilities = useStorageStore.getState().capabilities;
-			if (capabilities.backend === "mobile-native") {
+			if (getRuntimeStorageBackend() === "mobile-native") {
 				const notesRootDir = new Directory(NOTES_ROOT);
 				if (notesRootDir.exists) {
 					await Promise.resolve(notesRootDir.delete());
