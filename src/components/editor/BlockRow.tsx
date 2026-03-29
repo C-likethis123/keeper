@@ -65,7 +65,18 @@ export const BlockRow = React.memo(function BlockRow({
 	};
 
 	return (
-		<View style={styles.blockWrapper} collapsable={false}>
+		<View
+			style={[
+				styles.blockWrapper,
+				{
+					position:
+						config.block.type === BlockType.video ? "sticky" : "relative",
+					zIndex: config.block.type === BlockType.video ? 20 : 1,
+					top: config.block.type === BlockType.video ? 0 : undefined,
+				},
+			]}
+			collapsable={false}
+		>
 			{blockRegistry.build(config)}
 		</View>
 	);

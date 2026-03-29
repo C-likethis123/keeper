@@ -7,7 +7,6 @@ import { useAppStartup } from "@/hooks/useAppStartup";
 import { useStyles } from "@/hooks/useStyles";
 import { appEvents } from "@/services/appEvents";
 import { NoteService } from "@/services/notes/noteService";
-import type { NoteType } from "@/services/notes/types";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { ThemeProvider } from "@react-navigation/native";
 import { Stack, router } from "expo-router";
@@ -54,8 +53,8 @@ const App = ({
 				title: "",
 				content: "",
 				isPinned: false,
-				noteType: "note" as NoteType,
-			};
+				noteType: "note",
+			} as const;
 			void NoteService.saveNote(newNote, true).then(() => {
 				router.push(`/editor?id=${newNote.id}`);
 			});

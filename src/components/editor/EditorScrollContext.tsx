@@ -55,8 +55,7 @@ function selectStickyVideoIndex(
 	let candidate: { index: number; y: number } | null = null;
 
 	for (const [index, layout] of layouts.entries()) {
-		const blockBottom = layout.y + layout.height;
-		if (blockBottom > scrollY) {
+		if (layout.y >= scrollY) {
 			continue;
 		}
 		if (!candidate || layout.y > candidate.y) {

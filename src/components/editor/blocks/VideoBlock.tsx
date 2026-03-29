@@ -20,7 +20,8 @@ export function VideoBlock({
 	onContentChange,
 	onBackspaceAtStart,
 	onSelectionChange,
-	}: BlockConfig) {
+}: BlockConfig) {
+	const containerRef = useRef<View | null>(null);
 	const inputRef = useRef<TextInput | null>(null);
 	const lastLayoutRef = useRef<{ y: number; height: number } | null>(null);
 	const styles = useStyles(createStyles);
@@ -46,13 +47,8 @@ export function VideoBlock({
 	}, [index, registerVideoLayout, unregisterVideoLayout]);
 
 	return (
-		<Pressable
-			style={({ pressed }) => [
-				styles.container,
-				isFocused && styles.focused,
-				pressed && styles.pressed,
-			]}
-			onPress={handleFocus}
+		<View
+			ref={containerRef}
 			onLayout={(event) => {
 				const { y, height } = event.nativeEvent.layout;
 				const layout = { y, height };
@@ -60,34 +56,43 @@ export function VideoBlock({
 				registerVideoLayout(index, layout);
 			}}
 		>
-			{!isFocused && videoSource && (
-				<View style={styles.stackedSplitShell}>
-					<EmbeddedVideoPanel
-						source={videoSource}
-						style={
-							videoMode === "normal"
-								? styles.videoPanel
-								: styles.videoPanelMinimised
-						}
-						mode={videoMode}
-						onToggleMode={() =>
-							setVideoMode((m) => (m === "normal" ? "minimised" : "normal"))
-						}
-					/>
-				</View>
-			)}
-			<TextInput
-				ref={inputRef}
-				style={[
-					styles.input,
-					isFocused ? styles.inputVisible : styles.inputHidden,
+			<Pressable
+				style={({ pressed }) => [
+					styles.container,
+					isFocused && styles.focused,
+					pressed && styles.pressed,
 				]}
-				value={block.content}
-				onChangeText={(text) => onContentChange(index, text)}
-				onKeyPress={handleKeyPress}
-				onSelectionChange={handleSelectionChange}
-			/>
-		</Pressable>
+				onPress={handleFocus}
+			>
+				{!isFocused && videoSource && (
+					<View style={[styles.stackedSplitShell]}>
+						<EmbeddedVideoPanel
+							source={videoSource}
+							style={
+								videoMode === "normal"
+									? styles.videoPanel
+									: styles.videoPanelMinimised
+							}
+							mode={videoMode}
+							onToggleMode={() =>
+								setVideoMode((m) => (m === "normal" ? "minimised" : "normal"))
+							}
+						/>
+					</View>
+				)}
+				<TextInput
+					ref={inputRef}
+					style={[
+						styles.input,
+						isFocused ? styles.inputVisible : styles.inputHidden,
+					]}
+					value={block.content}
+					onChangeText={(text) => onContentChange(index, text)}
+					onKeyPress={handleKeyPress}
+					onSelectionChange={handleSelectionChange}
+				/>
+			</Pressable>
+		</View>
 	);
 }
 
@@ -97,6 +102,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			minHeight: 40,
 			paddingHorizontal: 16,
 			paddingVertical: 8,
+			overflow: "visible",
 		},
 		input: {
 			minHeight: 24,

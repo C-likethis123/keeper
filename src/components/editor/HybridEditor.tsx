@@ -1,30 +1,25 @@
 import { useEditorScrollView } from "@/components/editor/EditorScrollContext";
 import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
 import { useEditorKeyboardShortcuts } from "@/components/editor/keyboard/useEditorKeyboardShortcuts";
-import {
-	type VideoMode,
-	parseEmbeddedVideoUrl,
-} from "@/components/editor/video/videoUtils";
 import { resolveOrCreateWikiLinkNoteId } from "@/components/editor/wikilinks/wikiLinkUtils";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
 import { useRouter } from "expo-router";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { BlockRow } from "./BlockRow";
 import { blockRegistry } from "./blocks/BlockRegistry";
 import { BlockType, createParagraphBlock } from "./core/BlockNode";
-import { EmbeddedVideoPanel } from "./video/EmbeddedVideoPanel";
-import {
-	WikiLinkProvider,
-	useWikiLinkContext,
-} from "./wikilinks/WikiLinkContext";
-import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
 import {
 	SlashCommandProvider,
 	useSlashCommandContext,
 } from "./slash-commands/SlashCommandContext";
 import { SlashCommandModal } from "./slash-commands/SlashCommandModal";
+import {
+	WikiLinkProvider,
+	useWikiLinkContext,
+} from "./wikilinks/WikiLinkContext";
+import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
 
 /// A hybrid markdown/code editor widget
 ///
@@ -65,12 +60,8 @@ function HybridEditorContent() {
 	const ignoreNextContentChangeRef = useRef<number | null>(null);
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
-	const {
-		scrollViewRef,
-		stickyVideoIndex,
-		updateScrollY,
-		updateViewHeight,
-	} = useEditorScrollView();
+	const { scrollViewRef, stickyVideoIndex, updateScrollY, updateViewHeight } =
+		useEditorScrollView();
 	const { focusBlock } = useFocusBlock();
 	const wikiLinks = useWikiLinkContext();
 	const slashCommands = useSlashCommandContext();
@@ -94,14 +85,6 @@ function HybridEditorContent() {
 	const getBlockAtIndex = useCallback((index: number) => {
 		return useEditorState.getState().document.blocks[index] ?? null;
 	}, []);
-
-	const stickyVideoBlock = useEditorState((state) =>
-		stickyVideoIndex === null ? null : state.document.blocks[stickyVideoIndex] ?? null,
-	);
-	const stickyVideoSource =
-		stickyVideoBlock?.type === BlockType.video
-			? parseEmbeddedVideoUrl(stickyVideoBlock.content)
-			: null;
 
 	const handleContentChange = useCallback(
 		(index: number, content: string) => {
@@ -386,6 +369,9 @@ function HybridEditorContent() {
 					updateViewHeight(e.nativeEvent.layout.height);
 				}}
 			>
+				{blockIds.map((id, index) => (
+					<BlockRow key={id} index={index} handlers={handlers} />
+				))}
 				<Pressable
 					style={styles.pressableArea}
 					onPress={() => {
@@ -393,43 +379,11 @@ function HybridEditorContent() {
 						const lastIndex = Math.max(0, blocks.length - 1);
 						focusBlock(lastIndex);
 					}}
-				>
-					{blockIds.map((id, index) => (
-						<BlockRow key={id} index={index} handlers={handlers} />
-					))}
-				</Pressable>
+				/>
 			</ScrollView>
-			{stickyVideoSource && (
-				<View pointerEvents="box-none" style={styles.stickyVideoOverlay}>
-					<StickyVideoOverlay
-						key={stickyVideoIndex}
-						source={stickyVideoSource}
-					/>
-				</View>
-			)}
 			<WikiLinkModal />
 			<SlashCommandModal />
 		</View>
-	);
-}
-
-function StickyVideoOverlay({
-	source,
-}: {
-	source: NonNullable<ReturnType<typeof parseEmbeddedVideoUrl>>;
-}) {
-	const [mode, setMode] = useState<VideoMode>("normal");
-
-	return (
-		<EmbeddedVideoPanel
-			source={source}
-			mode={mode}
-			onToggleMode={() =>
-				setMode((currentMode) =>
-					currentMode === "normal" ? "minimised" : "normal",
-				)
-			}
-		/>
 	);
 }
 
@@ -443,17 +397,11 @@ const styles = StyleSheet.create({
 	},
 	scrollContent: {
 		flexGrow: 1,
+		position: "absolute",
 		paddingBottom: 20,
 	},
 	pressableArea: {
-		flex: 1,
-	},
-	stickyVideoOverlay: {
-		position: "absolute",
-		top: 0,
-		left: 12,
-		right: 12,
-		zIndex: 10,
-		elevation: 10,
+		flexGrow: 1,
+		minHeight: 120,
 	},
 });

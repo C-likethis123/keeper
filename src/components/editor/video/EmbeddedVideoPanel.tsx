@@ -6,9 +6,9 @@ import {
 	Pressable,
 	StyleSheet,
 	Text,
-	useWindowDimensions,
 	View,
 	type ViewStyle,
+	useWindowDimensions,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import type { EmbeddedVideoSource, VideoMode } from "./videoUtils";
@@ -31,12 +31,6 @@ export function EmbeddedVideoPanel({
 	const { height: viewportHeight } = useWindowDimensions();
 
 	const isMinimised = mode === "minimised";
-	const playerFrameStyle = useMemo(
-		() => ({
-			height: Platform.OS === "web" ? ("50vh" as const) : viewportHeight * 0.5,
-		}),
-		[viewportHeight],
-	);
 
 	return (
 		<View
@@ -68,7 +62,7 @@ export function EmbeddedVideoPanel({
 
 			{!isMinimised && (
 				<>
-					<View style={[styles.playerFrame, playerFrameStyle]}>
+					<View style={[styles.playerFrame, { height: viewportHeight * 0.5 }]}>
 						{Platform.OS === "web" ? (
 							<iframe
 								src={source.embedUrl}
