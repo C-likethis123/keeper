@@ -1,21 +1,12 @@
-import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useStyles } from "@/hooks/useStyles";
 import { NOTES_ROOT } from "@/services/notes/Notes";
-import { useEditorBlockSelection } from "@/stores/editorStore";
 import { Paths } from "expo-file-system";
 import { Image } from "expo-image";
-import React, { useCallback, useRef } from "react";
-import {
-	type NativeSyntheticEvent,
-	Pressable,
-	StyleSheet,
-	TextInput,
-	type TextInputKeyPressEventData,
-	type TextInputSelectionChangeEventData,
-} from "react-native";
+import React, { useRef } from "react";
+import { Pressable, StyleSheet, TextInput } from "react-native";
 import type { BlockConfig } from "./BlockRegistry";
+import { useBlockInputHandlers } from "./useBlockInputHandlers";
 
 function resolveImageUri(path: string): string {
 	if (
@@ -38,50 +29,17 @@ export function ImageBlock({
 	onBackspaceAtStart,
 	onSelectionChange,
 }: BlockConfig) {
-	const { focusBlock } = useFocusBlock();
 	const inputRef = useRef<TextInput | null>(null);
-	const selection = useEditorBlockSelection(index);
 	const styles = useStyles(createStyles);
 	const uri = resolveImageUri(block.content);
-	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
-	const handleFocus = useCallback(() => {
-		if (isFocused) {
-			return;
-		}
-		focusBlock(index);
-	}, [focusBlock, index, isFocused]);
-	const handleKeyPress = useCallback(
-		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
-			const key = e.nativeEvent.key;
-			if (handleVerticalArrow(key)) {
-				return;
-			}
-			if (key === "Enter" && selection && selection.start === selection.end) {
-				onEnter(index, selection.end);
-			}
-
-			if (
-				key === "Backspace" &&
-				selection?.start === 0 &&
-				selection?.end === 0
-			) {
-				onBackspaceAtStart(index);
-				return;
-			}
-		},
-		[handleVerticalArrow, index, onBackspaceAtStart, onEnter, selection],
-	);
-
-	const handleSelectionChange = useCallback(
-		(e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
-			onSelectionChange(
-				index,
-				e.nativeEvent.selection.start,
-				e.nativeEvent.selection.end,
-			);
-		},
-		[onSelectionChange, index],
-	);
+	const { handleFocus, handleKeyPress, handleSelectionChange } =
+		useBlockInputHandlers({
+			index,
+			isFocused,
+			onEnter,
+			onBackspaceAtStart,
+			onSelectionChange,
+		});
 	return (
 		<Pressable
 			style={({ pressed }) => [

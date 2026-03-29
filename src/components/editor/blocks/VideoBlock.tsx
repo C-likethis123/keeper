@@ -1,24 +1,14 @@
-import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
 import {
 	type VideoMode,
 	parseEmbeddedVideoUrl,
 } from "@/components/editor/video/videoUtils";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useStyles } from "@/hooks/useStyles";
-import { useEditorBlockSelection } from "@/stores/editorStore";
-import React, { useCallback, useRef, useState } from "react";
-import {
-	type NativeSyntheticEvent,
-	Pressable,
-	StyleSheet,
-	TextInput,
-	type TextInputKeyPressEventData,
-	type TextInputSelectionChangeEventData,
-	View,
-} from "react-native";
+import React, { useRef, useState } from "react";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { EmbeddedVideoPanel } from "../video/EmbeddedVideoPanel";
 import type { BlockConfig } from "./BlockRegistry";
+import { useBlockInputHandlers } from "./useBlockInputHandlers";
 
 // TODO: maybe integrate this with the UnifiedBlock?
 export function VideoBlock({
@@ -30,50 +20,17 @@ export function VideoBlock({
 	onBackspaceAtStart,
 	onSelectionChange,
 }: BlockConfig) {
-	const { focusBlock } = useFocusBlock();
 	const inputRef = useRef<TextInput | null>(null);
-	const selection = useEditorBlockSelection(index);
 	const styles = useStyles(createStyles);
 	const videoSource = parseEmbeddedVideoUrl(block.content);
-	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
-	const handleFocus = useCallback(() => {
-		if (isFocused) {
-			return;
-		}
-		focusBlock(index);
-	}, [focusBlock, index, isFocused]);
-	const handleKeyPress = useCallback(
-		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
-			const key = e.nativeEvent.key;
-			if (handleVerticalArrow(key)) {
-				return;
-			}
-			if (key === "Enter" && selection && selection.start === selection.end) {
-				onEnter(index, selection.end);
-			}
-
-			if (
-				key === "Backspace" &&
-				selection?.start === 0 &&
-				selection?.end === 0
-			) {
-				onBackspaceAtStart(index);
-				return;
-			}
-		},
-		[handleVerticalArrow, index, onBackspaceAtStart, onEnter, selection],
-	);
-
-	const handleSelectionChange = useCallback(
-		(e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
-			onSelectionChange(
-				index,
-				e.nativeEvent.selection.start,
-				e.nativeEvent.selection.end,
-			);
-		},
-		[onSelectionChange, index],
-	);
+	const { handleFocus, handleKeyPress, handleSelectionChange } =
+		useBlockInputHandlers({
+			index,
+			isFocused,
+			onEnter,
+			onBackspaceAtStart,
+			onSelectionChange,
+		});
 	const [videoMode, setVideoMode] = useState<VideoMode>("normal");
 	return (
 		<Pressable
