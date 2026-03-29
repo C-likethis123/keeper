@@ -1,4 +1,5 @@
 import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
+import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -189,6 +190,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			right: 0,
 			bottom: 0,
 			textAlignVertical: "top",
+			...webMultilineTextInputReset,
 		},
 		inputUnfocused: {
 			left: -9999,

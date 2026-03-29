@@ -1,4 +1,4 @@
-import React from "react";
+import React, { type CSSProperties } from "react";
 import {
 	type ColorValue,
 	Platform,
@@ -53,27 +53,23 @@ Highlighter.registerLanguage("typescript", langTs);
 Highlighter.registerLanguage("xml", langXml);
 Highlighter.registerLanguage("yaml", langYaml);
 
-type Node = {
+type RendererNode = {
 	type: string;
-	value?: string;
+	value?: string | number;
 	properties?: {
 		className: string[];
 	};
-	children?: Node[];
+	children?: RendererNode[];
 };
 
-type StyleSheet = {
-	[key: string]: TextStyle;
-};
-
-type RendererParams = {
-	rows: Node[];
-	stylesheet: StyleSheet;
-};
-
-type SyntaxStyleEntry = TextStyle & {
+type SyntaxStyleEntry = CSSProperties & {
 	display?: unknown;
 };
+
+type HighlighterRenderer = NonNullable<
+	React.ComponentProps<typeof Highlighter>["renderer"]
+>;
+type HighlighterRendererParams = Parameters<HighlighterRenderer>[0];
 
 type SyntaxHighlighterStyleType = {
 	/**
@@ -128,7 +124,7 @@ type SyntaxHighlighterProps = React.ComponentProps<typeof Highlighter> & {
 	 * Syntax highlighting style.
 	 * @See https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_STYLES_HLJS.MD
 	 */
-	syntaxStyle?: Record<string, SyntaxStyleEntry>;
+	syntaxStyle?: Record<string, CSSProperties>;
 
 	/**
 	 * Extra styling options for the syntax highlighter.
@@ -183,9 +179,12 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 			key,
 			cleanStyle(value),
 		]),
-	);
+	) as Record<string, CSSProperties>;
 
-	const renderNode = (nodes: Node[], key = "0"): React.ReactNode[] => {
+	const renderNode = (
+		nodes: RendererNode[],
+		key = "0",
+	): React.ReactNode[] => {
 		const renderedNodes: React.ReactNode[] = [];
 
 		for (const node of nodes) {
@@ -193,7 +192,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 			if (node.children) {
 				const nodeStyle: TextStyle = {};
 				for (const className of node.properties?.className ?? []) {
-					Object.assign(nodeStyle, stylesheet[className]);
+					Object.assign(nodeStyle, stylesheet[className] as TextStyle);
 				}
 
 				const textElement = (
@@ -251,23 +250,32 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 				);
 			}
 
-			if (node.value) {
+			if (node.value !== undefined) {
+				let textValue = String(node.value);
 				// To prevent an empty line after each string
-				node.value = node.value.replace("\n", "");
+				textValue = textValue.replace("\n", "");
 				// To render blank lines at an equal font height
-				node.value = node.value.length ? node.value : " ";
-				renderedNodes.push(node.value);
+				textValue = textValue.length ? textValue : " ";
+				renderedNodes.push(textValue);
 			}
 		}
 
 		return renderedNodes;
 	};
 
+	const baseStyle = stylesheet.hljs;
+	const syntaxBackground =
+		backgroundColor ??
+		(typeof baseStyle?.backgroundColor === "string"
+			? baseStyle.backgroundColor
+			: typeof baseStyle?.background === "string"
+				? baseStyle.background
+				: undefined);
+
 	const scrollStyle: ViewStyle = {
 		width: "100%",
 		height: "100%",
-		backgroundColor:
-			(backgroundColor || stylesheet.hljs.background) as ColorValue,
+		backgroundColor: syntaxBackground as ColorValue,
 		// Prevents YGValue error
 		padding: 0,
 		paddingTop: padding,
@@ -275,10 +283,10 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 		paddingBottom: padding,
 	};
 
-	const nativeRenderer = ({ rows }: RendererParams) => {
+	const nativeRenderer = ({ rows }: HighlighterRendererParams) => {
 		return (
 			<ScrollView
-				style={[stylesheet.hljs, scrollStyle]}
+				style={scrollStyle}
 				testID={`${testID}-scroll-view`}
 				ref={forwardedRef}
 				scrollEnabled={scrollEnabled}
@@ -293,7 +301,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 			{...highlighterProps}
 			key={testID}
 			language={highlighterProps.language || "plaintext"}
-			style={syntaxStyle}
+			style={syntaxStyle as Record<string, CSSProperties>}
 			horizontal={false}
 			renderer={nativeRenderer}
 		/>
@@ -301,5 +309,10 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 };
 
 export default React.forwardRef<ScrollView, SyntaxHighlighterProps>(
-	(props, ref) => <SyntaxHighlighter {...props} forwardedRef={ref} />,
+	(props, ref) => (
+		<SyntaxHighlighter
+			{...(props as SyntaxHighlighterProps)}
+			forwardedRef={ref}
+		/>
+	),
 );

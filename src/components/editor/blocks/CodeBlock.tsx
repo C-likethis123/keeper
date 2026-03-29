@@ -1,4 +1,5 @@
 import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
+import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockSelection, useEditorState } from "@/stores/editorStore";
 import * as Clipboard from "expo-clipboard";
@@ -351,5 +352,6 @@ const styles = StyleSheet.create({
 	input: {
 		position: "absolute",
 		textAlignVertical: "top",
+		...webMultilineTextInputReset,
 	},
 });

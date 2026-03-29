@@ -2,6 +2,7 @@ import {
 	type VideoMode,
 	parseEmbeddedVideoUrl,
 } from "@/components/editor/video/videoUtils";
+import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import React, { useEffect, useRef, useState } from "react";
@@ -107,6 +108,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		input: {
 			minHeight: 24,
 			color: theme.colors.text,
+			...webTextInputReset,
 		},
 		inputVisible: {
 			opacity: 1,

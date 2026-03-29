@@ -1,4 +1,5 @@
 import { SaveIndicator, type SaveStatus } from "@/components/SaveIndicator";
+import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import type { Note } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -148,6 +149,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			color: theme.colors.text,
 			width: "100%",
 			minWidth: 0,
+			...webTextInputReset,
 		},
 		headerActionsRail: {
 			justifyContent: "flex-end",

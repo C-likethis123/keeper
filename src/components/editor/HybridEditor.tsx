@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
 	},
 	scrollContent: {
 		flexGrow: 1,
-		position: "absolute",
+		width: "100%",
 		paddingBottom: 20,
 	},
 	pressableArea: {

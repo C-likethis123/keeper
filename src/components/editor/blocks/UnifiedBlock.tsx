@@ -1,8 +1,16 @@
 import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
+import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockSelection, useEditorState } from "@/stores/editorStore";
-import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import React, {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { GestureResponderEvent } from "react-native";
 import {
 	type NativeMethods,
@@ -11,6 +19,7 @@ import {
 	Pressable,
 	StyleSheet,
 	TextInput,
+	type TextInputContentSizeChangeEventData,
 	type TextInputKeyPressEventData,
 	type TextInputSelectionChangeEventData,
 	type TextStyle,
@@ -275,13 +284,74 @@ export function UnifiedBlock({
 					};
 				})()
 			: undefined;
+	const minimumLineHeight =
+		typeof textStyle.lineHeight === "number"
+			? textStyle.lineHeight
+			: typeof textStyle.fontSize === "number"
+				? textStyle.fontSize
+				: 0;
+	const [inputHeight, setInputHeight] = useState(minimumLineHeight);
+
+	useEffect(() => {
+		setInputHeight(minimumLineHeight);
+	}, [minimumLineHeight]);
+
+	const syncWebInputHeight = useCallback(() => {
+		if (Platform.OS !== "web" || !isFocused) {
+			return () => {};
+		}
+		if (typeof HTMLElement === "undefined") {
+			return () => {};
+		}
+		let cancelled = false;
+		const frame = requestAnimationFrame(() => {
+			if (cancelled) {
+				return;
+			}
+			const node = inputRef.current as (TextInput & { scrollHeight?: number; style?: CSSStyleDeclaration }) | null;
+			if (!(node instanceof HTMLElement)) {
+				return;
+			}
+			const previousHeight = node.style.height;
+			node.style.height = "auto";
+			const nextHeight = Math.max(minimumLineHeight, node.scrollHeight);
+			node.style.height = previousHeight;
+			setInputHeight((currentHeight) =>
+				Math.abs(currentHeight - nextHeight) < 1 ? currentHeight : nextHeight,
+			);
+		});
+		return () => {
+			cancelled = true;
+			cancelAnimationFrame(frame);
+		};
+	}, [isFocused, minimumLineHeight]);
+
+	useLayoutEffect(() => {
+		return syncWebInputHeight();
+	}, [syncWebInputHeight]);
+
+	const handleContentSizeChange = useCallback(
+		(e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => {
+			if (!isFocused) {
+				return;
+			}
+			const nextHeight = Math.max(
+				minimumLineHeight,
+				e.nativeEvent.contentSize.height,
+			);
+			setInputHeight(nextHeight);
+			syncWebInputHeight();
+		},
+		[minimumLineHeight, isFocused, syncWebInputHeight],
+	);
 
 	const textInputProps = {
 		ref: inputRef,
 		style: [
 			styles.input,
+			{ minHeight: minimumLineHeight, height: inputHeight },
 			textStyle,
-			isFocused ? styles.inputVisible : styles.inputHidden,
+			styles.inputVisible,
 		],
 		value: block.content,
 		...(selectionProp !== undefined && { selection: selectionProp }),
@@ -290,7 +360,10 @@ export function UnifiedBlock({
 		onBlur: handleBlur,
 		onKeyPress: handleKeyPress,
 		onSelectionChange: handleSelectionChange,
+		onContentSizeChange: handleContentSizeChange,
 		multiline: true,
+		numberOfLines: 1,
+		scrollEnabled: false,
 		placeholder: "Start typing...",
 		placeholderTextColor: theme.custom.editor.placeholder,
 	};
@@ -328,11 +401,8 @@ export function UnifiedBlock({
 				<View
 					style={[
 						{ flex: 1 },
-						!isFocused
-							? applyListStyles
-								? styles.overlayContent
-								: styles.overlay
-							: { display: "none" },
+						applyListStyles ? styles.overlayContent : styles.overlay,
+						isFocused ? styles.hidden : null,
 					]}
 					pointerEvents="box-none"
 				>
@@ -344,6 +414,10 @@ export function UnifiedBlock({
 				</View>
 				<TextInput
 					{...textInputProps}
+					style={[
+						textInputProps.style,
+						!isFocused ? styles.hidden : null,
+					]}
 					textAlignVertical={applyListStyles ? undefined : "top"}
 				/>
 			</View>
@@ -376,16 +450,13 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			padding: 0,
 			paddingHorizontal: 2,
 			color: theme.colors.text,
-			...Platform.select({
-				web: { outlineWidth: 0 },
-			}),
+			...webMultilineTextInputReset,
 		},
 		inputVisible: {
 			opacity: 1,
 		},
-		inputHidden: {
-			opacity: 0,
-			height: 0,
+		hidden: {
+			display: "none",
 		},
 	});
 }

@@ -1,4 +1,5 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
 	Modal,
@@ -136,5 +137,6 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 12,
 		fontSize: 16,
 		marginBottom: 8,
+		...webTextInputReset,
 	},
 });

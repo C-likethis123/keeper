@@ -12,7 +12,7 @@ import {
 	userEvent,
 	waitFor,
 } from "expo-router/testing-library";
-import type React from "react";
+import React from "react";
 import { Text, TextInput } from "react-native";
 
 jest.useFakeTimers();
@@ -175,8 +175,14 @@ function pressHeaderBack() {
 function findElementByType(
 	node: React.ReactNode,
 	type: unknown,
-): React.ReactElement | null {
-	if (!node || typeof node === "string" || typeof node === "number") {
+): React.ReactElement<object> | null {
+	if (
+		node == null ||
+		typeof node === "string" ||
+		typeof node === "number" ||
+		typeof node === "boolean" ||
+		typeof node === "bigint"
+	) {
 		return null;
 	}
 	if (Array.isArray(node)) {
@@ -188,14 +194,14 @@ function findElementByType(
 		}
 		return null;
 	}
-	if (!("props" in node)) {
+	if (!React.isValidElement(node)) {
 		return null;
 	}
-	const element = node as React.ReactElement;
+	const element = node as React.ReactElement<{ children?: React.ReactNode }>;
 	if (element.type === type) {
-		return element;
+		return element as React.ReactElement<object>;
 	}
-	const children = element.props?.children;
+	const children = element.props.children;
 	if (!children) {
 		return null;
 	}

@@ -1,4 +1,5 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import { MaterialIcons } from "@expo/vector-icons";
 import { forwardRef, useMemo } from "react";
 import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
@@ -104,6 +105,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			fontSize: 16,
 			color: theme.colors.text,
 			paddingVertical: 0,
+			...webTextInputReset,
 		},
 		searchInputCompact: {
 			fontSize: 15,

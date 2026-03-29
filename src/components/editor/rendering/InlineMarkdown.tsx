@@ -103,11 +103,23 @@ export function InlineMarkdown({
 		);
 	}
 
+	const minHeight =
+		typeof style?.lineHeight === "number"
+			? style.lineHeight
+			: typeof style?.fontSize === "number"
+				? style.fontSize
+				: undefined;
+
 	return (
 		<View
-			style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center" }}
+			style={{
+				flexDirection: "row",
+				flexWrap: "wrap",
+				alignItems: "center",
+				...(minHeight !== undefined ? { minHeight } : {}),
+			}}
 		>
-			{elements}
+			{elements.length > 0 ? elements : <Text style={style}>{"\u200B"}</Text>}
 		</View>
 	);
 }

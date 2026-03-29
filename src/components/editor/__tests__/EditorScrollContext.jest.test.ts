@@ -1,13 +1,13 @@
 import { selectStickyVideoIndex } from "@/components/editor/EditorScrollContext";
 
 describe("selectStickyVideoIndex", () => {
-	it("returns null when no video block has scrolled fully past the top", () => {
+	it("returns null when no video block has started scrolling past the top", () => {
 		const layouts = new Map([
 			[0, { y: 40, height: 180 }],
 			[3, { y: 320, height: 200 }],
 		]);
 
-		expect(selectStickyVideoIndex(layouts, 100)).toBeNull();
+		expect(selectStickyVideoIndex(layouts, 40)).toBeNull();
 	});
 
 	it("returns the nearest video block above the viewport", () => {
@@ -20,10 +20,10 @@ describe("selectStickyVideoIndex", () => {
 		expect(selectStickyVideoIndex(layouts, 600)).toBe(3);
 	});
 
-	it("ignores a video block until it has fully scrolled out of view", () => {
+	it("sticks a video block as soon as any part of it scrolls above the viewport", () => {
 		const layouts = new Map([[2, { y: 200, height: 240 }]]);
 
-		expect(selectStickyVideoIndex(layouts, 430)).toBeNull();
-		expect(selectStickyVideoIndex(layouts, 440)).toBe(2);
+		expect(selectStickyVideoIndex(layouts, 200)).toBeNull();
+		expect(selectStickyVideoIndex(layouts, 201)).toBe(2);
 	});
 });
