@@ -1,0 +1,183 @@
+import {
+	normalizeMarkdownForPersistence,
+	persistEditorEntry,
+} from "@/services/notes/editorEntryPersistence";
+import { createDocumentFromMarkdown } from "@/components/editor/core/Document";
+import { useEditorState } from "@/stores/editorStore";
+import { InteractionManager } from "react-native";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { useAutoSave } from "../useAutoSave";
+
+jest.mock("@/services/notes/editorEntryPersistence", () => ({
+	normalizeMarkdownForPersistence: jest.fn((value: string) => value.trim()),
+	persistEditorEntry: jest.fn(),
+}));
+
+describe("useAutoSave", () => {
+	beforeEach(() => {
+		jest.useFakeTimers();
+		jest.clearAllMocks();
+		useEditorState.getState().resetState();
+		useEditorState.setState({
+			document: createDocumentFromMarkdown("Initial body"),
+			preparedMarkdown: null,
+			preparedVersion: null,
+		});
+		jest
+			.spyOn(InteractionManager, "runAfterInteractions")
+			.mockImplementation(async (task: () => void | Promise<void>) => {
+				await task();
+				return {
+					cancel: jest.fn(),
+				} as never;
+			});
+	});
+
+	afterEach(() => {
+		jest.runOnlyPendingTimers();
+		jest.useRealTimers();
+	});
+
+	it("does not persist unchanged note content during idle autosave", async () => {
+		const { result, unmount } = renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: " Draft note ",
+				content: " Initial body ",
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+
+		await act(async () => {
+			jest.advanceTimersByTime(60000);
+			await Promise.resolve();
+		});
+
+		expect(result.current.status).toBe("idle");
+		expect(persistEditorEntry).not.toHaveBeenCalled();
+
+		unmount();
+	});
+
+	it("persists dirty note changes after the idle interval and returns to idle after saved status", async () => {
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		const onPersisted = jest.fn();
+		const { result } = renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Initial body",
+				isPinned: false,
+				noteType: "note",
+				onPersisted,
+			}),
+		);
+
+		act(() => {
+			useEditorState.getState().loadMarkdown("Updated body");
+		});
+
+		await act(async () => {
+			jest.advanceTimersByTime(1500);
+			await Promise.resolve();
+		});
+
+		await act(async () => {
+			jest.advanceTimersByTime(60000);
+			await Promise.resolve();
+		});
+
+		await waitFor(() => {
+			expect(persistEditorEntry).toHaveBeenCalledWith({
+				id: "note-1",
+				title: "Draft note",
+				content: "Updated body",
+				isPinned: false,
+				noteType: "note",
+				status: undefined,
+				previousNoteType: "note",
+			});
+		});
+		expect(result.current.status).toBe("saved");
+		expect(onPersisted).toHaveBeenCalledWith("note");
+
+		act(() => {
+			jest.advanceTimersByTime(1000);
+		});
+
+		expect(result.current.status).toBe("idle");
+	});
+
+	it("resets to idle when persistence fails and skips onPersisted", async () => {
+		(persistEditorEntry as jest.Mock).mockRejectedValue(new Error("Save failed"));
+		const onPersisted = jest.fn();
+		const { result } = renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Initial body",
+				isPinned: false,
+				noteType: "note",
+				onPersisted,
+			}),
+		);
+
+		act(() => {
+			useEditorState.getState().loadMarkdown("Updated body");
+		});
+
+		await act(async () => {
+			jest.advanceTimersByTime(61500);
+			await Promise.resolve();
+		});
+
+		await waitFor(() => {
+			expect(persistEditorEntry).toHaveBeenCalledTimes(1);
+		});
+		expect(result.current.status).toBe("idle");
+		expect(onPersisted).not.toHaveBeenCalled();
+	});
+
+	it("flushes unsaved changes during the unmount cleanup", async () => {
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		const { unmount } = renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Initial body",
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+
+		act(() => {
+			useEditorState.getState().loadMarkdown("Updated body");
+		});
+
+		await act(async () => {
+			unmount();
+			await Promise.resolve();
+		});
+
+		expect(persistEditorEntry).toHaveBeenCalledWith(
+			expect.objectContaining({
+				content: "Updated body",
+			}),
+		);
+	});
+
+	it("normalizes the initial saved snapshot from the incoming content", () => {
+		renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: " Initial body ",
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+
+		expect(normalizeMarkdownForPersistence).toHaveBeenCalledWith(" Initial body ");
+	});
+});
