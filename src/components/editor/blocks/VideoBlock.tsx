@@ -4,8 +4,9 @@ import {
 } from "@/components/editor/video/videoUtils";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { useEditorScrollView } from "../EditorScrollContext";
 import { EmbeddedVideoPanel } from "../video/EmbeddedVideoPanel";
 import type { BlockConfig } from "./BlockRegistry";
 import { useBlockInputHandlers } from "./useBlockInputHandlers";
@@ -19,10 +20,12 @@ export function VideoBlock({
 	onContentChange,
 	onBackspaceAtStart,
 	onSelectionChange,
-}: BlockConfig) {
+	}: BlockConfig) {
 	const inputRef = useRef<TextInput | null>(null);
+	const lastLayoutRef = useRef<{ y: number; height: number } | null>(null);
 	const styles = useStyles(createStyles);
 	const videoSource = parseEmbeddedVideoUrl(block.content);
+	const { registerVideoLayout, unregisterVideoLayout } = useEditorScrollView();
 	const { handleFocus, handleKeyPress, handleSelectionChange } =
 		useBlockInputHandlers({
 			index,
@@ -32,6 +35,16 @@ export function VideoBlock({
 			onSelectionChange,
 		});
 	const [videoMode, setVideoMode] = useState<VideoMode>("normal");
+
+	useEffect(() => {
+		if (lastLayoutRef.current) {
+			registerVideoLayout(index, lastLayoutRef.current);
+		}
+		return () => {
+			unregisterVideoLayout(index);
+		};
+	}, [index, registerVideoLayout, unregisterVideoLayout]);
+
 	return (
 		<Pressable
 			style={({ pressed }) => [
@@ -40,6 +53,12 @@ export function VideoBlock({
 				pressed && styles.pressed,
 			]}
 			onPress={handleFocus}
+			onLayout={(event) => {
+				const { y, height } = event.nativeEvent.layout;
+				const layout = { y, height };
+				lastLayoutRef.current = layout;
+				registerVideoLayout(index, layout);
+			}}
 		>
 			{!isFocused && videoSource && (
 				<View style={styles.stackedSplitShell}>

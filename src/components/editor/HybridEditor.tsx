@@ -1,15 +1,20 @@
 import { useEditorScrollView } from "@/components/editor/EditorScrollContext";
 import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
 import { useEditorKeyboardShortcuts } from "@/components/editor/keyboard/useEditorKeyboardShortcuts";
+import {
+	type VideoMode,
+	parseEmbeddedVideoUrl,
+} from "@/components/editor/video/videoUtils";
 import { resolveOrCreateWikiLinkNoteId } from "@/components/editor/wikilinks/wikiLinkUtils";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
 import { useRouter } from "expo-router";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { BlockRow } from "./BlockRow";
 import { blockRegistry } from "./blocks/BlockRegistry";
 import { BlockType, createParagraphBlock } from "./core/BlockNode";
+import { EmbeddedVideoPanel } from "./video/EmbeddedVideoPanel";
 import {
 	WikiLinkProvider,
 	useWikiLinkContext,
@@ -47,7 +52,12 @@ function HybridEditorContent() {
 	const ignoreNextContentChangeRef = useRef<number | null>(null);
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
-	const { scrollViewRef, scrollYRef, viewHeightRef } = useEditorScrollView();
+	const {
+		scrollViewRef,
+		stickyVideoIndex,
+		updateScrollY,
+		updateViewHeight,
+	} = useEditorScrollView();
 	const { focusBlock } = useFocusBlock();
 	const wikiLinks = useWikiLinkContext();
 	const commandContext = useEditorCommandContext({
@@ -60,6 +70,14 @@ function HybridEditorContent() {
 		},
 	});
 	useEditorKeyboardShortcuts({ context: commandContext });
+
+	const stickyVideoBlock = useEditorState((state) =>
+		stickyVideoIndex === null ? null : state.document.blocks[stickyVideoIndex] ?? null,
+	);
+	const stickyVideoSource =
+		stickyVideoBlock?.type === BlockType.video
+			? parseEmbeddedVideoUrl(stickyVideoBlock.content)
+			: null;
 
 	const handleContentChange = useCallback(
 		(index: number, content: string) => {
@@ -338,10 +356,10 @@ function HybridEditorContent() {
 				keyboardShouldPersistTaps="handled"
 				scrollEventThrottle={16}
 				onScroll={(e) => {
-					scrollYRef.current = e.nativeEvent.contentOffset.y;
+					updateScrollY(e.nativeEvent.contentOffset.y);
 				}}
 				onLayout={(e) => {
-					viewHeightRef.current = e.nativeEvent.layout.height;
+					updateViewHeight(e.nativeEvent.layout.height);
 				}}
 			>
 				<Pressable
@@ -357,8 +375,36 @@ function HybridEditorContent() {
 					))}
 				</Pressable>
 			</ScrollView>
+			{stickyVideoSource && (
+				<View pointerEvents="box-none" style={styles.stickyVideoOverlay}>
+					<StickyVideoOverlay
+						key={stickyVideoIndex}
+						source={stickyVideoSource}
+					/>
+				</View>
+			)}
 			<WikiLinkModal />
 		</View>
+	);
+}
+
+function StickyVideoOverlay({
+	source,
+}: {
+	source: NonNullable<ReturnType<typeof parseEmbeddedVideoUrl>>;
+}) {
+	const [mode, setMode] = useState<VideoMode>("normal");
+
+	return (
+		<EmbeddedVideoPanel
+			source={source}
+			mode={mode}
+			onToggleMode={() =>
+				setMode((currentMode) =>
+					currentMode === "normal" ? "minimised" : "normal",
+				)
+			}
+		/>
 	);
 }
 
@@ -376,5 +422,13 @@ const styles = StyleSheet.create({
 	},
 	pressableArea: {
 		flex: 1,
+	},
+	stickyVideoOverlay: {
+		position: "absolute",
+		top: 0,
+		left: 12,
+		right: 12,
+		zIndex: 10,
+		elevation: 10,
 	},
 });
