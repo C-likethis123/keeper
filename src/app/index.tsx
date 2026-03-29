@@ -2,18 +2,25 @@ import HomeQuickComposer from "@/components/HomeQuickComposer";
 import HomeScreenHeader from "@/components/HomeScreenHeader";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
+import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import useNotes from "@/hooks/useNotes";
+import useSuspenseNotes from "@/hooks/useSuspenseNotes";
 import { useStyles } from "@/hooks/useStyles";
 import { appEvents } from "@/services/appEvents";
+import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import type { Note, NoteType } from "@/services/notes/types";
-import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import { Stack, router, useFocusEffect } from "expo-router";
 import { nanoid } from "nanoid";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, {
+	Suspense,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	Alert,
 	Platform,
@@ -24,7 +31,7 @@ import {
 
 const LazyNoteGrid = React.lazy(() => import("@/components/NoteGrid"));
 
-export default function Index() {
+function IndexContent() {
 	const {
 		notes,
 		query,
@@ -38,9 +45,8 @@ export default function Index() {
 		setQuery,
 		setNoteTypeFilter,
 		setStatusFilter,
-	} = useNotes();
+	} = useSuspenseNotes();
 	const showToast = useToastStore((state) => state.showToast);
-	const canSearch = useStorageStore((s) => s.capabilities.canSearch);
 	const [isResetting, setIsResetting] = React.useState(false);
 
 	const handleDeleteNote = useCallback(
@@ -184,17 +190,9 @@ export default function Index() {
 
 	useFocusEffect(
 		useCallback(() => {
-			handleRefresh();
+			void handleRefresh();
 		}, [handleRefresh]),
 	);
-
-	if (isLoading && notes.length === 0) {
-		return <Loader />;
-	}
-
-	if (error) {
-		return <ErrorScreen errorMessage={error} onRetry={handleRefresh} />;
-	}
 
 	return (
 		<View style={styles.container}>
@@ -204,7 +202,7 @@ export default function Index() {
 						<HomeScreenHeader
 							searchQuery={query}
 							setSearchQuery={setQuery}
-							searchEditable={canSearch}
+							searchEditable
 							searchInputRef={searchInputRef}
 							noteTypes={noteTypeFilter}
 							status={statusFilter}
@@ -221,7 +219,7 @@ export default function Index() {
 					),
 				}}
 			/>
-			<React.Suspense fallback={<Loader />}>
+			<Suspense fallback={<Loader />}>
 				<LazyNoteGrid
 					notes={notes}
 					emptySubtitle={emptySubtitle}
@@ -249,8 +247,32 @@ export default function Index() {
 						/>
 					}
 				/>
-			</React.Suspense>
+			</Suspense>
+			{error ? <ErrorScreen errorMessage={error} onRetry={handleRefresh} /> : null}
 		</View>
+	);
+}
+
+export default function Index() {
+	const [retryVersion, setRetryVersion] = useState(0);
+
+	return (
+		<QueryErrorBoundary
+			fallbackRender={(error, reset) => (
+				<ErrorScreen
+					errorMessage={error.message}
+					onRetry={() => {
+						invalidateNoteQueryCache();
+						reset();
+						setRetryVersion((current) => current + 1);
+					}}
+				/>
+			)}
+		>
+			<Suspense fallback={<Loader />}>
+				<IndexContent key={retryVersion} />
+			</Suspense>
+		</QueryErrorBoundary>
 	);
 }
 

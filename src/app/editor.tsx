@@ -1,8 +1,9 @@
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
+import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { useLoadNote } from "@/hooks/useLoadNote";
+import { useSuspenseLoadNote } from "@/hooks/useSuspenseLoadNote";
 import { useStyles } from "@/hooks/useStyles";
 import { useLocalSearchParams } from "expo-router";
 import React, { Suspense } from "react";
@@ -12,31 +13,31 @@ const LazyNoteEditorView = React.lazy(
 	() => import("@/components/NoteEditorView"),
 );
 
+function NoteEditorContent({ id }: { id: string }) {
+	const note = useSuspenseLoadNote(id);
+
+	if (!note) {
+		return <ErrorScreen errorMessage="Note not found" onRetry={() => {}} />;
+	}
+
+	return (
+		<Suspense fallback={<Loader />}>
+			<LazyNoteEditorView note={note} />
+		</Suspense>
+	);
+}
+
 export default function NoteEditorScreen() {
 	const params = useLocalSearchParams();
-	const { id } = params;
-
-	const { isLoading, error, note } = useLoadNote(id as string);
+	const noteId = typeof params.id === "string" ? params.id : "";
 
 	const styles = useStyles(createStyles);
 
-	if (isLoading) {
+	if (!noteId) {
 		return (
 			<View style={styles.screen}>
 				<View style={styles.content}>
-					<Loader />
-				</View>
-			</View>
-		);
-	}
-	if (error || !note) {
-		return (
-			<View style={styles.screen}>
-				<View style={styles.content}>
-					<ErrorScreen
-						errorMessage={error ?? "Note not found"}
-						onRetry={() => {}}
-					/>
+					<ErrorScreen errorMessage="Note not found" onRetry={() => {}} />
 				</View>
 			</View>
 		);
@@ -44,9 +45,15 @@ export default function NoteEditorScreen() {
 	return (
 		<View style={styles.screen}>
 			<View style={styles.content}>
-				<Suspense fallback={<Loader />}>
-					<LazyNoteEditorView note={note} />
-				</Suspense>
+				<QueryErrorBoundary
+					fallbackRender={(error) => (
+						<ErrorScreen errorMessage={error.message} onRetry={() => {}} />
+					)}
+				>
+					<Suspense fallback={<Loader />}>
+						<NoteEditorContent id={noteId} />
+					</Suspense>
+				</QueryErrorBoundary>
 			</View>
 		</View>
 	);

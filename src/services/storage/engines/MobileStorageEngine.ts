@@ -4,7 +4,6 @@ import {
 	stringifyFrontmatter,
 } from "@/services/notes/frontmatter";
 import { resetNotesIndexDb } from "@/services/notes/indexDb/db";
-import { extractSummary } from "@/services/notes/indexDb/mapper";
 import { rebuildFromDisk } from "@/services/notes/indexDb/rebuildService";
 import {
 	type NotesIndexRebuildMetrics,
@@ -17,11 +16,7 @@ import {
 	parseTemplateFrontmatter,
 	stringifyTemplateFrontmatter,
 } from "@/services/notes/templateFrontmatter";
-import type {
-	Note,
-	NoteListFilters,
-	NoteTemplate,
-} from "@/services/notes/types";
+import type { Note, NoteTemplate } from "@/services/notes/types";
 import type {
 	NoteFileEntry,
 	StorageEngine,
@@ -241,41 +236,5 @@ export class MobileStorageEngine implements StorageEngine {
 			}),
 		);
 		return templates;
-	}
-
-	async listNotesFallback(
-		limit: number,
-		offset?: number,
-		query?: string,
-		filters?: NoteListFilters,
-	): Promise<Note[]> {
-		const normalizedQuery = query?.trim().toLowerCase() ?? "";
-		const files = await this.listNoteFiles();
-		const filtered: Note[] = [];
-		for (const file of files) {
-			const loaded = await this.loadNote(file.id);
-			if (!loaded) continue;
-			const matches =
-				normalizedQuery.length === 0 ||
-				loaded.title.toLowerCase().includes(normalizedQuery) ||
-				loaded.content.toLowerCase().includes(normalizedQuery);
-			const matchesType =
-				!filters?.noteTypes ||
-				filters.noteTypes.length === 0 ||
-				filters.noteTypes.includes(loaded.noteType);
-			const matchesStatus =
-				!filters?.status || loaded.status === filters.status;
-			if (!matches || !matchesType || !matchesStatus) continue;
-			filtered.push({
-				...loaded,
-				content: extractSummary(loaded.content),
-			});
-		}
-		filtered.sort((a, b) => {
-			if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-			return b.lastUpdated - a.lastUpdated;
-		});
-		const from = Math.max(0, offset ?? 0);
-		return filtered.slice(from, from + limit);
 	}
 }

@@ -1,8 +1,8 @@
 import { GitService } from "@/services/git/gitService";
+import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { getStorageEngine } from "@/services/storage/storageEngine";
-import type { ListNotesResult } from "./notesIndex";
-import type { Note, NoteListFilters } from "./types";
+import type { Note } from "./types";
 
 // Persists notes to the file system
 
@@ -48,6 +48,7 @@ export class NoteService {
 
 		GitService.queueChange(`${id}.md`, isNewNote ? "add" : "modify");
 		GitService.scheduleCommitBatch();
+		invalidateNoteQueryCache();
 
 		return saved;
 	}
@@ -63,58 +64,11 @@ export class NoteService {
 			}
 			GitService.queueChange(`${id}.md`, "delete");
 			GitService.scheduleCommitBatch();
+			invalidateNoteQueryCache();
 			return true;
 		} catch (e) {
 			console.warn("Failed to delete note:", e);
 			return false;
 		}
-	}
-
-	static async listNotesFallback(
-		query: string,
-		limit: number,
-		offset?: number,
-		filters?: NoteListFilters,
-	): Promise<ListNotesResult> {
-		const files = await getStorageEngine().listNoteFiles();
-		const normalizedQuery = query.trim().toLowerCase();
-		const filtered: Note[] = [];
-		for (const file of files) {
-			const loaded = await getStorageEngine().loadNote(file.id);
-			if (!loaded) continue;
-			const matches =
-				normalizedQuery.length === 0 ||
-				loaded.title.toLowerCase().includes(normalizedQuery) ||
-				loaded.content.toLowerCase().includes(normalizedQuery);
-			const matchesType =
-				!filters?.noteTypes ||
-				filters.noteTypes.length === 0 ||
-				filters.noteTypes.includes(loaded.noteType);
-			const matchesStatus =
-				!filters?.status || loaded.status === filters.status;
-			if (!matches || !matchesType || !matchesStatus) continue;
-			filtered.push({
-				...loaded,
-				content: extractSummary(loaded.content),
-			});
-		}
-		filtered.sort((a, b) => {
-			if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-			return b.lastUpdated - a.lastUpdated;
-		});
-		const from = Math.max(0, offset ?? 0);
-		const page = filtered.slice(from, from + limit);
-		return {
-			items: page.map((note) => ({
-				noteId: note.id,
-				title: note.title,
-				summary: note.content,
-				updatedAt: note.lastUpdated,
-				isPinned: note.isPinned,
-				noteType: note.noteType,
-				status: note.status,
-			})),
-			cursor: from + limit < filtered.length ? from + limit : undefined,
-		};
 	}
 }
