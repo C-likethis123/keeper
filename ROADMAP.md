@@ -172,11 +172,11 @@ Build on the new editor-core test foundation by extending coverage into reducer/
 
 ---
 
-### Phase 6: Component and Integration Test Architecture
+### Phase 6: Component and Integration Test Architecture ✅
 
 Introduce a separate test layer for UI and integration behavior after the pure-core suite is stable.
 
-**Status**: In progress
+**Status**: Implemented
 **Current implementation evidence**:
 
 - Added a `jest-expo` + React Native Testing Library harness for `*.jest.test.tsx`
@@ -188,6 +188,10 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 - Added `NoteGrid` component coverage for load-more triggering and duplicate end-reached suppression
 - Added wikilink modal and overlay coverage for search, create-option behavior, keyboard submission, cancellation, and result selection
 - Added `HybridEditor` platform coverage for rendered wikilink activation on web, iOS, and Android, including open-existing and create-on-miss navigation flows
+- Added `EditorToolbar` component coverage for undo/redo dispatch, list indent/outdent enablement, checkbox conversion, and native-vs-web image affordances
+- Added `useAutoSave` hook coverage for idle dedupe, save success/error handling, unmount flush, and initial snapshot normalization
+- Added `useLoadNote` hook coverage for pending startup, init failure, note-not-found, and thrown load-error paths
+- Added startup UI/runtime coverage for `src/app/_layout.tsx`, `useAppStartup`, and `startupStrategies.ts`, including desktop/mobile hydration sequencing and unsupported-runtime behavior
 **Objectives**:
 
 - Use `jest-expo` with React Native Testing Library for component coverage
@@ -202,10 +206,8 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 
 - How much storage and git behavior should be mocked versus exercised through higher-level service seams
 - Expand `HybridEditor` integration coverage beyond wikilink activation into keyboard shortcuts, split/merge flows, block selection deletion, paragraph-space handling, and scroll/focus coordination
-- Add `EditorToolbar` coverage for formatting actions and block type changes
-- Add `useAutoSave` coverage for idle timing, save dedupe, error handling, and `SaveIndicator` state transitions
-- Add `useLoadNote` hook coverage for pending, failed init, note-not-found, and thrown-error paths
-- Add startup UI/integration coverage for `src/app/_layout.tsx`, `useAppStartup`, and `startupStrategies.ts`
+- Expand `EditorToolbar` coverage into formatting actions and block type changes
+- Extend `useAutoSave` coverage into `SaveIndicator` state transitions if that UI becomes more coupled to the hook
 - Add Wikilink UI/integration coverage for create flow, overlay results, keyboard selection, and dismissal
 - Expand note-list coverage beyond the current index-route tests into broader `NoteGrid` loading, error, empty, populated, filter, and navigation states
 - Add more `editorStore` flow coverage as regressions or repeated manual checks reveal weak spots
@@ -304,10 +306,10 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 ### Testing Architecture
 
 **Status**: In progress
-**Current**: The project now uses Jest as the primary test runner, with `jest-expo` + React Native Testing Library covering both pure modules and UI/routes. Current coverage includes `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, `repoBootstrapper`, startup-step orchestration, `noteTypeDerivation`, `src/app/editor.tsx`, `src/app/index.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, focused `NoteGrid` pagination behavior, wikilink modal/overlay flows, and `HybridEditor` rendered-wikilink activation behavior across web/iOS/Android.
+**Current**: The project now uses Jest as the primary test runner, with `jest-expo` + React Native Testing Library covering both pure modules and UI/routes. Current coverage includes `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, `repoBootstrapper`, startup-step orchestration plus `startupStrategies`, `noteTypeDerivation`, `src/app/editor.tsx`, `src/app/index.tsx`, `src/app/_layout.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, `EditorToolbar`, focused `NoteGrid` pagination behavior, `useAutoSave`, `useLoadNote`, `useAppStartup`, wikilink modal/overlay flows, and `HybridEditor` rendered-wikilink activation behavior across web/iOS/Android.
 **Next**:
 
-- Expand tests gradually into remaining startup/runtime seams, especially `startupStrategies`, as follow-on work rather than a prerequisite for this phase
+- Expand tests gradually into remaining editor and note-list seams rather than widening startup coverage first
 - Add shared fixtures only where repetition appears, keeping early tests close to the modules they cover
 
 **Current constraints**:
