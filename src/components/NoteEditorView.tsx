@@ -1,13 +1,13 @@
 import { SaveIndicator } from "@/components/SaveIndicator";
-import { FilterChip } from "@/components/shared/FilterChip";
 import type { EditorState } from "@/components/editor/core/EditorState";
+import { FilterChip } from "@/components/shared/FilterChip";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { appEvents } from "@/services/appEvents";
-import { NotesIndexService } from "@/services/notes/notesIndex";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
+import { NotesIndexService } from "@/services/notes/notesIndex";
 import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
@@ -185,12 +185,15 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		router.back();
 	}, [id, router]);
 
-	const applyTitleChange = useCallback((nextTitle: string) => {
-		setTitle(nextTitle);
-		const nextType = deriveNoteType(nextTitle);
-		setNoteType(nextType);
-		setTodoStatus(nextType === "todo" ? (todoStatus ?? "open") : null);
-	}, [todoStatus]);
+	const applyTitleChange = useCallback(
+		(nextTitle: string) => {
+			setTitle(nextTitle);
+			const nextType = deriveNoteType(nextTitle);
+			setNoteType(nextType);
+			setTodoStatus(nextType === "todo" ? (todoStatus ?? "open") : null);
+		},
+		[todoStatus],
+	);
 
 	const openTemplateModal = useCallback(async () => {
 		setIsTemplateModalVisible(true);
@@ -328,50 +331,30 @@ export default function NoteEditorView({ note }: { note: Note }) {
 					placeholderTextColor={theme.custom.editor.placeholder}
 					onBlur={() => setNoteType(deriveNoteType(title))}
 				/>
-				<View style={styles.metadataSection}>
-					{noteType !== "template" ? (
-						<View style={styles.metadataGroup}>
-							<Text style={styles.metadataLabel}>Template</Text>
-							<View style={styles.optionRow}>
-								<TouchableOpacity
-									style={styles.secondaryActionChip}
-									onPress={() => {
-										void openTemplateModal();
-									}}
-								>
-									<MaterialIcons
-										name="content-copy"
-										size={16}
-										color={theme.colors.text}
-									/>
-									<Text style={styles.secondaryActionChipText}>
-										Insert from template
-									</Text>
-								</TouchableOpacity>
-							</View>
+				{noteType === "todo" ? (
+					<View style={styles.metadataGroup}>
+						<Text style={styles.metadataLabel}>Status</Text>
+						<View style={styles.optionRow}>
+							{TODO_STATUS_OPTIONS.map((option) => (
+								<FilterChip
+									key={option.value}
+									label={option.label}
+									selected={(todoStatus ?? "open") === option.value}
+									onPress={() => setTodoStatus(option.value)}
+								/>
+							))}
 						</View>
-					) : null}
-					{noteType === "todo" ? (
-						<View style={styles.metadataGroup}>
-							<Text style={styles.metadataLabel}>Status</Text>
-							<View style={styles.optionRow}>
-								{TODO_STATUS_OPTIONS.map((option) => (
-									<FilterChip
-										key={option.value}
-										label={option.label}
-										selected={(todoStatus ?? "open") === option.value}
-										onPress={() => setTodoStatus(option.value)}
-									/>
-								))}
-							</View>
-						</View>
-					) : null}
-				</View>
+					</View>
+				) : null}
 
 				<Suspense fallback={<Loader />}>
 					<LazyEditorToolbar />
 					<EditorScrollProvider>
-						<LazyHybridEditor />
+						<LazyHybridEditor
+							onInsertTemplateCommand={() => {
+								void openTemplateModal();
+							}}
+						/>
 					</EditorScrollProvider>
 				</Suspense>
 			</View>
@@ -440,9 +423,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		content: {
 			flex: 1,
-			padding: 16,
+			paddingHorizontal: 16,
 			backgroundColor: theme.colors.background,
-			gap: 14,
+			gap: 8,
 		},
 		titleInput: {
 			fontSize: 20,
@@ -451,10 +434,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			borderBottomColor: theme.colors.border,
 			paddingVertical: 4,
 			color: theme.colors.text,
-		},
-		metadataSection: {
-			gap: 10,
-			marginBottom: 14,
 		},
 		metadataGroup: {
 			gap: 6,

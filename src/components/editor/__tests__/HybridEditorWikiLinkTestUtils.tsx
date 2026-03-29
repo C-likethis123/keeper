@@ -4,7 +4,7 @@ import { NoteService } from "@/services/notes/noteService";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { useEditorState } from "@/stores/editorStore";
 import { render } from "@testing-library/react-native";
-import React from "react";
+import type React from "react";
 import { Platform } from "react-native";
 
 export const mockPush = jest.fn();
@@ -55,6 +55,10 @@ jest.mock("@/hooks/useExtendedTheme", () => ({
 	}),
 }));
 
+jest.mock("react-native-webview", () => ({
+	WebView: () => null,
+}));
+
 jest.mock("@/components/editor/keyboard/useEditorKeyboardShortcuts", () => ({
 	useEditorKeyboardShortcuts: () => {},
 }));
@@ -87,13 +91,16 @@ export function resetHybridEditorHarness(
 	setPlatformOs(platform);
 }
 
-export function renderEditor(markdown: string) {
+export function renderEditor(
+	markdown: string,
+	props?: React.ComponentProps<typeof HybridEditor>,
+) {
 	useEditorState.getState().loadMarkdown(markdown);
 	useEditorState.getState().setSelection(null);
 
 	return render(
 		<EditorScrollProvider>
-			<HybridEditor />
+			<HybridEditor {...props} />
 		</EditorScrollProvider>,
 	);
 }

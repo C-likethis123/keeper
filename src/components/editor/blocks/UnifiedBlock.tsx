@@ -19,6 +19,8 @@ import {
 import { useEditorScrollView } from "../EditorScrollContext";
 import { BlockType, getListLevel, isListItem } from "../core/BlockNode";
 import { InlineMarkdown } from "../rendering/InlineMarkdown";
+import { useSlashCommandContext } from "../slash-commands/SlashCommandContext";
+import { findSlashCommandTriggerStart } from "../slash-commands/SlashCommandTrigger";
 import { useWikiLinkContext } from "../wikilinks/WikiLinkContext";
 import { findWikiLinkTriggerStart } from "../wikilinks/WikiLinkTrigger";
 import {
@@ -119,6 +121,7 @@ export function UnifiedBlock({
 		[handleFocus, onOpenWikiLink],
 	);
 	const wikiLinks = useWikiLinkContext();
+	const slashCommands = useSlashCommandContext();
 	const handleContentChange = useCallback(
 		(newText: string) => {
 			// When we handle Enter to split the block, React Native's TextInput will still
@@ -132,11 +135,18 @@ export function UnifiedBlock({
 			onContentChange(index, newText);
 			if (isFocused && inputRef.current) {
 				const caret = newText.length;
-				const start = findWikiLinkTriggerStart(newText, caret);
-				if (start !== null) {
-					wikiLinks.handleTriggerStart(index, start);
+				const wikiLinkStart = findWikiLinkTriggerStart(newText, caret);
+				const slashCommandStart = findSlashCommandTriggerStart(newText, caret);
+				if (wikiLinkStart !== null) {
+					slashCommands.handleCancel();
+					wikiLinks.handleTriggerStart(index, wikiLinkStart);
+				} else if (slashCommandStart !== null) {
+					const query = newText.slice(slashCommandStart + 1, caret);
+					wikiLinks.handleCancel();
+					slashCommands.handleTriggerStart(index, slashCommandStart, query);
 				} else {
 					wikiLinks.handleCancel();
+					slashCommands.handleCancel();
 				}
 			}
 		},
@@ -146,6 +156,8 @@ export function UnifiedBlock({
 			isFocused,
 			wikiLinks.handleTriggerStart,
 			wikiLinks.handleCancel,
+			slashCommands.handleTriggerStart,
+			slashCommands.handleCancel,
 		],
 	);
 

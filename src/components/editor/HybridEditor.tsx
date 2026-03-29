@@ -20,6 +20,11 @@ import {
 	useWikiLinkContext,
 } from "./wikilinks/WikiLinkContext";
 import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
+import {
+	SlashCommandProvider,
+	useSlashCommandContext,
+} from "./slash-commands/SlashCommandContext";
+import { SlashCommandModal } from "./slash-commands/SlashCommandModal";
 
 /// A hybrid markdown/code editor widget
 ///
@@ -28,10 +33,18 @@ import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
 /// - Inline markdown formatting (bold, italic, code, links)
 /// - Keyboard shortcuts
 /// - Undo/redo support
-export function HybridEditor() {
+interface HybridEditorProps {
+	onInsertTemplateCommand?: () => void | Promise<void>;
+}
+
+export function HybridEditor({
+	onInsertTemplateCommand,
+}: HybridEditorProps = {}) {
 	return (
 		<WikiLinkProvider>
-			<HybridEditorContent />
+			<SlashCommandProvider onInsertTemplateCommand={onInsertTemplateCommand}>
+				<HybridEditorContent />
+			</SlashCommandProvider>
 		</WikiLinkProvider>
 	);
 }
@@ -60,13 +73,20 @@ function HybridEditorContent() {
 	} = useEditorScrollView();
 	const { focusBlock } = useFocusBlock();
 	const wikiLinks = useWikiLinkContext();
+	const slashCommands = useSlashCommandContext();
 	const commandContext = useEditorCommandContext({
 		isEditorActive: selection !== null,
-		isWikiLinkModalOpen: wikiLinks.isActive,
+		isWikiLinkModalOpen: wikiLinks.isActive || slashCommands.isActive,
 		dismissOverlays: () => {
-			if (!wikiLinks.isActive) return false;
-			wikiLinks.handleCancel();
-			return true;
+			if (slashCommands.isActive) {
+				slashCommands.handleCancel();
+				return true;
+			}
+			if (wikiLinks.isActive) {
+				wikiLinks.handleCancel();
+				return true;
+			}
+			return false;
 		},
 	});
 	useEditorKeyboardShortcuts({ context: commandContext });
@@ -384,6 +404,7 @@ function HybridEditorContent() {
 				</View>
 			)}
 			<WikiLinkModal />
+			<SlashCommandModal />
 		</View>
 	);
 }

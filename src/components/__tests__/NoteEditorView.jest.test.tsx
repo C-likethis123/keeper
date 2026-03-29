@@ -107,9 +107,26 @@ jest.mock("@/components/editor/EditorToolbar", () => {
 
 jest.mock("@/components/editor/HybridEditor", () => {
 	const React = require("react");
-	const { Text } = require("react-native");
+	const { Pressable, Text } = require("react-native");
 	return {
-		HybridEditor: () => React.createElement(Text, null, "Mock editor"),
+		HybridEditor: ({
+			onInsertTemplateCommand,
+		}: {
+			onInsertTemplateCommand?: () => void;
+		}) =>
+			React.createElement(
+				React.Fragment,
+				null,
+				React.createElement(Text, null, "Mock editor"),
+				React.createElement(
+					Pressable,
+					{
+						onPress: onInsertTemplateCommand,
+						accessibilityRole: "button",
+					},
+					React.createElement(Text, null, "Trigger insert template"),
+				),
+			),
 	};
 });
 
@@ -282,4 +299,33 @@ describe("NoteEditorView", () => {
 		expect(mockDeleteNote).toHaveBeenCalledWith(note.id, "note");
 	});
 
+	it("opens the template modal when the editor requests insert template", async () => {
+		const user = userEvent.setup();
+		const note = makeNote();
+		mockIndexListNotes.mockResolvedValue({
+			items: [
+				{
+					noteId: "template-1",
+					title: "Daily template",
+					summary: "Morning checklist",
+					isPinned: false,
+					updatedAt: 1,
+					noteType: "template",
+					status: null,
+				},
+			],
+			cursor: undefined,
+		});
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock editor");
+		await user.press(screen.getByText("Trigger insert template"));
+
+		await screen.findByText("Choose template");
+		expect(mockIndexListNotes).toHaveBeenCalledWith("", 100, 0, {
+			noteTypes: ["template"],
+		});
+		expect(screen.getByText("Daily template")).toBeTruthy();
+	});
 });

@@ -86,4 +86,31 @@ describe("TauriStorageEngine", () => {
 		expect(invoke).toHaveBeenCalledTimes(1);
 		expect(invoke).toHaveBeenCalledWith("delete_note", { id: "tmpl-1" });
 	});
+
+	it("maps noteTypes filters into the backend noteType field for index queries", async () => {
+		const invoke = jest.fn().mockResolvedValue({
+			items: [],
+			cursor: undefined,
+		});
+		mockGetTauriInvoke.mockReturnValue(invoke);
+
+		const { TauriStorageEngine } = await import("../TauriStorageEngine");
+		const engine = new TauriStorageEngine();
+
+		await engine.indexList("", 100, 0, {
+			noteTypes: ["template"],
+		});
+
+		expect(invoke).toHaveBeenCalledWith("index_list", {
+			input: {
+				query: "",
+				limit: 100,
+				offset: 0,
+				filters: {
+					noteType: "template",
+					status: undefined,
+				},
+			},
+		});
+	});
 });

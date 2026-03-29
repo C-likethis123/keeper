@@ -101,12 +101,23 @@ export class TauriStorageEngine implements StorageEngine {
 		offset?: number,
 		filters?: NoteIndexQueryFilters,
 	): Promise<NoteIndexListResult> {
+		const tauriFilters =
+			filters === undefined
+				? undefined
+				: {
+						noteType:
+							filters.noteTypes && filters.noteTypes.length > 0
+								? filters.noteTypes[0]
+								: undefined,
+						status: filters.status,
+					};
+
 		return this.invoke<NoteIndexListResult>("index_list", {
 			input: {
 				query,
 				limit,
 				offset,
-				filters,
+				filters: tauriFilters,
 			},
 		});
 	}
