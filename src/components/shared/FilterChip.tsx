@@ -1,24 +1,27 @@
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import React, { useMemo } from "react";
+import { useStyles } from "@/hooks/useStyles";
+import React from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import type { ExtendedTheme } from "@/constants/themes/types";
 
 export function FilterChip({
 	label,
 	selected,
 	onPress,
+	testID,
 }: {
 	label: string;
 	selected: boolean;
 	onPress: () => void;
+	testID?: string;
 }) {
-	const theme = useExtendedTheme();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const styles = useStyles(createStyles);
 
 	return (
 		<TouchableOpacity
 			style={[styles.chip, selected && styles.chipSelected]}
 			onPress={onPress}
 			activeOpacity={0.8}
+			testID={testID}
 		>
 			<Text style={[styles.chipText, selected && styles.chipTextSelected]}>
 				{label}
@@ -27,7 +30,7 @@ export function FilterChip({
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+function createStyles(theme: ExtendedTheme) {
 	return StyleSheet.create({
 		chip: {
 			paddingHorizontal: 12,
