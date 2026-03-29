@@ -11,6 +11,7 @@ import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry"
 import { ThemeProvider } from "@react-navigation/native";
 import { Stack, router } from "expo-router";
 import { nanoid } from "nanoid";
+import { useEffect } from "react";
 import {
 	ActivityIndicator,
 	StyleSheet,
@@ -20,15 +21,12 @@ import {
 } from "react-native";
 import "react-native-get-random-values";
 
-let hasTracedRootLayoutRender = false;
-
 traceStartupBootstrapEvent("bootstrap.layout_module_evaluated");
 
 export default function RootLayout() {
-	if (!hasTracedRootLayoutRender) {
-		hasTracedRootLayoutRender = true;
+	useEffect(() => {
 		traceStartupBootstrapEvent("bootstrap.root_layout_first_render");
-	}
+	}, []);
 	const themeMode = useColorScheme();
 	const { isHydrated, initError } = useAppStartup();
 

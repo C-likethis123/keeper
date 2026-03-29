@@ -6,6 +6,7 @@ import type React from "react";
 const mockUseAppStartup = jest.fn();
 const mockUseAppKeyboardShortcuts = jest.fn();
 const mockRouterPush = jest.fn();
+const mockShowToast = jest.fn();
 
 jest.mock("@react-navigation/native", () => ({
 	ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
@@ -52,6 +53,26 @@ jest.mock("@/components/shared/Toast", () => ({
 	},
 }));
 
+jest.mock("@/components/shared/StartupScreen", () => ({
+	__esModule: true,
+	default: ({
+		mode,
+		message,
+	}: {
+		mode: "loading" | "error";
+		message?: string;
+	}) => {
+		const React = require("react");
+		const { Text, View } = require("react-native");
+		return React.createElement(View, null, [
+			React.createElement(Text, { key: "title" }, "Keeper"),
+			mode === "loading"
+				? React.createElement(Text, { key: "loading" }, "Loading")
+				: React.createElement(Text, { key: "error" }, message),
+		]);
+	},
+}));
+
 jest.mock("@/hooks/useAppStartup", () => ({
 	useAppStartup: () => mockUseAppStartup(),
 }));
@@ -72,10 +93,20 @@ jest.mock("@/hooks/useStyles", () => ({
 		}),
 }));
 
+jest.mock("@/stores/toastStore", () => ({
+	useToastStore: (
+		selector: (state: { showToast: typeof mockShowToast }) => unknown,
+	) => selector({ showToast: mockShowToast }),
+}));
+
 jest.mock("@/services/notes/noteService", () => ({
 	NoteService: {
 		saveNote: jest.fn(),
 	},
+}));
+
+jest.mock("nanoid", () => ({
+	nanoid: () => "generated-note-id",
 }));
 
 import RootLayout from "@/app/_layout";
@@ -149,6 +180,7 @@ describe("RootLayout", () => {
 		await waitFor(() => {
 			expect(NoteService.saveNote).toHaveBeenCalledWith(
 				expect.objectContaining({
+					id: "generated-note-id",
 					title: "",
 					content: "",
 					noteType: "note",
@@ -157,7 +189,33 @@ describe("RootLayout", () => {
 				true,
 			);
 		});
-		expect(mockRouterPush).toHaveBeenCalledWith("/editor?id=generated-note-id");
+		expect(mockRouterPush).toHaveBeenCalledWith({
+			pathname: "/editor",
+			params: { id: "generated-note-id" },
+		});
 		expect(emitSpy).toHaveBeenCalledWith("forceSave");
+	});
+
+	it("shows a toast instead of navigating when create-note fails", async () => {
+		mockUseAppStartup.mockReturnValue({
+			isHydrated: true,
+			initError: null,
+			runtime: "desktop-tauri",
+			status: "ready",
+		});
+		(NoteService.saveNote as jest.Mock).mockRejectedValue(
+			new Error("disk full"),
+		);
+
+		render(<RootLayout />);
+
+		const shortcutConfig = mockUseAppKeyboardShortcuts.mock.calls[0][0] as {
+			onCreateNote: () => Promise<void>;
+		};
+
+		await shortcutConfig.onCreateNote();
+
+		expect(mockRouterPush).not.toHaveBeenCalled();
+		expect(mockShowToast).toHaveBeenCalledWith("Failed to create note");
 	});
 });
