@@ -18,6 +18,12 @@ No currently confirmed P1 issues.
 
 ### Recently resolved
 
+**Collapsible Section Support**: Implemented in this workspace. Users can now insert collapsible `<details>` sections via the toolbar or by typing `<details></details>` and pressing Enter. The feature includes a chevron indicator and dedicated summary/body zones in the editor.
+**Key files**: `src/components/editor/blocks/LazyCollapsibleBlock.tsx`, `src/hooks/useToolbarActions.ts`, `src/components/editor/EditorToolbar.tsx`, `src/components/editor/blocks/BlockRegistry.tsx`
+
+**Shared UI Components Refactor**: Extracted repeated UI patterns into shared components and hooks. Added `FilterChip`, `IconButton`, and the `useBlockInputHandlers` hook to unify behavior and reduce duplication across the editor and filters.
+**Key files**: `src/components/shared/FilterChip.tsx`, `src/components/shared/IconButton.tsx`, `src/components/editor/blocks/useBlockInputHandlers.ts`
+
 **Desktop hydration bug**: Fixed. Desktop now hydrates immediately on Tauri while note-loading hooks wait for storage initialization state before reading from disk, so restored editor routes no longer get stuck on the wrong backend.
 **Key files**: `src/app/_layout.tsx`, `src/hooks/useLoadNote.ts`, `src/hooks/useNotes.ts`, `src/stores/storageStore.ts`
 
@@ -350,6 +356,52 @@ Watch YouTube (and other videos) while editing notes, without leaving the app.
 - `src/components/editor/video/videoPositionStore.ts`: AsyncStorage-backed position storage
 - `src/components/editor/video/EmbeddedVideoPanel.tsx`: Resizable video panel with time tracking
 - `src/components/NoteEditorView.tsx`: Split-screen orchestration and persistence wiring
+
+---
+
+### Phase 8: Shared UI Components & Refactors ✅
+
+Extract repeated UI patterns into shared components and hooks to reduce duplication and improve maintainability.
+
+**Status**: Implemented
+**Shipped in this phase**:
+- Added `FilterChip` shared component with selected state
+- Added `IconButton` shared component for the editor toolbar
+- Extracted `useBlockInputHandlers` hook for shared focus/keypress/selection logic in complex blocks
+- Migrated `NoteFiltersBar`, `NoteEditorView`, `EditorToolbar`, `ImageBlock`, and `VideoBlock` to the new shared elements
+- Added Jest coverage for all new shared components and hooks
+
+**Key files**:
+- `src/components/shared/FilterChip.tsx`
+- `src/components/shared/IconButton.tsx`
+- `src/components/editor/blocks/useBlockInputHandlers.ts`
+- `src/components/editor/EditorToolbar.tsx`
+
+---
+
+### Phase 9: Collapsible Blocks
+
+Add support for collapsible sections using the `<details>` HTML pattern, including live trigger conversion and toolbar integration.
+
+**Status**: In progress
+**Current implementation evidence**:
+- Added `CollapsibleBlock` type to the document model and block registry
+- Broadened the `triggerPrefix` regex in `BlockRegistry` to match `<details></details>` and `<details open>` for live conversion
+- Wired `handleInsertCollapsible` through `useToolbarActions`
+- Added the `expand-more` (▾) button to `EditorToolbar`
+- Added unit coverage for the new trigger variants in `BlockRegistry` and the toolbar button interaction
+
+**Key files**:
+- `src/components/editor/blocks/BlockRegistry.tsx`
+- `src/hooks/useToolbarActions.ts`
+- `src/components/editor/EditorToolbar.tsx`
+- `src/components/editor/blocks/LazyCollapsibleBlock.tsx`
+
+**Next**:
+- Manually smoke test the live conversion and toolbar insertion on device
+- Finalize the layout and interaction polish for the collapsible block body and summary zones
+
+---
 
 ### Tabs
 
