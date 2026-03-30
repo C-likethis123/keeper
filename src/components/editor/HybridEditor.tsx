@@ -238,10 +238,22 @@ function HybridEditorContent() {
 				return;
 			}
 
-			// Merge with previous block if at start, or focus previous when it's non-mergeable (e.g. image)
+			// Collapsible blocks with content can't be merged into the previous block
+			if (block.type === BlockType.collapsibleBlock) {
+				return;
+			}
+
+			// Merge with previous block if at start, or focus previous when it's non-mergeable (e.g. image, collapsible)
 			if (index > 0) {
 				const prevType = prevBlock?.type;
-				if (prevType && [BlockType.image, BlockType.video].includes(prevType)) {
+				if (
+					prevType &&
+					[
+						BlockType.image,
+						BlockType.video,
+						BlockType.collapsibleBlock,
+					].includes(prevType)
+				) {
 					focusBlock(index - 1);
 					return;
 				}
