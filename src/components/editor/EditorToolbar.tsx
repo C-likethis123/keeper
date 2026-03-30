@@ -36,6 +36,7 @@ export function EditorToolbar() {
 		handleIndent,
 		handleConvertToCheckbox,
 		handleInsertImage,
+		handleInsertCollapsible,
 	} = useToolbarActions();
 
 	const isListBlock = isListItem(blockType);
@@ -73,6 +74,10 @@ export function EditorToolbar() {
 				name="check-box-outline-blank"
 				onPress={handleConvertToCheckbox}
 				disabled={!canConvertToCheckbox}
+			/>
+			<IconButton
+				name="expand-more"
+				onPress={handleInsertCollapsible}
 			/>
 			{Platform.OS !== "web" ? (
 				<IconButton name="add-photo-alternate" onPress={handleInsertImage} />

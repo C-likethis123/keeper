@@ -1,6 +1,7 @@
 import {
 	BlockType,
 	createImageBlock,
+	createParagraphBlock,
 } from "@/components/editor/core/BlockNode";
 import { executeEditorCommand } from "@/components/editor/keyboard/editorCommands";
 import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
@@ -14,11 +15,13 @@ interface UseToolbarActions {
 	handleIndent: () => void;
 	handleConvertToCheckbox: () => void;
 	handleInsertImage: () => Promise<void>;
+	handleInsertCollapsible: () => void;
 }
 
 export function useToolbarActions(): UseToolbarActions {
 	const getFocusedBlockIndex = useEditorState((s) => s.getFocusedBlockIndex);
 	const updateBlockType = useEditorState((s) => s.updateBlockType);
+	const updateBlockAttributes = useEditorState((s) => s.updateBlockAttributes);
 	const document = useEditorState((s) => s.document);
 	const insertBlockAfter = useEditorState((s) => s.insertBlockAfter);
 	const { focusBlock } = useFocusBlock();
@@ -63,10 +66,25 @@ export function useToolbarActions(): UseToolbarActions {
 		focusBlock(focusedIndex + 1);
 	}, [getFocusedBlockIndex, insertBlockAfter, focusBlock]);
 
+	const handleInsertCollapsible = useCallback(() => {
+		const index = getFocusedBlockIndex() ?? 0;
+		updateBlockType(index, BlockType.collapsibleBlock);
+		updateBlockAttributes(index, { summary: "", isExpanded: true });
+		insertBlockAfter(index, createParagraphBlock());
+		focusBlock(index + 1);
+	}, [
+		getFocusedBlockIndex,
+		updateBlockType,
+		updateBlockAttributes,
+		insertBlockAfter,
+		focusBlock,
+	]);
+
 	return {
 		handleOutdent,
 		handleIndent,
 		handleConvertToCheckbox,
 		handleInsertImage,
+		handleInsertCollapsible,
 	};
 }

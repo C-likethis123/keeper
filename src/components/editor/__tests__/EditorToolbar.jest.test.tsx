@@ -9,6 +9,7 @@ const mockHandleIndent = jest.fn();
 const mockHandleOutdent = jest.fn();
 const mockHandleConvertToCheckbox = jest.fn();
 const mockHandleInsertImage = jest.fn();
+const mockHandleInsertCollapsible = jest.fn();
 const mockUseEditorState = jest.fn();
 
 jest.mock("@/components/editor/keyboard/editorCommands", () => ({
@@ -25,6 +26,7 @@ jest.mock("@/hooks/useToolbarActions", () => ({
 		handleOutdent: mockHandleOutdent,
 		handleConvertToCheckbox: mockHandleConvertToCheckbox,
 		handleInsertImage: mockHandleInsertImage,
+		handleInsertCollapsible: mockHandleInsertCollapsible,
 	}),
 }));
 
@@ -200,5 +202,13 @@ describe("EditorToolbar", () => {
 
 		expect(mockHandleInsertImage).toHaveBeenCalledTimes(1);
 		expect(screen.queryByText("TODO: Insert Image")).toBeNull();
+	});
+
+	it("inserts a collapsible section when the expand-more button is pressed", () => {
+		const { getByRole } = renderToolbar();
+
+		fireEvent.press(getByRole("button", { name: "expand-more" }));
+
+		expect(mockHandleInsertCollapsible).toHaveBeenCalledTimes(1);
 	});
 });
