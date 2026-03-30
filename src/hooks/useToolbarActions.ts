@@ -67,8 +67,7 @@ export function useToolbarActions(): UseToolbarActions {
 	}, [getFocusedBlockIndex, insertBlockAfter, focusBlock]);
 
 	const handleInsertCollapsible = useCallback(() => {
-		const index = getFocusedBlockIndex();
-		if (index === null) return;
+		const index = getFocusedBlockIndex() ?? 0;
 		updateBlockType(index, BlockType.collapsibleBlock);
 		updateBlockAttributes(index, { summary: "", isExpanded: true });
 		insertBlockAfter(index, createParagraphBlock());

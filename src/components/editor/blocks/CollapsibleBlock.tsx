@@ -29,6 +29,7 @@ export function CollapsibleBlock({
 	onContentChange,
 	onAttributesChange,
 	onBackspaceAtStart,
+	onEnter,
 	onSelectionChange,
 	onDelete,
 }: BlockConfig) {
@@ -89,6 +90,8 @@ export function CollapsibleBlock({
 				if (isExpanded) {
 					setFocusZone("body");
 					bodyInputRef.current?.focus();
+				} else {
+					onEnter(index, summaryValue.length);
 				}
 				return;
 			}
@@ -96,7 +99,7 @@ export function CollapsibleBlock({
 				onBackspaceAtStart(index);
 			}
 		},
-		[isExpanded, summaryValue, onBackspaceAtStart, index],
+		[isExpanded, summaryValue, onBackspaceAtStart, onEnter, index],
 	);
 
 	const handleBodyKeyPress = useCallback(
@@ -105,9 +108,13 @@ export function CollapsibleBlock({
 			if (key === "Backspace" && bodyValue === "") {
 				setFocusZone("summary");
 				summaryInputRef.current?.focus();
+				return;
+			}
+			if ((key === "Enter" || key === "Return") && bodyValue === "") {
+				onEnter(index, 0);
 			}
 		},
-		[bodyValue],
+		[bodyValue, onEnter, index],
 	);
 
 	const styles = useMemo(() => createStyles(theme), [theme]);

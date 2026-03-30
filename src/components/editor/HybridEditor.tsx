@@ -264,13 +264,12 @@ function HybridEditorContent() {
 			if (!block) {
 				return;
 			}
-			if (
-				[
-					BlockType.codeBlock,
-					BlockType.mathBlock,
-					BlockType.collapsibleBlock,
-				].includes(block.type)
-			) {
+			if ([BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
+				return;
+			}
+			if (block.type === BlockType.collapsibleBlock) {
+				insertBlockAfter(index, createParagraphBlock());
+				focusBlock(index + 1);
 				return;
 			}
 			if (
@@ -305,6 +304,7 @@ function HybridEditorContent() {
 			updateBlockType,
 			splitBlock,
 			getBlockAtIndex,
+			insertBlockAfter,
 		],
 	);
 
