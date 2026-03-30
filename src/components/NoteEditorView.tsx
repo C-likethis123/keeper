@@ -46,6 +46,7 @@ const LazyHybridEditor = React.lazy(() =>
 	})),
 );
 
+// TODO: refactor so we can do away with this???
 const TODO_STATUS_OPTIONS = [
 	{ label: "Open", value: "open" },
 	{ label: "Doing", value: "doing" },
@@ -53,7 +54,13 @@ const TODO_STATUS_OPTIONS = [
 	{ label: "Done", value: "done" },
 ] as const;
 
-export default function NoteEditorView({ note }: { note: Note }) {
+export default function NoteEditorView({
+	note,
+	isNew,
+}: {
+	note: Note;
+	isNew?: boolean;
+}) {
 	const navigation = useNavigation();
 	const router = useRouter();
 	const theme = useExtendedTheme();
@@ -90,6 +97,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		todoStatus,
 	});
 	const lastPersistedTypeRef = useRef<Note["noteType"]>(note.noteType);
+	const isNewEntryRef = useRef(!!isNew);
 
 	latestDraftRef.current = {
 		title,
@@ -125,11 +133,14 @@ export default function NoteEditorView({ note }: { note: Note }) {
 	const persistCurrentEntry = useCallback(
 		async (overrides?: Partial<NoteSaveInput>) => {
 			const payload = buildCurrentNotePayload(overrides);
+			const isNewEntry = isNewEntryRef.current;
 			await persistEditorEntry({
 				...payload,
 				previousNoteType: lastPersistedTypeRef.current,
+				isNewEntry,
 			});
 			lastPersistedTypeRef.current = payload.noteType;
+			isNewEntryRef.current = false;
 			return payload;
 		},
 		[buildCurrentNotePayload],
@@ -137,6 +148,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 
 	const handlePersisted = useCallback((savedType: Note["noteType"]) => {
 		lastPersistedTypeRef.current = savedType;
+		isNewEntryRef.current = false;
 	}, []);
 
 	const { status, forceSave } = useAutoSave({
@@ -147,6 +159,7 @@ export default function NoteEditorView({ note }: { note: Note }) {
 		status: noteType === "todo" ? (todoStatus ?? "open") : null,
 		initialNoteType: note.noteType,
 		onPersisted: handlePersisted,
+		isNew,
 	});
 
 	useEffect(() => {

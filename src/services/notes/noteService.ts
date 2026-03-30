@@ -3,6 +3,7 @@ import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { getTemplateRelativePath } from "@/services/notes/templatePaths";
 import { getStorageEngine } from "@/services/storage/storageEngine";
+import { useStorageStore } from "@/stores/storageStore";
 import type { ListNotesResult } from "./notesIndex";
 import type { Note, NoteListFilters, NoteSaveInput } from "./types";
 
@@ -59,6 +60,7 @@ export class NoteService {
 		);
 		GitService.scheduleCommitBatch();
 		invalidateNoteQueryCache();
+		useStorageStore.getState().bumpContentVersion();
 
 		return saved;
 	}
@@ -78,6 +80,7 @@ export class NoteService {
 			);
 			GitService.scheduleCommitBatch();
 			invalidateNoteQueryCache();
+			useStorageStore.getState().bumpContentVersion();
 			return true;
 		} catch (e) {
 			console.warn("Failed to delete note:", e);

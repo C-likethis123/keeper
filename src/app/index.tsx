@@ -4,6 +4,7 @@ import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
 import { useStyles } from "@/hooks/useStyles";
 import useSuspenseNotes from "@/hooks/useSuspenseNotes";
 import { appEvents } from "@/services/appEvents";
@@ -13,7 +14,6 @@ import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import type { Note, NoteType } from "@/services/notes/types";
 import { useToastStore } from "@/stores/toastStore";
 import { Stack, router, useFocusEffect } from "expo-router";
-import { nanoid } from "nanoid";
 import React, {
 	Suspense,
 	useCallback,
@@ -48,6 +48,7 @@ function IndexContent() {
 	} = useSuspenseNotes();
 	const showToast = useToastStore((state) => state.showToast);
 	const [isResetting, setIsResetting] = React.useState(false);
+	const createAndOpenNote = useCreateAndOpenNote();
 
 	const handleDeleteNote = useCallback(
 		async (note: Note) => {
@@ -124,16 +125,8 @@ function IndexContent() {
 	);
 
 	const handleCreateNote = useCallback(async () => {
-		const newNote = {
-			id: nanoid(),
-			title: "",
-			content: "",
-			isPinned: false,
-			noteType: "note" as NoteType,
-		};
-		await NoteService.saveNote(newNote, true);
-		router.push(`/editor?id=${newNote.id}`);
-	}, []);
+		await createAndOpenNote();
+	}, [createAndOpenNote]);
 
 	const TYPE_TITLE_PREFIX: Record<
 		Extract<NoteType, "journal" | "resource">,
@@ -146,32 +139,20 @@ function IndexContent() {
 	const handleCreateTypedNote = useCallback(
 		async (noteType: Extract<NoteType, "journal" | "resource">) => {
 			const title = TYPE_TITLE_PREFIX[noteType];
-			const newNote = {
-				id: nanoid(),
+			await createAndOpenNote({
 				title,
-				content: "",
-				isPinned: false,
 				noteType: deriveNoteType(title),
-			};
-			await NoteService.saveNote(newNote, true);
-			router.push(`/editor?id=${newNote.id}`);
+			});
 		},
-		[],
+		[createAndOpenNote],
 	);
 
 	const handleCreateTodo = useCallback(async () => {
-		const title = "Todo ";
-		const newTodo = {
-			id: nanoid(),
-			title,
-			content: "",
-			isPinned: false,
-			noteType: "todo" as NoteType,
-			status: "open" as const,
-		};
-		await NoteService.saveNote(newTodo, true);
-		router.push(`/editor?id=${newTodo.id}`);
-	}, []);
+		await createAndOpenNote({
+			title: "Todo ",
+			noteType: "todo",
+		});
+	}, [createAndOpenNote]);
 
 	const searchInputRef = useRef<TextInput>(null);
 

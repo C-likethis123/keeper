@@ -1,30 +1,14 @@
+import {
+	type FilterOption,
+	NOTE_TYPE_OPTIONS,
+	TODO_STATUS_OPTIONS,
+} from "@/constants/noteTypes";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { NoteStatus, NoteType } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
-type FilterOption<T extends string> = {
-	label: string;
-	value?: T;
-};
-
-const NOTE_TYPE_OPTIONS: FilterOption<NoteType>[] = [
-	{ label: "All notes", value: undefined },
-	{ label: "Notes", value: "note" },
-	{ label: "Journals", value: "journal" },
-	{ label: "Resources", value: "resource" },
-	{ label: "Todos", value: "todo" },
-];
-
-const TODO_STATUS_OPTIONS: FilterOption<NoteStatus>[] = [
-	{ label: "All statuses", value: undefined },
-	{ label: "Open", value: "open" },
-	{ label: "Doing", value: "doing" },
-	{ label: "Blocked", value: "blocked" },
-	{ label: "Done", value: "done" },
-];
 
 function getFilterLabel(noteTypes: NoteType[], status?: NoteStatus) {
 	if (noteTypes.length === 0) {

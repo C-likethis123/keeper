@@ -4,13 +4,12 @@ import { lightTheme } from "@/constants/themes/lightTheme";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useAppStartup } from "@/hooks/useAppStartup";
+import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
 import { useStyles } from "@/hooks/useStyles";
 import { appEvents } from "@/services/appEvents";
-import { NoteService } from "@/services/notes/noteService";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { ThemeProvider } from "@react-navigation/native";
-import { Stack, router } from "expo-router";
-import { nanoid } from "nanoid";
+import { Stack } from "expo-router";
 import { useEffect } from "react";
 import {
 	ActivityIndicator,
@@ -42,21 +41,10 @@ const App = ({
 	initError,
 }: { isHydrated: boolean; initError: string | null }) => {
 	const styles = useStyles(createStyles);
-
+	const createAndOpenNote = useCreateAndOpenNote();
 	useAppKeyboardShortcuts({
 		onFocusSearch: () => appEvents.emit("focusSearch"),
-		onCreateNote: () => {
-			const newNote = {
-				id: nanoid(),
-				title: "",
-				content: "",
-				isPinned: false,
-				noteType: "note",
-			} as const;
-			void NoteService.saveNote(newNote, true).then(() => {
-				router.push(`/editor?id=${newNote.id}`);
-			});
-		},
+		onCreateNote: createAndOpenNote,
 		onForceSave: () => appEvents.emit("forceSave"),
 	});
 

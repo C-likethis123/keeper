@@ -21,6 +21,7 @@ type AutoSaveInput = {
 	status?: Note["status"];
 	initialNoteType?: Note["noteType"];
 	onPersisted?: (noteType: Note["noteType"]) => void;
+	isNew?: boolean;
 };
 
 export function useAutoSave({
@@ -32,6 +33,7 @@ export function useAutoSave({
 	status: noteStatus,
 	initialNoteType,
 	onPersisted,
+	isNew,
 }: AutoSaveInput) {
 	const getContentForVersion = useEditorState((s) => s.getContentForVersion);
 	const prepareContent = useEditorState((s) => s.prepareContent);
@@ -50,6 +52,7 @@ export function useAutoSave({
 	const prepareTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const isSavingRef = useRef(false);
+	const isNewEntryRef = useRef(!!isNew);
 	const latestDocumentVersionRef = useRef(
 		useEditorState.getState().document.version,
 	);
@@ -74,6 +77,7 @@ export function useAutoSave({
 				noteType: initialNoteType ?? noteType,
 				status: noteStatus,
 			};
+			isNewEntryRef.current = !!isNew;
 			setStatus("idle");
 		}
 	}, [
@@ -84,6 +88,7 @@ export function useAutoSave({
 		noteType,
 		noteStatus,
 		initialNoteType,
+		isNew,
 	]);
 
 	const forceSave = useCallback(async () => {
@@ -152,11 +157,13 @@ export function useAutoSave({
 		isSavingRef.current = true;
 		setStatus("saving");
 		const saveStart = performance.now();
+		const currentIsNewEntry = isNewEntryRef.current;
 		console.debug("[AutoSaveProfile] saveNote:start", {
 			id: currentNote.id,
 			titleLength: trimmedTitle.length,
 			contentLength: currentContent.length,
 			documentVersion: latestDocumentVersionRef.current,
+			isNewEntry: currentIsNewEntry,
 		});
 		try {
 			await persistEditorEntry({
@@ -167,7 +174,9 @@ export function useAutoSave({
 				noteType: currentNote.noteType,
 				status: currentNote.status,
 				previousNoteType: previousNoteType,
+				isNewEntry: currentIsNewEntry,
 			});
+			isNewEntryRef.current = false;
 		} catch {
 			console.debug("[AutoSaveProfile] saveNote:error", {
 				id: currentNote.id,

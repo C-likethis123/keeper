@@ -5,6 +5,7 @@ import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useSuspenseLoadNote } from "@/hooks/useSuspenseLoadNote";
 import { useStyles } from "@/hooks/useStyles";
+import type { Note } from "@/services/notes/types";
 import { useLocalSearchParams } from "expo-router";
 import React, { Suspense } from "react";
 import { StyleSheet, View } from "react-native";
@@ -13,10 +14,35 @@ const LazyNoteEditorView = React.lazy(
 	() => import("@/components/NoteEditorView"),
 );
 
-function NoteEditorContent({ id }: { id: string }) {
+function NoteEditorContent({
+	id,
+	isNew,
+	initialTitle,
+	initialNoteType,
+}: {
+	id: string;
+	isNew?: boolean;
+	initialTitle?: string;
+	initialNoteType?: string;
+}) {
 	const note = useSuspenseLoadNote(id);
 
 	if (!note) {
+		if (isNew) {
+			const virtualNote: Note = {
+				id,
+				title: initialTitle ?? "",
+				content: "",
+				isPinned: false,
+				noteType: (initialNoteType as Note["noteType"]) ?? "note",
+				lastUpdated: Date.now(),
+			};
+			return (
+				<Suspense fallback={<Loader />}>
+					<LazyNoteEditorView note={virtualNote} isNew />
+				</Suspense>
+			);
+		}
 		return <ErrorScreen errorMessage="Note not found" onRetry={() => {}} />;
 	}
 
@@ -30,6 +56,11 @@ function NoteEditorContent({ id }: { id: string }) {
 export default function NoteEditorScreen() {
 	const params = useLocalSearchParams();
 	const noteId = typeof params.id === "string" ? params.id : "";
+	const isNew = params.isNew === "true";
+	const initialTitle =
+		typeof params.title === "string" ? params.title : undefined;
+	const initialNoteType =
+		typeof params.noteType === "string" ? params.noteType : undefined;
 
 	const styles = useStyles(createStyles);
 
@@ -51,7 +82,12 @@ export default function NoteEditorScreen() {
 					)}
 				>
 					<Suspense fallback={<Loader />}>
-						<NoteEditorContent id={noteId} />
+						<NoteEditorContent
+							id={noteId}
+							isNew={isNew}
+							initialTitle={initialTitle}
+							initialNoteType={initialNoteType}
+						/>
 					</Suspense>
 				</QueryErrorBoundary>
 			</View>
