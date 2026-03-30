@@ -223,7 +223,7 @@ blockRegistry.registerAll([
 	},
 	{
 		type: BlockType.collapsibleBlock,
-		triggerPrefix: /^<details>$/,
+		triggerPrefix: /^<details(?: open)?>(?:<\/details>)?$/,
 		markdownPrefix: "<details>",
 		build: (config) => renderLazyBlock(LazyCollapsibleBlock, config),
 	},
