@@ -1,7 +1,16 @@
-import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
+import {
+	webMultilineTextInputReset,
+	webTextInputReset,
+} from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	type NativeSyntheticEvent,
 	Platform,
@@ -12,12 +21,12 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
-import { InlineMarkdown } from "../rendering/InlineMarkdown";
-import type { BlockConfig } from "./BlockRegistry";
 import {
 	getCollapsibleSummary,
 	isCollapsibleExpanded,
 } from "../core/BlockNode";
+import { InlineMarkdown } from "../rendering/InlineMarkdown";
+import type { BlockConfig } from "./BlockRegistry";
 
 const bodyFontSize = 15;
 const bodyFontFamily = Platform.OS === "ios" ? "Menlo-Regular" : "monospace";
@@ -46,7 +55,7 @@ export function CollapsibleBlock({
 	const [bodyValue, setBodyValue] = useState(block.content);
 	const isExpanded = isCollapsibleExpanded(block);
 
-	// Sync local state when block changes externally
+	// Sync local state when block changes externally (e.g. undo/redo)
 	useEffect(() => {
 		const externalSummary = getCollapsibleSummary(block);
 		if (externalSummary !== summaryValue) {
@@ -55,15 +64,8 @@ export function CollapsibleBlock({
 	}, [block, summaryValue]);
 
 	useEffect(() => {
-		if (block.content !== bodyValue) {
-			setBodyValue(block.content);
-		}
-	}, [block.content, bodyValue]);
-
-	// Propagate body edits to document
-	useEffect(() => {
-		onContentChange(index, bodyValue);
-	}, [onContentChange, index, bodyValue]);
+		setBodyValue(block.content);
+	}, [block.content]);
 
 	const handleToggleExpand = useCallback(() => {
 		onAttributesChange?.(index, {
@@ -123,7 +125,6 @@ export function CollapsibleBlock({
 
 	return (
 		<View style={[styles.container, isFocused && styles.containerFocused]}>
-			{/* Header row: chevron + summary */}
 			<View style={styles.header}>
 				<TouchableOpacity
 					onPress={handleToggleExpand}
@@ -156,10 +157,7 @@ export function CollapsibleBlock({
 						onPress={() => focusBlock(index)}
 					>
 						{summaryValue.length > 0 ? (
-							<InlineMarkdown
-								text={summaryValue}
-								style={styles.summaryText}
-							/>
+							<InlineMarkdown text={summaryValue} style={styles.summaryText} />
 						) : (
 							<Text style={styles.summaryPlaceholder}>Section title...</Text>
 						)}
@@ -175,7 +173,10 @@ export function CollapsibleBlock({
 							ref={bodyInputRef}
 							style={styles.bodyInput}
 							value={bodyValue}
-							onChangeText={setBodyValue}
+							onChangeText={(text) => {
+								setBodyValue(text);
+								onContentChange(index, text);
+							}}
 							onKeyPress={handleBodyKeyPress}
 							onFocus={() => {
 								focusBlock(index);
@@ -191,9 +192,6 @@ export function CollapsibleBlock({
 							autoCorrect={false}
 							placeholder="Section body..."
 							placeholderTextColor={theme.custom.editor.placeholder}
-							fontFamily={bodyFontFamily}
-							fontSize={bodyFontSize}
-							{...webMultilineTextInputReset}
 						/>
 					) : (
 						<TouchableOpacity onPress={() => focusBlock(index)}>
@@ -220,9 +218,9 @@ export function CollapsibleBlock({
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		container: {
-			width: "100%",
 			paddingVertical: 6,
-			paddingHorizontal: 12,
+			paddingHorizontal: 14,
+			marginHorizontal: 14,
 			backgroundColor: theme.custom.editor.blockBackground,
 			borderRadius: 8,
 			borderWidth: 1,
@@ -252,6 +250,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			fontWeight: "600",
 			color: theme.colors.text,
 			paddingVertical: 4,
+			...webTextInputReset,
 		},
 		summaryDisplay: {
 			flex: 1,
@@ -278,11 +277,13 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		bodyInput: {
 			fontSize: bodyFontSize,
+			fontFamily: bodyFontFamily,
 			color: theme.colors.text,
 			textAlignVertical: "top",
 			minHeight: 60,
 			paddingVertical: 4,
 			paddingHorizontal: 0,
+			...webMultilineTextInputReset,
 		},
 		bodyParagraph: {
 			fontSize: 14,

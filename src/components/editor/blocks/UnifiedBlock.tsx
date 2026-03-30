@@ -309,7 +309,9 @@ export function UnifiedBlock({
 			if (cancelled) {
 				return;
 			}
-			const node = inputRef.current as (TextInput & { scrollHeight?: number; style?: CSSStyleDeclaration }) | null;
+			const node = inputRef.current as
+				| (TextInput & { scrollHeight?: number; style?: CSSStyleDeclaration })
+				| null;
 			if (!(node instanceof HTMLElement)) {
 				return;
 			}
@@ -415,10 +417,7 @@ export function UnifiedBlock({
 				</View>
 				<TextInput
 					{...textInputProps}
-					style={[
-						textInputProps.style,
-						!isFocused ? styles.hidden : null,
-					]}
+					style={[textInputProps.style, !isFocused ? styles.hidden : null]}
 					textAlignVertical={applyListStyles ? undefined : "top"}
 				/>
 			</View>
