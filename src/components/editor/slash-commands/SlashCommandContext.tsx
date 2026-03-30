@@ -8,9 +8,14 @@ import {
 	useRef,
 	useState,
 } from "react";
+import {
+	BlockType,
+	createCollapsibleBlock,
+	createParagraphBlock,
+} from "../core/BlockNode";
 
 export interface SlashCommandItem {
-	id: "insert-template";
+	id: "insert-template" | "insert-collapsible";
 	title: string;
 	description: string;
 	keywords: string[];
@@ -45,6 +50,12 @@ const COMMANDS: SlashCommandItem[] = [
 		title: "Insert template",
 		description: "Open the template picker and replace the note body.",
 		keywords: ["template", "insert", "snippet"],
+	},
+	{
+		id: "insert-collapsible",
+		title: "Collapsible section",
+		description: "Insert a collapsible section block.",
+		keywords: ["collapsible", "details", "summary", "section", "toggle", "fold"],
 	},
 ];
 
@@ -139,6 +150,18 @@ export function SlashCommandProvider({
 			endSession();
 			if (item.id === "insert-template") {
 				await onInsertTemplateCommand?.();
+			} else if (item.id === "insert-collapsible") {
+				const blockIndex = blockIndexRef.current;
+				const state = useEditorState.getState();
+				const block = state.document.blocks[blockIndex];
+				if (block) {
+					state.updateBlockType(blockIndex, BlockType.collapsibleBlock);
+					state.updateBlockAttributes(blockIndex, {
+						summary: "",
+						isExpanded: true,
+					});
+					state.insertBlockAfter(blockIndex, createParagraphBlock());
+				}
 			}
 		},
 		[isActive, onInsertTemplateCommand, endSession, removeTriggerToken],

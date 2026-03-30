@@ -184,6 +184,21 @@ export const useEditorState = create<EditorState>()((set, get) => {
 			dispatch({ type: "APPLY_TRANSACTION", transaction });
 		},
 
+		updateBlockAttributes: (
+			index: number,
+			newAttrs: Record<string, unknown>,
+		) => {
+			const s = get();
+			const block = s.document.blocks[index];
+			if (!block) return;
+			const oldAttrs = block.attributes ?? {};
+			const transaction = new TransactionBuilder()
+				.updateBlockAttributes(index, oldAttrs, newAttrs)
+				.withDescription("Update block attributes")
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+		},
+
 		toggleCheckbox: (index: number) => {
 			const s = get();
 			const block = s.document.blocks[index];

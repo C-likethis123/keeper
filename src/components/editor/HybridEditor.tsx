@@ -9,7 +9,11 @@ import React, { useCallback, useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { BlockRow } from "./BlockRow";
 import { blockRegistry } from "./blocks/BlockRegistry";
-import { BlockType, createParagraphBlock } from "./core/BlockNode";
+import {
+	BlockType,
+	createCollapsibleBlock,
+	createParagraphBlock,
+} from "./core/BlockNode";
 import {
 	SlashCommandProvider,
 	useSlashCommandContext,
@@ -57,6 +61,7 @@ function HybridEditorContent() {
 	const getFocusedBlock = useEditorState((s) => s.getFocusedBlock);
 	const insertBlockAfter = useEditorState((s) => s.insertBlockAfter);
 	const updateBlockContent = useEditorState((s) => s.updateBlockContent);
+	const updateBlockAttributes = useEditorState((s) => s.updateBlockAttributes);
 	const ignoreNextContentChangeRef = useRef<number | null>(null);
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
@@ -132,7 +137,8 @@ function HybridEditorContent() {
 
 			if (
 				detection.type === BlockType.mathBlock ||
-				detection.type === BlockType.codeBlock
+				detection.type === BlockType.codeBlock ||
+				detection.type === BlockType.collapsibleBlock
 			) {
 				insertBlockAfter(index, createParagraphBlock());
 			}
@@ -211,12 +217,13 @@ function HybridEditorContent() {
 			const doc = useEditorState.getState().document;
 			const prevBlock = index > 0 ? doc.blocks[index - 1] : null;
 
-			// If it's a non-paragraph block (except code block and math block), convert to paragraph
+			// If it's a non-paragraph block (except code block, math block, and collapsible block), convert to paragraph
 			if (
 				![
 					BlockType.paragraph,
 					BlockType.codeBlock,
 					BlockType.mathBlock,
+					BlockType.collapsibleBlock,
 				].includes(block.type ?? BlockType.paragraph)
 			) {
 				updateBlockType(index, BlockType.paragraph);
@@ -257,7 +264,13 @@ function HybridEditorContent() {
 			if (!block) {
 				return;
 			}
-			if ([BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
+			if (
+				[
+					BlockType.codeBlock,
+					BlockType.mathBlock,
+					BlockType.collapsibleBlock,
+				].includes(block.type)
+			) {
 				return;
 			}
 			if (
@@ -329,10 +342,18 @@ function HybridEditorContent() {
 		[router],
 	);
 
+	const handleAttributesChange = useCallback(
+		(index: number, newAttributes: Record<string, unknown>) => {
+			updateBlockAttributes(index, newAttributes);
+		},
+		[updateBlockAttributes],
+	);
+
 	const handlers = React.useMemo(
 		() => ({
 			onContentChange: handleContentChange,
 			onBlockTypeChange: handleBlockTypeChange,
+			onAttributesChange: handleAttributesChange,
 			onBackspaceAtStart: handleBackspaceAtStart,
 			onSpace: handleSpace,
 			onEnter: handleEnter,
@@ -344,6 +365,7 @@ function HybridEditorContent() {
 		[
 			handleContentChange,
 			handleBlockTypeChange,
+			handleAttributesChange,
 			handleBackspaceAtStart,
 			handleSpace,
 			handleEnter,

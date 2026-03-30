@@ -11,6 +11,7 @@ export enum BlockType {
 	mathBlock = "mathBlock",
 	image = "image",
 	video = "video",
+	collapsibleBlock = "collapsibleBlock",
 }
 
 /// Immutable node representing a block of content in the document.
@@ -129,6 +130,35 @@ export function createVideoBlock(path: string): BlockNode {
 	};
 }
 
+/// Creates a new collapsible section block
+export function createCollapsibleBlock(
+	summary = "",
+	content = "",
+	isExpanded = true,
+): BlockNode {
+	return {
+		id: generateId(),
+		type: BlockType.collapsibleBlock,
+		content,
+		attributes: { summary, isExpanded },
+	};
+}
+
+export function getCollapsibleSummary(block: BlockNode): string {
+	const v = block.attributes?.summary;
+	return typeof v === "string" ? v : "";
+}
+
+export function isCollapsibleExpanded(block: BlockNode): boolean {
+	const v = block.attributes?.isExpanded;
+	return v !== false;
+}
+
+/// Whether this block is a collapsible section block
+export function isCollapsibleBlock(block: BlockNode): boolean {
+	return block.type === BlockType.collapsibleBlock;
+}
+
 /// Creates a copy of this block with updated fields
 export function copyBlock(
 	block: BlockNode,
@@ -171,6 +201,11 @@ export function blockToMarkdown(block: BlockNode, listNumber?: number): string {
 			return `![](${block.content})`;
 		case BlockType.video:
 			return `![video](${block.content})`;
+		case BlockType.collapsibleBlock: {
+			const summary = getCollapsibleSummary(block);
+			const openAttr = isCollapsibleExpanded(block) ? " open" : "";
+			return `<details${openAttr}>\n<summary>${summary}</summary>\n\n${block.content}\n\n</details>`;
+		}
 		case BlockType.paragraph:
 			return block.content;
 	}

@@ -4,6 +4,7 @@ import {
 	blockToMarkdown,
 	createCheckboxBlock,
 	createCodeBlock,
+	createCollapsibleBlock,
 	createHeadingBlock,
 	createImageBlock,
 	createListBlock,
@@ -12,6 +13,7 @@ import {
 	createVideoBlock,
 	getListLevel,
 	isCodeBlock,
+	isCollapsibleBlock,
 } from "./BlockNode";
 
 /// Immutable document representing the entire editor content.
@@ -88,6 +90,37 @@ export function createDocumentFromMarkdown(markdown: string): Document {
 
 			blocks.push(createMathBlock(mathLines.join("\n")));
 			i++; // Skip closing $$
+			continue;
+		}
+
+		// Check for collapsible blocks
+		if (line.trim() === "<details>" || line.trim() === "<details open>") {
+			const isExpanded = line.trim() === "<details open>";
+			i++;
+			let summary = "";
+			if (i < lines.length) {
+				const summaryMatch = lines[i].match(/^<summary>(.*)<\/summary>$/);
+				if (summaryMatch) {
+					summary = summaryMatch[1];
+					i++;
+				}
+			}
+			// Skip blank line after </summary>
+			if (i < lines.length && lines[i].trim() === "") {
+				i++;
+			}
+			// Collect body lines until </details>
+			const bodyLines: string[] = [];
+			while (i < lines.length && lines[i].trim() !== "</details>") {
+				bodyLines.push(lines[i]);
+				i++;
+			}
+			// Strip trailing blank lines
+			while (bodyLines.length > 0 && bodyLines[bodyLines.length - 1].trim() === "") {
+				bodyLines.pop();
+			}
+			blocks.push(createCollapsibleBlock(summary, bodyLines.join("\n"), isExpanded));
+			i++; // Skip </details>
 			continue;
 		}
 
@@ -326,8 +359,8 @@ export function documentToMarkdown(document: Document): string {
 		buffer.push(blockToMarkdown(block, listNumber));
 		if (i < document.blocks.length - 1) {
 			buffer.push("\n");
-			// Add extra newline after code blocks
-			if (isCodeBlock(block) || block.type === BlockType.mathBlock) {
+			// Add extra newline after code blocks and collapsible blocks
+			if (isCodeBlock(block) || block.type === BlockType.mathBlock || isCollapsibleBlock(block)) {
 				buffer.push("\n");
 			}
 		}

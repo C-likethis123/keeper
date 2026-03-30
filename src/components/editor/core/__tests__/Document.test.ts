@@ -110,6 +110,101 @@ x^2
 $$`);
 	});
 
+	it("parses a collapsible block with summary and body content", () => {
+		const blocks = summarizeDocument(
+			`<details open>
+<summary>My section</summary>
+
+Body content here
+More body content
+
+</details>`,
+		);
+		expect(blocks).toEqual([
+			{
+				type: BlockType.collapsibleBlock,
+				content: "Body content here\nMore body content",
+				attributes: { summary: "My section", isExpanded: true },
+			},
+		]);
+	});
+
+	it("parses a collapsed collapsible block", () => {
+		const blocks = summarizeDocument(
+			`<details>
+<summary>Collapsed section</summary>
+
+Hidden body
+
+</details>`,
+		);
+		expect(blocks).toEqual([
+			{
+				type: BlockType.collapsibleBlock,
+				content: "Hidden body",
+				attributes: { summary: "Collapsed section", isExpanded: false },
+			},
+		]);
+	});
+
+	it("parses a collapsible block with empty body", () => {
+		const blocks = summarizeDocument(
+			`<details>
+<summary>Empty section</summary>
+
+</details>`,
+		);
+		expect(blocks).toEqual([
+			{
+				type: BlockType.collapsibleBlock,
+				content: "",
+				attributes: { summary: "Empty section", isExpanded: false },
+			},
+		]);
+	});
+
+	it("serializes a collapsible block to <details> format", () => {
+		const doc = createDocumentFromMarkdown(`<details open>
+<summary>My section</summary>
+
+Body here
+
+</details>`);
+		expect(documentToMarkdown(doc)).toBe(
+			`<details open>\n<summary>My section</summary>\n\nBody here\n\n</details>`,
+		);
+	});
+
+	it("serializes a collapsed collapsible block without open attribute", () => {
+		const doc = createDocumentFromMarkdown(`<details>
+<summary>Hidden</summary>
+
+Content
+
+</details>`);
+		expect(documentToMarkdown(doc)).toBe(
+			`<details>\n<summary>Hidden</summary>\n\nContent\n\n</details>`,
+		);
+	});
+
+	it("round-trips a collapsible block through parse and serialize", () => {
+		const markdown = `<details open>\n<summary>Round trip</summary>\n\nSome **bold** content\n\n</details>`;
+		const doc = createDocumentFromMarkdown(markdown);
+		expect(documentToMarkdown(doc)).toBe(markdown);
+	});
+
+	it("adds extra blank line after collapsible block when followed by another block", () => {
+		const doc = createDocumentFromMarkdown(`<details>
+<summary>Section</summary>
+
+Body
+
+</details>
+Next paragraph`);
+		const md = documentToMarkdown(doc);
+		expect(md).toContain("</details>\n\nNext paragraph");
+	});
+
 	it("keeps the document non-empty when removing or replacing every block", () => {
 		const singleBlock = createDocumentFromMarkdown("Only block");
 		const removed = removeBlock(singleBlock, 0);

@@ -19,6 +19,12 @@ const LazyVideoBlock = React.lazy(() =>
 	import("./VideoBlock").then((module) => ({ default: module.VideoBlock })),
 );
 
+const LazyCollapsibleBlock = React.lazy(() =>
+	import("./CollapsibleBlock").then((module) => ({
+		default: module.CollapsibleBlock,
+	})),
+);
+
 export interface BlockConfig {
 	block: BlockNode;
 	index: number;
@@ -28,6 +34,10 @@ export interface BlockConfig {
 		index: number,
 		newType: BlockType,
 		language?: string,
+	) => void;
+	onAttributesChange?: (
+		index: number,
+		newAttributes: Record<string, unknown>,
 	) => void;
 	onBackspaceAtStart: (index: number) => void;
 	onSpace: (index: number, cursorOffset: number) => boolean;
@@ -210,5 +220,11 @@ blockRegistry.registerAll([
 		type: BlockType.video,
 		markdownPrefix: "![video](",
 		build: (config) => renderLazyBlock(LazyVideoBlock, config),
+	},
+	{
+		type: BlockType.collapsibleBlock,
+		triggerPrefix: /^<details>$/,
+		markdownPrefix: "<details>",
+		build: (config) => renderLazyBlock(LazyCollapsibleBlock, config),
 	},
 ]);

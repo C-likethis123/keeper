@@ -15,6 +15,10 @@ interface BlockRowHandlers {
 		newType: BlockType,
 		language?: string,
 	) => void;
+	onAttributesChange?: (
+		index: number,
+		newAttributes: Record<string, unknown>,
+	) => void;
 	onBackspaceAtStart: (index: number) => void;
 	onSpace: (index: number, cursorOffset: number) => boolean;
 	onEnter: (index: number, cursorOffset: number) => void;
@@ -54,6 +58,7 @@ export const BlockRow = React.memo(function BlockRow({
 		isFocused,
 		onContentChange: handlers.onContentChange,
 		onBlockTypeChange: handlers.onBlockTypeChange,
+		onAttributesChange: handlers.onAttributesChange,
 		onBackspaceAtStart: handlers.onBackspaceAtStart,
 		onSpace: handlers.onSpace,
 		onEnter: handlers.onEnter,
