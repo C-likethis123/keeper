@@ -418,4 +418,22 @@ describe("NoteEditorView", () => {
 		expect(screen.getByLabelText("Pin note")).toBeTruthy();
 		expect(screen.getByLabelText("Delete note")).toBeTruthy();
 	});
+
+	it("focuses the editor when Enter is pressed on the title input", async () => {
+		const note = makeNote();
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock editor");
+
+		const titleInput = screen.getByPlaceholderText("Title");
+		act(() => {
+			fireEvent(titleInput, "submitEditing");
+		});
+
+		await waitFor(() => {
+			const selection = useEditorState.getState().selection;
+			expect(selection).not.toBeNull();
+			expect(selection?.focus.blockIndex).toBe(0);
+		});
+	});
 });

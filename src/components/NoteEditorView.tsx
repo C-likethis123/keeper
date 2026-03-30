@@ -3,6 +3,7 @@ import type { EditorState } from "@/components/editor/core/EditorState";
 import { FilterChip } from "@/components/shared/FilterChip";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { appEvents } from "@/services/appEvents";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
@@ -14,7 +15,6 @@ import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import React, {
-	Suspense,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -32,19 +32,9 @@ import {
 	View,
 } from "react-native";
 import { EditorScrollProvider } from "./editor/EditorScrollContext";
+import { EditorToolbar } from "./editor/EditorToolbar";
+import { HybridEditor } from "./editor/HybridEditor";
 import Loader from "./shared/Loader";
-
-const LazyEditorToolbar = React.lazy(() =>
-	import("@/components/editor/EditorToolbar").then((module) => ({
-		default: module.EditorToolbar,
-	})),
-);
-
-const LazyHybridEditor = React.lazy(() =>
-	import("@/components/editor/HybridEditor").then((module) => ({
-		default: module.HybridEditor,
-	})),
-);
 
 // TODO: refactor so we can do away with this???
 const TODO_STATUS_OPTIONS = [
@@ -64,6 +54,7 @@ export default function NoteEditorView({
 	const navigation = useNavigation();
 	const router = useRouter();
 	const theme = useExtendedTheme();
+	const { focusBlock } = useFocusBlock();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const id = note.id;
 	const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
@@ -278,6 +269,7 @@ export default function NoteEditorView({
 				noteType={noteType}
 				onChangeTitle={applyTitleChange}
 				onBlurTitle={() => setNoteType(deriveNoteType(title))}
+				onSubmitEditing={() => focusBlock(0)}
 				onBack={() => {
 					void handleBackPress();
 				}}
@@ -305,16 +297,14 @@ export default function NoteEditorView({
 					</View>
 				) : null}
 
-				<Suspense fallback={<Loader />}>
-					<LazyEditorToolbar />
-					<EditorScrollProvider>
-						<LazyHybridEditor
-							onInsertTemplateCommand={() => {
-								void openTemplateModal();
-							}}
-						/>
-					</EditorScrollProvider>
-				</Suspense>
+				<EditorToolbar />
+				<EditorScrollProvider>
+					<HybridEditor
+						onInsertTemplateCommand={() => {
+							void openTemplateModal();
+						}}
+					/>
+				</EditorScrollProvider>
 			</View>
 
 			<Modal

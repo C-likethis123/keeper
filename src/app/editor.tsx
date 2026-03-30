@@ -1,18 +1,15 @@
+import NoteEditorView from "@/components/NoteEditorView";
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { useSuspenseLoadNote } from "@/hooks/useSuspenseLoadNote";
 import { useStyles } from "@/hooks/useStyles";
+import { useSuspenseLoadNote } from "@/hooks/useSuspenseLoadNote";
 import type { Note } from "@/services/notes/types";
 import { useLocalSearchParams } from "expo-router";
 import React, { Suspense } from "react";
 import { StyleSheet, View } from "react-native";
-
-const LazyNoteEditorView = React.lazy(
-	() => import("@/components/NoteEditorView"),
-);
 
 function NoteEditorContent({
 	id,
@@ -25,32 +22,25 @@ function NoteEditorContent({
 	initialTitle?: string;
 	initialNoteType?: string;
 }) {
+	if (isNew) {
+		const virtualNote: Note = {
+			id,
+			title: initialTitle ?? "",
+			content: "",
+			isPinned: false,
+			noteType: (initialNoteType as Note["noteType"]) ?? "note",
+			lastUpdated: Date.now(),
+		};
+		return <NoteEditorView note={virtualNote} isNew />;
+	}
+
 	const note = useSuspenseLoadNote(id);
 
 	if (!note) {
-		if (isNew) {
-			const virtualNote: Note = {
-				id,
-				title: initialTitle ?? "",
-				content: "",
-				isPinned: false,
-				noteType: (initialNoteType as Note["noteType"]) ?? "note",
-				lastUpdated: Date.now(),
-			};
-			return (
-				<Suspense fallback={<Loader />}>
-					<LazyNoteEditorView note={virtualNote} isNew />
-				</Suspense>
-			);
-		}
 		return <ErrorScreen errorMessage="Note not found" onRetry={() => {}} />;
 	}
 
-	return (
-		<Suspense fallback={<Loader />}>
-			<LazyNoteEditorView note={note} />
-		</Suspense>
-	);
+	return <NoteEditorView note={note} />;
 }
 
 export default function NoteEditorScreen() {

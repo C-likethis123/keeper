@@ -4,12 +4,7 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import type { Note } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
-import {
-	StyleSheet,
-	TextInput,
-	TouchableOpacity,
-	View,
-} from "react-native";
+import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
@@ -19,6 +14,7 @@ type Props = {
 	noteType: Note["noteType"];
 	onChangeTitle: (value: string) => void;
 	onBlurTitle: () => void;
+	onSubmitEditing: () => void;
 	onBack: () => void;
 	onTogglePin: () => void;
 	onDelete: () => void;
@@ -31,6 +27,7 @@ export default function NoteEditorHeader({
 	noteType,
 	onChangeTitle,
 	onBlurTitle,
+	onSubmitEditing,
 	onBack,
 	onTogglePin,
 	onDelete,
@@ -65,6 +62,8 @@ export default function NoteEditorHeader({
 						placeholder="Title"
 						placeholderTextColor={theme.custom.editor.placeholder}
 						onBlur={onBlurTitle}
+						onSubmitEditing={onSubmitEditing}
+						returnKeyType="next"
 						numberOfLines={1}
 						accessibilityLabel="Title"
 					/>
