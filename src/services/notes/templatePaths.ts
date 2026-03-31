@@ -9,5 +9,12 @@ export function isTemplateMarkdownPath(path: string): boolean {
 }
 
 export function isIndexedNoteMarkdownPath(path: string): boolean {
-	return path.endsWith(".md") && !isTemplateMarkdownPath(path);
+	return path.endsWith(".md");
+}
+
+export function getNoteIdFromMarkdownPath(path: string): string {
+	const normalizedPath = isTemplateMarkdownPath(path)
+		? path.slice(TEMPLATES_DIR_PREFIX.length)
+		: path;
+	return normalizedPath.replace(/\.md$/, "");
 }

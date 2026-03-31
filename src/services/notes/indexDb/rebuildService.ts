@@ -1,5 +1,5 @@
 import { Directory, File } from "expo-file-system";
-import { NOTES_ROOT } from "../Notes";
+import { NOTES_ROOT, getTemplatesRoot } from "../Notes";
 import { mapWithConcurrency } from "./asyncUtils";
 import { getNotesIndexDb } from "./db";
 import { mapMarkdownFileToSqlItem } from "./mapper";
@@ -31,10 +31,8 @@ export async function rebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
 	}
 
 	const listStart = performance.now();
-	const entries = dir.list();
-	const markdownFiles = entries.filter(
-		(entry): entry is File =>
-			entry instanceof File && entry.name.endsWith(".md"),
+	const markdownFiles = collectMarkdownFiles(dir).concat(
+		collectMarkdownFiles(new Directory(getTemplatesRoot())),
 	);
 	const listMs = Math.round(performance.now() - listStart);
 
@@ -68,6 +66,16 @@ export async function rebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
 	};
 	console.log("[notesIndexDb] rebuildFromDisk metrics", metrics);
 	return metrics;
+}
+
+function collectMarkdownFiles(dir: Directory): File[] {
+	if (!dir.exists) {
+		return [];
+	}
+
+	return dir.list().filter(
+		(entry): entry is File => entry instanceof File && entry.name.endsWith(".md"),
+	);
 }
 
 async function collectRows(markdownFiles: File[]): Promise<NoteIndexSqlItem[]> {

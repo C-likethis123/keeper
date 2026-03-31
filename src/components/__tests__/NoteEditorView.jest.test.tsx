@@ -393,6 +393,50 @@ describe("NoteEditorView", () => {
 		expect(screen.getByText("Daily template")).toBeTruthy();
 	});
 
+	it("applies the full template body instead of the indexed summary", async () => {
+		const user = userEvent.setup();
+		const note = makeNote({ content: "" });
+		mockLoadNote.mockImplementation(async (id: string) => {
+			if (id === "template-1") {
+				return makeNote({
+					id,
+					title: "Daily template",
+					content: "Full template body\n- with checklist",
+					noteType: "template",
+				});
+			}
+			return makeNote({ id });
+		});
+		mockIndexListNotes.mockResolvedValue({
+			items: [
+				{
+					noteId: "template-1",
+					title: "Daily template",
+					summary: "Summary only",
+					isPinned: false,
+					updatedAt: 1,
+					noteType: "template",
+					status: null,
+				},
+			],
+			cursor: undefined,
+		});
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock editor");
+		await user.press(screen.getByText("Trigger insert template"));
+		await screen.findByText("Daily template");
+		await user.press(screen.getByText("Daily template"));
+
+		await waitFor(() => {
+			expect(mockLoadNote).toHaveBeenCalledWith("template-1");
+			expect(useEditorState.getState().getContent()).toBe(
+				"Full template body\n- with checklist",
+			);
+		});
+	});
+
 	it("renders the note title input in the navigation header and keeps save status on the left", async () => {
 		const note = makeNote();
 

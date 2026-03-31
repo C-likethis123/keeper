@@ -1,4 +1,7 @@
-import { isIndexedNoteMarkdownPath } from "@/services/notes/templatePaths";
+import {
+	getNoteIdFromMarkdownPath,
+	isIndexedNoteMarkdownPath,
+} from "@/services/notes/templatePaths";
 import { mapWithConcurrency } from "./asyncUtils";
 import { getNotesIndexDb } from "./db";
 import { mapMarkdownPathToSqlItem } from "./mapper";
@@ -27,7 +30,7 @@ export async function syncChanges(
 		await collectUpserts(markdownPaths);
 	const deleteIds = changedPaths.deleted
 		.filter(isIndexedNoteMarkdownPath)
-		.map((path) => path.replace(/\.md$/, ""));
+		.map(getNoteIdFromMarkdownPath);
 
 	const sqlStart = performance.now();
 	// Keep SQL writes serialized inside one transaction to avoid SQLite lock churn.

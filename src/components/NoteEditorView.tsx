@@ -226,12 +226,24 @@ export default function NoteEditorView({
 	}, [showToast]);
 
 	const applyTemplate = useCallback(
-		(template: Note) => {
+		async (template: Note) => {
 			const currentContent = useEditorState.getState().getContent();
-			const replaceBody = () => {
-				loadMarkdown(template.content);
-				setIsTemplateModalVisible(false);
-				showToast(`Applied template "${template.title || "Untitled"}"`);
+			const replaceBody = async () => {
+				try {
+					const fullTemplate = await NoteService.loadNote(template.id);
+					if (!fullTemplate) {
+						showToast("Template not found");
+						return;
+					}
+					loadMarkdown(fullTemplate.content);
+					setIsTemplateModalVisible(false);
+					showToast(
+						`Applied template "${fullTemplate.title || "Untitled"}"`,
+					);
+				} catch (error) {
+					console.warn("Failed to apply template:", error);
+					showToast("Failed to apply template");
+				}
 			};
 
 			if (currentContent.trim().length > 0) {
@@ -243,14 +255,16 @@ export default function NoteEditorView({
 						{
 							text: "Replace",
 							style: "destructive",
-							onPress: replaceBody,
+							onPress: () => {
+								void replaceBody();
+							},
 						},
 					],
 				);
 				return;
 			}
 
-			replaceBody();
+			await replaceBody();
 		},
 		[loadMarkdown, showToast],
 	);
@@ -344,7 +358,7 @@ export default function NoteEditorView({
 										key={template.id}
 										style={styles.templateCard}
 										onPress={() => {
-											applyTemplate(template);
+											void applyTemplate(template);
 										}}
 									>
 										<Text style={styles.templateCardTitle}>
