@@ -234,18 +234,12 @@ describe("Index", () => {
 		await user.press(screen.getByRole("button", { name: "Take a note" }));
 
 		await waitFor(() => {
-			expect(NoteService.saveNote).toHaveBeenCalledWith(
-				expect.objectContaining({
-					id: "new-note-id",
-					title: "",
-					content: "",
-					isPinned: false,
-					noteType: "note",
-				}),
-				true,
-			);
+			expect(mockRouterPush).toHaveBeenCalledWith({
+				pathname: "/editor",
+				params: { id: "new-note-id", isNew: "true" },
+			});
 		});
-		expect(mockRouterPush).toHaveBeenCalledWith("/editor?id=new-note-id");
+		expect(NoteService.saveNote).not.toHaveBeenCalled();
 	});
 
 	it("creates a todo note from the checkbox action", async () => {
@@ -258,19 +252,17 @@ describe("Index", () => {
 		await user.press(screen.getByRole("button", { name: "Create todo" }));
 
 		await waitFor(() => {
-			expect(NoteService.saveNote).toHaveBeenCalledWith(
-				expect.objectContaining({
+			expect(mockRouterPush).toHaveBeenCalledWith({
+				pathname: "/editor",
+				params: {
 					id: "new-note-id",
+					isNew: "true",
 					title: "Todo ",
-					content: "",
-					isPinned: false,
 					noteType: "todo",
-					status: "open",
-				}),
-				true,
-			);
+				},
+			});
 		});
-		expect(mockRouterPush).toHaveBeenCalledWith("/editor?id=new-note-id");
+		expect(NoteService.saveNote).not.toHaveBeenCalled();
 	});
 
 	it("creates a journal note from the quick composer", async () => {
@@ -283,18 +275,17 @@ describe("Index", () => {
 		await user.press(screen.getByRole("button", { name: "Create journal" }));
 
 		await waitFor(() => {
-			expect(NoteService.saveNote).toHaveBeenCalledWith(
-				expect.objectContaining({
+			expect(mockRouterPush).toHaveBeenCalledWith({
+				pathname: "/editor",
+				params: {
 					id: "new-note-id",
+					isNew: "true",
 					title: "Journal ",
-					content: "",
-					isPinned: false,
 					noteType: "journal",
-				}),
-				true,
-			);
+				},
+			});
 		});
-		expect(mockRouterPush).toHaveBeenCalledWith("/editor?id=new-note-id");
+		expect(NoteService.saveNote).not.toHaveBeenCalled();
 	});
 
 	it("creates a resource note from the quick composer", async () => {
@@ -307,18 +298,17 @@ describe("Index", () => {
 		await user.press(screen.getByRole("button", { name: "Create resource" }));
 
 		await waitFor(() => {
-			expect(NoteService.saveNote).toHaveBeenCalledWith(
-				expect.objectContaining({
+			expect(mockRouterPush).toHaveBeenCalledWith({
+				pathname: "/editor",
+				params: {
 					id: "new-note-id",
+					isNew: "true",
 					title: "Resource ",
-					content: "",
-					isPinned: false,
 					noteType: "resource",
-				}),
-				true,
-			);
+				},
+			});
 		});
-		expect(mockRouterPush).toHaveBeenCalledWith("/editor?id=new-note-id");
+		expect(NoteService.saveNote).not.toHaveBeenCalled();
 	});
 
 	it("creates a quick note from the composer", async () => {
@@ -331,18 +321,12 @@ describe("Index", () => {
 		await user.press(screen.getByRole("button", { name: "Take a note" }));
 
 		await waitFor(() => {
-			expect(NoteService.saveNote).toHaveBeenCalledWith(
-				expect.objectContaining({
-					id: "new-note-id",
-					title: "",
-					content: "",
-					isPinned: false,
-					noteType: "note",
-				}),
-				true,
-			);
+			expect(mockRouterPush).toHaveBeenCalledWith({
+				pathname: "/editor",
+				params: { id: "new-note-id", isNew: "true" },
+			});
 		});
 		expect(mockShowToast).not.toHaveBeenCalled();
-		expect(mockRouterPush).toHaveBeenCalledWith("/editor?id=new-note-id");
+		expect(NoteService.saveNote).not.toHaveBeenCalled();
 	});
 });

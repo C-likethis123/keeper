@@ -178,21 +178,12 @@ describe("RootLayout", () => {
 		shortcutConfig.onForceSave();
 
 		await waitFor(() => {
-			expect(NoteService.saveNote).toHaveBeenCalledWith(
-				expect.objectContaining({
-					id: "generated-note-id",
-					title: "",
-					content: "",
-					noteType: "note",
-					isPinned: false,
-				}),
-				true,
-			);
+			expect(mockRouterPush).toHaveBeenCalledWith({
+				pathname: "/editor",
+				params: { id: "generated-note-id", isNew: "true" },
+			});
 		});
-		expect(mockRouterPush).toHaveBeenCalledWith({
-			pathname: "/editor",
-			params: { id: "generated-note-id" },
-		});
+		expect(NoteService.saveNote).not.toHaveBeenCalled();
 		expect(emitSpy).toHaveBeenCalledWith("forceSave");
 	});
 
@@ -203,9 +194,9 @@ describe("RootLayout", () => {
 			runtime: "desktop-tauri",
 			status: "ready",
 		});
-		(NoteService.saveNote as jest.Mock).mockRejectedValue(
-			new Error("disk full"),
-		);
+		mockRouterPush.mockImplementationOnce(() => {
+			throw new Error("disk full");
+		});
 
 		render(<RootLayout />);
 
@@ -215,7 +206,7 @@ describe("RootLayout", () => {
 
 		await shortcutConfig.onCreateNote();
 
-		expect(mockRouterPush).not.toHaveBeenCalled();
+		expect(mockRouterPush).toHaveBeenCalledTimes(1);
 		expect(mockShowToast).toHaveBeenCalledWith("Failed to create note");
 	});
 });
