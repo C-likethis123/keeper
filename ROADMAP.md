@@ -190,6 +190,9 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 - Added unit coverage for `noteTypeDerivation` prefix rules across journal, todo, resource, template, and URL patterns
 - Added focused component coverage for `NoteFiltersDropdown`
 - Added `NoteGrid` component coverage for load-more triggering and duplicate end-reached suppression
+- Added dedicated hook coverage for `useNotes` pagination, init gating, and in-flight refresh handling
+- Added dedicated hook coverage for `useToolbarActions` command dispatch, checkbox conversion, and native image insertion behavior
+- Added `BlockRow` seam coverage for numbered-list numbering and sticky video wrapper behavior
 - Added wikilink modal and overlay coverage for search, create-option behavior, keyboard submission, cancellation, and result selection
 - Added `HybridEditor` platform coverage for rendered wikilink activation on web, iOS, and Android, including open-existing and create-on-miss navigation flows
 - Added `EditorToolbar` component coverage for undo/redo dispatch, list indent/outdent enablement, checkbox conversion, and native-vs-web image affordances
@@ -284,9 +287,9 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 ### Note Organization & Relevance
 
 **Status**: In progress
-**Current implementation evidence**: note type and todo-status metadata are now persisted in frontmatter and storage indexes, editable in the note editor, filterable from the note list UI, and selectable from the home quick composer when creating new journal, resource, and todo entries. Template notes are now also persisted as first-class note types, indexed alongside other notes, and reusable from the editor's "Insert from template" flow. Note type is now derived automatically from title prefixes (e.g. "journal", "todo", "template", "book:", "article:", URL patterns → resource) via `deriveNoteType`; the home screen pre-populates the matching title prefix when creating typed notes.
+**Current implementation evidence**: note type and todo-status metadata are now persisted in frontmatter and storage indexes, editable in the note editor, filterable from the note list UI, and selectable from the home quick composer when creating new journal, resource, and todo entries. Template notes are now also persisted as first-class note types, indexed alongside other notes, and reusable from the editor's "Insert from template" flow. Note type is now derived automatically from title prefixes and lightweight content heuristics via `deriveNoteType`; checklist-heavy bodies fall into todos, link-heavy bodies fall into resources, and dated journal-style bodies can be categorized as journals even when the title is generic. `NoteEditorView` now persists those content-derived categories through autosave and explicit saves.
 **Key files**: `src/services/notes/frontmatter.ts`, `src/services/notes/notesIndexDb.ts`, `src/services/notes/noteTypeDerivation.ts`, `src/components/NoteEditorView.tsx`, `src/components/NoteFiltersDropdown.tsx`, `src/components/HomeQuickComposer.tsx`, `src/app/index.tsx`, `src/hooks/useNotes.ts`, `src/migrations/003_add_note_metadata.ts`, `src-tauri/src/storage/migrations/v3_add_note_metadata.rs`
-**Next**: validate migration/backfill behavior on existing notes, decide how metadata should affect default sorting/relevance, and add higher-level organization views beyond the current filters.
+**Next**: validate migration/backfill behavior on existing notes, tune the content-based categorization heuristics against real notes, decide how metadata should affect default sorting/relevance, and add higher-level organization views beyond the current filters.
 
 **Goals**:
 
@@ -310,10 +313,10 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 ### Testing Architecture
 
 **Status**: In progress
-**Current**: The project now uses Jest as the primary test runner, with `jest-expo` + React Native Testing Library covering both pure modules and UI/routes. Current coverage includes `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, `repoBootstrapper`, startup-step orchestration plus `startupStrategies`, `noteTypeDerivation`, `src/app/editor.tsx`, `src/app/index.tsx`, `src/app/_layout.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, `EditorToolbar`, focused `NoteGrid` pagination behavior, `useAutoSave`, `useLoadNote`, `useAppStartup`, wikilink modal/overlay flows, and `HybridEditor` rendered-wikilink activation behavior across web/iOS/Android.
+**Current**: The project now uses Jest as the primary test runner, with `jest-expo` + React Native Testing Library covering both pure modules and UI/routes. Current coverage includes `Document`, `Transaction`, `History`, `EditorState`, selected `editorStore` flows, `frontmatter`, `repoBootstrapper`, startup-step orchestration plus `startupStrategies`, `noteTypeDerivation`, `src/app/editor.tsx`, `src/app/index.tsx`, `src/app/_layout.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, `EditorToolbar`, `BlockRow`, focused `NoteGrid` pagination behavior, `useNotes`, `useToolbarActions`, `useAutoSave`, `useLoadNote`, `useAppStartup`, wikilink modal/overlay flows, and `HybridEditor` rendered-wikilink activation behavior across web/iOS/Android.
 **Next**:
 
-- Expand tests gradually into remaining editor and note-list seams rather than widening startup coverage first
+- Expand tests gradually into the remaining editor seams beyond the current `BlockRow` / toolbar / note-list slice rather than widening startup coverage first
 - Add shared fixtures only where repetition appears, keeping early tests close to the modules they cover
 
 **Current constraints**:
