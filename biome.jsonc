@@ -5,6 +5,7 @@
 			"dist",
 			"node_modules",
 			".expo",
+			"src-tauri",
 			"ios/Pods",
 			"ios/build",
 			"android/build",
