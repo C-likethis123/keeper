@@ -321,6 +321,55 @@ describe("NoteEditorView", () => {
 		});
 	});
 
+	it("derives todo metadata from checklist content before saving", async () => {
+		const note = makeNote({ title: "Weekend prep" });
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Toolbar");
+		act(() => {
+			useEditorState.getState().loadMarkdown("- [ ] Buy groceries");
+		});
+		pressHeaderBack();
+
+		await waitFor(() => {
+			expect(mockSaveNote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: note.id,
+					title: "Weekend prep",
+					noteType: "todo",
+					status: "open",
+				}),
+				false,
+			);
+		});
+	});
+
+	it("derives resource metadata from content links before saving", async () => {
+		const note = makeNote({ title: "Research notes" });
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Toolbar");
+		act(() => {
+			useEditorState
+				.getState()
+				.loadMarkdown("Reference: https://example.com/article");
+		});
+		pressHeaderBack();
+
+		await waitFor(() => {
+			expect(mockSaveNote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: note.id,
+					title: "Research notes",
+					noteType: "resource",
+				}),
+				false,
+			);
+		});
+	});
+
 	it("preserves an existing stored note type on mount instead of re-deriving it", async () => {
 		const note = makeNote({
 			title: "Weekly reading list",

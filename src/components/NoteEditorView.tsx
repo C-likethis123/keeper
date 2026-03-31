@@ -59,28 +59,36 @@ export default function NoteEditorView({
 	const id = note.id;
 	const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
 	const [title, setTitle] = useState<string>(note.title);
-	const [noteType, setNoteType] = useState<Note["noteType"]>(() =>
-		deriveNoteType(note.title),
-	);
 	const [todoStatus, setTodoStatus] = useState<Note["status"]>(
 		note.noteType === "todo" ? (note.status ?? "open") : undefined,
 	);
-	useEffect(() => {
-		const derived = deriveNoteType(title);
-		setNoteType(derived);
-		setTodoStatus((current) =>
-			derived === "todo" ? (current ?? "open") : undefined,
-		);
-		if (derived === "template") {
-			setIsPinned(false);
-		}
-	}, [title]);
 
 	const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
 	const [templates, setTemplates] = useState<Note[]>([]);
 	const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
+	const editorContent = useEditorState((s: EditorState) =>
+		s.getContentForVersion(s.document.version),
+	);
+	const deriveCurrentNoteType = useCallback(
+		(nextTitle: string, nextContent: string): Note["noteType"] => {
+			const derived = deriveNoteType(nextTitle, nextContent);
+			const isUnchangedExistingNote =
+				!isNew &&
+				nextTitle === note.title &&
+				nextContent === note.content &&
+				note.noteType !== "note";
+			if (derived === "note" && isUnchangedExistingNote) {
+				return note.noteType;
+			}
+			return derived;
+		},
+		[isNew, note.content, note.noteType, note.title],
+	);
+	const [noteType, setNoteType] = useState<Note["noteType"]>(() =>
+		deriveCurrentNoteType(note.title, note.content),
+	);
 	const latestDraftRef = useRef({
 		title,
 		isPinned,
@@ -93,22 +101,34 @@ export default function NoteEditorView({
 	latestDraftRef.current = {
 		title,
 		isPinned,
-		noteType,
+		noteType: deriveCurrentNoteType(title, editorContent),
 		todoStatus,
 	};
+
+	useEffect(() => {
+		const derived = deriveCurrentNoteType(title, editorContent);
+		setNoteType(derived);
+		setTodoStatus((current) =>
+			derived === "todo" ? (current ?? "open") : undefined,
+		);
+		if (derived === "template") {
+			setIsPinned(false);
+		}
+	}, [deriveCurrentNoteType, editorContent, title]);
 
 	const buildCurrentNotePayload = useCallback(
 		(overrides?: Partial<NoteSaveInput>): NoteSaveInput => {
 			const draft = latestDraftRef.current;
+			const content = useEditorState.getState().getContent();
 			const resolvedNoteType =
-				overrides?.noteType ?? deriveNoteType(draft.title);
+				overrides?.noteType ?? deriveCurrentNoteType(draft.title, content);
 			const resolvedIsPinned =
 				(overrides?.isPinned ?? draft.isPinned) &&
 				resolvedNoteType !== "template";
 			return {
 				id,
 				title: draft.title,
-				content: useEditorState.getState().getContent(),
+				content,
 				isPinned: resolvedIsPinned,
 				noteType: resolvedNoteType,
 				status:
@@ -118,7 +138,7 @@ export default function NoteEditorView({
 				...overrides,
 			};
 		},
-		[id],
+		[deriveCurrentNoteType, id],
 	);
 
 	const persistCurrentEntry = useCallback(
@@ -193,11 +213,8 @@ export default function NoteEditorView({
 	const applyTitleChange = useCallback(
 		(nextTitle: string) => {
 			setTitle(nextTitle);
-			const nextType = deriveNoteType(nextTitle);
-			setNoteType(nextType);
-			setTodoStatus(nextType === "todo" ? (todoStatus ?? "open") : null);
 		},
-		[todoStatus],
+		[],
 	);
 
 	const openTemplateModal = useCallback(async () => {

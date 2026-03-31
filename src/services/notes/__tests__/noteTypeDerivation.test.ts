@@ -26,6 +26,9 @@ describe("deriveNoteType", () => {
 		it("matches 'To-do' prefix", () => {
 			expect(deriveNoteType("To-do: Feature planning")).toBe("todo");
 		});
+		it("derives todo from checklist content when the title is generic", () => {
+			expect(deriveNoteType("Weekend prep", "- [ ] Buy groceries")).toBe("todo");
+		});
 	});
 
 	describe("template", () => {
@@ -85,6 +88,22 @@ describe("deriveNoteType", () => {
 		});
 		it("is case-insensitive for 'resource' prefix", () => {
 			expect(deriveNoteType("RESOURCE: something")).toBe("resource");
+		});
+		it("derives resource from url-rich content when the title is generic", () => {
+			expect(
+				deriveNoteType("Research notes", "Useful link: https://example.com"),
+			).toBe("resource");
+		});
+	});
+
+	describe("journal by content", () => {
+		it("derives journal from a dated journal-style body", () => {
+			expect(
+				deriveNoteType(
+					"Daily capture",
+					"2026-04-01\nToday I felt more focused after a short walk.",
+				),
+			).toBe("journal");
 		});
 	});
 
