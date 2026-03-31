@@ -1,5 +1,6 @@
 import { fireEvent, screen, userEvent, waitFor } from "@testing-library/react-native";
 import React from "react";
+import { TextInput } from "react-native";
 import { useEditorState } from "@/stores/editorStore";
 import {
 	renderEditor,
@@ -22,8 +23,8 @@ describe("HybridEditor slash commands", () => {
 
 		renderEditor("", { onInsertTemplateCommand });
 
-		const input = screen.getByPlaceholderText("Start typing...");
-		await user.press(input);
+		const input = screen.UNSAFE_getByType(TextInput);
+		fireEvent(input, "focus");
 		fireEvent.changeText(input, "/");
 
 		await screen.findByPlaceholderText("Type a command...");

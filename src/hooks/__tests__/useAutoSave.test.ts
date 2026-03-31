@@ -114,6 +114,7 @@ describe("useAutoSave", () => {
 				noteType: "note",
 				status: undefined,
 				previousNoteType: "note",
+				isNewEntry: false,
 			});
 		});
 		expect(result.current.status).toBe("saved");
