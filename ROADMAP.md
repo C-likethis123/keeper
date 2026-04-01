@@ -379,25 +379,27 @@ Extract repeated UI patterns into shared components and hooks to reduce duplicat
 
 ---
 
-### Phase 9: Collapsible Blocks
+### Phase 9: Collapsible Blocks ✅
 
 Add support for collapsible sections using the `<details>` HTML pattern, including live trigger conversion and toolbar integration.
 
-**Status**: In progress
+**Status**: Implemented
 **Current implementation evidence**:
 - Added `CollapsibleBlock` type to the document model and block registry
 - Broadened the `triggerPrefix` regex in `BlockRegistry` to match `<details></details>` and `<details open>` for live conversion
 - Wired `handleInsertCollapsible` through `useToolbarActions`
 - Added the `expand-more` (▾) button to `EditorToolbar`
-- Added unit coverage for the new trigger variants in `BlockRegistry` and the toolbar button interaction
+- Added dedicated `CollapsibleBlock` rendering and editor interaction handling for summary/body focus, expand-collapse state, and Enter/backspace flows
+- Added unit and integration coverage for trigger detection, toolbar insertion, document parsing/serialization, and collapsible editing behavior
 
 **Key files**:
 - `src/components/editor/blocks/BlockRegistry.tsx`
 - `src/hooks/useToolbarActions.ts`
 - `src/components/editor/EditorToolbar.tsx`
-- `src/components/editor/blocks/LazyCollapsibleBlock.tsx`
+- `src/components/editor/blocks/CollapsibleBlock.tsx`
+- `src/components/editor/__tests__/CollapsibleBlockIntegration.jest.test.tsx`
 
-**Next**:
+**Follow-up**:
 - Manually smoke test the live conversion and toolbar insertion on device
 - Finalize the layout and interaction polish for the collapsible block body and summary zones
 

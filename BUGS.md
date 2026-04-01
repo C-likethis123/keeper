@@ -18,7 +18,7 @@ See `ROADMAP.md` for detailed issue descriptions and root causes.
 ## Known Regressions & Improvements
 
 - **Shared UI Components**: Complete. `FilterChip`, `IconButton`, and `useBlockInputHandlers` extracted with full test coverage; all major editor and filter UI migrated.
-- **Collapsible Blocks**: In progress. `<details>` live conversion and toolbar insertion implemented with unit tests; layout polish and device validation remain.
+- **Collapsible Blocks**: Core support shipped. Live `<details>` conversion, toolbar insertion, summary/body editing flows, and automated coverage are in place; remaining work is device validation and layout polish.
 - **Desktop editor** still needs follow-up polish
 
 - App updates are on hold for now; OTA is not a good fit while the project is still making frequent native-code changes that require full rebuilds
