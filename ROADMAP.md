@@ -10,7 +10,6 @@ This section contains todo items that have not been prioritised. When seeing ite
 2. Implement block moving
 3. Implement selection between blocks!
 4. react-native-enriched uses Fabric native modules so it acts as an uncontrolled component. It is not recommended to change TextInput to a native component because the bottleneck might be in syncing the document state with the stores.
-5. Automatically derive TODOs from notes
 
 ## Critical Issues (P1)
 
@@ -402,6 +401,37 @@ Add support for collapsible sections using the `<details>` HTML pattern, includi
 **Follow-up**:
 - Manually smoke test the live conversion and toolbar insertion on device
 - Finalize the layout and interaction polish for the collapsible block body and summary zones
+
+---
+
+### Phase 10: Extract Todos From Notes
+
+Turn inline `todo:` entries inside note blocks into first-class tracked todos that stay linked back to the originating note context.
+
+**Status**: Planned
+**Task file**: `tasks/001-extract-todos-from-notes.md`
+**Current implementation evidence**:
+- Todo notes already exist as a first-class note type with status metadata in frontmatter, storage mappers, and note-list filters
+- Wikilink resolution and create-on-miss flows already exist in the editor, including exact-title matching and stub-note creation
+- Note type derivation already recognizes todo-like content, but inline block content is not yet promoted into individually tracked todo records
+**Goals**:
+- Detect `todo:` prefixes typed inside note blocks and convert them into wikilinked todo references instead of leaving them as plain text
+- Reuse or create a canonical todo target so repeated references resolve consistently through the existing wikilink infrastructure
+- Track todo lifecycle metadata separately from the parent note body, including when the todo was first created and when it was later marked done
+- Preserve enough metadata to calculate or display the elapsed time between todo creation and completion
+**Candidate files**:
+- `src/components/editor/blocks/UnifiedBlock.tsx`
+- `src/components/editor/HybridEditor.tsx`
+- `src/components/editor/wikilinks/wikiLinkUtils.ts`
+- `src/services/notes/types.ts`
+- `src/services/notes/frontmatter.ts`
+- `src/services/notes/editorEntryPersistence.ts`
+- `src/components/NoteEditorView.tsx`
+- `src/services/notes/indexDb/mapper.ts`
+**Open design points**:
+- Whether tracked todos remain ordinary todo notes with richer metadata or require a dedicated linked-task record shape
+- How to normalize duplicate `todo:` text across notes so unrelated todos do not collapse onto the same wikilink target by accident
+- Where completion timing should be surfaced in the UI: todo note metadata, note list badges, backlinks, or all three
 
 ---
 
