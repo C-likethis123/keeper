@@ -1,25 +1,18 @@
 import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
+import TextInput from "@/components/shared/TextInput";
 import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockSelection, useEditorState } from "@/stores/editorStore";
-import React, {
-	useCallback,
-	useEffect,
-	useLayoutEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import type { GestureResponderEvent } from "react-native";
 import {
 	type NativeMethods,
 	type NativeSyntheticEvent,
+	type TextInput as NativeTextInput,
 	Platform,
 	Pressable,
 	StyleSheet,
-	TextInput,
-	type TextInputContentSizeChangeEventData,
 	type TextInputKeyPressEventData,
 	type TextInputSelectionChangeEventData,
 	type TextStyle,
@@ -54,7 +47,7 @@ export function UnifiedBlock({
 }: BlockConfig) {
 	const { focusBlock, blurBlock } = useFocusBlock();
 	const { scrollViewRef, scrollYRef, viewHeightRef } = useEditorScrollView();
-	const inputRef = useRef<TextInput>(null);
+	const inputRef = useRef<NativeTextInput>(null);
 	const ignoreNextChangeRef = useRef(false);
 	const prevIsFocusedRef = useRef(false);
 	const selectionRange = useEditorBlockSelection(index);
@@ -291,71 +284,15 @@ export function UnifiedBlock({
 			: typeof textStyle.fontSize === "number"
 				? textStyle.fontSize
 				: 0;
-	const [inputHeight, setInputHeight] = useState(minimumLineHeight);
+	const isWeb = Platform.OS === "web";
 
-	useEffect(() => {
-		setInputHeight(minimumLineHeight);
-	}, [minimumLineHeight]);
-
-	const syncWebInputHeight = useCallback(() => {
-		if (Platform.OS !== "web" || !isFocused) {
-			return () => {};
-		}
-		if (typeof HTMLElement === "undefined") {
-			return () => {};
-		}
-		let cancelled = false;
-		const frame = requestAnimationFrame(() => {
-			if (cancelled) {
-				return;
-			}
-			const node = inputRef.current as
-				| (TextInput & { scrollHeight?: number; style?: CSSStyleDeclaration })
-				| null;
-			if (!(node instanceof HTMLElement)) {
-				return;
-			}
-			const previousHeight = node.style.height;
-			node.style.height = "auto";
-			const nextHeight = Math.max(minimumLineHeight, node.scrollHeight);
-			node.style.height = previousHeight;
-			setInputHeight((currentHeight) =>
-				Math.abs(currentHeight - nextHeight) < 1 ? currentHeight : nextHeight,
-			);
-		});
-		return () => {
-			cancelled = true;
-			cancelAnimationFrame(frame);
-		};
-	}, [isFocused, minimumLineHeight]);
-
-	useLayoutEffect(() => {
-		return syncWebInputHeight();
-	}, [syncWebInputHeight]);
-
-	const handleContentSizeChange = useCallback(
-		(e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => {
-			if (!isFocused) {
-				return;
-			}
-			const nextHeight = Math.max(
-				minimumLineHeight,
-				e.nativeEvent.contentSize.height,
-			);
-			setInputHeight(nextHeight);
-			syncWebInputHeight();
-		},
-		[minimumLineHeight, isFocused, syncWebInputHeight],
-	);
+	const inputSizeStyle = isWeb
+		? { minHeight: minimumLineHeight }
+		: { minHeight: minimumLineHeight, maxHeight: Number.MAX_SAFE_INTEGER };
 
 	const textInputProps = {
 		ref: inputRef,
-		style: [
-			styles.input,
-			{ minHeight: minimumLineHeight, height: inputHeight },
-			textStyle,
-			styles.inputVisible,
-		],
+		style: [styles.input, inputSizeStyle, textStyle, styles.inputVisible],
 		value: block.content,
 		...(selectionProp !== undefined && { selection: selectionProp }),
 		onChangeText: handleContentChange,
@@ -363,10 +300,10 @@ export function UnifiedBlock({
 		onBlur: handleBlur,
 		onKeyPress: handleKeyPress,
 		onSelectionChange: handleSelectionChange,
-		onContentSizeChange: handleContentSizeChange,
 		multiline: true,
 		numberOfLines: 1,
 		scrollEnabled: false,
+		autoGrow: true,
 		autoCapitalize: "none" as const,
 		autoCorrect: false,
 		spellCheck: false,
