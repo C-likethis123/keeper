@@ -28,12 +28,23 @@ export function useAppKeyboardShortcuts(
 			const commandId = getAppShortcutCommand(normalized.chord);
 			if (!commandId) return;
 
-			event.preventDefault();
-
 			const { onFocusSearch, onCreateNote, onForceSave } = callbacksRef.current;
-			if (commandId === "focusSearch") onFocusSearch?.();
-			else if (commandId === "createNote") onCreateNote?.();
-			else if (commandId === "forceSave") onForceSave?.();
+			let handler: (() => void) | undefined;
+			switch (commandId) {
+				case "focusSearch":
+					handler = onFocusSearch;
+					break;
+				case "createNote":
+					handler = onCreateNote;
+					break;
+				case "forceSave":
+					handler = onForceSave;
+					break;
+			}
+			if (!handler) return;
+
+			event.preventDefault();
+			void handler();
 		};
 
 		document.addEventListener("keydown", handleKeyDown, true);

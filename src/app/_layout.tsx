@@ -2,11 +2,8 @@ import { ToastOverlay } from "@/components/shared/Toast";
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
 import type { ExtendedTheme } from "@/constants/themes/types";
-import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useAppStartup } from "@/hooks/useAppStartup";
-import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
 import { useStyles } from "@/hooks/useStyles";
-import { appEvents } from "@/services/appEvents";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
@@ -41,12 +38,6 @@ const App = ({
 	initError,
 }: { isHydrated: boolean; initError: string | null }) => {
 	const styles = useStyles(createStyles);
-	const createAndOpenNote = useCreateAndOpenNote();
-	useAppKeyboardShortcuts({
-		onFocusSearch: () => appEvents.emit("focusSearch"),
-		onCreateNote: createAndOpenNote,
-		onForceSave: () => appEvents.emit("forceSave"),
-	});
 
 	if (!isHydrated) {
 		return (

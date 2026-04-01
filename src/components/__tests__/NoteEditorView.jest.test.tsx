@@ -1,5 +1,6 @@
 import NoteEditorView from "@/components/NoteEditorView";
 import { SaveIndicator } from "@/components/SaveIndicator";
+import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useStorageStore } from "@/stores/storageStore";
@@ -106,6 +107,10 @@ jest.mock("@/services/notes/notesIndex", () => ({
 	NotesIndexService: {
 		listNotes: (...args: unknown[]) => mockIndexListNotes(...args),
 	},
+}));
+
+jest.mock("@/hooks/useAppKeyboardShortcuts", () => ({
+	useAppKeyboardShortcuts: jest.fn(),
 }));
 
 jest.mock("@/components/editor/EditorToolbar", () => {
@@ -228,6 +233,7 @@ describe("NoteEditorView", () => {
 		mockDeleteNote.mockResolvedValue(undefined);
 		mockIndexListNotes.mockResolvedValue({ items: [], cursor: undefined });
 		mockNavigationSetOptions.mockReset();
+		(useAppKeyboardShortcuts as jest.Mock).mockReset();
 		latestNavigationOptions = undefined;
 		useEditorState.getState().resetState();
 		useStorageStore.setState({
@@ -251,6 +257,18 @@ describe("NoteEditorView", () => {
 			expect(useEditorState.getState().getContent()).toBe("# Heading");
 		});
 		expect(result.getPathname()).toBe("/editor");
+	});
+
+	it("registers the force-save shortcut in the editor view", async () => {
+		const note = makeNote();
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock editor");
+
+		expect(useAppKeyboardShortcuts).toHaveBeenCalledWith({
+			onForceSave: expect.any(Function),
+		});
 	});
 
 	it("defaults todo status to open when switching a note to todo and saving", async () => {

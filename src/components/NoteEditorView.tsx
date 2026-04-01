@@ -1,10 +1,10 @@
 import NoteEditorHeader from "@/components/NoteEditorHeader";
 import type { EditorState } from "@/components/editor/core/EditorState";
 import { FilterChip } from "@/components/shared/FilterChip";
+import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import { appEvents } from "@/services/appEvents";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
@@ -172,12 +172,9 @@ export default function NoteEditorView({
 		onPersisted: handlePersisted,
 		isNew,
 	});
-
-	useEffect(() => {
-		return appEvents.on("forceSave", () => {
-			void forceSave();
-		});
-	}, [forceSave]);
+	useAppKeyboardShortcuts({
+		onForceSave: forceSave,
+	});
 
 	useFocusEffect(
 		useCallback(() => {

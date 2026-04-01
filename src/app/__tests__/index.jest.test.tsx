@@ -1,4 +1,5 @@
 import Index from "@/app/index";
+import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { NoteService } from "@/services/notes/noteService";
 import { useStorageStore } from "@/stores/storageStore";
 import {
@@ -18,6 +19,10 @@ const mockUseFocusEffect = jest.fn();
 jest.mock("@/hooks/useSuspenseNotes", () => ({
 	__esModule: true,
 	default: (...args: unknown[]) => mockUseSuspenseNotes(...args),
+}));
+
+jest.mock("@/hooks/useAppKeyboardShortcuts", () => ({
+	useAppKeyboardShortcuts: jest.fn(),
 }));
 
 jest.mock("@/stores/toastStore", () => ({
@@ -240,6 +245,18 @@ describe("Index", () => {
 			});
 		});
 		expect(NoteService.saveNote).not.toHaveBeenCalled();
+	});
+
+	it("registers home route shortcuts for search focus and note creation", () => {
+		mockUseFocusEffect.mockImplementation(() => {});
+		mockUseSuspenseNotes.mockReturnValue(makeUseNotesResult());
+
+		render(<Index />);
+
+		expect(useAppKeyboardShortcuts).toHaveBeenCalledWith({
+			onFocusSearch: expect.any(Function),
+			onCreateNote: expect.any(Function),
+		});
 	});
 
 	it("creates a todo note from the checkbox action", async () => {

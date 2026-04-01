@@ -3,11 +3,11 @@ import HomeScreenHeader from "@/components/HomeScreenHeader";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
+import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
 import { useStyles } from "@/hooks/useStyles";
 import useSuspenseNotes from "@/hooks/useSuspenseNotes";
-import { appEvents } from "@/services/appEvents";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
@@ -17,7 +17,6 @@ import { Stack, router, useFocusEffect } from "expo-router";
 import React, {
 	Suspense,
 	useCallback,
-	useEffect,
 	useRef,
 	useState,
 } from "react";
@@ -155,12 +154,14 @@ function IndexContent() {
 	}, [createAndOpenNote]);
 
 	const searchInputRef = useRef<TextInput>(null);
-
-	useEffect(() => {
-		return appEvents.on("focusSearch", () => {
+	useAppKeyboardShortcuts({
+		onFocusSearch: () => {
 			searchInputRef.current?.focus();
-		});
-	}, []);
+		},
+		onCreateNote: () => {
+			void handleCreateNote();
+		},
+	});
 
 	const styles = useStyles(createStyles);
 	const emptySubtitle =

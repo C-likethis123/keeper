@@ -21,26 +21,27 @@ describe("useAppKeyboardShortcuts", () => {
 		key: string,
 		opts: { metaKey?: boolean; ctrlKey?: boolean } = {},
 	) {
-		act(() => {
-			document.dispatchEvent(
-				new KeyboardEvent("keydown", {
-					key,
-					code: `Key${key.toUpperCase()}`,
-					bubbles: true,
-					cancelable: true,
-					...opts,
-				}),
-			);
+		const event = new KeyboardEvent("keydown", {
+			key,
+			code: `Key${key.toUpperCase()}`,
+			bubbles: true,
+			cancelable: true,
+			...opts,
 		});
+		act(() => {
+			document.dispatchEvent(event);
+		});
+		return event;
 	}
 
 	it("calls onFocusSearch when Cmd+K is pressed", () => {
 		const onFocusSearch = jest.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onFocusSearch }));
 
-		fireKey("k", { metaKey: true });
+		const event = fireKey("k", { metaKey: true });
 
 		expect(onFocusSearch).toHaveBeenCalledTimes(1);
+		expect(event.defaultPrevented).toBe(true);
 	});
 
 	it("calls onFocusSearch when Ctrl+K is pressed", () => {
@@ -65,9 +66,10 @@ describe("useAppKeyboardShortcuts", () => {
 		const onCreateNote = jest.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onCreateNote }));
 
-		fireKey("n", { metaKey: true });
+		const event = fireKey("n", { metaKey: true });
 
 		expect(onCreateNote).toHaveBeenCalledTimes(1);
+		expect(event.defaultPrevented).toBe(true);
 	});
 
 	it("calls onCreateNote when Ctrl+N is pressed", () => {
@@ -83,9 +85,10 @@ describe("useAppKeyboardShortcuts", () => {
 		const onForceSave = jest.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onForceSave }));
 
-		fireKey("s", { metaKey: true });
+		const event = fireKey("s", { metaKey: true });
 
 		expect(onForceSave).toHaveBeenCalledTimes(1);
+		expect(event.defaultPrevented).toBe(true);
 	});
 
 	it("calls onForceSave when Ctrl+S is pressed", () => {
@@ -111,6 +114,16 @@ describe("useAppKeyboardShortcuts", () => {
 		expect(onFocusSearch).not.toHaveBeenCalled();
 		expect(onCreateNote).not.toHaveBeenCalled();
 		expect(onForceSave).not.toHaveBeenCalled();
+	});
+
+	it("does not intercept a registered command when the route does not provide that callback", () => {
+		const onCreateNote = jest.fn();
+		renderHook(() => useAppKeyboardShortcuts({ onCreateNote }));
+
+		const event = fireKey("s", { metaKey: true });
+
+		expect(onCreateNote).not.toHaveBeenCalled();
+		expect(event.defaultPrevented).toBe(false);
 	});
 
 	it("removes the listener when the hook unmounts", () => {
