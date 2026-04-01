@@ -1,5 +1,6 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
+import type { NoteType } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import {
@@ -54,14 +55,8 @@ function QuickActionButton({
 
 export default function HomeQuickComposer({
 	onPress,
-	onCreateTodo,
-	onCreateJournal,
-	onCreateResource,
 }: {
-	onPress: () => void;
-	onCreateTodo: () => void;
-	onCreateJournal: () => void;
-	onCreateResource: () => void;
+	onPress: (props?: { noteType?: NoteType; title?: string }) => void;
 }) {
 	const theme = useExtendedTheme();
 	const styles = useStyles(createStyles);
@@ -74,7 +69,7 @@ export default function HomeQuickComposer({
 					accessibilityLabel="Take a note"
 					activeOpacity={0.85}
 					style={styles.primaryAction}
-					onPress={onPress}
+					onPress={() => onPress()}
 				>
 					<Text style={[styles.placeholder]}>Take a note...</Text>
 				</TouchableOpacity>
@@ -82,21 +77,21 @@ export default function HomeQuickComposer({
 					<QuickActionButton
 						label="Create todo"
 						icon="check-box"
-						onPress={onCreateTodo}
+						onPress={() => onPress({ noteType: "todo", title: "TODO:" })}
 						iconColor={theme.colors.textMuted}
 						styles={styles}
 					/>
 					<QuickActionButton
 						label="Create journal"
 						icon="menu-book"
-						onPress={onCreateJournal}
+						onPress={() => onPress({ noteType: "journal", title: "Journal: " })}
 						iconColor={theme.colors.textMuted}
 						styles={styles}
 					/>
 					<QuickActionButton
 						label="Create resource"
 						icon="bookmarks"
-						onPress={onCreateResource}
+						onPress={() => onPress({ noteType: "resource", title: "Source: " })}
 						iconColor={theme.colors.textMuted}
 						styles={styles}
 					/>
@@ -104,13 +99,6 @@ export default function HomeQuickComposer({
 						label="Create drawing"
 						icon="brush"
 						testID="home-quick-composer-brush"
-						iconColor={theme.colors.textMuted}
-						styles={styles}
-					/>
-					<QuickActionButton
-						label="Add image"
-						icon="image"
-						testID="home-quick-composer-image"
 						iconColor={theme.colors.textMuted}
 						styles={styles}
 					/>

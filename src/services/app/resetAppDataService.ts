@@ -7,14 +7,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 let resetInFlight: Promise<void> | null = null;
 export const FORCE_REPO_RESET_KEY = "app:forceRepoResetOnNextInit";
 
-async function clearAsyncStorage(): Promise<void> {
-	const keys = await AsyncStorage.getAllKeys();
-	if (keys.length === 0) {
-		return;
-	}
-	await AsyncStorage.multiRemove(keys);
-}
-
 export async function resetAppData(): Promise<void> {
 	if (resetInFlight) {
 		return resetInFlight;
@@ -24,7 +16,7 @@ export async function resetAppData(): Promise<void> {
 		GitService.clearQueuedChanges();
 		useEditorState.getState().resetState();
 		await getStorageEngine().resetAllData();
-		await clearAsyncStorage();
+		await AsyncStorage.clear();
 		await AsyncStorage.setItem(FORCE_REPO_RESET_KEY, "1");
 
 		GitService.clearQueuedChanges();

@@ -4,27 +4,22 @@ import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
-import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
+import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import useSuspenseNotes from "@/hooks/useSuspenseNotes";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
-import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
-import type { Note, NoteType } from "@/services/notes/types";
+import type { Note } from "@/services/notes/types";
 import { useToastStore } from "@/stores/toastStore";
-import { Stack, router, useFocusEffect } from "expo-router";
-import React, {
-	Suspense,
-	useCallback,
-	useRef,
-	useState,
-} from "react";
+import { Stack, useFocusEffect } from "expo-router";
+import React, { Suspense, useCallback, useRef, useState } from "react";
 import {
-	Alert,
-	Platform,
+	Modal,
 	StyleSheet,
+	Text,
 	type TextInput,
+	TouchableOpacity,
 	View,
 } from "react-native";
 
@@ -47,6 +42,7 @@ function IndexContent() {
 	} = useSuspenseNotes();
 	const showToast = useToastStore((state) => state.showToast);
 	const [isResetting, setIsResetting] = React.useState(false);
+	const [isResetModalVisible, setIsResetModalVisible] = useState(false);
 	const createAndOpenNote = useCreateAndOpenNote();
 
 	const handleDeleteNote = useCallback(
@@ -88,32 +84,24 @@ function IndexContent() {
 		}
 	}, [handleRefresh, isResetting, showToast]);
 
-	// REVIEW: this is different from web...
 	const confirmReset = useCallback(() => {
 		if (isResetting) {
 			return;
 		}
-		const title = "Reset app data?";
-		const message =
-			"This clears local notes, attachments, search data, and stored app keys. Git-backed notes may sync back from remote afterward.";
-		if (Platform.OS === "web") {
-			void runReset();
+		setIsResetModalVisible(true);
+	}, [isResetting]);
+
+	const closeResetModal = useCallback(() => {
+		if (isResetting) {
 			return;
 		}
-		Alert.alert(title, message, [
-			{
-				text: "Cancel",
-				style: "cancel",
-			},
-			{
-				text: "Reset",
-				style: "destructive",
-				onPress: () => {
-					void runReset();
-				},
-			},
-		]);
-	}, [isResetting, runReset]);
+		setIsResetModalVisible(false);
+	}, [isResetting]);
+
+	const handleConfirmReset = useCallback(() => {
+		setIsResetModalVisible(false);
+		void runReset();
+	}, [runReset]);
 
 	const handlePinToggle = useCallback(
 		async (updated: Note) => {
@@ -123,43 +111,13 @@ function IndexContent() {
 		[handleRefresh],
 	);
 
-	const handleCreateNote = useCallback(async () => {
-		await createAndOpenNote();
-	}, [createAndOpenNote]);
-
-	const TYPE_TITLE_PREFIX: Record<
-		Extract<NoteType, "journal" | "resource">,
-		string
-	> = {
-		journal: "Journal ",
-		resource: "Resource ",
-	};
-
-	const handleCreateTypedNote = useCallback(
-		async (noteType: Extract<NoteType, "journal" | "resource">) => {
-			const title = TYPE_TITLE_PREFIX[noteType];
-			await createAndOpenNote({
-				title,
-				noteType: deriveNoteType(title),
-			});
-		},
-		[createAndOpenNote],
-	);
-
-	const handleCreateTodo = useCallback(async () => {
-		await createAndOpenNote({
-			title: "Todo ",
-			noteType: "todo",
-		});
-	}, [createAndOpenNote]);
-
 	const searchInputRef = useRef<TextInput>(null);
 	useAppKeyboardShortcuts({
 		onFocusSearch: () => {
 			searchInputRef.current?.focus();
 		},
 		onCreateNote: () => {
-			void handleCreateNote();
+			void createAndOpenNote();
 		},
 	});
 
@@ -209,23 +167,45 @@ function IndexContent() {
 					isLoadingMore={isLoading}
 					hasMore={hasMore}
 					listHeaderComponent={
-						<HomeQuickComposer
-							onPress={() => {
-								void handleCreateNote();
-							}}
-							onCreateTodo={() => {
-								void handleCreateTodo();
-							}}
-							onCreateJournal={() => {
-								void handleCreateTypedNote("journal");
-							}}
-							onCreateResource={() => {
-								void handleCreateTypedNote("resource");
-							}}
-						/>
+						<HomeQuickComposer onPress={createAndOpenNote} />
 					}
 				/>
 			</Suspense>
+			<Modal
+				visible={isResetModalVisible}
+				animationType="fade"
+				transparent
+				onRequestClose={closeResetModal}
+			>
+				<View style={styles.modalBackdrop}>
+					<View style={styles.modalCard}>
+						<Text style={styles.modalTitle}>Reset app data?</Text>
+						<Text style={styles.modalMessage}>
+							This clears local notes, attachments, search data, and
+							stored app keys. Git-backed notes may sync back from remote
+							afterward.
+						</Text>
+						<View style={styles.modalActions}>
+							<TouchableOpacity
+								accessibilityRole="button"
+								style={styles.modalSecondaryButton}
+								onPress={closeResetModal}
+								disabled={isResetting}
+							>
+								<Text style={styles.modalSecondaryButtonText}>Cancel</Text>
+							</TouchableOpacity>
+							<TouchableOpacity
+								accessibilityRole="button"
+								style={styles.modalDestructiveButton}
+								onPress={handleConfirmReset}
+								disabled={isResetting}
+							>
+								<Text style={styles.modalDestructiveButtonText}>Reset</Text>
+							</TouchableOpacity>
+						</View>
+					</View>
+				</View>
+			</Modal>
 			{error ? (
 				<ErrorScreen errorMessage={error} onRetry={handleRefresh} />
 			) : null}
@@ -261,6 +241,60 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		container: {
 			flex: 1,
 			backgroundColor: theme.colors.background,
+		},
+		modalBackdrop: {
+			flex: 1,
+			backgroundColor: "rgba(0, 0, 0, 0.35)",
+			justifyContent: "center",
+			padding: 20,
+		},
+		modalCard: {
+			borderRadius: 16,
+			padding: 20,
+			backgroundColor: theme.colors.background,
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+			gap: 12,
+		},
+		modalTitle: {
+			fontSize: 18,
+			fontWeight: "700",
+			color: theme.colors.text,
+		},
+		modalMessage: {
+			fontSize: 14,
+			lineHeight: 20,
+			color: theme.colors.textMuted,
+		},
+		modalActions: {
+			flexDirection: "row",
+			justifyContent: "flex-end",
+			gap: 12,
+			marginTop: 4,
+		},
+		modalSecondaryButton: {
+			paddingHorizontal: 14,
+			paddingVertical: 10,
+			borderRadius: 10,
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+			backgroundColor: theme.colors.card,
+		},
+		modalSecondaryButtonText: {
+			fontSize: 14,
+			fontWeight: "600",
+			color: theme.colors.text,
+		},
+		modalDestructiveButton: {
+			paddingHorizontal: 14,
+			paddingVertical: 10,
+			borderRadius: 10,
+			backgroundColor: theme.colors.error,
+		},
+		modalDestructiveButtonText: {
+			fontSize: 14,
+			fontWeight: "700",
+			color: theme.colors.card,
 		},
 	});
 }

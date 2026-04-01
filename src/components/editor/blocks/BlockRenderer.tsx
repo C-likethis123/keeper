@@ -1,5 +1,6 @@
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import React, { useMemo } from "react";
+import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
+import React from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 import type { BlockNode } from "../core/BlockNode";
 
@@ -12,9 +13,7 @@ interface BlockRendererProps {
 /// Basic block renderer component
 /// This is a placeholder that will be extended in later phases
 export function BlockRenderer({ block, index, isFocused }: BlockRendererProps) {
-	const theme = useExtendedTheme();
-	const styles = useMemo(() => createStyles(theme), [theme]);
-
+	const styles = useStyles(createStyles);
 	return (
 		<Pressable
 			// Note: `pressed` in Pressable style callback refers to touch/mouse press state,
