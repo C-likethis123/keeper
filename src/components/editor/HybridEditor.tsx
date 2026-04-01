@@ -13,6 +13,7 @@ import {
 	BlockType,
 	createCollapsibleBlock,
 	createParagraphBlock,
+	getCollapsibleSummary,
 } from "./core/BlockNode";
 import {
 	SlashCommandProvider,
@@ -231,8 +232,13 @@ function HybridEditorContent() {
 				return;
 			}
 
-			// If it's an empty paragraph, delete and focus previous/next
-			if (block.content === "") {
+			// If it's an empty block, delete and focus previous/next
+			const isEmpty =
+				block.type === BlockType.collapsibleBlock
+					? block.content === "" && getCollapsibleSummary(block) === ""
+					: block.content === "";
+
+			if (isEmpty) {
 				deleteBlock(index);
 				focusBlock(index > 0 ? index - 1 : 0);
 				return;
@@ -271,7 +277,7 @@ function HybridEditorContent() {
 	);
 
 	const handleEnter = useCallback(
-		(index: number, cursorOffset: number) => {
+		(index: number, cursorOffset: number, zone?: string) => {
 			const block = getBlockAtIndex(index);
 			if (!block) {
 				return;
@@ -280,7 +286,20 @@ function HybridEditorContent() {
 				return;
 			}
 			if (block.type === BlockType.collapsibleBlock) {
-				insertBlockAfter(index, createParagraphBlock());
+				if (zone === "summary") {
+					// Focus is now handled locally in CollapsibleBlock.tsx
+					return;
+				}
+
+				// Split the body
+				const content = block.content;
+				// If we are at an empty line, cursorOffset is at a position where previous char is \n.
+				// We want to remove that \n to ensure a clean split.
+				const before = content.substring(0, cursorOffset).replace(/\n$/, "");
+				const after = content.substring(cursorOffset).replace(/^\n/, "");
+
+				handleContentChange(index, before);
+				insertBlockAfter(index, createParagraphBlock(after));
 				focusBlock(index + 1);
 				return;
 			}

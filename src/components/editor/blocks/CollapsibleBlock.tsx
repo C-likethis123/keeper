@@ -4,6 +4,7 @@ import {
 } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { useEditorState } from "@/stores/editorStore";
 import React, {
 	useCallback,
 	useEffect,
@@ -52,7 +53,15 @@ export function CollapsibleBlock({
 	const [summaryValue, setSummaryValue] = useState(
 		getCollapsibleSummary(block),
 	);
+	const [summarySelection, setSummarySelection] = useState({
+		start: 0,
+		end: 0,
+	});
 	const [bodyValue, setBodyValue] = useState(block.content);
+	const [bodySelection, setBodySelection] = useState({
+		start: 0,
+		end: 0,
+	});
 	const isExpanded = isCollapsibleExpanded(block);
 
 	// Sync local state when block changes externally (e.g. undo/redo)
@@ -66,6 +75,12 @@ export function CollapsibleBlock({
 	useEffect(() => {
 		setBodyValue(block.content);
 	}, [block.content]);
+
+	useEffect(() => {
+		if (isFocused && focusZone === "body" && isExpanded) {
+			bodyInputRef.current?.focus();
+		}
+	}, [isFocused, focusZone, isExpanded]);
 
 	const handleToggleExpand = useCallback(() => {
 		onAttributesChange?.(index, {
@@ -89,20 +104,56 @@ export function CollapsibleBlock({
 		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
 			const key = e.nativeEvent.key;
 			if (key === "Enter" || key === "Return") {
-				if (isExpanded) {
-					setFocusZone("body");
-					bodyInputRef.current?.focus();
-				} else {
-					onEnter(index, summaryValue.length);
+				if (Platform.OS === "web") {
+					const nativeEvent = e.nativeEvent as any;
+					nativeEvent.preventDefault?.();
+					nativeEvent.stopPropagation?.();
+					nativeEvent.stopImmediatePropagation?.();
 				}
+				if (!isExpanded) {
+					onAttributesChange?.(index, {
+						...block.attributes,
+						isExpanded: true,
+					});
+				}
+				setFocusZone("body");
 				return;
 			}
-			if (key === "Backspace" && summaryValue === "" && !isExpanded) {
+			if (key === "Backspace" && summaryValue === "") {
 				onBackspaceAtStart(index);
 			}
 		},
-		[isExpanded, summaryValue, onBackspaceAtStart, onEnter, index],
+		[isExpanded, onAttributesChange, index, block.attributes, summaryValue, onBackspaceAtStart],
 	);
+
+	const getFocusedBlockIndex = useEditorState(
+		(state) => state.getFocusedBlockIndex,
+	);
+
+	const handleBlur = useCallback(() => {
+		// Only blur the block if the global selection is still pointing to this block
+		// and we haven't just moved focus to another input within this same block.
+		// On Web, the focus switch happens before the blur event usually.
+		requestAnimationFrame(() => {
+			const currentFocus = getFocusedBlockIndex();
+			if (currentFocus === index) {
+				// We need to check if focus is still within this block's inputs
+				// This is hard on native, but on web we can check document.activeElement
+				if (Platform.OS === "web" && typeof document !== "undefined") {
+					const active = document.activeElement;
+					if (
+						active === summaryInputRef.current ||
+						active === bodyInputRef.current
+					) {
+						return;
+					}
+				}
+				// If we don't know for sure, we might want to wait a bit longer or trust the focus logic
+				// For now, let's just NOT blur if we're in the middle of a zone transition
+				blurBlock();
+			}
+		});
+	}, [blurBlock, getFocusedBlockIndex, index]);
 
 	const handleBodyKeyPress = useCallback(
 		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
@@ -112,11 +163,24 @@ export function CollapsibleBlock({
 				summaryInputRef.current?.focus();
 				return;
 			}
-			if ((key === "Enter" || key === "Return") && bodyValue === "") {
-				onEnter(index, 0);
+			if (key === "Enter" || key === "Return") {
+				const { start } = bodySelection;
+				const isAtEmptyLine =
+					bodyValue === "" ||
+					(start > 0 &&
+						bodyValue[start - 1] === "\n" &&
+						(start === bodyValue.length || bodyValue[start] === "\n")) ||
+					(start === 0 && (bodyValue.length === 0 || bodyValue[0] === "\n"));
+
+				if (isAtEmptyLine) {
+					if (Platform.OS === "web") {
+						(e as any).preventDefault();
+					}
+					onEnter(index, start, "body");
+				}
 			}
 		},
-		[bodyValue, onEnter, index],
+		[bodyValue, bodySelection, onEnter, index],
 	);
 
 	const styles = useMemo(() => createStyles(theme), [theme]);
@@ -141,11 +205,14 @@ export function CollapsibleBlock({
 						value={summaryValue}
 						onChangeText={handleSummaryChange}
 						onKeyPress={handleSummaryKeyPress}
+						onSelectionChange={(e) => {
+							setSummarySelection(e.nativeEvent.selection);
+						}}
 						onFocus={() => {
 							focusBlock(index);
 							setFocusZone("summary");
 						}}
-						onBlur={blurBlock}
+						onBlur={handleBlur}
 						placeholder="Section title..."
 						placeholderTextColor={theme.custom.editor.placeholder}
 						returnKeyType="next"
@@ -182,9 +249,10 @@ export function CollapsibleBlock({
 								focusBlock(index);
 								setFocusZone("body");
 							}}
-							onBlur={blurBlock}
+							onBlur={handleBlur}
 							onSelectionChange={(e) => {
 								const sel = e.nativeEvent.selection;
+								setBodySelection(sel);
 								onSelectionChange(index, sel.start, sel.end);
 							}}
 							multiline
