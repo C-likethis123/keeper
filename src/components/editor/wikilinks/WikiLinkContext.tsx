@@ -28,8 +28,13 @@ interface WikiLinkContextValue {
 	selectedIndex: number;
 	isActive: boolean;
 	isLoading: boolean;
+	query: string;
 
-	handleTriggerStart: (blockIndex: number, triggerStartOffset: number) => void;
+	handleTriggerStart: (
+		blockIndex: number,
+		triggerStartOffset: number,
+		initialQuery: string,
+	) => void;
 	handleQueryUpdate: (query: string) => void;
 	handleCancel: () => void;
 	handleSelect: (result: WikiLinkResult) => void;
@@ -73,8 +78,28 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 
 	const updateBlockContent = useEditorState((s) => s.updateBlockContent);
 
+	const removeTriggerToken = useCallback(
+		(selectionOffset?: number) => {
+			const doc = useEditorState.getState().document;
+			const block = doc.blocks[blockIndexRef.current];
+			if (!block) return false;
+			const start = triggerStartOffsetRef.current;
+			if (block.content.substring(start, start + 2) !== "[[") {
+				return false;
+			}
+			const newText = `${block.content.substring(0, start)}${block.content.substring(start + 2)}`;
+			updateBlockContent(blockIndexRef.current, newText, selectionOffset);
+			return true;
+		},
+		[updateBlockContent],
+	);
+
 	const handleTriggerStart = useCallback(
-		(blockIndex: number, triggerStartOffset: number) => {
+		(
+			blockIndex: number,
+			triggerStartOffset: number,
+			initialQuery: string,
+		) => {
 			if (isActive) return;
 			blockIndexRef.current = blockIndex;
 			triggerStartOffsetRef.current = triggerStartOffset;
@@ -85,7 +110,7 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 				updateBlockContent(blockIndex, trimmed);
 			}
 			setIsActive(true);
-			setQuery("");
+			setQuery(initialQuery);
 			setResults([]);
 			setSelectedIndex(0);
 			setIsLoading(false);
@@ -95,15 +120,9 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 
 	const handleCancel = useCallback(() => {
 		if (!isActive) return;
-		const doc = useEditorState.getState().document;
-		const block = doc.blocks[blockIndexRef.current];
-		if (block) {
-			const start = triggerStartOffsetRef.current;
-			const newText = `${block.content.substring(0, start)}${block.content.substring(start + 2)}`;
-			updateBlockContent(blockIndexRef.current, newText);
-		}
+		removeTriggerToken(triggerStartOffsetRef.current);
 		endSession();
-	}, [isActive, endSession, updateBlockContent]);
+	}, [endSession, isActive, removeTriggerToken]);
 
 	const insertWikiLink = useCallback(
 		(title: string) => {
@@ -225,6 +244,7 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 			selectedIndex,
 			isActive,
 			isLoading,
+			query,
 			handleTriggerStart,
 			handleQueryUpdate,
 			handleCancel,
@@ -238,6 +258,7 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 			selectedIndex,
 			isActive,
 			isLoading,
+			query,
 			handleTriggerStart,
 			handleQueryUpdate,
 			handleCancel,

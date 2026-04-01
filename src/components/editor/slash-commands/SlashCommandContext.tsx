@@ -119,6 +119,9 @@ export function SlashCommandProvider({
 		const block = doc.blocks[blockIndexRef.current];
 		if (!block) return;
 		const start = triggerStartOffsetRef.current;
+		if (block.content[start] !== "/") {
+			return;
+		}
 		const newText = `${block.content.substring(0, start)}${block.content.substring(start + 1)}`;
 		updateBlockContent(blockIndexRef.current, newText, start);
 	}, [updateBlockContent]);

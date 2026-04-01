@@ -1,7 +1,7 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { webTextInputReset } from "@/components/shared/textInputWebStyles";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
 	Modal,
 	type NativeSyntheticEvent,
@@ -20,6 +20,16 @@ export function WikiLinkModal() {
 	const wikiLinks = useWikiLinkContext();
 	const styles = useStyles(createStyles);
 	const [inputValue, setInputValue] = useState("");
+
+	useEffect(() => {
+		if (!wikiLinks.isActive) {
+			setInputValue("");
+			return;
+		}
+
+		setInputValue(wikiLinks.query);
+	}, [wikiLinks.isActive, wikiLinks.query]);
+
 	const handleKeyPress = useCallback(
 		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
 			const key = e.nativeEvent.key;
@@ -59,7 +69,6 @@ export function WikiLinkModal() {
 			animationType="fade"
 			onRequestClose={wikiLinks.handleCancel}
 			onShow={() => {
-				setInputValue("");
 				inputRef.current?.focus();
 			}}
 		>
@@ -71,6 +80,7 @@ export function WikiLinkModal() {
 				<View style={styles.card}>
 					<TextInput
 						style={styles.input}
+						value={inputValue}
 						onSubmitEditing={handleSubmitEditing}
 						placeholder="Search or create notes..."
 						placeholderTextColor={theme.custom.editor.placeholder}

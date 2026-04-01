@@ -81,11 +81,19 @@ jest.mock("@expo/vector-icons", () => {
 });
 
 /** Activates the wikilink modal immediately on mount. */
-function Activator({ blockIndex = 0, offset = 0 }: { blockIndex?: number; offset?: number }) {
+function Activator({
+	blockIndex = 0,
+	offset = 0,
+	initialQuery = "",
+}: {
+	blockIndex?: number;
+	offset?: number;
+	initialQuery?: string;
+}) {
 	const { handleTriggerStart } = useWikiLinkContext();
 	// biome-ignore lint/correctness/useExhaustiveDependencies: test helper — runs once on mount
 	useEffect(() => {
-		handleTriggerStart(blockIndex, offset);
+		handleTriggerStart(blockIndex, offset, initialQuery);
 	}, []);
 	return null;
 }

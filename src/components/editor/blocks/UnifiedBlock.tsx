@@ -147,8 +147,9 @@ export function UnifiedBlock({
 				const wikiLinkStart = findWikiLinkTriggerStart(newText, caret);
 				const slashCommandStart = findSlashCommandTriggerStart(newText, caret);
 				if (wikiLinkStart !== null) {
+					const query = newText.slice(wikiLinkStart + 2, caret);
 					slashCommands.handleCancel();
-					wikiLinks.handleTriggerStart(index, wikiLinkStart);
+					wikiLinks.handleTriggerStart(index, wikiLinkStart, query);
 				} else if (slashCommandStart !== null) {
 					const query = newText.slice(slashCommandStart + 1, caret);
 					wikiLinks.handleCancel();
