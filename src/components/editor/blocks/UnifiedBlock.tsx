@@ -367,6 +367,10 @@ export function UnifiedBlock({
 		multiline: true,
 		numberOfLines: 1,
 		scrollEnabled: false,
+		autoCapitalize: "none" as const,
+		autoCorrect: false,
+		spellCheck: false,
+		autoComplete: "off" as const,
 		placeholder: "Start typing...",
 		placeholderTextColor: theme.custom.editor.placeholder,
 	};

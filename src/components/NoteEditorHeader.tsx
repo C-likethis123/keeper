@@ -59,6 +59,10 @@ export default function NoteEditorHeader({
 						value={title}
 						onChangeText={onChangeTitle}
 						editable
+						autoCapitalize="none"
+						autoCorrect={false}
+						spellCheck={false}
+						autoComplete="off"
 						placeholder="Title"
 						placeholderTextColor={theme.custom.editor.placeholder}
 						onBlur={onBlurTitle}
