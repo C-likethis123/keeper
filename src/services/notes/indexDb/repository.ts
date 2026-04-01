@@ -11,6 +11,15 @@ import type {
 const TABLE = "note_index";
 const FTS_TABLE = "note_index_fts";
 
+export function buildFtsMatchQuery(query: string): string | null {
+	const tokens = query.match(/[\p{L}\p{N}]+/gu) ?? [];
+	if (tokens.length === 0) {
+		return null;
+	}
+
+	return tokens.map((token) => `${token}*`).join(" ");
+}
+
 function getInsertPlaceholders(count: number): string {
 	return Array.from({ length: count }, () => "(?, ?, ?, ?, ?, ?, ?)").join(
 		", ",
@@ -73,12 +82,13 @@ export async function listAll(
 ): Promise<ListNotesResult> {
 	const offsetVal = offset ?? 0;
 	const normalizedQuery = query.trim();
+	const ftsMatchQuery = buildFtsMatchQuery(normalizedQuery);
 	const whereClauses: string[] = [];
 	const params: (string | number)[] = [];
 
-	if (normalizedQuery.length > 0) {
+	if (ftsMatchQuery) {
 		whereClauses.push(`${FTS_TABLE} MATCH ?`);
-		params.push(`${normalizedQuery}*`);
+		params.push(ftsMatchQuery);
 	}
 
 	if (filters?.noteTypes && filters.noteTypes.length > 0) {
@@ -95,7 +105,7 @@ export async function listAll(
 	const whereSql =
 		whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-	if (normalizedQuery.length > 0) {
+	if (ftsMatchQuery) {
 		const rows = await database.getAllAsync<NoteIndexRow>(
 			`SELECT
 				${TABLE}.id,
