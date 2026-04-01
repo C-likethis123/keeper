@@ -1,11 +1,11 @@
 import { requireOptionalNativeModule } from "expo-modules-core";
 
-export interface GitCheckoutOptions {
+interface GitCheckoutOptions {
 	force?: boolean;
 	noUpdateHead?: boolean;
 }
 
-export interface GitMergeOptions {
+interface GitMergeOptions {
 	ours: string;
 	theirs: string;
 	fastForwardOnly?: boolean;
@@ -16,7 +16,7 @@ export interface GitMergeOptions {
 	};
 }
 
-export interface KeeperGitBridgeNativeModule {
+interface KeeperGitBridgeNativeModule {
 	clone(url: string, path: string): Promise<void>;
 	fetch(repoPath: string): Promise<void>;
 	checkout(

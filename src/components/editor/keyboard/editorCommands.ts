@@ -52,7 +52,7 @@ export interface EditorCommandContext {
 
 type EditorCommand = (context: EditorCommandContext) => boolean;
 
-export const editorCommands: Record<EditorCommandId, EditorCommand> = {
+const editorCommands: Record<EditorCommandId, EditorCommand> = {
 	focusPreviousBlock: (context) => {
 		const index = context.getFocusedBlockIndex();
 		if (index === null || index <= 0) return false;

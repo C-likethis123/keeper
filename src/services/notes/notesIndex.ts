@@ -12,14 +12,9 @@ import type {
 	NotesIndexSyncMetrics,
 } from "./notesIndexDb";
 
-export type {
-	ListNotesResult,
-	NoteIndexItem,
-	NotesIndexRebuildMetrics,
-	NotesIndexSyncMetrics,
-};
+export type { ListNotesResult, NoteIndexItem };
 
-export interface NotesIndexSyncResult {
+interface NotesIndexSyncResult {
 	mode: "incremental" | "full_rebuild";
 	changedPathCount: number;
 	markdownChangedPathCount: number;

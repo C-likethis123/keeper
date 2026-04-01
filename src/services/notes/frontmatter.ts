@@ -1,6 +1,6 @@
 import type { Note, NoteStatus, NoteType } from "@/services/notes/types";
 
-export interface ParsedFrontmatter {
+interface ParsedFrontmatter {
 	id: string;
 	title: string;
 	isPinned: boolean;

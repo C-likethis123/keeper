@@ -67,7 +67,7 @@ const originalPlatformOs = Platform.OS;
 export const mockListNotes = jest.mocked(NotesIndexService.listNotes);
 export const mockSaveNote = jest.mocked(NoteService.saveNote);
 
-export function setPlatformOs(value: "ios" | "android" | "web") {
+function setPlatformOs(value: "ios" | "android" | "web") {
 	Object.defineProperty(Platform, "OS", {
 		configurable: true,
 		value,

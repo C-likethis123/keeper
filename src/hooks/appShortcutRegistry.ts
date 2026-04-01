@@ -1,4 +1,4 @@
-export type AppCommandId = "focusSearch" | "createNote" | "forceSave";
+type AppCommandId = "focusSearch" | "createNote" | "forceSave";
 
 const appShortcutRegistry = new Map<string, AppCommandId>([
 	["Meta+K", "focusSearch"],

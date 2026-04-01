@@ -2,9 +2,12 @@
 	"$schema": "https://unpkg.com/knip@5/schema.json",
 	"ignoreDependencies": [
 		"@welldone-software/why-did-you-render",
+		"babel-plugin-dynamic-import-node",
 		"react-native-svg"
 	],
+	"ignoreBinaries": ["adb"],
 	"ignoreFiles": [
+		"babel.config.js",
 		"metro.config.js",
 		"src/components/editor/code/Strings.ts",
 		"src/services/notes/Notes.android.ts",

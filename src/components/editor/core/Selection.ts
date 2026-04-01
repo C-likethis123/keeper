@@ -59,7 +59,7 @@ export interface DocumentSelection {
 /// A selection has an anchor (where the selection started) and a focus
 /// (where the selection currently ends). If anchor == focus, it's a
 /// collapsed selection (cursor).
-export interface DocumentSelectionRange {
+interface DocumentSelectionRange {
 	readonly start: number;
 	readonly end: number;
 }

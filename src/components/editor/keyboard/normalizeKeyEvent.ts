@@ -1,4 +1,4 @@
-export interface NormalizedKeyEvent {
+interface NormalizedKeyEvent {
 	key: string;
 	chord: string;
 }

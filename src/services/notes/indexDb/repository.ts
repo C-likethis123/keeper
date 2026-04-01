@@ -11,7 +11,7 @@ import type {
 const TABLE = "note_index";
 const FTS_TABLE = "note_index_fts";
 
-export function getInsertPlaceholders(count: number): string {
+function getInsertPlaceholders(count: number): string {
 	return Array.from({ length: count }, () => "(?, ?, ?, ?, ?, ?, ?)").join(
 		", ",
 	);

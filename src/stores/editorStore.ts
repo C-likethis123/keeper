@@ -544,7 +544,7 @@ export function useEditorSelection(): EditorStateSlice["selection"] {
 	return useEditorState((s) => s.selection);
 }
 
-export interface EditorBlockSelection {
+interface EditorBlockSelection {
 	start: number;
 	end: number;
 }

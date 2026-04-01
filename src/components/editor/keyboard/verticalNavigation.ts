@@ -2,7 +2,7 @@ import { BlockType } from "@/components/editor/core/BlockNode";
 import type { Document } from "@/components/editor/core/Document";
 import type { DocumentSelection } from "@/components/editor/core/Selection";
 
-export type VerticalDirection = "up" | "down";
+type VerticalDirection = "up" | "down";
 
 interface VerticalNavigationOptions {
 	direction: VerticalDirection;

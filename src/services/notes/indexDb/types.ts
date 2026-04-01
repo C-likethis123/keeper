@@ -68,4 +68,4 @@ export interface NoteIndexSqlItem {
 	status: NoteStatus | null;
 }
 
-export type NoteIndexFilters = NoteListFilters;
+type NoteIndexFilters = NoteListFilters;
