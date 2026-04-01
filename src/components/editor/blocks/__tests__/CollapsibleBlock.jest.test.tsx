@@ -53,24 +53,38 @@ describe("CollapsibleBlock", () => {
 		expect(props.onBackspaceAtStart).toHaveBeenCalledWith(0);
 	});
 
-	it("calls onEnter with 'summary' zone and current offset when Enter is pressed in summary", () => {
+	it("moves focus to body when Enter is pressed in summary", () => {
 		const props = {
 			...defaultProps,
 			onEnter: jest.fn(),
+			onAttributesChange: jest.fn(),
 		};
 		render(<CollapsibleBlock {...props} />);
 
 		const input = screen.getByDisplayValue("Summary");
 
-		// Simulate selection change to offset 3 (Sum|mary)
-		fireEvent(input, "selectionChange", {
-			nativeEvent: { selection: { start: 3, end: 3 } },
-		});
+		// Press Enter
+		fireEvent(input, "keyPress", { nativeEvent: { key: "Enter" } });
+
+		// It should NOT split the block anymore
+		expect(props.onEnter).not.toHaveBeenCalled();
+	});
+
+	it("expands block and moves focus when Enter is pressed in collapsed summary", () => {
+		const props = {
+			...defaultProps,
+			block: createCollapsibleBlock("Summary", "Body", false), // Collapsed
+			onAttributesChange: jest.fn(),
+		};
+		render(<CollapsibleBlock {...props} />);
+
+		const input = screen.getByDisplayValue("Summary");
 
 		// Press Enter
 		fireEvent(input, "keyPress", { nativeEvent: { key: "Enter" } });
 
-		expect(props.onEnter).toHaveBeenCalledWith(0, 3, "summary");
+		// It should call onAttributesChange to expand
+		expect(props.onAttributesChange).toHaveBeenCalledWith(0, expect.objectContaining({ isExpanded: true }));
 	});
 
 	it("calls onEnter with 'body' zone when Enter is pressed in empty body", () => {
