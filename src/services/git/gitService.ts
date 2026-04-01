@@ -8,10 +8,24 @@ import type { GitEngine } from "./engines/GitEngine";
 import { getGitEngine } from "./gitEngine";
 
 type GitChangeOperation = "add" | "modify" | "delete";
+type FlushReason = "note-exit" | "delete" | "app-background";
 
 interface QueuedChange {
 	filePath: string;
 	operation: GitChangeOperation;
+}
+
+export interface GitFlushResult {
+	success: boolean;
+	didCommit: boolean;
+	didPush: boolean;
+	error?: string;
+}
+
+interface FlushOptions {
+	reason: FlushReason;
+	timeoutMs?: number;
+	message?: string;
 }
 
 const COMMIT_DEBOUNCE_MS = 15000;
@@ -22,9 +36,10 @@ export class GitService {
 	private static readonly queue = new Map<string, GitChangeOperation>();
 	private static gitEngine: GitEngine | null = null;
 	private static commitTimeout: ReturnType<typeof setTimeout> | null = null;
+	private static inFlightFlush: Promise<GitFlushResult> | null = null;
+	private static backgroundSaveHandler: (() => Promise<void>) | null = null;
 
 	private appStateSubscription: NativeEventSubscription | null = null;
-	private static isCommitting = false;
 
 	private constructor() {
 		this.appStateSubscription = AppState.addEventListener(
@@ -85,26 +100,35 @@ export class GitService {
 		}
 		GitService.commitTimeout = setTimeout(() => {
 			GitService.commitTimeout = null;
-			void GitService.commitBatch();
+			void GitService.flushPendingChanges({ reason: "app-background" });
 		}, delayMs);
 	}
 
-	static async commitBatch(message?: string): Promise<void> {
+	static registerBackgroundSaveHandler(
+		handler: (() => Promise<void>) | null,
+	): void {
+		GitService.backgroundSaveHandler = handler;
+	}
+
+	private static async runFlush(message?: string): Promise<GitFlushResult> {
 		if (GitService.commitTimeout) {
 			clearTimeout(GitService.commitTimeout);
 			GitService.commitTimeout = null;
 		}
-		if (GitService.isCommitting || GitService.queue.size === 0) {
-			return;
+		if (GitService.queue.size === 0) {
+			return {
+				success: true,
+				didCommit: false,
+				didPush: false,
+			};
 		}
-
-		GitService.isCommitting = true;
 
 		const snapshot: QueuedChange[] = [];
 		for (const [filePath, operation] of GitService.queue.entries()) {
 			snapshot.push({ filePath, operation });
 		}
 		GitService.queue.clear();
+		let didCommit = false;
 
 		try {
 			const gitEngine = GitService.ensureGitEngine();
@@ -112,21 +136,108 @@ export class GitService {
 			if (status.length > 0) {
 				const commitMessage = message || `Update ${snapshot.length} file(s)`;
 				await gitEngine.commit(NOTES_ROOT, commitMessage);
+				didCommit = true;
 			}
 			await gitEngine.push(NOTES_ROOT);
+			return {
+				success: true,
+				didCommit,
+				didPush: true,
+			};
 		} catch (error) {
 			for (const change of snapshot) {
 				GitService.queueChange(change.filePath, change.operation);
 			}
+			const resolvedError =
+				error instanceof Error ? error.message : String(error);
 			console.warn("[GitService] Commit/push batch failed:", error);
-		} finally {
-			GitService.isCommitting = false;
+			return {
+				success: false,
+				didCommit,
+				didPush: false,
+				error: resolvedError,
+			};
 		}
+	}
+
+	private static withTimeout<T>(
+		promise: Promise<T>,
+		timeoutMs?: number,
+	): Promise<T> {
+		if (!timeoutMs || timeoutMs <= 0) {
+			return promise;
+		}
+
+		return new Promise<T>((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				reject(new Error(`Git flush timed out after ${timeoutMs}ms`));
+			}, timeoutMs);
+
+			void promise.then(
+				(value) => {
+					clearTimeout(timeout);
+					resolve(value);
+				},
+				(error) => {
+					clearTimeout(timeout);
+					reject(error);
+				},
+			);
+		});
+	}
+
+	static async flushPendingChanges(
+		options: FlushOptions,
+	): Promise<GitFlushResult> {
+		if (!GitService.inFlightFlush) {
+			GitService.inFlightFlush = GitService.runFlush(options.message).finally(
+				() => {
+					GitService.inFlightFlush = null;
+				},
+			);
+		}
+
+		try {
+			return await GitService.withTimeout(
+				GitService.inFlightFlush,
+				options.timeoutMs,
+			);
+		} catch (error) {
+			const resolvedError =
+				error instanceof Error ? error.message : String(error);
+			console.warn(
+				`[GitService] Flush failed for ${options.reason}:`,
+				resolvedError,
+			);
+			return {
+				success: false,
+				didCommit: false,
+				didPush: false,
+				error: resolvedError,
+			};
+		}
+	}
+
+	static async commitBatch(message?: string): Promise<void> {
+		await GitService.flushPendingChanges({
+			reason: "app-background",
+			message,
+		});
 	}
 
 	private handleAppStateChange = (nextState: AppStateStatus) => {
 		if (nextState !== "active") {
-			void GitService.commitBatch();
+			void (async () => {
+				try {
+					await GitService.backgroundSaveHandler?.();
+				} catch (error) {
+					console.warn("[GitService] Background save failed:", error);
+				}
+				await GitService.flushPendingChanges({
+					reason: "app-background",
+					timeoutMs: 8000,
+				});
+			})();
 		}
 	};
 

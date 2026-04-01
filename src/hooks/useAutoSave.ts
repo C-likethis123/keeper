@@ -3,6 +3,7 @@ import {
 	normalizeMarkdownForPersistence,
 	persistEditorEntry,
 } from "@/services/notes/editorEntryPersistence";
+import { GitService } from "@/services/git/gitService";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -246,6 +247,14 @@ export function useAutoSave({
 	}, [prepareContent]);
 
 	useEffect(() => {
+		GitService.registerBackgroundSaveHandler(forceSave);
+
+		return () => {
+			GitService.registerBackgroundSaveHandler(null);
+		};
+	}, [forceSave]);
+
+	useEffect(() => {
 		if (statusTimeoutRef.current) {
 			clearTimeout(statusTimeoutRef.current);
 			statusTimeoutRef.current = null;
@@ -305,11 +314,6 @@ export function useAutoSave({
 				clearInterval(intervalRef.current);
 				intervalRef.current = null;
 			}
-
-			// Final save on unmount
-			void InteractionManager.runAfterInteractions(async () => {
-				await forceSave();
-			});
 		};
 	}, [forceSave]);
 

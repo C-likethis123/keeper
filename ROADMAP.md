@@ -301,6 +301,7 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 - Sort notes by theme, priority, or relevance
 - Auto-process notes into categories (recommendation system)
 - Relevance signals: time, topic, relation to other notes
+- Investigate grouping notes into sections and ranking notes within those sections using only local/on-device signals where possible
 
 **Potential additions from note-taking reflections**:
 
@@ -432,6 +433,36 @@ Turn inline `todo:` entries inside note blocks into first-class tracked todos th
 - Whether tracked todos remain ordinary todo notes with richer metadata or require a dedicated linked-task record shape
 - How to normalize duplicate `todo:` text across notes so unrelated todos do not collapse onto the same wikilink target by accident
 - Where completion timing should be surfaced in the UI: todo note metadata, note list badges, backlinks, or all three
+
+---
+
+### Phase 11: Investigate Local-First Note Sections and Ranking
+
+Investigate how Keeper should group notes into sections and rank them within those sections without assuming a server-side ranking service.
+
+**Status**: Planned
+**Task file**: `tasks/002-investigate-local-note-sections-and-ranking.md`
+**Current implementation evidence**:
+- Note metadata and content-derived note types already exist in frontmatter, storage indexes, and note-list filtering flows
+- SQLite-backed search already ranks query results locally through FTS, so some relevance infrastructure already exists on device
+- The current note list supports filtering, but not higher-level grouped sections with an explicit section-aware ranking model
+**Goals**:
+- Define what a "section" should mean in Keeper: explicit groups, derived buckets, note-type sections, or a hybrid model
+- Identify ranking signals that can be computed locally from existing note content, metadata, timestamps, and link relationships
+- Determine how section grouping and ranking should interact with the current note filters and future organization views
+- Prefer an initial implementation that is deterministic, explainable, and tunable without introducing a server dependency
+**Candidate files**:
+- `src/services/notes/notesIndexDb.ts`
+- `src/services/notes/notesIndex.ts`
+- `src/services/notes/noteTypeDerivation.ts`
+- `src/hooks/useNotes.ts`
+- `src/app/index.tsx`
+- `src/components/NoteFiltersDropdown.tsx`
+- `src/components/NoteGrid.tsx`
+**Open design points**:
+- Whether sections should be persisted as explicit metadata, derived at read time, or handled as a hybrid
+- How much of the ranking pipeline should live in SQLite queries versus TypeScript post-processing
+- How to make section membership and ranking feel understandable rather than arbitrary to the user
 
 ---
 

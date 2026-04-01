@@ -5,6 +5,7 @@ import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { GitService } from "@/services/git/gitService";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
@@ -13,7 +14,8 @@ import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import { CommonActions } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "expo-router";
 import React, {
 	useCallback,
 	useEffect,
@@ -52,7 +54,6 @@ export default function NoteEditorView({
 	isNew?: boolean;
 }) {
 	const navigation = useNavigation();
-	const router = useRouter();
 	const theme = useExtendedTheme();
 	const { focusBlock } = useFocusBlock();
 	const styles = useMemo(() => createStyles(theme), [theme]);
@@ -97,6 +98,8 @@ export default function NoteEditorView({
 	});
 	const lastPersistedTypeRef = useRef<Note["noteType"]>(note.noteType);
 	const isNewEntryRef = useRef(!!isNew);
+	const isLeavingRef = useRef(false);
+	const bypassNextBeforeRemoveRef = useRef(false);
 
 	latestDraftRef.current = {
 		title,
@@ -197,15 +200,52 @@ export default function NoteEditorView({
 		setIsPinned(nextIsPinned);
 	}, [persistCurrentEntry, showToast]);
 
-	const handleBackPress = useCallback(async () => {
-		await forceSave();
-		router.back();
-	}, [forceSave, router]);
+	const flushGitAndToastOnFailure = useCallback(
+		async (
+			reason: "note-exit" | "delete",
+			message?: string,
+		): Promise<boolean> => {
+			const result = await GitService.flushPendingChanges({
+				reason,
+				message,
+				timeoutMs: 8000,
+			});
+			if (!result.success) {
+				showToast("Saved locally. Sync will retry shortly.");
+			}
+			return result.success;
+		},
+		[showToast],
+	);
+
+	const leaveEditor = useCallback(
+		async (action = CommonActions.goBack()) => {
+			if (isLeavingRef.current) {
+				return;
+			}
+
+			isLeavingRef.current = true;
+			try {
+				await forceSave();
+				await flushGitAndToastOnFailure("note-exit");
+				bypassNextBeforeRemoveRef.current = true;
+				navigation.dispatch(action);
+			} finally {
+				isLeavingRef.current = false;
+			}
+		},
+		[flushGitAndToastOnFailure, forceSave, navigation],
+	);
 
 	const handleDeletePress = useCallback(async () => {
 		await NoteService.deleteNote(id, latestDraftRef.current.noteType);
-		router.back();
-	}, [id, router]);
+		await flushGitAndToastOnFailure(
+			"delete",
+			`Delete ${latestDraftRef.current.noteType}`,
+		);
+		bypassNextBeforeRemoveRef.current = true;
+		navigation.dispatch(CommonActions.goBack());
+	}, [flushGitAndToastOnFailure, id, navigation]);
 
 	const applyTitleChange = useCallback(
 		(nextTitle: string) => {
@@ -288,6 +328,20 @@ export default function NoteEditorView({
 		});
 	}, [navigation]);
 
+	useEffect(() => {
+		const unsubscribe = navigation.addListener("beforeRemove", (event) => {
+			if (bypassNextBeforeRemoveRef.current) {
+				bypassNextBeforeRemoveRef.current = false;
+				return;
+			}
+
+			event.preventDefault();
+			void leaveEditor(event.data.action);
+		});
+
+		return unsubscribe;
+	}, [leaveEditor, navigation]);
+
 	return (
 		<View style={styles.screen}>
 			<NoteEditorHeader
@@ -299,7 +353,7 @@ export default function NoteEditorView({
 				onBlurTitle={() => setNoteType(deriveNoteType(title))}
 				onSubmitEditing={() => focusBlock(0)}
 				onBack={() => {
-					void handleBackPress();
+					void leaveEditor();
 				}}
 				onTogglePin={() => {
 					void handleTogglePin();
