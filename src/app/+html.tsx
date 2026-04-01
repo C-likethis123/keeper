@@ -13,6 +13,20 @@ export default function Root({ children }: PropsWithChildren) {
 			background-color: #000000;
 		}
 
+		input,
+		textarea {
+			outline: none;
+			box-shadow: none;
+		}
+
+		input:focus,
+		textarea:focus,
+		input:focus-visible,
+		textarea:focus-visible {
+			outline: none;
+			box-shadow: none;
+		}
+
 		::-webkit-scrollbar {
 			width: 12px;
 			height: 12px;
