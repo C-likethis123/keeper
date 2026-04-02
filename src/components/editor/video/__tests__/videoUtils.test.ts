@@ -12,7 +12,7 @@ describe("videoUtils", () => {
 				host: "youtube.com",
 				rawUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 				embedUrl:
-					"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&enablejsapi=1",
+					"https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&enablejsapi=1&origin=https://keeper.app",
 			}),
 		);
 	});

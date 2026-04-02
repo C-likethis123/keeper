@@ -62,13 +62,21 @@ export function EmbeddedVideoPanel({
 
 			{!isMinimised && (
 				<>
-					<View style={[styles.playerFrame, { height: viewportHeight * 0.5 }]}>
+					<View
+						style={[
+							styles.playerFrame,
+							{
+								height: viewportHeight * (Platform.OS === "web" ? 0.5 : 1 / 3),
+							},
+						]}
+					>
 						{Platform.OS === "web" ? (
 							<iframe
 								src={source.embedUrl}
 								title={"Youtube video"}
 								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
 								allowFullScreen
+								referrerPolicy="strict-origin-when-cross-origin"
 								style={{
 									border: "0",
 									width: "100%",
@@ -82,7 +90,12 @@ export function EmbeddedVideoPanel({
 								allowsFullscreenVideo
 								allowsInlineMediaPlayback
 								mediaPlaybackRequiresUserAction={false}
-								source={{ uri: source.embedUrl }}
+								source={{
+									uri: source.embedUrl,
+									headers: {
+										Referer: "https://keeper.app",
+									},
+								}}
 								style={styles.webView}
 							/>
 						)}
@@ -97,13 +110,17 @@ export function EmbeddedVideoPanel({
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+	const isWeb = Platform.OS === "web";
 	return StyleSheet.create({
 		panel: {
-			borderWidth: 1,
+			borderWidth: isWeb ? 1 : 0,
+			borderLeftWidth: 0,
+			borderRightWidth: 0,
 			borderColor: theme.colors.border,
 			backgroundColor: theme.colors.card,
-			borderRadius: 16,
-			padding: 12,
+			borderRadius: isWeb ? 16 : 0,
+			padding: isWeb ? 12 : 0,
+			paddingVertical: isWeb ? 12 : 8,
 			gap: 10,
 		},
 		panelMinimised: {
@@ -115,6 +132,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			alignItems: "center",
 			justifyContent: "space-between",
 			gap: 12,
+			paddingHorizontal: 16,
 		},
 		headerText: {
 			flex: 1,
@@ -148,7 +166,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		playerFrame: {
 			overflow: "hidden",
-			borderRadius: 12,
+			borderRadius: isWeb ? 12 : 0,
 			backgroundColor: "#000000",
 		},
 		webView: {
@@ -158,6 +176,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		caption: {
 			fontSize: 12,
 			color: theme.colors.textMuted,
+			paddingHorizontal: isWeb ? 0 : 16,
 		},
 	});
 }

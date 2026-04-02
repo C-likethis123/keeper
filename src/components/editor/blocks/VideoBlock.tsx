@@ -2,11 +2,10 @@ import {
 	type VideoMode,
 	parseEmbeddedVideoUrl,
 } from "@/components/editor/video/videoUtils";
-import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { useEditorScrollView } from "../EditorScrollContext";
 import { EmbeddedVideoPanel } from "../video/EmbeddedVideoPanel";
 import type { BlockConfig } from "./BlockRegistry";
@@ -101,14 +100,14 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		container: {
 			minHeight: 40,
-			paddingHorizontal: 16,
+			paddingHorizontal: Platform.OS === "web" ? 16 : 0,
 			paddingVertical: 8,
 			overflow: "visible",
 		},
 		input: {
 			minHeight: 24,
 			color: theme.colors.text,
-			...webTextInputReset,
+			paddingHorizontal: Platform.OS === "web" ? 0 : 16,
 		},
 		inputVisible: {
 			opacity: 1,
