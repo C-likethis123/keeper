@@ -3,6 +3,7 @@ import {
 	persistEditorEntry,
 } from "@/services/notes/editorEntryPersistence";
 import { createDocumentFromMarkdown } from "@/components/editor/core/Document";
+import { GitService } from "@/services/git/gitService";
 import { useEditorState } from "@/stores/editorStore";
 import { InteractionManager } from "react-native";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
@@ -27,6 +28,12 @@ function runInteractionTask(task: InteractionTask) {
 jest.mock("@/services/notes/editorEntryPersistence", () => ({
 	normalizeMarkdownForPersistence: jest.fn((value: string) => value.trim()),
 	persistEditorEntry: jest.fn(),
+}));
+
+jest.mock("@/services/git/gitService", () => ({
+	GitService: {
+		registerBackgroundSaveHandler: jest.fn(),
+	},
 }));
 
 describe("useAutoSave", () => {
@@ -157,8 +164,7 @@ describe("useAutoSave", () => {
 		expect(onPersisted).not.toHaveBeenCalled();
 	});
 
-	it("flushes unsaved changes during the unmount cleanup", async () => {
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+	it("registers and clears the background save handler with the current forceSave callback", async () => {
 		const { unmount } = renderHook(() =>
 			useAutoSave({
 				id: "note-1",
@@ -169,19 +175,14 @@ describe("useAutoSave", () => {
 			}),
 		);
 
-		act(() => {
-			useEditorState.getState().loadMarkdown("Updated body");
-		});
+		expect(GitService.registerBackgroundSaveHandler).toHaveBeenCalledWith(
+			expect.any(Function),
+		);
 
-		await act(async () => {
-			unmount();
-			await Promise.resolve();
-		});
+		unmount();
 
-		expect(persistEditorEntry).toHaveBeenCalledWith(
-			expect.objectContaining({
-				content: "Updated body",
-			}),
+		expect(GitService.registerBackgroundSaveHandler).toHaveBeenLastCalledWith(
+			null,
 		);
 	});
 

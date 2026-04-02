@@ -23,6 +23,15 @@ const mockLoadNote = jest.fn();
 const mockDeleteNote = jest.fn();
 const mockIndexListNotes = jest.fn();
 const mockNavigationSetOptions = jest.fn();
+const mockNavigationDispatch = jest.fn();
+const mockGitFlushPendingChanges = jest.fn();
+
+let beforeRemoveListener:
+	| ((event: {
+			preventDefault: () => void;
+			data: { action: { type: string; payload?: object } };
+	  }) => void)
+	| undefined;
 
 let latestNavigationOptions:
 	| {
@@ -43,6 +52,16 @@ jest.mock("expo-router", () => {
 				latestNavigationOptions = options;
 				mockNavigationSetOptions(options);
 			},
+			addListener: (
+				eventName: string,
+				listener: typeof beforeRemoveListener,
+			) => {
+				if (eventName === "beforeRemove") {
+					beforeRemoveListener = listener;
+				}
+				return jest.fn();
+			},
+			dispatch: (...args: unknown[]) => mockNavigationDispatch(...args),
 		}),
 	};
 });
@@ -100,6 +119,14 @@ jest.mock("@/services/notes/noteService", () => ({
 		loadNote: (...args: unknown[]) => mockLoadNote(...args),
 		saveNote: (...args: unknown[]) => mockSaveNote(...args),
 		deleteNote: (...args: unknown[]) => mockDeleteNote(...args),
+	},
+}));
+
+jest.mock("@/services/git/gitService", () => ({
+	GitService: {
+		flushPendingChanges: (...args: unknown[]) =>
+			mockGitFlushPendingChanges(...args),
+		registerBackgroundSaveHandler: jest.fn(),
 	},
 }));
 
@@ -222,19 +249,37 @@ function getHeaderTitleInput() {
 	}>;
 }
 
+function createDeferred<T = void>() {
+	let resolve!: (value: T | PromiseLike<T>) => void;
+	let reject!: (reason?: unknown) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+	return { promise, resolve, reject };
+}
+
 describe("NoteEditorView", () => {
 	beforeEach(() => {
 		mockLoadNote.mockReset();
 		mockSaveNote.mockReset();
 		mockDeleteNote.mockReset();
 		mockIndexListNotes.mockReset();
+		mockGitFlushPendingChanges.mockReset();
+		mockNavigationDispatch.mockReset();
 		mockLoadNote.mockImplementation(async (id: string) => makeNote({ id }));
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
 		mockIndexListNotes.mockResolvedValue({ items: [], cursor: undefined });
+		mockGitFlushPendingChanges.mockResolvedValue({
+			success: true,
+			didCommit: true,
+			didPush: true,
+		});
 		mockNavigationSetOptions.mockReset();
 		(useAppKeyboardShortcuts as jest.Mock).mockReset();
 		latestNavigationOptions = undefined;
+		beforeRemoveListener = undefined;
 		useEditorState.getState().resetState();
 		useStorageStore.setState({
 			capabilities: {
@@ -334,8 +379,100 @@ describe("NoteEditorView", () => {
 				false,
 			);
 		});
+		expect(mockGitFlushPendingChanges).toHaveBeenCalledWith({
+			reason: "note-exit",
+			message: undefined,
+			timeoutMs: 8000,
+		});
 		await waitFor(() => {
 			expect(result.getPathname()).toBe("/");
+		});
+	});
+
+	it("waits for save and git flush before navigating back", async () => {
+		const note = makeNote();
+		const saveDeferred = createDeferred();
+		const flushDeferred = createDeferred<{
+			success: boolean;
+			didCommit: boolean;
+			didPush: boolean;
+		}>();
+		mockSaveNote.mockReturnValue(saveDeferred.promise);
+		mockGitFlushPendingChanges.mockReturnValue(flushDeferred.promise);
+
+		const result = renderNoteEditor(note);
+
+		await screen.findByText("Toolbar");
+		act(() => {
+			getHeaderTitleInput().props.onChangeText("Renamed note");
+		});
+
+		pressHeaderBack();
+
+		expect(result.getPathname()).toBe("/editor");
+		expect(mockGitFlushPendingChanges).not.toHaveBeenCalled();
+
+		await act(async () => {
+			saveDeferred.resolve();
+			await Promise.resolve();
+		});
+
+		expect(mockGitFlushPendingChanges).toHaveBeenCalledTimes(1);
+		expect(result.getPathname()).toBe("/editor");
+
+		await act(async () => {
+			flushDeferred.resolve({
+				success: true,
+				didCommit: true,
+				didPush: true,
+			});
+			await Promise.resolve();
+		});
+
+		await waitFor(() => {
+			expect(result.getPathname()).toBe("/");
+		});
+	});
+
+	it("flushes beforeRemove navigation through the same save path", async () => {
+		const note = makeNote();
+		const saveDeferred = createDeferred();
+		const action = { type: "GO_BACK" };
+		const preventDefault = jest.fn();
+		mockSaveNote.mockReturnValue(saveDeferred.promise);
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Toolbar");
+		act(() => {
+			getHeaderTitleInput().props.onChangeText("Renamed note");
+		});
+
+		expect(beforeRemoveListener).toBeDefined();
+		act(() => {
+			beforeRemoveListener?.({
+				preventDefault,
+				data: { action },
+			});
+		});
+
+		expect(preventDefault).toHaveBeenCalledTimes(1);
+		expect(mockNavigationDispatch).not.toHaveBeenCalled();
+
+		await act(async () => {
+			saveDeferred.resolve();
+			await Promise.resolve();
+		});
+
+		await waitFor(() => {
+			expect(mockGitFlushPendingChanges).toHaveBeenCalledWith({
+				reason: "note-exit",
+				message: undefined,
+				timeoutMs: 8000,
+			});
+		});
+		await waitFor(() => {
+			expect(mockNavigationDispatch).toHaveBeenCalledWith(action);
 		});
 	});
 
@@ -428,6 +565,27 @@ describe("NoteEditorView", () => {
 			);
 		});
 		expect(mockDeleteNote).toHaveBeenCalledWith(note.id, "note");
+	});
+
+	it("flushes queued git changes after deleting before leaving", async () => {
+		const user = userEvent.setup();
+		const note = makeNote();
+		const result = renderNoteEditor(note);
+
+		await screen.findByText("Toolbar");
+		await user.press(screen.getByLabelText("Delete note"));
+
+		await waitFor(() => {
+			expect(mockDeleteNote).toHaveBeenCalledWith(note.id, "note");
+		});
+		expect(mockGitFlushPendingChanges).toHaveBeenCalledWith({
+			reason: "delete",
+			message: "Delete note",
+			timeoutMs: 8000,
+		});
+		await waitFor(() => {
+			expect(result.getPathname()).toBe("/");
+		});
 	});
 
 	it("opens the template modal when the editor requests insert template", async () => {

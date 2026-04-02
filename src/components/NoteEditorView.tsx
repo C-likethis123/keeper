@@ -14,8 +14,7 @@ import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
-import { CommonActions } from "@react-navigation/native";
-import { useFocusEffect, useNavigation } from "expo-router";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import React, {
 	useCallback,
 	useEffect,
@@ -54,6 +53,7 @@ export default function NoteEditorView({
 	isNew?: boolean;
 }) {
 	const navigation = useNavigation();
+	const router = useRouter();
 	const theme = useExtendedTheme();
 	const { focusBlock } = useFocusBlock();
 	const styles = useMemo(() => createStyles(theme), [theme]);
@@ -219,7 +219,7 @@ export default function NoteEditorView({
 	);
 
 	const leaveEditor = useCallback(
-		async (action = CommonActions.goBack()) => {
+		async (action?: { type: string; payload?: object }) => {
 			if (isLeavingRef.current) {
 				return;
 			}
@@ -229,12 +229,16 @@ export default function NoteEditorView({
 				await forceSave();
 				await flushGitAndToastOnFailure("note-exit");
 				bypassNextBeforeRemoveRef.current = true;
-				navigation.dispatch(action);
+				if (action) {
+					navigation.dispatch(action);
+					return;
+				}
+				router.back();
 			} finally {
 				isLeavingRef.current = false;
 			}
 		},
-		[flushGitAndToastOnFailure, forceSave, navigation],
+		[flushGitAndToastOnFailure, forceSave, navigation, router],
 	);
 
 	const handleDeletePress = useCallback(async () => {
@@ -244,8 +248,8 @@ export default function NoteEditorView({
 			`Delete ${latestDraftRef.current.noteType}`,
 		);
 		bypassNextBeforeRemoveRef.current = true;
-		navigation.dispatch(CommonActions.goBack());
-	}, [flushGitAndToastOnFailure, id, navigation]);
+		router.back();
+	}, [flushGitAndToastOnFailure, id, router]);
 
 	const applyTitleChange = useCallback(
 		(nextTitle: string) => {
