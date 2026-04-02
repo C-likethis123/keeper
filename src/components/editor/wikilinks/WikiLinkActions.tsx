@@ -1,0 +1,171 @@
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
+import { MaterialIcons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
+import React, { useCallback } from "react";
+import {
+	Modal,
+	Platform,
+	Pressable,
+	StyleSheet,
+	Text,
+	TouchableOpacity,
+	View,
+} from "react-native";
+import { useWikiLinkContext } from "./WikiLinkContext";
+
+interface WikiLinkActionsProps {
+	onOpenWikiLink: (title: string) => void | Promise<void>;
+}
+
+export function WikiLinkActions({ onOpenWikiLink }: WikiLinkActionsProps) {
+	const theme = useExtendedTheme();
+	const styles = useStyles(createStyles);
+	const { actionsWikiLink, hideActions } = useWikiLinkContext();
+
+	const handleOpen = useCallback(async () => {
+		if (actionsWikiLink) {
+			const title = actionsWikiLink.title;
+			hideActions();
+			await onOpenWikiLink(title);
+		}
+	}, [actionsWikiLink, hideActions, onOpenWikiLink]);
+
+	const handleCopy = useCallback(async () => {
+		if (actionsWikiLink) {
+			await Clipboard.setStringAsync(actionsWikiLink.title);
+			hideActions();
+		}
+	}, [actionsWikiLink, hideActions]);
+
+	if (!actionsWikiLink) return null;
+
+	return (
+		<Modal
+			visible={!!actionsWikiLink}
+			transparent
+			animationType="slide"
+			onRequestClose={hideActions}
+		>
+			<Pressable style={styles.backdrop} onPress={hideActions}>
+				<View style={styles.container}>
+					<View style={styles.drawer}>
+						<View style={styles.header}>
+							<Text style={styles.title} numberOfLines={1}>
+								[[{actionsWikiLink.title}]]
+							</Text>
+							<TouchableOpacity onPress={hideActions} style={styles.closeButton}>
+								<MaterialIcons
+									name="close"
+									size={24}
+									color={theme.colors.textMuted}
+								/>
+							</TouchableOpacity>
+						</View>
+
+						<TouchableOpacity style={styles.actionItem} onPress={handleOpen}>
+							<MaterialIcons
+								name="open-in-new"
+								size={22}
+								color={theme.colors.primary}
+							/>
+							<Text style={styles.actionText}>Open Note</Text>
+						</TouchableOpacity>
+
+						<TouchableOpacity style={styles.actionItem} onPress={handleCopy}>
+							<MaterialIcons
+								name="content-copy"
+								size={22}
+								color={theme.colors.text}
+							/>
+							<Text style={styles.actionText}>Copy Title</Text>
+						</TouchableOpacity>
+
+						<View style={styles.footer}>
+							<TouchableOpacity style={styles.cancelButton} onPress={hideActions}>
+								<Text style={styles.cancelText}>Cancel</Text>
+							</TouchableOpacity>
+						</View>
+					</View>
+				</View>
+			</Pressable>
+		</Modal>
+	);
+}
+
+function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+	return StyleSheet.create({
+		backdrop: {
+			flex: 1,
+			backgroundColor: "rgba(0,0,0,0.4)",
+			justifyContent: "flex-end",
+		},
+		container: {
+			width: "100%",
+			alignItems: "center",
+		},
+		drawer: {
+			width: "100%",
+			maxWidth: Platform.OS === "web" ? 500 : "100%",
+			backgroundColor: theme.colors.background,
+			borderTopLeftRadius: 20,
+			borderTopRightRadius: 20,
+			paddingBottom: Platform.OS === "ios" ? 40 : 20,
+			paddingTop: 12,
+			shadowColor: "#000",
+			shadowOffset: { width: 0, height: -4 },
+			shadowOpacity: 0.1,
+			shadowRadius: 10,
+			elevation: 20,
+		},
+		header: {
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "space-between",
+			paddingHorizontal: 20,
+			paddingVertical: 12,
+			borderBottomWidth: StyleSheet.hairlineWidth,
+			borderBottomColor: theme.colors.border,
+			marginBottom: 8,
+		},
+		title: {
+			fontSize: 17,
+			fontWeight: "700",
+			color: theme.colors.text,
+			flex: 1,
+			marginRight: 10,
+		},
+		closeButton: {
+			padding: 4,
+		},
+		actionItem: {
+			flexDirection: "row",
+			alignItems: "center",
+			paddingHorizontal: 20,
+			paddingVertical: 16,
+			gap: 12,
+		},
+		actionText: {
+			fontSize: 16,
+			color: theme.colors.text,
+		},
+		footer: {
+			marginTop: 8,
+			paddingHorizontal: 20,
+		},
+		cancelButton: {
+			height: 50,
+			borderRadius: 12,
+			backgroundColor: theme.colors.card,
+			justifyContent: "center",
+			alignItems: "center",
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+		},
+		cancelText: {
+			fontSize: 16,
+			fontWeight: "600",
+			color: theme.colors.text,
+		},
+	});
+}

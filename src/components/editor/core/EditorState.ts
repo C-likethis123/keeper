@@ -44,6 +44,10 @@ export interface EditorState extends EditorStateSlice {
 		language?: string,
 	) => void;
 	updateBlockListLevel: (index: number, newLevel: number) => void;
+	updateBlockAttributes: (
+		index: number,
+		newAttrs: Record<string, unknown>,
+	) => void;
 	toggleCheckbox: (index: number) => void;
 	toggleInlineStyle: (marker: string) => boolean;
 	toggleCurrentBlockType: (targetType: BlockType) => boolean;

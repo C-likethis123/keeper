@@ -122,6 +122,15 @@ export function UnifiedBlock({
 		},
 		[handleFocus, onOpenWikiLink],
 	);
+	const { showActions } = useWikiLinkContext();
+	const handleWikiLinkLongPress = useCallback(
+		(title: string, event: GestureResponderEvent) => {
+			if (Platform.OS !== "web") {
+				showActions(title, event);
+			}
+		},
+		[showActions],
+	);
 	const wikiLinks = useWikiLinkContext();
 	const slashCommands = useSlashCommandContext();
 	const handleContentChange = useCallback(
@@ -354,6 +363,7 @@ export function UnifiedBlock({
 						text={block.content}
 						style={textStyle}
 						onWikiLinkPress={handleWikiLinkPress}
+						onWikiLinkLongPress={handleWikiLinkLongPress}
 					/>
 				</View>
 				<TextInput

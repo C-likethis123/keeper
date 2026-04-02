@@ -82,7 +82,7 @@ export function shouldOpenWikiLink(
 		return true;
 	}
 
-	return Boolean(event?.nativeEvent?.metaKey);
+	return Boolean(event?.nativeEvent?.metaKey || event?.nativeEvent?.ctrlKey);
 }
 
 export function stopWikiLinkActivation(event?: WikiLinkActivationEvent): void {

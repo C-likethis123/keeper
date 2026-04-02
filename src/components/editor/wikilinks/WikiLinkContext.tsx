@@ -14,6 +14,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { GestureResponderEvent } from "react-native";
 import { normalizeWikiLinkTitle } from "./wikiLinkUtils";
 
 export interface WikiLinkResult {
@@ -42,6 +43,11 @@ interface WikiLinkContextValue {
 	selectNext: () => void;
 	selectPrevious: () => void;
 	getSelectedResult: () => WikiLinkResult | null;
+
+	// Actions (Drawer)
+	actionsWikiLink: { title: string; event: GestureResponderEvent } | null;
+	showActions: (title: string, event: GestureResponderEvent) => void;
+	hideActions: () => void;
 }
 
 const WikiLinkContext = createContext<WikiLinkContextValue | null>(null);
@@ -53,6 +59,10 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 	const [results, setResults] = useState<WikiLinkResult[]>([]);
 	const [selectedIndex, setSelectedIndex] = useState<number>(0);
 	const [isLoading, setIsLoading] = useState<boolean>(false);
+	const [actionsWikiLink, setActionsWikiLink] = useState<{
+		title: string;
+		event: GestureResponderEvent;
+	} | null>(null);
 	const blockIndexRef = useRef<number>(0);
 	const triggerStartOffsetRef = useRef<number>(0);
 
@@ -123,6 +133,17 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 		removeTriggerToken(triggerStartOffsetRef.current);
 		endSession();
 	}, [endSession, isActive, removeTriggerToken]);
+
+	const showActions = useCallback(
+		(title: string, event: GestureResponderEvent) => {
+			setActionsWikiLink({ title, event });
+		},
+		[],
+	);
+
+	const hideActions = useCallback(() => {
+		setActionsWikiLink(null);
+	}, []);
 
 	const insertWikiLink = useCallback(
 		(title: string) => {
@@ -252,6 +273,9 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 			selectNext,
 			selectPrevious,
 			getSelectedResult,
+			actionsWikiLink,
+			showActions,
+			hideActions,
 		}),
 		[
 			results,
@@ -266,6 +290,9 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 			selectNext,
 			selectPrevious,
 			getSelectedResult,
+			actionsWikiLink,
+			showActions,
+			hideActions,
 		],
 	);
 

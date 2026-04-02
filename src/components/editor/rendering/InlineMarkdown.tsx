@@ -13,12 +13,14 @@ interface InlineMarkdownProps {
 	style?: TextStyle;
 	onLinkPress?: (url: string) => void;
 	onWikiLinkPress?: (title: string, event: GestureResponderEvent) => void;
+	onWikiLinkLongPress?: (title: string, event: GestureResponderEvent) => void;
 }
 
 interface TextSegment {
 	text: string;
 	style?: TextStyle;
 	onPress?: (event: GestureResponderEvent) => void;
+	onLongPress?: (event: GestureResponderEvent) => void;
 	isMath?: boolean; // For inline math rendering
 }
 
@@ -28,6 +30,7 @@ export function InlineMarkdown({
 	style,
 	onLinkPress,
 	onWikiLinkPress,
+	onWikiLinkLongPress,
 }: InlineMarkdownProps) {
 	const theme = useExtendedTheme();
 	const segments = parseInlineMarkdown(
@@ -35,6 +38,7 @@ export function InlineMarkdown({
 		style || {},
 		onLinkPress,
 		onWikiLinkPress,
+		onWikiLinkLongPress,
 		theme,
 	);
 
@@ -58,6 +62,7 @@ export function InlineMarkdown({
 								key={i}
 								style={[style, s.style]}
 								onPress={s.onPress}
+								onLongPress={s.onLongPress}
 							>
 								{s.text}
 							</Text>
@@ -95,6 +100,7 @@ export function InlineMarkdown({
 						key={i}
 						style={[style, s.style]}
 						onPress={s.onPress}
+						onLongPress={s.onLongPress}
 					>
 						{s.text}
 					</Text>
@@ -129,6 +135,9 @@ function parseInlineMarkdown(
 	baseStyle: TextStyle,
 	onLinkPress: ((url: string) => void) | undefined,
 	onWikiLinkPress:
+		| ((title: string, event: GestureResponderEvent) => void)
+		| undefined,
+	onWikiLinkLongPress:
 		| ((title: string, event: GestureResponderEvent) => void)
 		| undefined,
 	theme: ReturnType<typeof useExtendedTheme>,
@@ -166,6 +175,7 @@ function parseInlineMarkdown(
 				{ ...baseStyle, ...headingStyle },
 				onLinkPress,
 				onWikiLinkPress,
+				onWikiLinkLongPress,
 				theme,
 			);
 			segments.push(...nested);
@@ -188,6 +198,9 @@ function parseInlineMarkdown(
 					},
 					onPress: onWikiLinkPress
 						? (event) => onWikiLinkPress(linkText, event)
+						: undefined,
+					onLongPress: onWikiLinkLongPress
+						? (event) => onWikiLinkLongPress(linkText, event)
 						: undefined,
 				});
 				i = closeIndex + 2;
@@ -286,6 +299,7 @@ function parseInlineMarkdown(
 					{ ...baseStyle, fontWeight: "bold" },
 					onLinkPress,
 					onWikiLinkPress,
+					onWikiLinkLongPress,
 					theme,
 				);
 				segments.push(...nestedSegments);
@@ -309,6 +323,7 @@ function parseInlineMarkdown(
 						{ ...baseStyle, fontStyle: "italic" },
 						onLinkPress,
 						onWikiLinkPress,
+						onWikiLinkLongPress,
 						theme,
 					);
 					segments.push(...nestedSegments);

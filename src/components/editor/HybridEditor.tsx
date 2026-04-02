@@ -25,6 +25,7 @@ import {
 	useWikiLinkContext,
 } from "./wikilinks/WikiLinkContext";
 import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
+import { WikiLinkActions } from "./wikilinks/WikiLinkActions";
 
 /// A hybrid markdown/code editor widget
 ///
@@ -336,6 +337,7 @@ function HybridEditorContent() {
 			splitBlock,
 			getBlockAtIndex,
 			insertBlockAfter,
+			handleContentChange,
 		],
 	);
 
@@ -435,6 +437,7 @@ function HybridEditorContent() {
 				/>
 			</ScrollView>
 			<WikiLinkModal />
+			<WikiLinkActions onOpenWikiLink={handleOpenWikiLink} />
 			<SlashCommandModal />
 		</View>
 	);
