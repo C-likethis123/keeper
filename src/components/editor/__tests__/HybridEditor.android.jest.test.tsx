@@ -1,5 +1,6 @@
 import { screen, userEvent, waitFor } from "@testing-library/react-native";
 import React from "react";
+import { ScrollView } from "react-native";
 import {
 	mockListNotes,
 	mockPush,
@@ -74,5 +75,13 @@ describe("HybridEditor wikilinks on Android", () => {
 		await waitFor(() => {
 			expect(mockPush).toHaveBeenCalledWith("/editor?id=generated-note-id");
 		});
+	});
+
+	it("derives sticky header indices for video blocks on native", () => {
+		const { UNSAFE_getByType } = renderEditor(
+			"![video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)\nParagraph",
+		);
+
+		expect(UNSAFE_getByType(ScrollView).props.stickyHeaderIndices).toEqual([0]);
 	});
 });

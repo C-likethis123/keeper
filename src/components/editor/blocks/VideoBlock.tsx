@@ -55,31 +55,28 @@ export function VideoBlock({
 				lastLayoutRef.current = layout;
 				registerVideoLayout(index, layout);
 			}}
+			style={[styles.container, isFocused && styles.focused]}
 		>
+			{!isFocused && videoSource && (
+				<View style={styles.stackedSplitShell}>
+					<EmbeddedVideoPanel
+						source={videoSource}
+						style={
+							videoMode === "normal"
+								? styles.videoPanel
+								: styles.videoPanelMinimised
+						}
+						mode={videoMode}
+						onToggleMode={() =>
+							setVideoMode((m) => (m === "normal" ? "minimised" : "normal"))
+						}
+					/>
+				</View>
+			)}
 			<Pressable
-				style={({ pressed }) => [
-					styles.container,
-					isFocused && styles.focused,
-					pressed && styles.pressed,
-				]}
+				style={({ pressed }) => [styles.inputShell, pressed && styles.pressed]}
 				onPress={handleFocus}
 			>
-				{!isFocused && videoSource && (
-					<View style={[styles.stackedSplitShell]}>
-						<EmbeddedVideoPanel
-							source={videoSource}
-							style={
-								videoMode === "normal"
-									? styles.videoPanel
-									: styles.videoPanelMinimised
-							}
-							mode={videoMode}
-							onToggleMode={() =>
-								setVideoMode((m) => (m === "normal" ? "minimised" : "normal"))
-							}
-						/>
-					</View>
-				)}
 				<TextInput
 					ref={inputRef}
 					style={[
@@ -103,6 +100,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			paddingHorizontal: Platform.OS === "web" ? 16 : 0,
 			paddingVertical: 8,
 			overflow: "visible",
+		},
+		inputShell: {
+			minHeight: 24,
 		},
 		input: {
 			minHeight: 24,

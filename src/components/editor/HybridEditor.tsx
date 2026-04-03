@@ -5,8 +5,8 @@ import { resolveOrCreateWikiLinkNoteId } from "@/components/editor/wikilinks/wik
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
 import { useRouter } from "expo-router";
-import React, { useCallback, useRef } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import React, { useCallback, useMemo, useRef } from "react";
+import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { BlockRow } from "./BlockRow";
 import { blockRegistry } from "./blocks/BlockRegistry";
 import {
@@ -53,6 +53,7 @@ export function HybridEditor({
 function HybridEditorContent() {
 	const router = useRouter();
 	const blockIds = useEditorBlockIds();
+	const blocks = useEditorState((s) => s.document.blocks);
 	const setSelection = useEditorState((s) => s.setSelection);
 	const selection = useEditorState((s) => s.selection);
 	const updateBlockType = useEditorState((s) => s.updateBlockType);
@@ -67,7 +68,7 @@ function HybridEditorContent() {
 	const ignoreNextContentChangeRef = useRef<number | null>(null);
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
-	const { scrollViewRef, stickyVideoIndex, updateScrollY, updateViewHeight } =
+	const { scrollViewRef, updateScrollY, updateViewHeight } =
 		useEditorScrollView();
 	const { focusBlock } = useFocusBlock();
 	const wikiLinks = useWikiLinkContext();
@@ -409,6 +410,21 @@ function HybridEditorContent() {
 		],
 	);
 
+	const stickyHeaderIndices = useMemo(() => {
+		if (Platform.OS === "web") {
+			return undefined;
+		}
+
+		const indices: number[] = [];
+		for (let i = 0; i < blocks.length; i++) {
+			if (blocks[i].type === BlockType.video) {
+				indices.push(i);
+			}
+		}
+
+		return indices.length > 0 ? indices : undefined;
+	}, [blocks]);
+
 	return (
 		<View style={styles.container}>
 			<ScrollView
@@ -417,6 +433,7 @@ function HybridEditorContent() {
 				ref={scrollViewRef}
 				keyboardShouldPersistTaps="handled"
 				scrollEventThrottle={16}
+				stickyHeaderIndices={stickyHeaderIndices}
 				onScroll={(e) => {
 					updateScrollY(e.nativeEvent.contentOffset.y);
 				}}
