@@ -10,6 +10,7 @@ This section contains todo items that have not been prioritised. When seeing ite
 2. Implement block moving
 3. Implement selection between blocks!
 4. react-native-enriched uses Fabric native modules so it acts as an uncontrolled component. It is not recommended to change TextInput to a native component because the bottleneck might be in syncing the document state with the stores.
+5. TODOs in notes should be linked as separate TODOs. Notes in progress can also be a "TODO".
 
 ## Critical Issues (P1)
 
