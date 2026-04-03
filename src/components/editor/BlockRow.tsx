@@ -6,7 +6,7 @@ import { BlockType } from "@/components/editor/core/BlockNode";
 import { getListItemNumber } from "@/components/editor/core/Document";
 import { useEditorBlock, useEditorState } from "@/stores/editorStore";
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 
 interface BlockRowHandlers {
 	onContentChange: (index: number, content: string) => void;
@@ -75,7 +75,10 @@ export const BlockRow = React.memo(function BlockRow({
 				styles.blockWrapper,
 				{
 					position:
-						config.block.type === BlockType.video ? "sticky" : "relative",
+						Platform.OS === "web" && config.block.type === BlockType.video
+							? // biome-ignore lint/suspicious/noExplicitAny: sticky is web-only
+							  ("sticky" as any)
+							: "relative",
 					zIndex: config.block.type === BlockType.video ? 20 : 1,
 					top: config.block.type === BlockType.video ? 0 : undefined,
 				},
