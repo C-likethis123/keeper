@@ -6,6 +6,7 @@ import { useAppStartup } from "@/hooks/useAppStartup";
 import { useStyles } from "@/hooks/useStyles";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { ThemeProvider } from "@react-navigation/native";
+import * as Insights from "expo-insights";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
 import {
@@ -22,6 +23,7 @@ traceStartupBootstrapEvent("bootstrap.layout_module_evaluated");
 export default function RootLayout() {
 	useEffect(() => {
 		traceStartupBootstrapEvent("bootstrap.root_layout_first_render");
+		Insights.init();
 	}, []);
 	const themeMode = useColorScheme();
 	const { isHydrated, initError } = useAppStartup();
