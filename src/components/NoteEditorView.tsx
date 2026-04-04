@@ -72,6 +72,9 @@ export default function NoteEditorView({
 	const editorContent = useEditorState((s: EditorState) =>
 		s.getContentForVersion(s.document.version),
 	);
+	// Track the note ID we've loaded to prevent reloads during save operations.
+	// Reset on mount to ensure we always load on initial screen open.
+	const loadedNoteIdRef = useRef<string | null>(null);
 	const deriveCurrentNoteType = useCallback(
 		(nextTitle: string, nextContent: string): Note["noteType"] => {
 			const derived = deriveNoteType(nextTitle, nextContent);
@@ -186,8 +189,15 @@ export default function NoteEditorView({
 			setNoteType(note.noteType);
 			setTodoStatus(note.noteType === "todo" ? (note.status ?? "open") : null);
 			lastPersistedTypeRef.current = note.noteType;
-			loadMarkdown(note.content);
-		}, [loadMarkdown, note]),
+
+			// Only load markdown on initial mount or when note ID changes.
+			// This prevents scroll/focus loss when save operations return a new note object
+			// with the same ID (contentVersion bump causes re-render but content is identical).
+			if (loadedNoteIdRef.current !== note.id) {
+				loadedNoteIdRef.current = note.id;
+				loadMarkdown(note.content);
+			}
+		}, [loadMarkdown, note.content, note.id, note.isPinned, note.noteType, note.status, note.title]),
 	);
 
 	const handleTogglePin = useCallback(async () => {

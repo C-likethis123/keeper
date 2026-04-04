@@ -8,8 +8,12 @@ import { use } from "react";
 export function useSuspenseLoadNote(id: string): Note | null {
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
 	const initializationError = useStorageStore((s) => s.initializationError);
-	const contentVersion = useStorageStore((s) => s.contentVersion);
 
+	// Deliberately NOT using contentVersion in the cache key.
+	// contentVersion is for list-level refresh (useNotes/useSuspenseNotes).
+	// Including it here would cause re-suspension on every save, which
+	// unmounts/remounts the editor via the Suspense boundary and loses focus.
+	// The note content on disk is what we just saved, so stale data isn't a concern.
 	if (initializationStatus === "pending") {
 		throw waitForStorageReady();
 	}
@@ -19,8 +23,6 @@ export function useSuspenseLoadNote(id: string): Note | null {
 	}
 
 	return use(
-		getCachedQueryPromise(`note:${id}:v${contentVersion}`, () =>
-			NoteService.loadNote(id),
-		),
+		getCachedQueryPromise(`note:${id}`, () => NoteService.loadNote(id)),
 	);
 }
