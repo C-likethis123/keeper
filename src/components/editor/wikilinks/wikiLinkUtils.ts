@@ -4,6 +4,7 @@ import {
 	type NoteIndexItem,
 	NotesIndexService,
 } from "@/services/notes/notesIndex";
+import type { NoteStatus } from "@/services/notes/types";
 import { nanoid } from "nanoid";
 
 export interface WikiLinkActivationEvent {
@@ -17,6 +18,17 @@ export interface WikiLinkActivationEvent {
 
 export function normalizeWikiLinkTitle(title: string): string {
 	return title.trim().toLocaleLowerCase();
+}
+
+export function extractWikiLinkTitle(content: string): string | null {
+	const match = /^\s*\[\[(.+?)\]\]\s*$/.exec(content);
+	const title = match?.[1]?.trim();
+	return title ? title : null;
+}
+
+export function buildTrackedTodoTitle(taskText: string): string {
+	const trimmed = taskText.trim();
+	return trimmed.length === 0 ? "TODO:" : `TODO: ${trimmed}`;
 }
 
 export function findExactWikiLinkMatch(
@@ -72,6 +84,69 @@ export async function resolveOrCreateWikiLinkNoteId(
 	);
 
 	return created.id;
+}
+
+export async function resolveOrCreateTrackedTodoNoteId(
+	taskText: string,
+): Promise<string | null> {
+	const title = buildTrackedTodoTitle(taskText);
+	if (title.trim().length === 0) {
+		return null;
+	}
+
+	const existingNoteId = await resolveWikiLinkNoteId(title);
+	if (existingNoteId) {
+		return existingNoteId;
+	}
+
+	const now = Date.now();
+	const created = await NoteService.saveNote(
+		{
+			id: nanoid(),
+			title,
+			content: "",
+			isPinned: false,
+			noteType: "todo",
+			status: "open",
+			createdAt: now,
+			completedAt: null,
+		},
+		true,
+	);
+
+	return created.id;
+}
+
+export async function updateLinkedTodoNoteStatus(
+	noteId: string,
+	title: string,
+	status: NoteStatus,
+): Promise<void> {
+	const trimmedId = noteId.trim();
+	const trimmedTitle = title.trim();
+	if (trimmedId.length === 0 || trimmedTitle.length === 0) {
+		return;
+	}
+
+	const existing = await NoteService.loadNote(trimmedId);
+	if (!existing) {
+		return;
+	}
+
+	const now = Date.now();
+	await NoteService.saveNote(
+		{
+			id: trimmedId,
+			title: trimmedTitle,
+			content: existing.content,
+			isPinned: existing.isPinned,
+			noteType: "todo",
+			status,
+			createdAt: existing.createdAt ?? now,
+			completedAt: status === "done" ? existing.completedAt ?? now : null,
+		},
+		false,
+	);
 }
 
 export function shouldOpenWikiLink(

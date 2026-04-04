@@ -1,31 +1,47 @@
 import { useEditorScrollView } from "@/components/editor/EditorScrollContext";
 import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
 import { useEditorKeyboardShortcuts } from "@/components/editor/keyboard/useEditorKeyboardShortcuts";
-import { resolveOrCreateWikiLinkNoteId } from "@/components/editor/wikilinks/wikiLinkUtils";
+import {
+	buildTrackedTodoTitle,
+	extractWikiLinkTitle,
+	resolveOrCreateTrackedTodoNoteId,
+	resolveOrCreateWikiLinkNoteId,
+	updateLinkedTodoNoteStatus,
+} from "@/components/editor/wikilinks/wikiLinkUtils";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useRef } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+	Platform,
+	Pressable,
+	ScrollView,
+	StyleSheet,
+	View,
+} from "react-native";
 import { BlockRow } from "./BlockRow";
 import { blockRegistry } from "./blocks/BlockRegistry";
 import {
 	BlockType,
-	createCollapsibleBlock,
+	createCheckboxBlock,
 	createParagraphBlock,
 	getCollapsibleSummary,
+	getListLevel,
 } from "./core/BlockNode";
+import { createCollapsedSelection } from "./core/Selection";
+import { TransactionBuilder } from "./core/Transaction";
+import { parseTodoTrigger } from "./rendering/InlineMarkdown";
 import {
 	SlashCommandProvider,
 	useSlashCommandContext,
 } from "./slash-commands/SlashCommandContext";
 import { SlashCommandModal } from "./slash-commands/SlashCommandModal";
+import { WikiLinkActions } from "./wikilinks/WikiLinkActions";
 import {
 	WikiLinkProvider,
 	useWikiLinkContext,
 } from "./wikilinks/WikiLinkContext";
 import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
-import { WikiLinkActions } from "./wikilinks/WikiLinkActions";
 
 /// A hybrid markdown/code editor widget
 ///
@@ -68,6 +84,9 @@ function HybridEditorContent() {
 	const ignoreNextContentChangeRef = useRef<number | null>(null);
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
+	const todoConversionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+		null,
+	);
 	const { scrollViewRef, updateScrollY, updateViewHeight } =
 		useEditorScrollView();
 	const { focusBlock } = useFocusBlock();
@@ -89,6 +108,184 @@ function HybridEditorContent() {
 		},
 	});
 	useEditorKeyboardShortcuts({ context: commandContext });
+
+	const syncTrackedTodoLink = useCallback(
+		async (index: number, blockId: string, todoBody: string) => {
+			try {
+				const todoNoteId = await resolveOrCreateTrackedTodoNoteId(todoBody);
+				if (!todoNoteId) {
+					return;
+				}
+
+				const latestBlock = useEditorState.getState().document.blocks[index];
+				if (
+					!latestBlock ||
+					latestBlock.id !== blockId ||
+					latestBlock.type !== BlockType.checkboxList
+				) {
+					return;
+				}
+
+				if (latestBlock.attributes?.linkedNoteId === todoNoteId) {
+					return;
+				}
+
+				useEditorState.getState().updateBlockAttributes(index, {
+					...latestBlock.attributes,
+					linkedNoteId: todoNoteId,
+				});
+			} catch (error) {
+				console.warn("Failed to link tracked todo note:", error);
+			}
+		},
+		[],
+	);
+
+	const convertTodoBlock = useCallback(
+		(
+			index: number,
+			options?: {
+				insertNextBlock?: boolean;
+			},
+		) => {
+			const state = useEditorState.getState();
+			const block = state.document.blocks[index];
+			if (
+				!block ||
+				!(
+					block.type === BlockType.paragraph ||
+					block.type === BlockType.bulletList ||
+					block.type === BlockType.numberedList
+				)
+			) {
+				return false;
+			}
+
+			const todoMatch = parseTodoTrigger(block.content);
+			if (!todoMatch) {
+				return false;
+			}
+
+			const trackedTitle = buildTrackedTodoTitle(todoMatch.body);
+			const nextBlockContent = `[[${trackedTitle}]]`;
+			const selectionBefore = state.selection;
+			const selectionAfter = createCollapsedSelection({
+				blockIndex: index,
+				offset: nextBlockContent.length,
+			});
+			const listLevel =
+				block.type === BlockType.paragraph ? 0 : getListLevel(block);
+			let builder = new TransactionBuilder()
+				.updateType(index, block.type, BlockType.checkboxList)
+				.updateContent(index, block.content, nextBlockContent)
+				.updateBlockAttributes(index, block.attributes ?? {}, {
+					...block.attributes,
+					listLevel,
+					checked: false,
+				})
+				.withSelectionBefore(selectionBefore)
+				.withDescription("Create tracked todo");
+
+			if (options?.insertNextBlock) {
+				builder = builder
+					.insertBlock(index + 1, createCheckboxBlock("", listLevel, false))
+					.withSelectionAfter(
+						createCollapsedSelection({
+							blockIndex: index + 1,
+							offset: 0,
+						}),
+					);
+			} else {
+				builder = builder.withSelectionAfter(selectionAfter);
+			}
+
+			useEditorState.getState().applyTransaction(builder.build());
+			ignoreSelectionChangeUntilRef.current = Date.now() + 150;
+
+			if (options?.insertNextBlock) {
+				focusBlock(index + 1);
+			} else {
+				focusBlock(index);
+			}
+
+			void syncTrackedTodoLink(index, block.id, todoMatch.body);
+			return true;
+		},
+		[focusBlock, syncTrackedTodoLink],
+	);
+
+	useEffect(() => {
+		if (todoConversionTimeoutRef.current) {
+			clearTimeout(todoConversionTimeoutRef.current);
+			todoConversionTimeoutRef.current = null;
+		}
+
+		const focusedIndex = selection?.focus.blockIndex ?? null;
+		if (focusedIndex === null) {
+			return undefined;
+		}
+
+		if (
+			selection?.anchor.blockIndex !== focusedIndex ||
+			selection?.anchor.offset !== selection?.focus.offset
+		) {
+			return undefined;
+		}
+
+		const block = blocks[focusedIndex];
+		if (
+			!block ||
+			!(
+				block.type === BlockType.paragraph ||
+				block.type === BlockType.bulletList ||
+				block.type === BlockType.numberedList
+			)
+		) {
+			return undefined;
+		}
+
+		const todoMatch = parseTodoTrigger(block.content);
+		if (!todoMatch) {
+			return undefined;
+		}
+
+		if (selection.focus.offset !== block.content.length) {
+			return undefined;
+		}
+
+		const expectedContent = block.content;
+		todoConversionTimeoutRef.current = setTimeout(() => {
+			todoConversionTimeoutRef.current = null;
+			const currentState = useEditorState.getState();
+			const currentBlock = currentState.document.blocks[focusedIndex];
+			const currentSelection = currentState.selection;
+			if (
+				!currentBlock ||
+				!(
+					currentBlock.type === BlockType.paragraph ||
+					currentBlock.type === BlockType.bulletList ||
+					currentBlock.type === BlockType.numberedList
+				) ||
+				currentBlock.content !== expectedContent ||
+				!currentSelection ||
+				currentSelection.anchor.blockIndex !== focusedIndex ||
+				currentSelection.focus.blockIndex !== focusedIndex ||
+				currentSelection.anchor.offset !== currentSelection.focus.offset ||
+				currentSelection.focus.offset !== currentBlock.content.length
+			) {
+				return;
+			}
+
+			convertTodoBlock(focusedIndex);
+		}, 500);
+
+		return () => {
+			if (todoConversionTimeoutRef.current) {
+				clearTimeout(todoConversionTimeoutRef.current);
+				todoConversionTimeoutRef.current = null;
+			}
+		};
+	}, [blocks, convertTodoBlock, selection]);
 
 	const getBlockAtIndex = useCallback((index: number) => {
 		return useEditorState.getState().document.blocks[index] ?? null;
@@ -313,6 +510,17 @@ function HybridEditorContent() {
 				return; // Conversion happened, don't split
 			}
 
+			const todoMatch = parseTodoTrigger(block.content);
+			if (
+				todoMatch &&
+				(block.type === BlockType.paragraph ||
+					block.type === BlockType.bulletList ||
+					block.type === BlockType.numberedList)
+			) {
+				convertTodoBlock(index, { insertNextBlock: true });
+				return;
+			}
+
 			// Convert empty list blocks to paragraphs
 			if (
 				block.content.trim() === "" &&
@@ -333,6 +541,7 @@ function HybridEditorContent() {
 		},
 		[
 			handleBlockTypeDetection,
+			convertTodoBlock,
 			focusBlock,
 			updateBlockType,
 			splitBlock,
@@ -383,6 +592,62 @@ function HybridEditorContent() {
 		[updateBlockAttributes],
 	);
 
+	const handleCheckboxToggle = useCallback(
+		(index: number) => {
+			const block = useEditorState.getState().document.blocks[index];
+			if (!block || block.type !== BlockType.checkboxList) {
+				return;
+			}
+
+			const nextChecked = !block.attributes?.checked;
+			toggleCheckbox(index);
+
+			const linkedTitle = extractWikiLinkTitle(block.content);
+			const linkedNoteId =
+				typeof block.attributes?.linkedNoteId === "string"
+					? block.attributes.linkedNoteId
+					: null;
+			if (!linkedTitle) {
+				return;
+			}
+
+			void (async () => {
+				try {
+					const resolvedTodo =
+						linkedNoteId == null
+							? await resolveOrCreateTrackedTodoNoteId(
+									linkedTitle.replace(/^todo:\s*/i, ""),
+								)
+							: null;
+					const noteId = linkedNoteId ?? resolvedTodo ?? null;
+					if (!noteId) {
+						return;
+					}
+
+					if (!linkedNoteId) {
+						const latestBlock =
+							useEditorState.getState().document.blocks[index];
+						if (latestBlock?.type === BlockType.checkboxList) {
+							useEditorState.getState().updateBlockAttributes(index, {
+								...latestBlock.attributes,
+								linkedNoteId: noteId,
+							});
+						}
+					}
+
+					await updateLinkedTodoNoteStatus(
+						noteId,
+						linkedTitle,
+						nextChecked ? "done" : "open",
+					);
+				} catch (error) {
+					console.warn("Failed to sync linked todo status:", error);
+				}
+			})();
+		},
+		[toggleCheckbox],
+	);
+
 	const handlers = React.useMemo(
 		() => ({
 			onContentChange: handleContentChange,
@@ -393,7 +658,7 @@ function HybridEditorContent() {
 			onEnter: handleEnter,
 			onSelectionChange: handleSelectionChange,
 			onDelete: handleDelete,
-			onCheckboxToggle: toggleCheckbox,
+			onCheckboxToggle: handleCheckboxToggle,
 			onOpenWikiLink: handleOpenWikiLink,
 		}),
 		[
@@ -405,7 +670,7 @@ function HybridEditorContent() {
 			handleEnter,
 			handleSelectionChange,
 			handleDelete,
-			toggleCheckbox,
+			handleCheckboxToggle,
 			handleOpenWikiLink,
 		],
 	);

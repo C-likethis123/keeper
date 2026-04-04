@@ -12,6 +12,8 @@ type PersistEditorEntryInput = {
 	isPinned: boolean;
 	noteType: NoteType;
 	status?: Note["status"];
+	createdAt?: Note["createdAt"];
+	completedAt?: Note["completedAt"];
 	previousNoteType?: NoteType;
 	isNewEntry?: boolean;
 };
@@ -20,15 +22,35 @@ function getPersistenceKey(id: string, noteType: NoteType): string {
 	return noteType === "template" ? `template:${id}` : `note:${id}`;
 }
 
-function buildPayload(input: PersistEditorEntryInput): NoteSaveInput {
+function buildPayload(
+	input: PersistEditorEntryInput,
+	existingNote: Note | null,
+): NoteSaveInput {
 	const isTemplate = input.noteType === "template";
+	const nextStatus = input.noteType === "todo" ? (input.status ?? "open") : null;
+	const now = Date.now();
+	const createdAt =
+		input.noteType === "todo"
+			? (input.createdAt ?? existingNote?.createdAt ?? now)
+			: null;
+	const completedAt =
+		input.noteType !== "todo"
+			? null
+			: input.completedAt !== undefined
+				? input.completedAt
+				: nextStatus === "done"
+					? (existingNote?.completedAt ?? now)
+					: null;
+
 	return {
 		id: input.id,
 		title: input.title,
 		content: input.content,
 		isPinned: isTemplate ? false : input.isPinned,
 		noteType: input.noteType,
-		status: input.noteType === "todo" ? (input.status ?? "open") : null,
+		status: nextStatus,
+		createdAt,
+		completedAt,
 	};
 }
 
@@ -40,7 +62,9 @@ function isSamePayload(a: NoteSaveInput, b: NoteSaveInput): boolean {
 			normalizeMarkdownForPersistence(b.content) &&
 		!!a.isPinned === !!b.isPinned &&
 		a.noteType === b.noteType &&
-		(a.status ?? null) === (b.status ?? null)
+		(a.status ?? null) === (b.status ?? null) &&
+		(a.createdAt ?? null) === (b.createdAt ?? null) &&
+		(a.completedAt ?? null) === (b.completedAt ?? null)
 	);
 }
 
@@ -59,10 +83,10 @@ export async function persistEditorEntry(
 		getPersistenceKey(input.id, previousType) !==
 			getPersistenceKey(input.id, input.noteType);
 
-	const payload = buildPayload(input);
 	const existingNote = isTypeTransition
 		? null
 		: await NoteService.loadNote(input.id);
+	const payload = buildPayload(input, existingNote);
 
 	if (!existingNote || !isSamePayload(existingNote, payload)) {
 		await NoteService.saveNote(payload, input.isNewEntry || needsPathMove);

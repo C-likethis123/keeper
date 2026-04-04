@@ -36,6 +36,8 @@ pub struct ReadNoteResult {
     pub last_updated: i64,
     pub note_type: String,
     pub status: Option<String>,
+    pub created_at: Option<i64>,
+    pub completed_at: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -47,6 +49,8 @@ pub struct WriteNoteInput {
     pub is_pinned: bool,
     pub note_type: String,
     pub status: Option<String>,
+    pub created_at: Option<i64>,
+    pub completed_at: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -229,13 +233,37 @@ struct NoteFrontmatter {
     #[serde(rename = "type")]
     note_type: Option<String>,
     status: Option<String>,
+    #[serde(rename = "createdAt")]
+    created_at: Option<i64>,
+    #[serde(rename = "completedAt")]
+    completed_at: Option<i64>,
 }
 
-fn parse_frontmatter(markdown: &str) -> (String, bool, String, Option<String>, String) {
+fn parse_frontmatter(
+    markdown: &str,
+) -> (
+    String,
+    bool,
+    String,
+    Option<String>,
+    Option<i64>,
+    Option<i64>,
+    String,
+) {
     let matter = Matter::<YAML>::new();
     let parsed = match matter.parse::<NoteFrontmatter>(markdown) {
         Ok(parsed) => parsed,
-        Err(_) => return (String::new(), false, "note".to_string(), None, markdown.to_string()),
+        Err(_) => {
+            return (
+                String::new(),
+                false,
+                "note".to_string(),
+                None,
+                None,
+                None,
+                markdown.to_string(),
+            )
+        }
     };
 
     let frontmatter = parsed.data.unwrap_or_default();
@@ -244,6 +272,8 @@ fn parse_frontmatter(markdown: &str) -> (String, bool, String, Option<String>, S
         frontmatter.pinned.unwrap_or(false),
         frontmatter.note_type.unwrap_or_else(|| "note".to_string()),
         frontmatter.status,
+        frontmatter.created_at,
+        frontmatter.completed_at,
         parsed.content,
     )
 }
@@ -258,6 +288,8 @@ fn serialize_entry(
     content: &str,
     note_type: &str,
     status: Option<&str>,
+    created_at: Option<i64>,
+    completed_at: Option<i64>,
     is_pinned: Option<bool>,
 ) -> Result<String, String> {
     let matter = Matter::<YAML>::new();
@@ -270,7 +302,7 @@ fn serialize_entry(
     });
 
     Ok(format!(
-        "{delimiter}{pinned}\ntitle: {title}\nid: {id}{note_type}{status}\n{close_delimiter}\n{content}",
+        "{delimiter}{pinned}\ntitle: {title}\nid: {id}{note_type}{status}{created_at}{completed_at}\n{close_delimiter}\n{content}",
         pinned = pinned.unwrap_or_default(),
         note_type = format!(
             "\ntype: {}",
@@ -284,6 +316,20 @@ fn serialize_entry(
             )
         } else {
             String::new()
+        },
+        created_at = if note_type == "todo" {
+            created_at
+                .map(|value| format!("\ncreatedAt: {value}"))
+                .unwrap_or_default()
+        } else {
+            String::new()
+        },
+        completed_at = if note_type == "todo" {
+            completed_at
+                .map(|value| format!("\ncompletedAt: {value}"))
+                .unwrap_or_default()
+        } else {
+            String::new()
         }
     ))
 }
@@ -295,6 +341,8 @@ fn serialize_note(input: &WriteNoteInput) -> Result<String, String> {
         &input.content,
         &input.note_type,
         input.status.as_deref(),
+        input.created_at,
+        input.completed_at,
         if input.note_type == "template" {
             None
         } else {
@@ -316,6 +364,20 @@ fn extract_summary(markdown_content: &str, max_lines: usize) -> String {
         }
     }
     lines.join("\n")
+}
+
+fn build_fts_match_query(query: &str) -> Option<String> {
+    let tokens = query
+        .split(|character: char| !character.is_alphanumeric())
+        .filter(|token| !token.is_empty())
+        .map(|token| format!("{token}*"))
+        .collect::<Vec<_>>();
+
+    if tokens.is_empty() {
+        None
+    } else {
+        Some(tokens.join(" "))
+    }
 }
 
 fn has_any_index_rows(conn: &Connection) -> Result<bool, String> {
@@ -346,7 +408,8 @@ pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>
         return Ok(None);
     };
     let markdown = fs::read_to_string(&path).map_err(|e| format!("failed to read note: {e}"))?;
-    let (title, is_pinned, note_type, status, content) = parse_frontmatter(&markdown);
+    let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+        parse_frontmatter(&markdown);
     Ok(Some(ReadNoteResult {
         id,
         title,
@@ -366,6 +429,16 @@ pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>
             None
         } else {
             status
+        },
+        created_at: if location == EntryLocation::Template && note_type != "todo" {
+            None
+        } else {
+            created_at
+        },
+        completed_at: if location == EntryLocation::Template && note_type != "todo" {
+            None
+        } else {
+            completed_at
         },
     }))
 }
@@ -489,14 +562,15 @@ pub fn index_list(index_db_path: &Path, input: IndexListInput) -> Result<IndexLi
     let limit_plus_one = (input.limit.max(1) + 1) as usize;
     let mut items = Vec::<IndexItem>::new();
     let normalized_query = input.query.trim().to_string();
+    let fts_match_query = build_fts_match_query(&normalized_query);
     let filters = input.filters;
 
     let mut where_clauses: Vec<&str> = Vec::new();
     let mut params_vec: Vec<Value> = Vec::new();
 
-    if !normalized_query.is_empty() {
+    if let Some(fts_match_query) = fts_match_query.as_ref() {
         where_clauses.push("note_index_fts MATCH ?");
-        params_vec.push(Value::Text(format!("{normalized_query}*")));
+        params_vec.push(Value::Text(fts_match_query.clone()));
     }
     if let Some(note_type) = filters
         .as_ref()
@@ -515,7 +589,7 @@ pub fn index_list(index_db_path: &Path, input: IndexListInput) -> Result<IndexLi
         format!(" WHERE {}", where_clauses.join(" AND "))
     };
 
-    if !normalized_query.is_empty() {
+    if fts_match_query.is_some() {
         let mut stmt = conn
             .prepare(&format!(
                 "SELECT
@@ -626,7 +700,8 @@ pub fn index_rebuild_from_disk(
         };
         let markdown =
             fs::read_to_string(&path).map_err(|e| format!("failed to read markdown: {e}"))?;
-        let (title, is_pinned, note_type, status, content) = parse_frontmatter(&markdown);
+        let (title, is_pinned, note_type, status, _, _, content) =
+            parse_frontmatter(&markdown);
         let summary = extract_summary(&content, 6);
         let status = if note_type == "todo" {
             Some(status.as_deref().unwrap_or("open"))
@@ -672,7 +747,8 @@ pub fn index_rebuild_from_disk(
         };
         let markdown =
             fs::read_to_string(&path).map_err(|e| format!("failed to read markdown: {e}"))?;
-        let (title, _, embedded_type, status, content) = parse_frontmatter(&markdown);
+        let (title, _, embedded_type, status, _, _, content) =
+            parse_frontmatter(&markdown);
         let summary = extract_summary(&content, 6);
         let status = if embedded_type == "todo" {
             Some(status.as_deref().unwrap_or("open"))
@@ -711,8 +787,9 @@ pub fn index_rebuild_from_disk(
 #[cfg(test)]
 mod tests {
     use super::{
-        delete_note, index_rebuild_from_disk, list_note_files, parse_frontmatter, read_note,
-        serialize_note, storage_initialize, template_path_for_id, write_note, WriteNoteInput,
+        build_fts_match_query, delete_note, index_list, index_rebuild_from_disk, index_upsert,
+        list_note_files, parse_frontmatter, read_note, serialize_note, storage_initialize,
+        template_path_for_id, write_note, IndexListInput, IndexUpsertInput, WriteNoteInput,
         NOTES_DIR,
     };
     use rusqlite::{params, Connection};
@@ -768,36 +845,45 @@ mod tests {
     #[test]
     fn parse_frontmatter_unescapes_quoted_titles() {
         let markdown = "---\ntitle: \"He said \\\"hi\\\"\"\npinned: true\n---\nHello";
-        let (title, is_pinned, note_type, status, content) = parse_frontmatter(markdown);
+        let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+            parse_frontmatter(markdown);
 
         assert_eq!(title, "He said \"hi\"");
         assert!(is_pinned);
         assert_eq!(note_type, "note");
         assert_eq!(status, None);
+        assert_eq!(created_at, None);
+        assert_eq!(completed_at, None);
         assert_eq!(content, "Hello");
     }
 
     #[test]
     fn parse_frontmatter_falls_back_for_plain_markdown() {
         let markdown = "# Heading\n\nBody";
-        let (title, is_pinned, note_type, status, content) = parse_frontmatter(markdown);
+        let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+            parse_frontmatter(markdown);
 
         assert_eq!(title, "");
         assert!(!is_pinned);
         assert_eq!(note_type, "note");
         assert_eq!(status, None);
+        assert_eq!(created_at, None);
+        assert_eq!(completed_at, None);
         assert_eq!(content, markdown);
     }
 
     #[test]
     fn parse_frontmatter_falls_back_for_invalid_yaml() {
         let markdown = "---\ntitle: \"unterminated\n---\nBody";
-        let (title, is_pinned, note_type, status, content) = parse_frontmatter(markdown);
+        let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+            parse_frontmatter(markdown);
 
         assert_eq!(title, "");
         assert!(!is_pinned);
         assert_eq!(note_type, "note");
         assert_eq!(status, None);
+        assert_eq!(created_at, None);
+        assert_eq!(completed_at, None);
         assert_eq!(content, markdown);
     }
 
@@ -810,14 +896,19 @@ mod tests {
             is_pinned: true,
             note_type: "todo".to_string(),
             status: Some("open".to_string()),
+            created_at: Some(1710000000000),
+            completed_at: Some(1710003600000),
         })
         .expect("note should serialize");
 
-        let (title, is_pinned, note_type, status, content) = parse_frontmatter(&markdown);
+        let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+            parse_frontmatter(&markdown);
         assert_eq!(title, "He said \"hi\"");
         assert!(is_pinned);
         assert_eq!(note_type, "todo");
         assert_eq!(status.as_deref(), Some("open"));
+        assert_eq!(created_at, Some(1710000000000));
+        assert_eq!(completed_at, Some(1710003600000));
         assert_eq!(content, "# Heading\n- item");
         assert!(markdown.contains("\nid: \"note-1\"\n"));
     }
@@ -825,12 +916,15 @@ mod tests {
     #[test]
     fn parse_frontmatter_reads_template_metadata() {
         let markdown = "---\ntitle: \"Meeting\"\nid: \"template-1\"\ntype: \"todo\"\nstatus: \"doing\"\n---\n- agenda";
-        let (title, is_pinned, note_type, status, content) = parse_frontmatter(markdown);
+        let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+            parse_frontmatter(markdown);
 
         assert_eq!(title, "Meeting");
         assert!(!is_pinned);
         assert_eq!(note_type, "todo");
         assert_eq!(status.as_deref(), Some("doing"));
+        assert_eq!(created_at, None);
+        assert_eq!(completed_at, None);
         assert_eq!(content, "- agenda");
     }
 
@@ -843,14 +937,19 @@ mod tests {
             is_pinned: true,
             note_type: "template".to_string(),
             status: Some("open".to_string()),
+            created_at: None,
+            completed_at: None,
         })
         .expect("template should serialize");
 
-        let (title, is_pinned, note_type, status, content) = parse_frontmatter(&markdown);
+        let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+            parse_frontmatter(&markdown);
         assert_eq!(title, "Checklist");
         assert!(!is_pinned);
         assert_eq!(note_type, "template");
         assert_eq!(status, None);
+        assert_eq!(created_at, None);
+        assert_eq!(completed_at, None);
         assert_eq!(content, "- [ ] item");
         assert!(markdown.contains("\nid: \"template-1\"\n"));
         assert!(!markdown.contains("\npinned:"));
@@ -870,6 +969,8 @@ mod tests {
                 is_pinned: true,
                 note_type: "template".to_string(),
                 status: None,
+                created_at: None,
+                completed_at: None,
             },
         )
         .expect("write template");
@@ -894,6 +995,8 @@ mod tests {
                 is_pinned: true,
                 note_type: "note".to_string(),
                 status: None,
+                created_at: None,
+                completed_at: None,
             },
         )
         .expect("write note");
@@ -994,5 +1097,49 @@ mod tests {
         assert_eq!(row.0, "template");
         assert_eq!(row.1, 0);
         assert_eq!(row.2.as_deref(), Some("open"));
+    }
+
+    #[test]
+    fn build_fts_match_query_ignores_punctuation() {
+        assert_eq!(
+            build_fts_match_query("TODO: Ship release"),
+            Some("TODO* Ship* release*".to_string())
+        );
+        assert_eq!(build_fts_match_query(" - "), None);
+    }
+
+    #[test]
+    fn index_list_handles_todo_prefix_queries() {
+        let paths = TestStoragePaths::new();
+        storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
+
+        index_upsert(
+            &paths.index_db_path,
+            IndexUpsertInput {
+                note_id: "todo-1".to_string(),
+                title: "TODO: Ship release".to_string(),
+                summary: "Wrap up the final checks".to_string(),
+                is_pinned: false,
+                updated_at: 1710000000000,
+                note_type: "todo".to_string(),
+                status: Some("open".to_string()),
+            },
+        )
+        .expect("index todo");
+
+        let result = index_list(
+            &paths.index_db_path,
+            IndexListInput {
+                query: "TODO: Ship release".to_string(),
+                limit: 20,
+                offset: Some(0),
+                filters: None,
+            },
+        )
+        .expect("list notes");
+
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.items[0].note_id, "todo-1");
+        assert_eq!(result.items[0].title, "TODO: Ship release");
     }
 }

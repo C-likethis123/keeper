@@ -34,7 +34,11 @@ export function ListMarker({
 		return (
 			<View style={[styles.container, { paddingLeft: indent }]}>
 				<Pressable
+					accessible
+					accessibilityRole="checkbox"
+					accessibilityState={{ checked }}
 					onPress={onToggle}
+					testID="checkbox-list-marker"
 					style={({ pressed }) => [
 						styles.checkbox,
 						checked && styles.checkboxChecked,
@@ -96,8 +100,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		checkmark: {
 			color: theme.colors.background,
-			fontSize: bulletSize,
-			fontWeight: "bold",
+			fontSize: fontSize * 0.625,
+			lineHeight,
+			fontWeight: "700",
 		},
 	});
 }

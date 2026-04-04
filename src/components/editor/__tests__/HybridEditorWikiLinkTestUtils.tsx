@@ -23,6 +23,7 @@ jest.mock("@/services/notes/notesIndex", () => ({
 
 jest.mock("@/services/notes/noteService", () => ({
 	NoteService: {
+		loadNote: jest.fn(),
 		saveNote: jest.fn(),
 	},
 }));
@@ -65,6 +66,7 @@ jest.mock("@/components/editor/keyboard/useEditorKeyboardShortcuts", () => ({
 
 const originalPlatformOs = Platform.OS;
 export const mockListNotes = jest.mocked(NotesIndexService.listNotes);
+export const mockLoadNote = jest.mocked(NoteService.loadNote);
 export const mockSaveNote = jest.mocked(NoteService.saveNote);
 
 function setPlatformOs(value: "ios" | "android" | "web") {
@@ -87,6 +89,7 @@ export function resetHybridEditorHarness(
 	useEditorState.getState().resetState();
 	mockPush.mockReset();
 	mockListNotes.mockReset();
+	mockLoadNote.mockReset();
 	mockSaveNote.mockReset();
 	setPlatformOs(platform);
 }

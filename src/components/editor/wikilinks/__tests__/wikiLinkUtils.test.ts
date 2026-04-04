@@ -1,8 +1,10 @@
 import { NoteService } from "@/services/notes/noteService";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import {
+	buildTrackedTodoTitle,
 	findExactWikiLinkMatch,
 	normalizeWikiLinkTitle,
+	resolveOrCreateTrackedTodoNoteId,
 	resolveOrCreateWikiLinkNoteId,
 	resolveWikiLinkNoteId,
 	shouldOpenWikiLink,
@@ -41,6 +43,12 @@ describe("wikiLinkUtils", () => {
 		);
 
 		expect(match?.noteId).toBe("note-2");
+	});
+
+	it("builds a canonical tracked todo title", () => {
+		expect(buildTrackedTodoTitle(" Ship release ")).toBe(
+			"TODO: Ship release",
+		);
 	});
 
 	it("resolves a wiki link title to an existing note id", async () => {
@@ -108,5 +116,38 @@ describe("wikiLinkUtils", () => {
 				nativeEvent: { metaKey: true },
 			}),
 		).toBe(true);
+	});
+
+	it("creates tracked todo notes with lifecycle metadata", async () => {
+		jest
+			.spyOn(NotesIndexService, "listNotes")
+			.mockResolvedValueOnce({ items: [] });
+		jest.spyOn(Date, "now").mockReturnValue(1710000000000);
+		jest.spyOn(NoteService, "saveNote").mockResolvedValueOnce({
+			id: "todo-note-id",
+			title: "TODO: Ship release",
+			content: "",
+			lastUpdated: 1,
+			isPinned: false,
+			noteType: "todo",
+			status: "open",
+			createdAt: 1710000000000,
+			completedAt: null,
+		});
+
+		await expect(resolveOrCreateTrackedTodoNoteId("Ship release")).resolves.toBe(
+			"todo-note-id",
+		);
+		expect(NoteService.saveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "generated-note-id",
+				title: "TODO: Ship release",
+				noteType: "todo",
+				status: "open",
+				createdAt: 1710000000000,
+				completedAt: null,
+			}),
+			true,
+		);
 	});
 });

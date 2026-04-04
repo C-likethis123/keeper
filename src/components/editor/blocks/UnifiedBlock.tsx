@@ -32,6 +32,7 @@ import {
 } from "../wikilinks/wikiLinkUtils";
 import type { BlockConfig } from "./BlockRegistry";
 import { ListMarker } from "./ListMarker";
+
 export function UnifiedBlock({
 	block,
 	index,

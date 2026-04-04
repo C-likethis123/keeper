@@ -14,6 +14,8 @@ export interface Note {
 	isPinned: boolean;
 	noteType: NoteType;
 	status?: NoteStatus | null;
+	createdAt?: number | null;
+	completedAt?: number | null;
 }
 
 export type NoteSaveInput = Omit<Note, "lastUpdated">;

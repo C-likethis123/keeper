@@ -88,6 +88,10 @@ export class MobileStorageEngine implements StorageEngine {
 					isPinned: parsed.isPinned,
 					noteType: parsed.noteType,
 					status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
+					createdAt:
+						parsed.noteType === "todo" ? (parsed.createdAt ?? null) : null,
+					completedAt:
+						parsed.noteType === "todo" ? (parsed.completedAt ?? null) : null,
 				};
 			}
 			const templateFile = new File(getTemplatesRoot(), `${id}.md`);
@@ -101,6 +105,10 @@ export class MobileStorageEngine implements StorageEngine {
 					isPinned: false,
 					noteType: parsed.noteType,
 					status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
+					createdAt:
+						parsed.noteType === "todo" ? (parsed.createdAt ?? null) : null,
+					completedAt:
+						parsed.noteType === "todo" ? (parsed.completedAt ?? null) : null,
 				};
 			}
 			return null;

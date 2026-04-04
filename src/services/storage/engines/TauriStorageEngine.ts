@@ -20,6 +20,8 @@ type ReadEntryResult = {
 	lastUpdated: number;
 	noteType: Note["noteType"];
 	status: Note["status"];
+	createdAt: Note["createdAt"];
+	completedAt: Note["completedAt"];
 };
 
 type TauriInvoke = NonNullable<ReturnType<typeof getTauriInvoke>>;
@@ -56,6 +58,8 @@ export class TauriStorageEngine implements StorageEngine {
 				isPinned: note.noteType === "template" ? false : note.isPinned,
 				noteType: note.noteType,
 				status: note.status,
+				createdAt: note.createdAt,
+				completedAt: note.completedAt,
 			},
 		});
 		return {

@@ -1,6 +1,7 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
 import { NoteService } from "@/services/notes/noteService";
+import type { NoteType } from "@/services/notes/types";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { useEditorState } from "@/stores/editorStore";
 import { nanoid } from "nanoid";
@@ -15,7 +16,10 @@ import {
 	useState,
 } from "react";
 import type { GestureResponderEvent } from "react-native";
-import { normalizeWikiLinkTitle } from "./wikiLinkUtils";
+import {
+	buildTrackedTodoTitle,
+	normalizeWikiLinkTitle,
+} from "./wikiLinkUtils";
 
 export interface WikiLinkResult {
 	id: string;
@@ -35,6 +39,7 @@ interface WikiLinkContextValue {
 		blockIndex: number,
 		triggerStartOffset: number,
 		initialQuery: string,
+		options?: WikiLinkSessionOptions,
 	) => void;
 	handleQueryUpdate: (query: string) => void;
 	handleCancel: () => void;
@@ -48,6 +53,12 @@ interface WikiLinkContextValue {
 	actionsWikiLink: { title: string; event: GestureResponderEvent } | null;
 	showActions: (title: string, event: GestureResponderEvent) => void;
 	hideActions: () => void;
+}
+
+interface WikiLinkSessionOptions {
+	createNoteType?: NoteType;
+	replacementToken?: string;
+	titleMode?: "note" | "trackedTodo";
 }
 
 const WikiLinkContext = createContext<WikiLinkContextValue | null>(null);
@@ -65,6 +76,16 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 	} | null>(null);
 	const blockIndexRef = useRef<number>(0);
 	const triggerStartOffsetRef = useRef<number>(0);
+	const replacementTokenRef = useRef("[[");
+	const createNoteTypeRef = useRef<NoteType>("note");
+	const titleModeRef = useRef<WikiLinkSessionOptions["titleMode"]>("note");
+
+	const transformTitle = useCallback((title: string) => {
+		const trimmed = title.trim();
+		return titleModeRef.current === "trackedTodo"
+			? buildTrackedTodoTitle(trimmed)
+			: trimmed;
+	}, []);
 
 	const endSession = useCallback(() => {
 		setIsActive(false);
@@ -94,10 +115,14 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 			const block = doc.blocks[blockIndexRef.current];
 			if (!block) return false;
 			const start = triggerStartOffsetRef.current;
-			if (block.content.substring(start, start + 2) !== "[[") {
+			const replacementToken = replacementTokenRef.current;
+			if (
+				block.content.substring(start, start + replacementToken.length) !==
+				replacementToken
+			) {
 				return false;
 			}
-			const newText = `${block.content.substring(0, start)}${block.content.substring(start + 2)}`;
+			const newText = `${block.content.substring(0, start)}${block.content.substring(start + replacementToken.length)}`;
 			updateBlockContent(blockIndexRef.current, newText, selectionOffset);
 			return true;
 		},
@@ -109,14 +134,19 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 			blockIndex: number,
 			triggerStartOffset: number,
 			initialQuery: string,
+			options?: WikiLinkSessionOptions,
 		) => {
 			if (isActive) return;
 			blockIndexRef.current = blockIndex;
 			triggerStartOffsetRef.current = triggerStartOffset;
+			replacementTokenRef.current = options?.replacementToken ?? "[[";
+			createNoteTypeRef.current = options?.createNoteType ?? "note";
+			titleModeRef.current = options?.titleMode ?? "note";
 			const doc = useEditorState.getState().document;
 			const block = doc.blocks[blockIndex];
-			if (block && block.content.length > triggerStartOffset + 2) {
-				const trimmed = block.content.substring(0, triggerStartOffset + 2);
+			const replacementToken = replacementTokenRef.current;
+			const trimmed = `${block?.content.substring(0, triggerStartOffset) ?? ""}${replacementToken}`;
+			if (block && block.content !== trimmed) {
 				updateBlockContent(blockIndex, trimmed);
 			}
 			setIsActive(true);
@@ -152,7 +182,8 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 			if (!block) return;
 
 			const start = triggerStartOffsetRef.current;
-			const newText = `${block.content.substring(0, start)}[[${title}]]${block.content.substring(start + 2)}`;
+			const replacementToken = replacementTokenRef.current;
+			const newText = `${block.content.substring(0, start)}[[${title}]]${block.content.substring(start + replacementToken.length)}`;
 			const cursorAfter = start + title.length + 4;
 
 			updateBlockContent(blockIndexRef.current, newText, cursorAfter);
@@ -176,7 +207,9 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 				);
 				const nextResults: WikiLinkResult[] = [];
 				const seenTitles = new Set<string>();
-				const normalizedQuery = normalizeWikiLinkTitle(debouncedQuery);
+				const normalizedQuery = normalizeWikiLinkTitle(
+					transformTitle(debouncedQuery),
+				);
 				let hasExactMatch = false;
 
 				for (const item of result.items) {
@@ -197,10 +230,11 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 				}
 
 				if (normalizedQuery.length > 0 && !hasExactMatch) {
+					const createTitle = transformTitle(debouncedQuery);
 					nextResults.unshift({
 						id: `create:${normalizedQuery}`,
 						type: "create",
-						title: debouncedQuery.trim(),
+						title: createTitle,
 					});
 				}
 
@@ -215,7 +249,7 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 		};
 
 		fetchResults();
-	}, [debouncedQuery, isActive]);
+	}, [debouncedQuery, isActive, transformTitle]);
 
 	const handleQueryUpdate = setQuery;
 
@@ -225,13 +259,19 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 			insertWikiLink(result.title);
 			if (result.type === "create") {
 				try {
+					const now = Date.now();
 					await NoteService.saveNote(
 						{
 							id: nanoid(),
 							title: result.title,
 							content: "",
 							isPinned: false,
-							noteType: "note",
+							noteType: createNoteTypeRef.current,
+							status:
+								createNoteTypeRef.current === "todo" ? "open" : null,
+							createdAt:
+								createNoteTypeRef.current === "todo" ? now : null,
+							completedAt: null,
 						},
 						true,
 					);

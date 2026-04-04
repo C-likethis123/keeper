@@ -8,6 +8,8 @@ title: "Ship \"v2\""
 pinned: true
 type: todo
 status: doing
+createdAt: 1710000000000
+completedAt: 1710003600000
 ---
 Body`);
 
@@ -17,6 +19,8 @@ Body`);
 			isPinned: true,
 			noteType: "todo",
 			status: "doing",
+			createdAt: 1710000000000,
+			completedAt: 1710003600000,
 			content: "Body",
 		});
 	});
@@ -53,6 +57,8 @@ Content`);
 			content: "Body",
 			noteType: "resource",
 			status: "done",
+			createdAt: 1,
+			completedAt: 2,
 		});
 
 		expect(markdown).toContain("pinned: true");
@@ -60,6 +66,25 @@ Content`);
 		expect(markdown).toContain('id: "note-123"');
 		expect(markdown).toContain('type: "resource"');
 		expect(markdown).not.toContain("status:");
+		expect(markdown).not.toContain("createdAt:");
+		expect(markdown).not.toContain("completedAt:");
 		expect(markdown.endsWith("\nBody")).toBe(true);
+	});
+
+	it("stringifies todo lifecycle metadata", () => {
+		const markdown = stringifyFrontmatter({
+			id: "todo-1",
+			title: "TODO: Ship release",
+			isPinned: false,
+			content: "",
+			noteType: "todo",
+			status: "done",
+			createdAt: 1710000000000,
+			completedAt: 1710003600000,
+		});
+
+		expect(markdown).toContain('status: "done"');
+		expect(markdown).toContain("createdAt: 1710000000000");
+		expect(markdown).toContain("completedAt: 1710003600000");
 	});
 });

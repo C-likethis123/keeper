@@ -14,6 +14,7 @@ jest.mock("@/services/notes/noteService", () => ({
 
 describe("persistEditorEntry", () => {
 	beforeEach(() => {
+		jest.restoreAllMocks();
 		mockLoadNote.mockReset();
 		mockSaveNote.mockReset();
 		mockDeleteNote.mockReset();
@@ -28,6 +29,8 @@ describe("persistEditorEntry", () => {
 			isPinned: false,
 			noteType: "note",
 			status: null,
+			createdAt: null,
+			completedAt: null,
 		});
 
 		await persistEditorEntry({
@@ -52,6 +55,8 @@ describe("persistEditorEntry", () => {
 			isPinned: false,
 			noteType: "note",
 			status: null,
+			createdAt: null,
+			completedAt: null,
 		});
 
 		await persistEditorEntry({
@@ -76,6 +81,8 @@ describe("persistEditorEntry", () => {
 			isPinned: false,
 			noteType: "note",
 			status: null,
+			createdAt: null,
+			completedAt: null,
 		});
 
 		await persistEditorEntry({
@@ -173,5 +180,63 @@ describe("persistEditorEntry", () => {
 			false,
 		);
 		expect(mockDeleteNote).not.toHaveBeenCalled();
+	});
+
+	it("stamps createdAt for newly persisted todo notes", async () => {
+		jest.spyOn(Date, "now").mockReturnValue(1710000000000);
+		mockLoadNote.mockResolvedValue(null);
+
+		await persistEditorEntry({
+			id: "todo-1",
+			title: "TODO: Ship release",
+			content: "",
+			isPinned: false,
+			noteType: "todo",
+			status: "open",
+		});
+
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				noteType: "todo",
+				status: "open",
+				createdAt: 1710000000000,
+				completedAt: null,
+			}),
+			false,
+		);
+	});
+
+	it("stamps completedAt when an existing todo moves to done", async () => {
+		jest.spyOn(Date, "now").mockReturnValue(1710003600000);
+		mockLoadNote.mockResolvedValue({
+			id: "todo-1",
+			title: "TODO: Ship release",
+			content: "",
+			lastUpdated: 1710000000000,
+			isPinned: false,
+			noteType: "todo",
+			status: "open",
+			createdAt: 1710000000000,
+			completedAt: null,
+		});
+
+		await persistEditorEntry({
+			id: "todo-1",
+			title: "TODO: Ship release",
+			content: "",
+			isPinned: false,
+			noteType: "todo",
+			status: "done",
+			previousNoteType: "todo",
+		});
+
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				createdAt: 1710000000000,
+				completedAt: 1710003600000,
+				status: "done",
+			}),
+			false,
+		);
 	});
 });

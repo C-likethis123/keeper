@@ -1,4 +1,7 @@
-import { InlineMarkdown } from "@/components/editor/rendering/InlineMarkdown";
+import {
+	InlineMarkdown,
+	parseTodoTrigger,
+} from "@/components/editor/rendering/InlineMarkdown";
 import { render } from "@testing-library/react-native";
 import React from "react";
 import { Text, View } from "react-native";
@@ -31,6 +34,20 @@ jest.mock("@/components/editor/blocks/MathView", () => ({
 }));
 
 describe("InlineMarkdown", () => {
+	it("parses TODO trigger syntax for editor conversions", () => {
+		expect(parseTodoTrigger("TODO ship it")).toEqual({
+			keyword: "TODO",
+			separator: " ",
+			body: "ship it",
+		});
+		expect(parseTodoTrigger("todo: ship it")).toEqual({
+			keyword: "todo",
+			separator: ": ",
+			body: "ship it",
+		});
+		expect(parseTodoTrigger("TODO")).toBeNull();
+	});
+
 	it("preserves a single-line height for empty text", () => {
 		const { UNSAFE_getByType } = render(
 			<InlineMarkdown text="" style={{ fontSize: 16, lineHeight: 24 }} />,

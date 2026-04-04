@@ -6,6 +6,8 @@ interface ParsedFrontmatter {
 	isPinned: boolean;
 	noteType: NoteType;
 	status?: NoteStatus;
+	createdAt?: number;
+	completedAt?: number;
 	content: string;
 }
 
@@ -32,6 +34,14 @@ function parseYamlScalar(raw: string): string {
 	return trimmed;
 }
 
+function parseTimestamp(value: string): number | undefined {
+	const parsed = Number(value);
+	if (!Number.isFinite(parsed) || parsed <= 0) {
+		return undefined;
+	}
+	return parsed;
+}
+
 export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(markdown);
 	if (!match) {
@@ -48,6 +58,8 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	let isPinned = false;
 	let noteType: NoteType = "note";
 	let status: NoteStatus | undefined;
+	let createdAt: number | undefined;
+	let completedAt: number | undefined;
 	let id = "";
 	const frontmatter = match[1];
 	const content = markdown.slice(match[0].length);
@@ -70,6 +82,10 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 			noteType = value;
 		} else if (key === "status" && isNoteStatus(value)) {
 			status = value;
+		} else if (key === "createdAt") {
+			createdAt = parseTimestamp(value);
+		} else if (key === "completedAt") {
+			completedAt = parseTimestamp(value);
 		}
 	}
 
@@ -79,6 +95,8 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 		isPinned,
 		noteType,
 		status: noteType === "todo" ? status : undefined,
+		createdAt: noteType === "todo" ? createdAt : undefined,
+		completedAt: noteType === "todo" ? completedAt : undefined,
 		content,
 	};
 }
@@ -95,6 +113,12 @@ export function stringifyFrontmatter(note: Omit<Note, "lastUpdated">): string {
 	}
 	if (note.noteType === "todo" && note.status) {
 		frontmatterLines.push(`status: ${JSON.stringify(note.status)}`);
+	}
+	if (note.noteType === "todo" && note.createdAt) {
+		frontmatterLines.push(`createdAt: ${note.createdAt}`);
+	}
+	if (note.noteType === "todo" && note.completedAt) {
+		frontmatterLines.push(`completedAt: ${note.completedAt}`);
 	}
 	frontmatterLines.push("---");
 
