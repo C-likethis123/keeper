@@ -1,4 +1,5 @@
 import NoteEditorHeader from "@/components/NoteEditorHeader";
+import TemplatePickerModal from "@/components/TemplatePickerModal";
 import type { EditorState } from "@/components/editor/core/EditorState";
 import { FilterChip } from "@/components/shared/FilterChip";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
@@ -9,11 +10,9 @@ import { GitService } from "@/services/git/gitService";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
-import { NotesIndexService } from "@/services/notes/notesIndex";
 import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
-import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import React, {
 	useCallback,
@@ -23,19 +22,10 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import {
-	Alert,
-	Modal,
-	ScrollView,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	View,
-} from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { EditorScrollProvider } from "./editor/EditorScrollContext";
 import { EditorToolbar } from "./editor/EditorToolbar";
 import { HybridEditor } from "./editor/HybridEditor";
-import Loader from "./shared/Loader";
 
 // TODO: refactor so we can do away with this???
 const TODO_STATUS_OPTIONS = [
@@ -65,8 +55,6 @@ export default function NoteEditorView({
 	);
 
 	const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
-	const [templates, setTemplates] = useState<Note[]>([]);
-	const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
 	const editorContent = useEditorState((s: EditorState) =>
@@ -90,15 +78,19 @@ export default function NoteEditorView({
 		},
 		[isNew, note.content, note.noteType, note.title],
 	);
+	// TODO: this deriving note type thing is a little confusing it's littered all over the place.
 	const [noteType, setNoteType] = useState<Note["noteType"]>(() =>
 		deriveCurrentNoteType(note.title, note.content),
 	);
+
+	// this latest draft thing also cofusing.
 	const latestDraftRef = useRef({
 		title,
 		isPinned,
 		noteType,
 		todoStatus,
 	});
+	// what are they for...
 	const lastPersistedTypeRef = useRef<Note["noteType"]>(note.noteType);
 	const isNewEntryRef = useRef(!!isNew);
 	const isLeavingRef = useRef(false);
@@ -146,7 +138,7 @@ export default function NoteEditorView({
 		},
 		[deriveCurrentNoteType, id],
 	);
-
+	// TODO: and why do we need this?
 	const persistCurrentEntry = useCallback(
 		async (overrides?: Partial<NoteSaveInput>) => {
 			const payload = buildCurrentNotePayload(overrides);
@@ -197,7 +189,15 @@ export default function NoteEditorView({
 				loadedNoteIdRef.current = note.id;
 				loadMarkdown(note.content);
 			}
-		}, [loadMarkdown, note.content, note.id, note.isPinned, note.noteType, note.status, note.title]),
+		}, [
+			loadMarkdown,
+			note.content,
+			note.id,
+			note.isPinned,
+			note.noteType,
+			note.status,
+			note.title,
+		]),
 	);
 
 	const handleTogglePin = useCallback(async () => {
@@ -265,72 +265,6 @@ export default function NoteEditorView({
 		setTitle(nextTitle);
 	}, []);
 
-	const openTemplateModal = useCallback(async () => {
-		setIsTemplateModalVisible(true);
-		setIsLoadingTemplates(true);
-		try {
-			const result = await NotesIndexService.listNotes("", 100, 0, {
-				noteTypes: ["template"],
-			});
-			const notes: Note[] = result.items.map((item) => ({
-				id: item.noteId,
-				title: item.title,
-				content: item.summary ?? "",
-				lastUpdated: item.updatedAt,
-				isPinned: item.isPinned,
-				noteType: item.noteType,
-				status: item.status,
-			}));
-			setTemplates(notes);
-		} catch (error) {
-			console.warn("Failed to load templates:", error);
-			showToast("Failed to load templates");
-		} finally {
-			setIsLoadingTemplates(false);
-		}
-	}, [showToast]);
-
-	const applyTemplate = useCallback(
-		async (template: Note) => {
-			const currentContent = useEditorState.getState().getContent();
-			const replaceBody = async () => {
-				try {
-					const fullTemplate = await NoteService.loadNote(template.id);
-					if (!fullTemplate) {
-						showToast("Template not found");
-						return;
-					}
-					loadMarkdown(fullTemplate.content);
-					setIsTemplateModalVisible(false);
-					showToast(`Applied template "${fullTemplate.title || "Untitled"}"`);
-				} catch (error) {
-					console.warn("Failed to apply template:", error);
-					showToast("Failed to apply template");
-				}
-			};
-
-			if (currentContent.trim().length > 0) {
-				Alert.alert(
-					"Replace note body?",
-					`Use "${template.title || "Untitled"}" and replace the current body?`,
-					[
-						{ text: "Cancel", style: "cancel" },
-						{
-							text: "Replace",
-							style: "destructive",
-							onPress: () => {
-								void replaceBody();
-							},
-						},
-					],
-				);
-				return;
-			}
-
-			await replaceBody();
-		},
-		[loadMarkdown, showToast],
-	);
 	useLayoutEffect(() => {
 		navigation.setOptions({
 			headerShown: false,
@@ -392,65 +326,16 @@ export default function NoteEditorView({
 				<EditorScrollProvider>
 					<HybridEditor
 						onInsertTemplateCommand={() => {
-							void openTemplateModal();
+							setIsTemplateModalVisible(true);
 						}}
 					/>
 				</EditorScrollProvider>
 			</View>
 
-			<Modal
+			<TemplatePickerModal
 				visible={isTemplateModalVisible}
-				animationType="slide"
-				transparent
-				onRequestClose={() => {
-					setIsTemplateModalVisible(false);
-				}}
-			>
-				<View style={styles.modalBackdrop}>
-					<View style={styles.modalCard}>
-						<View style={styles.modalHeader}>
-							<Text style={styles.modalTitle}>Choose template</Text>
-							<TouchableOpacity
-								onPress={() => {
-									setIsTemplateModalVisible(false);
-								}}
-							>
-								<MaterialIcons
-									name="close"
-									size={22}
-									color={theme.colors.text}
-								/>
-							</TouchableOpacity>
-						</View>
-						{isLoadingTemplates ? (
-							<Loader />
-						) : templates.length === 0 ? (
-							<Text style={styles.emptyTemplatesText}>
-								No templates yet. Change a note type to Template to create one.
-							</Text>
-						) : (
-							<ScrollView contentContainerStyle={styles.templateList}>
-								{templates.map((template) => (
-									<TouchableOpacity
-										key={template.id}
-										style={styles.templateCard}
-										onPress={() => {
-											void applyTemplate(template);
-										}}
-									>
-										<Text style={styles.templateCardTitle}>
-											{template.title || "Untitled template"}
-										</Text>
-										<Text style={styles.templateCardContent} numberOfLines={4}>
-											{template.content || "Empty template"}
-										</Text>
-									</TouchableOpacity>
-								))}
-							</ScrollView>
-						)}
-					</View>
-				</View>
-			</Modal>
+				onDismiss={() => setIsTemplateModalVisible(false)}
+			/>
 		</View>
 	);
 }
@@ -495,57 +380,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			fontSize: 13,
 			fontWeight: "600",
 			color: theme.colors.text,
-		},
-		modalBackdrop: {
-			flex: 1,
-			backgroundColor: "rgba(0, 0, 0, 0.35)",
-			justifyContent: "center",
-			padding: 20,
-		},
-		modalCard: {
-			maxHeight: "80%",
-			borderRadius: 16,
-			padding: 16,
-			backgroundColor: theme.colors.background,
-			borderWidth: 1,
-			borderColor: theme.colors.border,
-		},
-		modalHeader: {
-			flexDirection: "row",
-			alignItems: "center",
-			justifyContent: "space-between",
-			marginBottom: 12,
-		},
-		modalTitle: {
-			fontSize: 18,
-			fontWeight: "700",
-			color: theme.colors.text,
-		},
-		emptyTemplatesText: {
-			fontSize: 14,
-			lineHeight: 20,
-			color: theme.colors.textMuted,
-		},
-		templateList: {
-			gap: 10,
-		},
-		templateCard: {
-			borderRadius: 12,
-			borderWidth: 1,
-			borderColor: theme.colors.border,
-			backgroundColor: theme.colors.card,
-			padding: 12,
-			gap: 6,
-		},
-		templateCardTitle: {
-			fontSize: 15,
-			fontWeight: "600",
-			color: theme.colors.text,
-		},
-		templateCardContent: {
-			fontSize: 13,
-			lineHeight: 18,
-			color: theme.colors.textMuted,
 		},
 	});
 }
