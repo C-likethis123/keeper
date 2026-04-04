@@ -1,7 +1,5 @@
 import { BlockRow } from "@/components/editor/BlockRow";
-import {
-	BlockType,
-} from "@/components/editor/core/BlockNode";
+import { BlockType } from "@/components/editor/core/BlockNode";
 import { createDocumentFromMarkdown } from "@/components/editor/core/Document";
 import { useEditorState } from "@/stores/editorStore";
 import { render } from "@testing-library/react-native";

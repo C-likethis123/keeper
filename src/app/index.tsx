@@ -181,9 +181,8 @@ function IndexContent() {
 					<View style={styles.modalCard}>
 						<Text style={styles.modalTitle}>Reset app data?</Text>
 						<Text style={styles.modalMessage}>
-							This clears local notes, attachments, search data, and
-							stored app keys. Git-backed notes may sync back from remote
-							afterward.
+							This clears local notes, attachments, search data, and stored app
+							keys. Git-backed notes may sync back from remote afterward.
 						</Text>
 						<View style={styles.modalActions}>
 							<TouchableOpacity

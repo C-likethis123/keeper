@@ -9,7 +9,8 @@
 			"ios/Pods",
 			"ios/build",
 			"android/build",
-			"android/app/build"
+			"android/app/build",
+			".claude/skills"
 		]
 	},
 	"formatter": {

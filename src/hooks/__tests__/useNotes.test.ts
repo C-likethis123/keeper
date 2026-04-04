@@ -109,8 +109,9 @@ describe("useNotes", () => {
 	});
 
 	it("queues a fresh search while the current request is still in flight", async () => {
-		let resolveFirstRequest: ((value: ReturnType<typeof makeListResult>) => void) | null =
-			null;
+		let resolveFirstRequest:
+			| ((value: ReturnType<typeof makeListResult>) => void)
+			| null = null;
 		mockListNotes
 			.mockImplementationOnce(
 				() =>
@@ -136,7 +137,9 @@ describe("useNotes", () => {
 		});
 
 		await act(async () => {
-			resolveFirstRequest?.(makeListResult({ count: 1, titlePrefix: "Initial" }));
+			resolveFirstRequest?.(
+				makeListResult({ count: 1, titlePrefix: "Initial" }),
+			);
 			await Promise.resolve();
 		});
 

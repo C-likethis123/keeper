@@ -251,12 +251,9 @@ export default function NoteEditorView({
 		router.back();
 	}, [flushGitAndToastOnFailure, id, router]);
 
-	const applyTitleChange = useCallback(
-		(nextTitle: string) => {
-			setTitle(nextTitle);
-		},
-		[],
-	);
+	const applyTitleChange = useCallback((nextTitle: string) => {
+		setTitle(nextTitle);
+	}, []);
 
 	const openTemplateModal = useCallback(async () => {
 		setIsTemplateModalVisible(true);
@@ -295,9 +292,7 @@ export default function NoteEditorView({
 					}
 					loadMarkdown(fullTemplate.content);
 					setIsTemplateModalVisible(false);
-					showToast(
-						`Applied template "${fullTemplate.title || "Untitled"}"`,
-					);
+					showToast(`Applied template "${fullTemplate.title || "Untitled"}"`);
 				} catch (error) {
 					console.warn("Failed to apply template:", error);
 					showToast("Failed to apply template");

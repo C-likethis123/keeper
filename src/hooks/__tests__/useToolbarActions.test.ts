@@ -1,6 +1,4 @@
-import {
-	BlockType,
-} from "@/components/editor/core/BlockNode";
+import { BlockType } from "@/components/editor/core/BlockNode";
 import { createDocumentFromMarkdown } from "@/components/editor/core/Document";
 import { createCollapsedSelection } from "@/components/editor/core/Selection";
 import { executeEditorCommand } from "@/components/editor/keyboard/editorCommands";

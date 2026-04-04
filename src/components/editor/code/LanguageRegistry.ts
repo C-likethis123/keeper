@@ -286,5 +286,4 @@ export class LanguageRegistry {
 		}
 		return Array.from(names).sort();
 	}
-
 }

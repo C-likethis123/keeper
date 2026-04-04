@@ -1,5 +1,5 @@
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { webTextInputReset } from "@/components/shared/textInputWebStyles";
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { MaterialIcons } from "@expo/vector-icons";
 import { forwardRef, useMemo } from "react";
 import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";

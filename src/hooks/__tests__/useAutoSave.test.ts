@@ -1,12 +1,12 @@
+import { createDocumentFromMarkdown } from "@/components/editor/core/Document";
+import { GitService } from "@/services/git/gitService";
 import {
 	normalizeMarkdownForPersistence,
 	persistEditorEntry,
 } from "@/services/notes/editorEntryPersistence";
-import { createDocumentFromMarkdown } from "@/components/editor/core/Document";
-import { GitService } from "@/services/git/gitService";
 import { useEditorState } from "@/stores/editorStore";
-import { InteractionManager } from "react-native";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { InteractionManager } from "react-native";
 import { useAutoSave } from "../useAutoSave";
 
 type InteractionTask = Parameters<
@@ -49,11 +49,16 @@ describe("useAutoSave", () => {
 		jest
 			.spyOn(InteractionManager, "runAfterInteractions")
 			.mockImplementation((task?: InteractionTask) => {
-				const handle = Object.assign(Promise.resolve(runInteractionTask(task)), {
-					done: jest.fn(),
-					cancel: jest.fn(),
-				});
-				return handle as ReturnType<typeof InteractionManager.runAfterInteractions>;
+				const handle = Object.assign(
+					Promise.resolve(runInteractionTask(task)),
+					{
+						done: jest.fn(),
+						cancel: jest.fn(),
+					},
+				);
+				return handle as ReturnType<
+					typeof InteractionManager.runAfterInteractions
+				>;
 			});
 	});
 
@@ -135,7 +140,9 @@ describe("useAutoSave", () => {
 	});
 
 	it("resets to idle when persistence fails and skips onPersisted", async () => {
-		(persistEditorEntry as jest.Mock).mockRejectedValue(new Error("Save failed"));
+		(persistEditorEntry as jest.Mock).mockRejectedValue(
+			new Error("Save failed"),
+		);
 		const onPersisted = jest.fn();
 		const { result } = renderHook(() =>
 			useAutoSave({
@@ -197,6 +204,8 @@ describe("useAutoSave", () => {
 			}),
 		);
 
-		expect(normalizeMarkdownForPersistence).toHaveBeenCalledWith(" Initial body ");
+		expect(normalizeMarkdownForPersistence).toHaveBeenCalledWith(
+			" Initial body ",
+		);
 	});
 });

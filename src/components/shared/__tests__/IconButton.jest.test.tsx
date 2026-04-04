@@ -1,5 +1,5 @@
 import { IconButton } from "@/components/shared/IconButton";
-import { render, fireEvent } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
 
 jest.mock("@expo/vector-icons", () => ({
@@ -24,21 +24,21 @@ jest.mock("@/hooks/useExtendedTheme", () => ({
 }));
 
 describe("IconButton", () => {
-  it("calls onPress when tapped", () => {
-    const onPress = jest.fn();
-    const { getByTestId } = render(
-      <IconButton name="undo" onPress={onPress} testID="btn" />,
-    );
-    fireEvent.press(getByTestId("btn"));
-    expect(onPress).toHaveBeenCalledTimes(1);
-  });
+	it("calls onPress when tapped", () => {
+		const onPress = jest.fn();
+		const { getByTestId } = render(
+			<IconButton name="undo" onPress={onPress} testID="btn" />,
+		);
+		fireEvent.press(getByTestId("btn"));
+		expect(onPress).toHaveBeenCalledTimes(1);
+	});
 
-  it("does not call onPress when disabled", () => {
-    const onPress = jest.fn();
-    const { getByTestId } = render(
-      <IconButton name="undo" onPress={onPress} disabled testID="btn" />,
-    );
-    fireEvent.press(getByTestId("btn"));
-    expect(onPress).not.toHaveBeenCalled();
-  });
+	it("does not call onPress when disabled", () => {
+		const onPress = jest.fn();
+		const { getByTestId } = render(
+			<IconButton name="undo" onPress={onPress} disabled testID="btn" />,
+		);
+		fireEvent.press(getByTestId("btn"));
+		expect(onPress).not.toHaveBeenCalled();
+	});
 });

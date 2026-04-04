@@ -1,7 +1,7 @@
+import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
-import type { ExtendedTheme } from "@/constants/themes/types";
 
 export function FilterChip({
 	label,

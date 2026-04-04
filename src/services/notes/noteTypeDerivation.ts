@@ -20,7 +20,9 @@ const JOURNAL_DATE_PATTERN =
 const JOURNAL_REFLECTION_PATTERN =
 	/\b(?:today i|today,|dear diary|daily reflection|gratitude|reflecting on)\b/i;
 
-function deriveNoteTypeFromContent(content: string): Exclude<NoteType, "note"> | null {
+function deriveNoteTypeFromContent(
+	content: string,
+): Exclude<NoteType, "note"> | null {
 	const trimmed = content.trim();
 
 	if (!trimmed) {

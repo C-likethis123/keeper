@@ -1,7 +1,4 @@
-import {
-	webMultilineTextInputReset,
-	webTextInputReset,
-} from "@/components/shared/textInputWebStyles";
+import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorState } from "@/stores/editorStore";
@@ -13,12 +10,11 @@ import React, {
 	useState,
 } from "react";
 import {
-	type NativeSyntheticEvent,
 	Platform,
 	StyleSheet,
 	Text,
 	TextInput,
-	type TextInputKeyPressEventData,
+	type TextInputKeyPressEvent,
 	TouchableOpacity,
 	View,
 } from "react-native";
@@ -28,9 +24,6 @@ import {
 } from "../core/BlockNode";
 import { InlineMarkdown } from "../rendering/InlineMarkdown";
 import type { BlockConfig } from "./BlockRegistry";
-
-const bodyFontSize = 15;
-const bodyFontFamily = Platform.OS === "ios" ? "Menlo-Regular" : "monospace";
 
 export function CollapsibleBlock({
 	block,
@@ -101,14 +94,12 @@ export function CollapsibleBlock({
 	);
 
 	const handleSummaryKeyPress = useCallback(
-		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+		(e: TextInputKeyPressEvent) => {
 			const key = e.nativeEvent.key;
 			if (key === "Enter" || key === "Return") {
 				if (Platform.OS === "web") {
-					const nativeEvent = e.nativeEvent as any;
-					nativeEvent.preventDefault?.();
-					nativeEvent.stopPropagation?.();
-					nativeEvent.stopImmediatePropagation?.();
+					e.preventDefault();
+					e.stopPropagation();
 				}
 				if (!isExpanded) {
 					onAttributesChange?.(index, {
@@ -123,7 +114,14 @@ export function CollapsibleBlock({
 				onBackspaceAtStart(index);
 			}
 		},
-		[isExpanded, onAttributesChange, index, block.attributes, summaryValue, onBackspaceAtStart],
+		[
+			isExpanded,
+			onAttributesChange,
+			index,
+			block.attributes,
+			summaryValue,
+			onBackspaceAtStart,
+		],
 	);
 
 	const getFocusedBlockIndex = useEditorState(
@@ -156,7 +154,7 @@ export function CollapsibleBlock({
 	}, [blurBlock, getFocusedBlockIndex, index]);
 
 	const handleBodyKeyPress = useCallback(
-		(e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+		(e: TextInputKeyPressEvent) => {
 			const key = e.nativeEvent.key;
 			if (key === "Backspace" && bodyValue === "") {
 				setFocusZone("summary");
@@ -174,7 +172,7 @@ export function CollapsibleBlock({
 
 				if (isAtEmptyLine) {
 					if (Platform.OS === "web") {
-						(e as any).preventDefault();
+						e.preventDefault();
 					}
 					onEnter(index, start, "body");
 				}
@@ -314,11 +312,10 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		summaryInput: {
 			flex: 1,
-			fontSize: 15,
+			fontSize: 16,
 			fontWeight: "600",
 			color: theme.colors.text,
 			paddingVertical: 4,
-			...webTextInputReset,
 		},
 		summaryDisplay: {
 			flex: 1,
@@ -326,12 +323,12 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			paddingVertical: 4,
 		},
 		summaryText: {
-			fontSize: 15,
+			fontSize: 16,
 			fontWeight: "600",
 			color: theme.colors.text,
 		},
 		summaryPlaceholder: {
-			fontSize: 15,
+			fontSize: 16,
 			fontWeight: "600",
 			color: theme.custom.editor.placeholder,
 			fontStyle: "italic",
@@ -344,8 +341,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			paddingBottom: 4,
 		},
 		bodyInput: {
-			fontSize: bodyFontSize,
-			fontFamily: bodyFontFamily,
+			fontSize: 16,
 			color: theme.colors.text,
 			textAlignVertical: "top",
 			minHeight: 60,
@@ -354,7 +350,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			...webMultilineTextInputReset,
 		},
 		bodyParagraph: {
-			fontSize: 14,
+			fontSize: 16,
 			color: theme.colors.text,
 			marginBottom: 4,
 			lineHeight: 20,

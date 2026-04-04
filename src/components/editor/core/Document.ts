@@ -116,10 +116,15 @@ export function createDocumentFromMarkdown(markdown: string): Document {
 				i++;
 			}
 			// Strip trailing blank lines
-			while (bodyLines.length > 0 && bodyLines[bodyLines.length - 1].trim() === "") {
+			while (
+				bodyLines.length > 0 &&
+				bodyLines[bodyLines.length - 1].trim() === ""
+			) {
 				bodyLines.pop();
 			}
-			blocks.push(createCollapsibleBlock(summary, bodyLines.join("\n"), isExpanded));
+			blocks.push(
+				createCollapsibleBlock(summary, bodyLines.join("\n"), isExpanded),
+			);
 			i++; // Skip </details>
 			continue;
 		}
@@ -360,7 +365,11 @@ export function documentToMarkdown(document: Document): string {
 		if (i < document.blocks.length - 1) {
 			buffer.push("\n");
 			// Add extra newline after code blocks and collapsible blocks
-			if (isCodeBlock(block) || block.type === BlockType.mathBlock || isCollapsibleBlock(block)) {
+			if (
+				isCodeBlock(block) ||
+				block.type === BlockType.mathBlock ||
+				isCollapsibleBlock(block)
+			) {
 				buffer.push("\n");
 			}
 		}

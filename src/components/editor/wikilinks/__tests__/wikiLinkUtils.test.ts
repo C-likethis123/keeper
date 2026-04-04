@@ -46,9 +46,7 @@ describe("wikiLinkUtils", () => {
 	});
 
 	it("builds a canonical tracked todo title", () => {
-		expect(buildTrackedTodoTitle(" Ship release ")).toBe(
-			"TODO: Ship release",
-		);
+		expect(buildTrackedTodoTitle(" Ship release ")).toBe("TODO: Ship release");
 	});
 
 	it("resolves a wiki link title to an existing note id", async () => {
@@ -135,9 +133,9 @@ describe("wikiLinkUtils", () => {
 			completedAt: null,
 		});
 
-		await expect(resolveOrCreateTrackedTodoNoteId("Ship release")).resolves.toBe(
-			"todo-note-id",
-		);
+		await expect(
+			resolveOrCreateTrackedTodoNoteId("Ship release"),
+		).resolves.toBe("todo-note-id");
 		expect(NoteService.saveNote).toHaveBeenCalledWith(
 			expect.objectContaining({
 				id: "generated-note-id",

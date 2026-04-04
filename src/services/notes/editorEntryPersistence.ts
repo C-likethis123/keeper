@@ -27,7 +27,8 @@ function buildPayload(
 	existingNote: Note | null,
 ): NoteSaveInput {
 	const isTemplate = input.noteType === "template";
-	const nextStatus = input.noteType === "todo" ? (input.status ?? "open") : null;
+	const nextStatus =
+		input.noteType === "todo" ? (input.status ?? "open") : null;
 	const now = Date.now();
 	const createdAt =
 		input.noteType === "todo"

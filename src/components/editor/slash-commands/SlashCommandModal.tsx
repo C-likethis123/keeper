@@ -1,5 +1,5 @@
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { webTextInputReset } from "@/components/shared/textInputWebStyles";
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
 	Modal,
@@ -10,8 +10,8 @@ import {
 	type TextInputKeyPressEventData,
 	View,
 } from "react-native";
-import { SlashCommandOverlay } from "./SlashCommandOverlay";
 import { useSlashCommandContext } from "./SlashCommandContext";
+import { SlashCommandOverlay } from "./SlashCommandOverlay";
 
 export function SlashCommandModal() {
 	const theme = useExtendedTheme();

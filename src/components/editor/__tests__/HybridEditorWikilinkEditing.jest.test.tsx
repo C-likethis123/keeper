@@ -89,9 +89,9 @@ describe("HybridEditor wikilink editing flows", () => {
 		await waitFor(() => {
 			expect(useEditorState.getState().getContent()).toBe("[[Project Alpha]]");
 		});
-		expect(
-			useEditorState.getState().selection?.focus.offset,
-		).toBe("[[Project Alpha]]".length);
+		expect(useEditorState.getState().selection?.focus.offset).toBe(
+			"[[Project Alpha]]".length,
+		);
 		expect(
 			screen.queryByPlaceholderText("Search or create notes..."),
 		).not.toBeOnTheScreen();
@@ -132,7 +132,9 @@ describe("HybridEditor wikilink editing flows", () => {
 		fireEvent(input, "focus");
 		fireEvent.changeText(input, "/");
 
-		expect(await screen.findByPlaceholderText("Type a command...")).toBeOnTheScreen();
+		expect(
+			await screen.findByPlaceholderText("Type a command..."),
+		).toBeOnTheScreen();
 
 		fireEvent.changeText(input, "[[Roadmap");
 
@@ -150,7 +152,8 @@ describe("HybridEditor wikilink editing flows", () => {
 
 	it("converts typed todo text immediately and links the todo in the background", async () => {
 		mockListNotes.mockResolvedValue({ items: [] });
-		const saveDeferred = createDeferred<Awaited<ReturnType<typeof mockSaveNote>>>();
+		const saveDeferred =
+			createDeferred<Awaited<ReturnType<typeof mockSaveNote>>>();
 		mockSaveNote.mockReturnValue(saveDeferred.promise);
 
 		renderEditor("");

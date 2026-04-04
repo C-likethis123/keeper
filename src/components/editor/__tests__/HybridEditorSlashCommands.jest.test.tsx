@@ -1,7 +1,12 @@
-import { fireEvent, screen, userEvent, waitFor } from "@testing-library/react-native";
+import { useEditorState } from "@/stores/editorStore";
+import {
+	fireEvent,
+	screen,
+	userEvent,
+	waitFor,
+} from "@testing-library/react-native";
 import React from "react";
 import { TextInput } from "react-native";
-import { useEditorState } from "@/stores/editorStore";
 import {
 	renderEditor,
 	resetHybridEditorHarness,

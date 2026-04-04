@@ -83,9 +83,7 @@ export function restorePlatformOs() {
 	});
 }
 
-export function resetHybridEditorHarness(
-	platform: "ios" | "android" | "web",
-) {
+export function resetHybridEditorHarness(platform: "ios" | "android" | "web") {
 	useEditorState.getState().resetState();
 	mockPush.mockReset();
 	mockListNotes.mockReset();

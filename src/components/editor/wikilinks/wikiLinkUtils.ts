@@ -143,7 +143,7 @@ export async function updateLinkedTodoNoteStatus(
 			noteType: "todo",
 			status,
 			createdAt: existing.createdAt ?? now,
-			completedAt: status === "done" ? existing.completedAt ?? now : null,
+			completedAt: status === "done" ? (existing.completedAt ?? now) : null,
 		},
 		false,
 	);

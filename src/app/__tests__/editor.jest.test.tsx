@@ -120,7 +120,9 @@ describe("NoteEditorScreen", () => {
 	});
 
 	it("renders the note editor once the note loads", async () => {
-		mockUseSuspenseLoadNote.mockReturnValue(makeNote({ title: "Loaded draft" }));
+		mockUseSuspenseLoadNote.mockReturnValue(
+			makeNote({ title: "Loaded draft" }),
+		);
 
 		const result = renderRouter(
 			{

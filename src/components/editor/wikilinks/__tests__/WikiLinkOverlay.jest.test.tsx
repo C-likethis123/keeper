@@ -1,5 +1,5 @@
-import { WikiLinkOverlay } from "@/components/editor/wikilinks/WikiLinkOverlay";
 import type { WikiLinkResult } from "@/components/editor/wikilinks/WikiLinkContext";
+import { WikiLinkOverlay } from "@/components/editor/wikilinks/WikiLinkOverlay";
 import { render, screen, userEvent } from "@testing-library/react-native";
 import React from "react";
 
@@ -23,7 +23,12 @@ jest.mock("@/components/shared/Loader", () => {
 	const { View, Text } = require("react-native");
 	return {
 		__esModule: true,
-		default: () => React.createElement(View, null, React.createElement(Text, null, "Loading")),
+		default: () =>
+			React.createElement(
+				View,
+				null,
+				React.createElement(Text, null, "Loading"),
+			),
 	};
 });
 

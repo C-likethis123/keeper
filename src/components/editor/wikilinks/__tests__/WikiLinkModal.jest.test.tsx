@@ -1,5 +1,8 @@
+import {
+	WikiLinkProvider,
+	useWikiLinkContext,
+} from "@/components/editor/wikilinks/WikiLinkContext";
 import { WikiLinkModal } from "@/components/editor/wikilinks/WikiLinkModal";
-import { WikiLinkProvider, useWikiLinkContext } from "@/components/editor/wikilinks/WikiLinkContext";
 import { NoteService } from "@/services/notes/noteService";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import {
@@ -27,8 +30,9 @@ jest.mock("@/stores/editorStore", () => {
 		updateBlockContent: mockUpdateBlockContent,
 	});
 
-	const useEditorState = (selector: (s: ReturnType<typeof getState>) => unknown) =>
-		selector(getState());
+	const useEditorState = (
+		selector: (s: ReturnType<typeof getState>) => unknown,
+	) => selector(getState());
 	useEditorState.getState = getState;
 
 	return { useEditorState };
@@ -128,7 +132,9 @@ describe("WikiLinkModal", () => {
 
 	it("shows the search input when the modal is active", async () => {
 		await renderModal();
-		expect(screen.getByPlaceholderText("Search or create notes...")).toBeOnTheScreen();
+		expect(
+			screen.getByPlaceholderText("Search or create notes..."),
+		).toBeOnTheScreen();
 	});
 
 	it("searches for notes as the user types", async () => {
@@ -147,10 +153,17 @@ describe("WikiLinkModal", () => {
 		});
 
 		await renderModal();
-		await user.type(screen.getByPlaceholderText("Search or create notes..."), "meet");
+		await user.type(
+			screen.getByPlaceholderText("Search or create notes..."),
+			"meet",
+		);
 
 		await waitFor(() => {
-			expect(NotesIndexService.listNotes).toHaveBeenCalledWith("meet", expect.any(Number), 0);
+			expect(NotesIndexService.listNotes).toHaveBeenCalledWith(
+				"meet",
+				expect.any(Number),
+				0,
+			);
 		});
 		expect(await screen.findByText("Meeting Notes")).toBeOnTheScreen();
 	});
@@ -160,7 +173,10 @@ describe("WikiLinkModal", () => {
 		jest.mocked(NotesIndexService.listNotes).mockResolvedValue({ items: [] });
 
 		await renderModal();
-		await user.type(screen.getByPlaceholderText("Search or create notes..."), "new idea");
+		await user.type(
+			screen.getByPlaceholderText("Search or create notes..."),
+			"new idea",
+		);
 
 		expect(await screen.findByText('Create "new idea"')).toBeOnTheScreen();
 	});
@@ -181,7 +197,10 @@ describe("WikiLinkModal", () => {
 		});
 
 		await renderModal();
-		await user.type(screen.getByPlaceholderText("Search or create notes..."), "exact match");
+		await user.type(
+			screen.getByPlaceholderText("Search or create notes..."),
+			"exact match",
+		);
 
 		await waitFor(() => {
 			expect(screen.queryByText(/Create/)).not.toBeOnTheScreen();
@@ -191,8 +210,22 @@ describe("WikiLinkModal", () => {
 	it("submits the keyboard-selected result", async () => {
 		jest.mocked(NotesIndexService.listNotes).mockResolvedValue({
 			items: [
-				{ noteId: "n1", title: "Alpha", summary: "", isPinned: false, updatedAt: 0, noteType: "note" },
-				{ noteId: "n2", title: "Beta", summary: "", isPinned: false, updatedAt: 0, noteType: "note" },
+				{
+					noteId: "n1",
+					title: "Alpha",
+					summary: "",
+					isPinned: false,
+					updatedAt: 0,
+					noteType: "note",
+				},
+				{
+					noteId: "n2",
+					title: "Beta",
+					summary: "",
+					isPinned: false,
+					updatedAt: 0,
+					noteType: "note",
+				},
 			],
 		});
 
@@ -220,7 +253,9 @@ describe("WikiLinkModal", () => {
 		fireEvent(input, "keyPress", { nativeEvent: { key: "Escape" } });
 
 		await waitFor(() => {
-			expect(screen.queryByPlaceholderText("Search or create notes...")).not.toBeOnTheScreen();
+			expect(
+				screen.queryByPlaceholderText("Search or create notes..."),
+			).not.toBeOnTheScreen();
 		});
 	});
 
@@ -231,14 +266,23 @@ describe("WikiLinkModal", () => {
 		fireEvent(input, "keyPress", { nativeEvent: { key: "Backspace" } });
 
 		await waitFor(() => {
-			expect(screen.queryByPlaceholderText("Search or create notes...")).not.toBeOnTheScreen();
+			expect(
+				screen.queryByPlaceholderText("Search or create notes..."),
+			).not.toBeOnTheScreen();
 		});
 	});
 
 	it("inserts the wiki link when an existing result is selected", async () => {
 		jest.mocked(NotesIndexService.listNotes).mockResolvedValue({
 			items: [
-				{ noteId: "note-abc", title: "Project Alpha", summary: "", isPinned: false, updatedAt: 0, noteType: "note" },
+				{
+					noteId: "note-abc",
+					title: "Project Alpha",
+					summary: "",
+					isPinned: false,
+					updatedAt: 0,
+					noteType: "note",
+				},
 			],
 		});
 
@@ -261,7 +305,10 @@ describe("WikiLinkModal", () => {
 		const user = createUser();
 
 		await renderModal();
-		await user.type(screen.getByPlaceholderText("Search or create notes..."), "Brand New");
+		await user.type(
+			screen.getByPlaceholderText("Search or create notes..."),
+			"Brand New",
+		);
 
 		expect(await screen.findByText('Create "Brand New"')).toBeOnTheScreen();
 

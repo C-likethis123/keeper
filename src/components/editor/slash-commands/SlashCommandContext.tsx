@@ -42,7 +42,9 @@ interface SlashCommandContextValue {
 	getSelectedResult: () => SlashCommandItem | null;
 }
 
-const SlashCommandContext = createContext<SlashCommandContextValue | null>(null);
+const SlashCommandContext = createContext<SlashCommandContextValue | null>(
+	null,
+);
 
 const COMMANDS: SlashCommandItem[] = [
 	{
@@ -55,7 +57,14 @@ const COMMANDS: SlashCommandItem[] = [
 		id: "insert-collapsible",
 		title: "Collapsible section",
 		description: "Insert a collapsible section block.",
-		keywords: ["collapsible", "details", "summary", "section", "toggle", "fold"],
+		keywords: [
+			"collapsible",
+			"details",
+			"summary",
+			"section",
+			"toggle",
+			"fold",
+		],
 	},
 ];
 
@@ -103,11 +112,7 @@ export function SlashCommandProvider({
 	}, []);
 
 	const handleTriggerStart = useCallback(
-		(
-			blockIndex: number,
-			triggerStartOffset: number,
-			initialQuery: string,
-		) => {
+		(blockIndex: number, triggerStartOffset: number, initialQuery: string) => {
 			blockIndexRef.current = blockIndex;
 			triggerStartOffsetRef.current = triggerStartOffset;
 			const doc = useEditorState.getState().document;

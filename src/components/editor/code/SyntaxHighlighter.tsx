@@ -175,16 +175,10 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 	};
 
 	const stylesheet = Object.fromEntries(
-		Object.entries(syntaxStyle).map(([key, value]) => [
-			key,
-			cleanStyle(value),
-		]),
+		Object.entries(syntaxStyle).map(([key, value]) => [key, cleanStyle(value)]),
 	) as Record<string, CSSProperties>;
 
-	const renderNode = (
-		nodes: RendererNode[],
-		key = "0",
-	): React.ReactNode[] => {
+	const renderNode = (nodes: RendererNode[], key = "0"): React.ReactNode[] => {
 		const renderedNodes: React.ReactNode[] = [];
 
 		for (const node of nodes) {

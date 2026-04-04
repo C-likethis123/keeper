@@ -38,7 +38,11 @@ export function useBlockInputHandlers({
 			if (key === "Enter" && selection && selection.start === selection.end) {
 				onEnter(index, selection.end);
 			}
-			if (key === "Backspace" && selection?.start === 0 && selection?.end === 0) {
+			if (
+				key === "Backspace" &&
+				selection?.start === 0 &&
+				selection?.end === 0
+			) {
 				onBackspaceAtStart(index);
 			}
 		},

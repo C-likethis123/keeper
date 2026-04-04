@@ -73,9 +73,12 @@ function collectMarkdownFiles(dir: Directory): File[] {
 		return [];
 	}
 
-	return dir.list().filter(
-		(entry): entry is File => entry instanceof File && entry.name.endsWith(".md"),
-	);
+	return dir
+		.list()
+		.filter(
+			(entry): entry is File =>
+				entry instanceof File && entry.name.endsWith(".md"),
+		);
 }
 
 async function collectRows(markdownFiles: File[]): Promise<NoteIndexSqlItem[]> {

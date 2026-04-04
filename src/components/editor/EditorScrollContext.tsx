@@ -59,19 +59,13 @@ export function EditorScrollProvider({ children }: PropsWithChildren) {
 		[],
 	);
 
-	const unregisterVideoLayout = useCallback(
-		(index: number) => {
-			videoLayoutsRef.current.delete(index);
-		},
-		[],
-	);
+	const unregisterVideoLayout = useCallback((index: number) => {
+		videoLayoutsRef.current.delete(index);
+	}, []);
 
-	const updateScrollY = useCallback(
-		(scrollY: number) => {
-			scrollYRef.current = scrollY;
-		},
-		[],
-	);
+	const updateScrollY = useCallback((scrollY: number) => {
+		scrollYRef.current = scrollY;
+	}, []);
 
 	const updateViewHeight = useCallback((viewHeight: number) => {
 		viewHeightRef.current = viewHeight;

@@ -171,7 +171,7 @@ Body here
 
 </details>`);
 		expect(documentToMarkdown(doc)).toBe(
-			`<details open>\n<summary>My section</summary>\n\nBody here\n\n</details>`,
+			"<details open>\n<summary>My section</summary>\n\nBody here\n\n</details>",
 		);
 	});
 
@@ -183,12 +183,13 @@ Content
 
 </details>`);
 		expect(documentToMarkdown(doc)).toBe(
-			`<details>\n<summary>Hidden</summary>\n\nContent\n\n</details>`,
+			"<details>\n<summary>Hidden</summary>\n\nContent\n\n</details>",
 		);
 	});
 
 	it("round-trips a collapsible block through parse and serialize", () => {
-		const markdown = `<details open>\n<summary>Round trip</summary>\n\nSome **bold** content\n\n</details>`;
+		const markdown =
+			"<details open>\n<summary>Round trip</summary>\n\nSome **bold** content\n\n</details>";
 		const doc = createDocumentFromMarkdown(markdown);
 		expect(documentToMarkdown(doc)).toBe(markdown);
 	});

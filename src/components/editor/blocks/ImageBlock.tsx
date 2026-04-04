@@ -1,6 +1,6 @@
+import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
-import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import { Paths } from "expo-file-system";
 import { Image } from "expo-image";

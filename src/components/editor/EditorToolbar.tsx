@@ -75,10 +75,7 @@ export function EditorToolbar() {
 				onPress={handleConvertToCheckbox}
 				disabled={!canConvertToCheckbox}
 			/>
-			<IconButton
-				name="expand-more"
-				onPress={handleInsertCollapsible}
-			/>
+			<IconButton name="expand-more" onPress={handleInsertCollapsible} />
 			{Platform.OS !== "web" ? (
 				<IconButton name="add-photo-alternate" onPress={handleInsertImage} />
 			) : (

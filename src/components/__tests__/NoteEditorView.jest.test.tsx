@@ -75,7 +75,9 @@ jest.mock("react-native-safe-area-context", () => {
 });
 
 // Use actual useAutoSave hook to test consolidation
-jest.mock("@/hooks/useAutoSave", () => jest.requireActual("@/hooks/useAutoSave"));
+jest.mock("@/hooks/useAutoSave", () =>
+	jest.requireActual("@/hooks/useAutoSave"),
+);
 
 jest.mock("@/hooks/useExtendedTheme", () => ({
 	useExtendedTheme: () => ({

@@ -1,8 +1,8 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
 import { NoteService } from "@/services/notes/noteService";
-import type { NoteType } from "@/services/notes/types";
 import { NotesIndexService } from "@/services/notes/notesIndex";
+import type { NoteType } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { nanoid } from "nanoid";
 import type React from "react";
@@ -16,10 +16,7 @@ import {
 	useState,
 } from "react";
 import type { GestureResponderEvent } from "react-native";
-import {
-	buildTrackedTodoTitle,
-	normalizeWikiLinkTitle,
-} from "./wikiLinkUtils";
+import { buildTrackedTodoTitle, normalizeWikiLinkTitle } from "./wikiLinkUtils";
 
 export interface WikiLinkResult {
 	id: string;
@@ -267,10 +264,8 @@ export function WikiLinkProvider({ children }: { children: React.ReactNode }) {
 							content: "",
 							isPinned: false,
 							noteType: createNoteTypeRef.current,
-							status:
-								createNoteTypeRef.current === "todo" ? "open" : null,
-							createdAt:
-								createNoteTypeRef.current === "todo" ? now : null,
+							status: createNoteTypeRef.current === "todo" ? "open" : null,
+							createdAt: createNoteTypeRef.current === "todo" ? now : null,
 							completedAt: null,
 						},
 						true,

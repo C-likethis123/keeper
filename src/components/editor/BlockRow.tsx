@@ -77,7 +77,7 @@ export const BlockRow = React.memo(function BlockRow({
 					position:
 						Platform.OS === "web" && config.block.type === BlockType.video
 							? // biome-ignore lint/suspicious/noExplicitAny: sticky is web-only
-							  ("sticky" as any)
+								("sticky" as any)
 							: "relative",
 					zIndex: config.block.type === BlockType.video ? 20 : 1,
 					top: config.block.type === BlockType.video ? 0 : undefined,

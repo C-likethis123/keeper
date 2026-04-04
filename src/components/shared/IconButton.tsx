@@ -1,8 +1,8 @@
+import type { ExtendedTheme } from "@/constants/themes/types";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { MaterialIcons } from "@expo/vector-icons";
 import type React from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
-import type { ExtendedTheme } from "@/constants/themes/types";
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 

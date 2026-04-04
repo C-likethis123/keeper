@@ -1,5 +1,5 @@
-import { BlockType } from "@/components/editor/core/BlockNode";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
+import { BlockType } from "@/components/editor/core/BlockNode";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import React from "react";
 import { Platform } from "react-native";
@@ -13,7 +13,8 @@ const mockHandleInsertCollapsible = jest.fn();
 const mockUseEditorState = jest.fn();
 
 jest.mock("@/components/editor/keyboard/editorCommands", () => ({
-	executeEditorCommand: (...args: unknown[]) => mockExecuteEditorCommand(...args),
+	executeEditorCommand: (...args: unknown[]) =>
+		mockExecuteEditorCommand(...args),
 }));
 
 jest.mock("@/components/editor/keyboard/useEditorCommandContext", () => ({
@@ -63,12 +64,10 @@ jest.mock("@/components/shared/IconButton", () => {
 type MockState = {
 	getCanUndo: () => boolean;
 	getCanRedo: () => boolean;
-	getFocusedBlock: () =>
-		| {
-				type: BlockType;
-				attributes?: Record<string, unknown>;
-		  }
-		| null;
+	getFocusedBlock: () => {
+		type: BlockType;
+		attributes?: Record<string, unknown>;
+	} | null;
 };
 
 function renderToolbar(stateOverrides: Partial<MockState> = {}) {
@@ -192,7 +191,9 @@ describe("EditorToolbar", () => {
 		renderToolbar();
 
 		expect(screen.getByText("TODO: Insert Image")).toBeTruthy();
-		expect(screen.queryByRole("button", { name: "add-photo-alternate" })).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: "add-photo-alternate" }),
+		).toBeNull();
 	});
 
 	it("renders the native image button outside web and wires it to image insertion", () => {

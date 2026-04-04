@@ -54,7 +54,10 @@ export function WikiLinkActions({ onOpenWikiLink }: WikiLinkActionsProps) {
 							<Text style={styles.title} numberOfLines={1}>
 								[[{actionsWikiLink.title}]]
 							</Text>
-							<TouchableOpacity onPress={hideActions} style={styles.closeButton}>
+							<TouchableOpacity
+								onPress={hideActions}
+								style={styles.closeButton}
+							>
 								<MaterialIcons
 									name="close"
 									size={24}
@@ -82,7 +85,10 @@ export function WikiLinkActions({ onOpenWikiLink }: WikiLinkActionsProps) {
 						</TouchableOpacity>
 
 						<View style={styles.footer}>
-							<TouchableOpacity style={styles.cancelButton} onPress={hideActions}>
+							<TouchableOpacity
+								style={styles.cancelButton}
+								onPress={hideActions}
+							>
 								<Text style={styles.cancelText}>Cancel</Text>
 							</TouchableOpacity>
 						</View>

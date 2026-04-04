@@ -1,6 +1,6 @@
+import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
-import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
 	Modal,

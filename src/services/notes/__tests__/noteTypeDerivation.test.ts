@@ -27,7 +27,9 @@ describe("deriveNoteType", () => {
 			expect(deriveNoteType("To-do: Feature planning")).toBe("todo");
 		});
 		it("derives todo from checklist content when the title is generic", () => {
-			expect(deriveNoteType("Weekend prep", "- [ ] Buy groceries")).toBe("todo");
+			expect(deriveNoteType("Weekend prep", "- [ ] Buy groceries")).toBe(
+				"todo",
+			);
 		});
 	});
 

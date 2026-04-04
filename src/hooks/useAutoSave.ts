@@ -1,9 +1,9 @@
 import type { SaveStatus } from "@/components/SaveIndicator";
+import { GitService } from "@/services/git/gitService";
 import {
 	normalizeMarkdownForPersistence,
 	persistEditorEntry,
 } from "@/services/notes/editorEntryPersistence";
-import { GitService } from "@/services/git/gitService";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useCallback, useEffect, useRef, useState } from "react";
