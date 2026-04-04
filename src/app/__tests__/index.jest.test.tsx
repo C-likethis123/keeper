@@ -274,7 +274,7 @@ describe("Index", () => {
 				params: {
 					id: "new-note-id",
 					isNew: "true",
-					title: "Todo ",
+					title: "TODO: ",
 					noteType: "todo",
 				},
 			});
@@ -297,7 +297,7 @@ describe("Index", () => {
 				params: {
 					id: "new-note-id",
 					isNew: "true",
-					title: "Journal ",
+					title: "Journal: ",
 					noteType: "journal",
 				},
 			});
@@ -320,7 +320,7 @@ describe("Index", () => {
 				params: {
 					id: "new-note-id",
 					isNew: "true",
-					title: "Resource ",
+					title: "Source: ",
 					noteType: "resource",
 				},
 			});
