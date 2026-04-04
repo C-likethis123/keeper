@@ -13,6 +13,7 @@ This section contains todo items that have not been prioritised. When seeing ite
 5. TODOs in notes should be linked as separate TODOs. Notes in progress can also be a "TODO".
 8. Looks so weird on desktop. I think I'll seriously consider the react native approach and see if it simplifies things for me, or use the webview approach?
 9. Install expo-insights!
+- Implement disk journalling!
 
 ## Critical Issues (P1)
 
