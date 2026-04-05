@@ -1,7 +1,7 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type ErrorScreenProps = {
 	errorMessage: string;
@@ -25,13 +25,15 @@ export default function ErrorScreen({
 				/>
 				<Text style={styles.errorMessage}>{errorMessage}</Text>
 				{onRetry && (
-					<TouchableOpacity
-						style={styles.retryButton}
+					<Pressable
+						style={({ pressed }) => [
+							styles.retryButton,
+							pressed && styles.retryButtonPressed,
+						]}
 						onPress={onRetry}
-						activeOpacity={0.8}
 					>
 						<Text style={styles.retryButtonText}>Retry</Text>
-					</TouchableOpacity>
+					</Pressable>
 				)}
 			</View>
 		</View>
@@ -64,6 +66,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			paddingVertical: 12,
 			borderRadius: 8,
 			backgroundColor: theme.colors.primary,
+		},
+		retryButtonPressed: {
+			opacity: 0.8,
 		},
 		retryButtonText: {
 			color: theme.colors.card,

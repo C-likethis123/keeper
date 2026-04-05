@@ -8,10 +8,10 @@ import { MaterialIcons } from "@expo/vector-icons";
 import React, { Suspense, useCallback, useMemo } from "react";
 import {
 	Modal,
+	Pressable,
 	ScrollView,
 	StyleSheet,
 	Text,
-	TouchableOpacity,
 	View,
 } from "react-native";
 import Loader from "./shared/Loader";
@@ -40,9 +40,9 @@ export default function TemplatePickerModal({
 				<View style={styles.modalCard}>
 					<View style={styles.modalHeader}>
 						<Text style={styles.modalTitle}>Choose template</Text>
-						<TouchableOpacity onPress={onDismiss}>
+						<Pressable onPress={onDismiss}>
 							<MaterialIcons name="close" size={22} color={theme.colors.text} />
-						</TouchableOpacity>
+						</Pressable>
 					</View>
 					<Suspense fallback={<Loader />}>
 						<QueryErrorBoundary
@@ -51,9 +51,9 @@ export default function TemplatePickerModal({
 									<Text style={styles.emptyTemplatesText}>
 										Failed to load templates.
 									</Text>
-									<TouchableOpacity onPress={reset}>
+									<Pressable onPress={reset}>
 										<Text style={styles.emptyTemplatesText}>Retry</Text>
-									</TouchableOpacity>
+									</Pressable>
 								</View>
 							)}
 						>
@@ -107,9 +107,12 @@ function TemplatePickerContent({
 	return (
 		<ScrollView contentContainerStyle={styles.templateList}>
 			{templates.map((template) => (
-				<TouchableOpacity
+				<Pressable
 					key={template.id}
-					style={styles.templateCard}
+					style={({ pressed }) => [
+						styles.templateCard,
+						pressed && styles.templateCardPressed,
+					]}
 					onPress={() => {
 						void applyTemplate(template);
 					}}
@@ -120,7 +123,7 @@ function TemplatePickerContent({
 					<Text style={styles.templateCardContent} numberOfLines={4}>
 						{template.content || "Empty template"}
 					</Text>
-				</TouchableOpacity>
+				</Pressable>
 			))}
 		</ScrollView>
 	);
@@ -168,6 +171,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			backgroundColor: theme.colors.card,
 			padding: 12,
 			gap: 6,
+		},
+		templateCardPressed: {
+			opacity: 0.8,
 		},
 		templateCardTitle: {
 			fontSize: 15,

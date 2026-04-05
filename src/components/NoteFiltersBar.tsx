@@ -1,5 +1,5 @@
 import { FilterChip } from "@/components/shared/FilterChip";
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import type { NoteStatus, NoteType } from "@/services/notes/types";
 import React, { useMemo } from "react";
 import { StyleSheet, View } from "react-native";

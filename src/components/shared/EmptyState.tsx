@@ -2,7 +2,7 @@ import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type EmptyStateProps = {
 	title: string;
@@ -26,10 +26,12 @@ export default function EmptyState({
 				<Text style={styles.title}>{title}</Text>
 				<Text style={styles.subtitle}>{subtitle}</Text>
 				{showAction && (
-					<TouchableOpacity
-						style={styles.button}
+					<Pressable
+						style={({ pressed }) => [
+							styles.button,
+							pressed && styles.buttonPressed,
+						]}
 						onPress={onActionPress}
-						activeOpacity={0.8}
 					>
 						<Ionicons
 							name="settings-outline"
@@ -37,7 +39,7 @@ export default function EmptyState({
 							style={styles.buttonIcon}
 						/>
 						<Text style={styles.buttonLabel}>{actionLabel}</Text>
-					</TouchableOpacity>
+					</Pressable>
 				)}
 			</View>
 		</View>
@@ -82,6 +84,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			paddingVertical: 12,
 			borderRadius: 24,
 			backgroundColor: theme.colors.primary,
+		},
+		buttonPressed: {
+			opacity: 0.8,
 		},
 
 		buttonIcon: {

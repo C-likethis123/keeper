@@ -9,7 +9,6 @@ import {
 	Pressable,
 	StyleSheet,
 	Text,
-	TouchableOpacity,
 	View,
 } from "react-native";
 import { useWikiLinkContext } from "./WikiLinkContext";
@@ -54,7 +53,7 @@ export function WikiLinkActions({ onOpenWikiLink }: WikiLinkActionsProps) {
 							<Text style={styles.title} numberOfLines={1}>
 								[[{actionsWikiLink.title}]]
 							</Text>
-							<TouchableOpacity
+							<Pressable
 								onPress={hideActions}
 								style={styles.closeButton}
 							>
@@ -63,34 +62,34 @@ export function WikiLinkActions({ onOpenWikiLink }: WikiLinkActionsProps) {
 									size={24}
 									color={theme.colors.textMuted}
 								/>
-							</TouchableOpacity>
+							</Pressable>
 						</View>
 
-						<TouchableOpacity style={styles.actionItem} onPress={handleOpen}>
+						<Pressable style={styles.actionItem} onPress={handleOpen}>
 							<MaterialIcons
 								name="open-in-new"
 								size={22}
 								color={theme.colors.primary}
 							/>
 							<Text style={styles.actionText}>Open Note</Text>
-						</TouchableOpacity>
+						</Pressable>
 
-						<TouchableOpacity style={styles.actionItem} onPress={handleCopy}>
+						<Pressable style={styles.actionItem} onPress={handleCopy}>
 							<MaterialIcons
 								name="content-copy"
 								size={22}
 								color={theme.colors.text}
 							/>
 							<Text style={styles.actionText}>Copy Title</Text>
-						</TouchableOpacity>
+						</Pressable>
 
 						<View style={styles.footer}>
-							<TouchableOpacity
+							<Pressable
 								style={styles.cancelButton}
 								onPress={hideActions}
 							>
 								<Text style={styles.cancelText}>Cancel</Text>
-							</TouchableOpacity>
+							</Pressable>
 						</View>
 					</View>
 				</View>

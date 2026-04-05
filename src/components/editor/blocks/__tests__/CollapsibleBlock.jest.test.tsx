@@ -113,4 +113,16 @@ describe("CollapsibleBlock", () => {
 
 		expect(props.onEnter).toHaveBeenCalledWith(0, 0, "body");
 	});
+
+	it("focuses the block when the unfocused summary is pressed", () => {
+		const props = {
+			...defaultProps,
+			isFocused: false,
+		};
+		render(<CollapsibleBlock {...props} />);
+
+		fireEvent.press(screen.getByText("Summary"));
+
+		expect(mockFocusBlock).toHaveBeenCalledWith(0);
+	});
 });

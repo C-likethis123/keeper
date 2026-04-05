@@ -14,13 +14,13 @@ import React, {
 import {
 	type NativeSyntheticEvent,
 	Platform,
+	Pressable,
 	type ScrollView,
 	StyleSheet,
 	TextInput,
 	type TextInputKeyPressEventData,
 	type TextInputScrollEventData,
 	type TextInputSelectionChangeEventData,
-	TouchableOpacity,
 	View,
 } from "react-native";
 import * as Braces from "../code/Braces";
@@ -294,7 +294,7 @@ export function CodeBlock({
 	const fontFamily = Platform.OS === "ios" ? "Menlo-Regular" : "monospace";
 
 	return (
-		<TouchableOpacity onPress={() => inputRef.current?.focus()}>
+		<Pressable onPress={() => inputRef.current?.focus()}>
 			<CodeBlockHeader
 				selectedLanguage={language}
 				onLanguageChanged={(language) => {
@@ -341,7 +341,7 @@ export function CodeBlock({
 					onChangeText={setValue}
 				/>
 			</View>
-		</TouchableOpacity>
+		</Pressable>
 	);
 }
 

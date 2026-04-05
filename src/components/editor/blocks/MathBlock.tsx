@@ -2,16 +2,16 @@ import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVert
 import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	type NativeSyntheticEvent,
 	Platform,
+	Pressable,
 	StyleSheet,
 	Text,
 	TextInput,
 	type TextInputKeyPressEventData,
 	type TextInputSelectionChangeEventData,
-	TouchableOpacity,
 	View,
 } from "react-native";
 import type { BlockConfig } from "./BlockRegistry";
@@ -42,14 +42,20 @@ export function MathBlock({
 
 	// Sync value with block content when it changes externally
 	useEffect(() => {
-		if (block.content !== value) {
-			setValue(block.content);
-		}
-	}, [block.content, value]);
+		setValue((currentValue) =>
+			currentValue === block.content ? currentValue : block.content,
+		);
+		setRenderError(null);
+	}, [block.content]);
 
-	useEffect(() => {
-		onContentChange(index, value);
-	}, [onContentChange, index, value]);
+	const handleChangeText = useCallback(
+		(newValue: string) => {
+			setRenderError(null);
+			setValue(newValue);
+			onContentChange(index, newValue);
+		},
+		[index, onContentChange],
+	);
 
 	const handleSelectionChange = (
 		e: NativeSyntheticEvent<TextInputSelectionChangeEventData>,
@@ -116,7 +122,7 @@ export function MathBlock({
 	};
 
 	return (
-		<TouchableOpacity onPress={() => inputRef.current?.focus()}>
+		<Pressable onPress={() => inputRef.current?.focus()}>
 			<View style={[styles.container, isFocused && styles.containerFocused]}>
 				{!isFocused && (
 					<View style={styles.mathWrapper} collapsable={false}>
@@ -146,12 +152,12 @@ export function MathBlock({
 					autoCapitalize="none"
 					autoCorrect={false}
 					value={value}
-					onChangeText={setValue}
+					onChangeText={handleChangeText}
 					placeholder={isFocused ? "Enter LaTeX equation..." : ""}
 					placeholderTextColor={theme.custom.editor.placeholder}
 				/>
 			</View>
-		</TouchableOpacity>
+		</Pressable>
 	);
 }
 

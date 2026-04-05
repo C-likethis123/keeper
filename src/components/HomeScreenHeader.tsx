@@ -6,9 +6,9 @@ import type { NoteStatus, NoteType } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import type React from "react";
 import {
+	Pressable,
 	StyleSheet,
 	type TextInput,
-	TouchableOpacity,
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -59,7 +59,7 @@ export default function HomeScreenHeader({
 					onStatusChange={onStatusChange}
 				/>
 				<View style={styles.actions}>
-					<TouchableOpacity
+					<Pressable
 						testID="home-reset-button"
 						accessibilityRole="button"
 						onPress={onReset}
@@ -72,7 +72,7 @@ export default function HomeScreenHeader({
 								resetDisabled ? theme.colors.textFaded : theme.colors.error
 							}
 						/>
-					</TouchableOpacity>
+					</Pressable>
 				</View>
 			</View>
 		</View>

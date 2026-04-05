@@ -4,7 +4,7 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import type { Note } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
-import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
@@ -40,7 +40,7 @@ export default function NoteEditorHeader({
 		<View style={[styles.headerShell, { paddingTop: insets.top + 8 }]}>
 			<View style={styles.headerRow}>
 				<View style={styles.headerBackRail}>
-					<TouchableOpacity
+					<Pressable
 						onPress={onBack}
 						style={styles.headerBackButton}
 						accessibilityRole="button"
@@ -51,7 +51,7 @@ export default function NoteEditorHeader({
 							size={24}
 							color={theme.colors.text}
 						/>
-					</TouchableOpacity>
+					</Pressable>
 				</View>
 				<View style={styles.headerTitleWrapper}>
 					<TextInput
@@ -74,7 +74,7 @@ export default function NoteEditorHeader({
 				</View>
 				<SaveIndicator status={status} />
 				<View style={[styles.headerSideRail, styles.headerActionsRail]}>
-					<TouchableOpacity
+					<Pressable
 						onPress={onTogglePin}
 						style={styles.headerIconButton}
 						disabled={noteType === "template"}
@@ -92,8 +92,8 @@ export default function NoteEditorHeader({
 										: theme.colors.textMuted
 							}
 						/>
-					</TouchableOpacity>
-					<TouchableOpacity
+					</Pressable>
+					<Pressable
 						onPress={onDelete}
 						style={styles.headerIconButton}
 						accessibilityRole="button"
@@ -104,7 +104,7 @@ export default function NoteEditorHeader({
 							size={24}
 							color={theme.colors.textMuted}
 						/>
-					</TouchableOpacity>
+					</Pressable>
 				</View>
 			</View>
 		</View>

@@ -11,11 +11,11 @@ import React, {
 } from "react";
 import {
 	Platform,
+	Pressable,
 	StyleSheet,
 	Text,
 	TextInput,
 	type TextInputKeyPressEvent,
-	TouchableOpacity,
 	View,
 } from "react-native";
 import {
@@ -188,13 +188,13 @@ export function CollapsibleBlock({
 	return (
 		<View style={[styles.container, isFocused && styles.containerFocused]}>
 			<View style={styles.header}>
-				<TouchableOpacity
+				<Pressable
 					onPress={handleToggleExpand}
 					style={styles.chevronButton}
 					hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
 				>
 					<Text style={styles.chevron}>{chevron}</Text>
-				</TouchableOpacity>
+				</Pressable>
 
 				{isFocused ? (
 					<TextInput
@@ -217,7 +217,7 @@ export function CollapsibleBlock({
 						blurOnSubmit={false}
 					/>
 				) : (
-					<TouchableOpacity
+					<Pressable
 						style={styles.summaryDisplay}
 						onPress={() => focusBlock(index)}
 					>
@@ -226,7 +226,7 @@ export function CollapsibleBlock({
 						) : (
 							<Text style={styles.summaryPlaceholder}>Section title...</Text>
 						)}
-					</TouchableOpacity>
+					</Pressable>
 				)}
 			</View>
 
@@ -260,7 +260,7 @@ export function CollapsibleBlock({
 							placeholderTextColor={theme.custom.editor.placeholder}
 						/>
 					) : (
-						<TouchableOpacity onPress={() => focusBlock(index)}>
+						<Pressable onPress={() => focusBlock(index)}>
 							{bodyValue.length > 0 ? (
 								bodyValue.split("\n\n").map((paragraph, i) => (
 									<InlineMarkdown
@@ -273,7 +273,7 @@ export function CollapsibleBlock({
 							) : (
 								<Text style={styles.bodyPlaceholder}>Section body...</Text>
 							)}
-						</TouchableOpacity>
+						</Pressable>
 					)}
 				</View>
 			)}

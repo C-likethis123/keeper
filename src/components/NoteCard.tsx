@@ -3,7 +3,13 @@ import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+	type GestureResponderEvent,
+	Pressable,
+	StyleSheet,
+	Text,
+	View,
+} from "react-native";
 
 function formatNoteType(note: Note): string | null {
 	if (!note.noteType || note.noteType === "note") return null;
@@ -36,12 +42,16 @@ export default function NoteCard({
 		const updated = { ...note, isPinned: !note.isPinned };
 		onPinToggle?.(updated);
 	};
+	const stopCardPress = (event?: GestureResponderEvent) => {
+		event?.stopPropagation?.();
+	};
 
 	return (
-		<TouchableOpacity
-			style={styles.card}
+		<Pressable
+			style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
 			onPress={openNote}
-			activeOpacity={0.8}
+			accessibilityRole="button"
+			accessibilityLabel={`Open note ${note.title || "Untitled"}`}
 		>
 			<View style={styles.titleRow}>
 				<Text style={styles.title} numberOfLines={2}>
@@ -49,8 +59,13 @@ export default function NoteCard({
 				</Text>
 
 				{note.isPinned && (
-					<TouchableOpacity
-						onPress={handlePinToggle}
+					<Pressable
+						onPress={(event) => {
+							stopCardPress(event);
+							handlePinToggle();
+						}}
+						accessibilityRole="button"
+						accessibilityLabel="Unpin note"
 						hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
 					>
 						<MaterialIcons
@@ -58,7 +73,7 @@ export default function NoteCard({
 							size={18}
 							color={theme.colors.primary}
 						/>
-					</TouchableOpacity>
+					</Pressable>
 				)}
 			</View>
 
@@ -83,24 +98,38 @@ export default function NoteCard({
 
 				<View style={styles.actions}>
 					{!note.isPinned && (
-						<TouchableOpacity onPress={handlePinToggle}>
+						<Pressable
+							onPress={(event) => {
+								stopCardPress(event);
+								handlePinToggle();
+							}}
+							accessibilityRole="button"
+							accessibilityLabel="Pin note"
+						>
 							<MaterialIcons
 								name="push-pin"
 								size={18}
 								color={theme.colors.textMuted}
 							/>
-						</TouchableOpacity>
+						</Pressable>
 					)}
-					<TouchableOpacity onPress={() => onDelete(note)}>
+					<Pressable
+						onPress={(event) => {
+							stopCardPress(event);
+							onDelete(note);
+						}}
+						accessibilityRole="button"
+						accessibilityLabel="Delete note"
+					>
 						<MaterialIcons
 							name="delete-outline"
 							size={18}
 							color={theme.colors.textMuted}
 						/>
-					</TouchableOpacity>
+					</Pressable>
 				</View>
 			</View>
-		</TouchableOpacity>
+		</Pressable>
 	);
 }
 
@@ -113,6 +142,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			borderColor: theme.colors.border,
 			padding: 12,
 			backgroundColor: theme.colors.card,
+		},
+		cardPressed: {
+			opacity: 0.8,
 		},
 		titleRow: {
 			flexDirection: "row",

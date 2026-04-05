@@ -16,10 +16,10 @@ import { Stack, useFocusEffect } from "expo-router";
 import React, { Suspense, useCallback, useRef, useState } from "react";
 import {
 	Modal,
+	Pressable,
 	StyleSheet,
 	Text,
 	type TextInput,
-	TouchableOpacity,
 	View,
 } from "react-native";
 
@@ -185,22 +185,22 @@ function IndexContent() {
 							keys. Git-backed notes may sync back from remote afterward.
 						</Text>
 						<View style={styles.modalActions}>
-							<TouchableOpacity
+							<Pressable
 								accessibilityRole="button"
 								style={styles.modalSecondaryButton}
 								onPress={closeResetModal}
 								disabled={isResetting}
 							>
 								<Text style={styles.modalSecondaryButtonText}>Cancel</Text>
-							</TouchableOpacity>
-							<TouchableOpacity
+							</Pressable>
+							<Pressable
 								accessibilityRole="button"
 								style={styles.modalDestructiveButton}
 								onPress={handleConfirmReset}
 								disabled={isResetting}
 							>
 								<Text style={styles.modalDestructiveButtonText}>Reset</Text>
-							</TouchableOpacity>
+							</Pressable>
 						</View>
 					</View>
 				</View>

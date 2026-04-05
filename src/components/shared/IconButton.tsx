@@ -2,7 +2,7 @@ import type { ExtendedTheme } from "@/constants/themes/types";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { MaterialIcons } from "@expo/vector-icons";
 import type React from "react";
-import { StyleSheet, TouchableOpacity } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 
 type MaterialIconName = React.ComponentProps<typeof MaterialIcons>["name"];
 
@@ -23,11 +23,10 @@ export function IconButton({
 	const styles = StyleSheet.create(createStyles(theme));
 
 	return (
-		<TouchableOpacity
-			style={styles.button}
+		<Pressable
+			style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
 			onPress={onPress}
 			disabled={disabled}
-			activeOpacity={0.7}
 			testID={testID}
 		>
 			<MaterialIcons
@@ -35,7 +34,7 @@ export function IconButton({
 				size={size}
 				color={disabled ? theme.colors.textDisabled : theme.colors.text}
 			/>
-		</TouchableOpacity>
+		</Pressable>
 	);
 }
 
@@ -50,6 +49,9 @@ function createStyles(theme: ExtendedTheme) {
 			alignItems: "center" as const,
 			borderWidth: 1,
 			borderColor: theme.colors.border,
+		},
+		buttonPressed: {
+			opacity: 0.7,
 		},
 	};
 }

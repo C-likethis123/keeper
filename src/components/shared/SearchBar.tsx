@@ -2,7 +2,7 @@ import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { MaterialIcons } from "@expo/vector-icons";
 import { forwardRef, useMemo } from "react";
-import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
 export const SearchBar = forwardRef<
 	TextInput,
@@ -48,7 +48,7 @@ export const SearchBar = forwardRef<
 					autoCorrect={false}
 				/>
 				{editable && searchQuery.length > 0 && (
-					<TouchableOpacity
+					<Pressable
 						accessibilityRole="button"
 						accessibilityLabel="Clear search"
 						onPress={() => setSearchQuery("")}
@@ -59,7 +59,7 @@ export const SearchBar = forwardRef<
 							size={18}
 							color={theme.colors.textMuted}
 						/>
-					</TouchableOpacity>
+					</Pressable>
 				)}
 			</View>
 		</View>

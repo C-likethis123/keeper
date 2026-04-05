@@ -8,7 +8,7 @@ import { useStyles } from "@/hooks/useStyles";
 import type { NoteStatus, NoteType } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 function getFilterLabel(noteTypes: NoteType[], status?: NoteStatus) {
 	if (noteTypes.length === 0) {
@@ -53,16 +53,19 @@ function FilterSection<T extends string>({
 							? selectedValues.length === 0
 							: selectedValues.includes(option.value);
 					return (
-						<TouchableOpacity
+						<Pressable
 							key={option.label}
 							accessibilityRole={title === "Type" ? "checkbox" : "button"}
 							accessibilityState={
 								title === "Type" ? { checked: isSelected } : undefined
 							}
 							accessibilityLabel={option.label}
-							style={[styles.option, isSelected && styles.optionSelected]}
+							style={({ pressed }) => [
+								styles.option,
+								isSelected && styles.optionSelected,
+								pressed && styles.optionPressed,
+							]}
 							onPress={() => onToggle(option.value)}
-							activeOpacity={0.85}
 						>
 							<Text
 								style={[
@@ -79,7 +82,7 @@ function FilterSection<T extends string>({
 									color={theme.colors.primaryContrast}
 								/>
 							) : null}
-						</TouchableOpacity>
+						</Pressable>
 					);
 				})}
 			</View>
@@ -123,12 +126,15 @@ export default function NoteFiltersDropdown({
 
 	return (
 		<View style={styles.container}>
-			<TouchableOpacity
+			<Pressable
 				accessibilityRole="button"
 				accessibilityLabel="Filter notes"
-				style={[styles.trigger, isOpen && styles.triggerOpen]}
+				style={({ pressed }) => [
+					styles.trigger,
+					isOpen && styles.triggerOpen,
+					pressed && styles.triggerPressed,
+				]}
 				onPress={() => setIsOpen((current) => !current)}
-				activeOpacity={0.85}
 			>
 				<MaterialIcons name="filter-list" size={18} color="#6b7280" />
 				<Text style={styles.triggerText} numberOfLines={1}>
@@ -139,7 +145,7 @@ export default function NoteFiltersDropdown({
 					size={18}
 					color="#6b7280"
 				/>
-			</TouchableOpacity>
+			</Pressable>
 			{isOpen ? (
 				<View style={styles.menu}>
 					<FilterSection
@@ -185,6 +191,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		triggerOpen: {
 			borderColor: theme.colors.primary,
+		},
+		triggerPressed: {
+			opacity: 0.85,
 		},
 		triggerText: {
 			flex: 1,
@@ -234,6 +243,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		optionSelected: {
 			backgroundColor: theme.colors.primary,
+		},
+		optionPressed: {
+			opacity: 0.85,
 		},
 		optionText: {
 			fontSize: 14,

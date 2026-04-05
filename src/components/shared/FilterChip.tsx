@@ -1,7 +1,7 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 
 export function FilterChip({
 	label,
@@ -17,16 +17,19 @@ export function FilterChip({
 	const styles = useStyles(createStyles);
 
 	return (
-		<TouchableOpacity
-			style={[styles.chip, selected && styles.chipSelected]}
+		<Pressable
+			style={({ pressed }) => [
+				styles.chip,
+				selected && styles.chipSelected,
+				pressed && styles.chipPressed,
+			]}
 			onPress={onPress}
-			activeOpacity={0.8}
 			testID={testID}
 		>
 			<Text style={[styles.chipText, selected && styles.chipTextSelected]}>
 				{label}
 			</Text>
-		</TouchableOpacity>
+		</Pressable>
 	);
 }
 
@@ -43,6 +46,9 @@ function createStyles(theme: ExtendedTheme) {
 		chipSelected: {
 			borderColor: theme.colors.primary,
 			backgroundColor: theme.colors.primary,
+		},
+		chipPressed: {
+			opacity: 0.8,
 		},
 		chipText: {
 			fontSize: 13,
