@@ -1,6 +1,6 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
-import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -18,8 +18,8 @@ export default function ErrorScreen({
 	return (
 		<View style={styles.container}>
 			<View style={styles.content}>
-				<MaterialIcons
-					name="error-outline"
+				<FontAwesome
+					name="exclamation-circle"
 					size={48}
 					style={styles.errorIcon}
 				/>

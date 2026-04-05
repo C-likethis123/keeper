@@ -5,7 +5,7 @@ import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
-import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import React, { Suspense, useCallback } from "react";
 import {
 	Modal,
@@ -41,7 +41,7 @@ export default function TemplatePickerModal({
 					<View style={styles.modalHeader}>
 						<Text style={styles.modalTitle}>Choose template</Text>
 						<Pressable onPress={onDismiss}>
-							<MaterialIcons name="close" size={22} style={styles.closeIcon} />
+							<FontAwesome name="close" size={22} style={styles.closeIcon} />
 						</Pressable>
 					</View>
 					<Suspense fallback={<Loader />}>

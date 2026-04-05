@@ -1,7 +1,7 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
-import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
 	type GestureResponderEvent,
@@ -68,8 +68,8 @@ export default function NoteCard({
 						accessibilityLabel="Unpin note"
 						hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
 					>
-						<MaterialIcons
-							name="push-pin"
+						<FontAwesome
+							name="thumb-tack"
 							size={18}
 							color={theme.colors.primary}
 						/>
@@ -106,8 +106,8 @@ export default function NoteCard({
 							accessibilityRole="button"
 							accessibilityLabel="Pin note"
 						>
-							<MaterialIcons
-								name="push-pin"
+							<FontAwesome
+								name="thumb-tack"
 								size={18}
 								color={theme.colors.textMuted}
 							/>
@@ -121,8 +121,8 @@ export default function NoteCard({
 						accessibilityRole="button"
 						accessibilityLabel="Delete note"
 					>
-						<MaterialIcons
-							name="delete-outline"
+						<FontAwesome
+							name="trash-o"
 							size={18}
 							color={theme.colors.textMuted}
 						/>

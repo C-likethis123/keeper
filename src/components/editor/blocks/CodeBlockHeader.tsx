@@ -1,6 +1,6 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { withOpacity } from "@/utils/color";
-import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { LanguageRegistry } from "../code/LanguageRegistry";
@@ -36,12 +36,12 @@ export function CodeBlockHeader({
 				style={styles.languageSelector}
 				onPress={() => setShowLanguagePicker(!showLanguagePicker)}
 			>
-				<MaterialIcons name="code" size={16} style={styles.actionButtonIcon} />
+				<FontAwesome name="code" size={16} style={styles.actionButtonIcon} />
 				<Text style={styles.languageText}>
 					{formatLanguageName(selectedLanguage)}
 				</Text>
-				<MaterialIcons
-					name={showLanguagePicker ? "arrow-drop-up" : "arrow-drop-down"}
+				<FontAwesome
+					name={showLanguagePicker ? "caret-up" : "caret-down"}
 					size={18}
 					style={styles.actionButtonIcon}
 				/>
@@ -77,15 +77,15 @@ export function CodeBlockHeader({
 
 			<View style={styles.actions}>
 				<Pressable style={styles.actionButton} onPress={onCopyPressed}>
-					<MaterialIcons
-						name="content-copy"
+					<FontAwesome
+						name="copy"
 						size={16}
 						style={styles.actionButtonIcon}
 					/>
 				</Pressable>
 				<Pressable style={styles.actionButton} onPress={onDelete}>
-					<MaterialIcons
-						name="delete-outline"
+					<FontAwesome
+						name="trash-o"
 						size={16}
 						style={styles.actionButtonIcon}
 					/>

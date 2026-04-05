@@ -1,6 +1,6 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
-import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import {
 	Platform,
@@ -50,8 +50,8 @@ export function EmbeddedVideoPanel({
 							onPress={onToggleMode}
 							style={styles.iconButton}
 						>
-							<MaterialIcons
-								name={isMinimised ? "expand-more" : "expand-less"}
+							<FontAwesome
+								name={isMinimised ? "angle-down" : "angle-up"}
 								size={18}
 								style={styles.expandIcon}
 							/>

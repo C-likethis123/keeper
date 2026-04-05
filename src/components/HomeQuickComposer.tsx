@@ -1,59 +1,15 @@
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { useStyles } from "@/hooks/useStyles";
 import type { NoteType } from "@/services/notes/types";
-import { MaterialIcons } from "@expo/vector-icons";
+import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import React from "react";
-import { Ionicons } from "@expo/vector-icons";
+import { IconButton } from "@/components/shared/IconButton";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-
-function QuickActionButton({
-  label,
-  icon,
-  onPress,
-  testID,
-  iconColor,
-  styles,
-}: {
-  label: string;
-  icon: React.ComponentProps<typeof MaterialIcons>["name"];
-  onPress?: () => void;
-  testID?: string;
-  iconColor: string;
-  styles: ReturnType<typeof createStyles>;
-}) {
-  const [isHovered, setIsHovered] = React.useState(false);
-
-  return (
-    <View style={styles.actionButtonWrapper}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        testID={testID}
-        hitSlop={8}
-        onPress={onPress}
-        onHoverIn={() => setIsHovered(true)}
-        onHoverOut={() => setIsHovered(false)}
-        style={styles.iconButton}
-      >
-        <Ionicons name={icon} size={22} style={styles.iconButton} />
-      </Pressable>
-      {isHovered ? (
-        <View pointerEvents="none" style={styles.tooltip}>
-          <Text numberOfLines={1} style={styles.tooltipText}>
-            {label}
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
 
 export default function HomeQuickComposer({
   onPress,
 }: {
   onPress: (props?: { noteType?: NoteType; title?: string }) => void;
 }) {
-  const theme = useExtendedTheme();
   const styles = useStyles(createStyles);
 
   return (
@@ -71,33 +27,30 @@ export default function HomeQuickComposer({
           <Text style={[styles.placeholder]}>Take a note...</Text>
         </Pressable>
         <View style={styles.actions}>
-          <QuickActionButton
+          <IconButton
             label="Create todo"
-            icon="checkbox"
+            name="check-square-o"
+            variant="flat"
             onPress={() => onPress({ noteType: "todo", title: "TODO:" })}
-            iconColor={theme.colors.textMuted}
-            styles={styles}
           />
-          <QuickActionButton
+          <IconButton
             label="Create journal"
-            icon="journal"
+            name="pencil"
+            variant="flat"
             onPress={() => onPress({ noteType: "journal", title: "Journal: " })}
-            iconColor={theme.colors.textMuted}
-            styles={styles}
           />
-          <QuickActionButton
+          <IconButton
             label="Create resource"
-            icon="bookmarks"
+            name="bookmark-o"
+            variant="flat"
             onPress={() => onPress({ noteType: "resource", title: "Source: " })}
-            iconColor={theme.colors.textMuted}
-            styles={styles}
           />
-          <QuickActionButton
+          <IconButton
             label="Create drawing"
-            icon="brush"
+            name="paint-brush"
+            variant="flat"
             testID="home-quick-composer-brush"
-            iconColor={theme.colors.textMuted}
-            styles={styles}
+            onPress={() => onPress({ noteType: "drawing", title: "Drawing: " })}
           />
         </View>
       </View>
@@ -155,6 +108,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
     },
     iconButton: {
       paddingVertical: 2,
+      color: theme.colors.textMuted,
     },
     tooltip: {
       position: "absolute",

@@ -103,7 +103,7 @@ describe("EditorToolbar", () => {
 			"accessibilityState",
 			{ disabled: true },
 		);
-		expect(screen.getByRole("button", { name: "redo" })).toHaveProp(
+		expect(screen.getByRole("button", { name: "repeat" })).toHaveProp(
 			"accessibilityState",
 			{ disabled: true },
 		);
@@ -118,10 +118,10 @@ describe("EditorToolbar", () => {
 		});
 
 		expect(
-			screen.getByRole("button", { name: "format-indent-increase" }),
+			screen.getByRole("button", { name: "indent" }),
 		).toHaveProp("accessibilityState", { disabled: false });
 		expect(
-			screen.getByRole("button", { name: "format-indent-decrease" }),
+			screen.getByRole("button", { name: "dedent" }),
 		).toHaveProp("accessibilityState", { disabled: false });
 	});
 
@@ -134,10 +134,10 @@ describe("EditorToolbar", () => {
 		});
 
 		expect(
-			screen.getByRole("button", { name: "format-indent-increase" }),
+			screen.getByRole("button", { name: "indent" }),
 		).toHaveProp("accessibilityState", { disabled: true });
 		expect(
-			screen.getByRole("button", { name: "format-indent-decrease" }),
+			screen.getByRole("button", { name: "dedent" }),
 		).toHaveProp("accessibilityState", { disabled: false });
 	});
 
@@ -150,7 +150,7 @@ describe("EditorToolbar", () => {
 		});
 
 		expect(
-			screen.getByRole("button", { name: "check-box-outline-blank" }),
+			screen.getByRole("button", { name: "square-o" }),
 		).toHaveProp("accessibilityState", { disabled: true });
 	});
 
@@ -165,10 +165,10 @@ describe("EditorToolbar", () => {
 		});
 
 		fireEvent.press(getByRole("button", { name: "undo" }));
-		fireEvent.press(getByRole("button", { name: "redo" }));
-		fireEvent.press(getByRole("button", { name: "format-indent-increase" }));
-		fireEvent.press(getByRole("button", { name: "format-indent-decrease" }));
-		fireEvent.press(getByRole("button", { name: "check-box-outline-blank" }));
+		fireEvent.press(getByRole("button", { name: "repeat" }));
+		fireEvent.press(getByRole("button", { name: "indent" }));
+		fireEvent.press(getByRole("button", { name: "dedent" }));
+		fireEvent.press(getByRole("button", { name: "square-o" }));
 
 		expect(mockExecuteEditorCommand).toHaveBeenNthCalledWith(
 			1,
@@ -192,23 +192,23 @@ describe("EditorToolbar", () => {
 
 		expect(screen.getByText("TODO: Insert Image")).toBeTruthy();
 		expect(
-			screen.queryByRole("button", { name: "add-photo-alternate" }),
+			screen.queryByRole("button", { name: "image" }),
 		).toBeNull();
 	});
 
 	it("renders the native image button outside web and wires it to image insertion", () => {
 		const { getByRole } = renderToolbar();
 
-		fireEvent.press(getByRole("button", { name: "add-photo-alternate" }));
+		fireEvent.press(getByRole("button", { name: "image" }));
 
 		expect(mockHandleInsertImage).toHaveBeenCalledTimes(1);
 		expect(screen.queryByText("TODO: Insert Image")).toBeNull();
 	});
 
-	it("inserts a collapsible section when the expand-more button is pressed", () => {
+	it("inserts a collapsible section when the angle-down button is pressed", () => {
 		const { getByRole } = renderToolbar();
 
-		fireEvent.press(getByRole("button", { name: "expand-more" }));
+		fireEvent.press(getByRole("button", { name: "angle-down" }));
 
 		expect(mockHandleInsertCollapsible).toHaveBeenCalledTimes(1);
 	});

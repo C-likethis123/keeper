@@ -1,6 +1,6 @@
 import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import { forwardRef, useMemo } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
@@ -29,7 +29,7 @@ export const SearchBar = forwardRef<
 					compact && styles.searchInputContainerCompact,
 				]}
 			>
-				<MaterialIcons
+				<FontAwesome
 					name="search"
 					size={20}
 					color={theme.colors.textMuted}
@@ -54,7 +54,7 @@ export const SearchBar = forwardRef<
 						onPress={() => setSearchQuery("")}
 						style={styles.clearButton}
 					>
-						<MaterialIcons
+						<FontAwesome
 							name="close"
 							size={18}
 							color={theme.colors.textMuted}

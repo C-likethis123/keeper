@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import React from "react";
 
 jest.mock("@expo/vector-icons", () => ({
-	MaterialIcons: ({ name }: { name: string }) => name,
+	FontAwesome: ({ name }: { name: string }) => name,
 }));
 
 jest.mock("@/hooks/useExtendedTheme", () => ({

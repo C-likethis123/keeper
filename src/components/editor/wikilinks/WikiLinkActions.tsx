@@ -1,6 +1,6 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
-import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import React, { useCallback } from "react";
 import {
@@ -57,7 +57,7 @@ export function WikiLinkActions({ onOpenWikiLink }: WikiLinkActionsProps) {
 								onPress={hideActions}
 								style={styles.closeButton}
 							>
-								<MaterialIcons
+								<FontAwesome
 									name="close"
 									size={24}
 									color={theme.colors.textMuted}
@@ -66,8 +66,8 @@ export function WikiLinkActions({ onOpenWikiLink }: WikiLinkActionsProps) {
 						</View>
 
 						<Pressable style={styles.actionItem} onPress={handleOpen}>
-							<MaterialIcons
-								name="open-in-new"
+							<FontAwesome
+								name="external-link"
 								size={22}
 								color={theme.colors.primary}
 							/>
@@ -75,8 +75,8 @@ export function WikiLinkActions({ onOpenWikiLink }: WikiLinkActionsProps) {
 						</Pressable>
 
 						<Pressable style={styles.actionItem} onPress={handleCopy}>
-							<MaterialIcons
-								name="content-copy"
+							<FontAwesome
+								name="copy"
 								size={22}
 								color={theme.colors.text}
 							/>

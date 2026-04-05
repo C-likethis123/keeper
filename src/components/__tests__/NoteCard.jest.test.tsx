@@ -12,7 +12,7 @@ jest.mock("expo-router", () => ({
 }));
 
 jest.mock("@expo/vector-icons", () => ({
-	MaterialIcons: ({ name }: { name: string }) => name,
+	FontAwesome: ({ name }: { name: string }) => name,
 }));
 
 jest.mock("@/hooks/useExtendedTheme", () => ({

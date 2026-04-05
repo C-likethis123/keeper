@@ -3,7 +3,7 @@ import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
-import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -47,8 +47,8 @@ export default function NoteEditorHeader({
 						accessibilityRole="button"
 						accessibilityLabel="Back"
 					>
-						<MaterialIcons
-							name="arrow-back"
+						<FontAwesome
+							name="arrow-left"
 							size={24}
 							style={styles.backIcon}
 						/>
@@ -82,8 +82,8 @@ export default function NoteEditorHeader({
 						accessibilityRole="button"
 						accessibilityLabel="Pin note"
 					>
-						<MaterialIcons
-							name="push-pin"
+						<FontAwesome
+							name="thumb-tack"
 							size={24}
 							style={[
 								styles.pinIcon,
@@ -101,8 +101,8 @@ export default function NoteEditorHeader({
 						accessibilityRole="button"
 						accessibilityLabel="Delete note"
 					>
-						<MaterialIcons
-							name="delete"
+						<FontAwesome
+							name="trash"
 							size={24}
 							style={styles.deleteIcon}
 						/>

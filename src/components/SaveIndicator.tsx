@@ -1,6 +1,6 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
-import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -16,8 +16,8 @@ const titleMap = {
 };
 
 const iconNameMap = {
-	saving: "sync",
-	saved: "check-circle",
+	saving: "spinner" as const,
+	saved: "check-circle" as const,
 } as const;
 
 export function SaveIndicator({ status }: Props) {
@@ -30,7 +30,7 @@ export function SaveIndicator({ status }: Props) {
 	const iconName = iconNameMap[status];
 	return (
 		<View style={styles.container}>
-			<MaterialIcons
+			<FontAwesome
 				name={iconName}
 				size={16}
 				style={status === "saving" ? styles.savingIcon : styles.savedIcon}

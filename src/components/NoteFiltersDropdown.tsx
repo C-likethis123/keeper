@@ -6,7 +6,7 @@ import {
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { NoteStatus, NoteType } from "@/services/notes/types";
-import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -76,7 +76,7 @@ function FilterSection<T extends string>({
 								{option.label}
 							</Text>
 							{isSelected ? (
-								<MaterialIcons
+								<FontAwesome
 									name="check"
 									size={18}
 									color={theme.colors.primaryContrast}
@@ -136,12 +136,12 @@ export default function NoteFiltersDropdown({
 				]}
 				onPress={() => setIsOpen((current) => !current)}
 			>
-				<MaterialIcons name="filter-list" size={18} color="#6b7280" />
+				<FontAwesome name="filter" size={18} color="#6b7280" />
 				<Text style={styles.triggerText} numberOfLines={1}>
 					{summaryLabel}
 				</Text>
-				<MaterialIcons
-					name={isOpen ? "expand-less" : "expand-more"}
+				<FontAwesome
+					name={isOpen ? "angle-up" : "angle-down"}
 					size={18}
 					color="#6b7280"
 				/>

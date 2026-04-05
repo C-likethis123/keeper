@@ -18,7 +18,7 @@ if (typeof __DEV__ === "undefined" || __DEV__) {
 				/^Pressable/,
 				/^ScrollView/,
 				/^ActivityIndicator/,
-				/^MaterialIcons/,
+				/^FontAwesome/,
 			],
 			onlyLogs: false,
 		});
