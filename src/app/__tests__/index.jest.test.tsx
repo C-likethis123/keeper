@@ -177,7 +177,6 @@ describe("Index", () => {
 			initializationStatus: "ready",
 			initializationError: undefined,
 			contentVersion: 0,
-			notesRoot: undefined,
 		});
 	});
 

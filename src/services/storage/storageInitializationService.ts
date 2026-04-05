@@ -16,7 +16,6 @@ export class StorageInitializationService {
     try {
       const result = await storageEngine.initialize();
       setNotesRoot(result.notesRoot);
-      useStorageStore.getState().setNotesRoot(result.notesRoot);
       useStorageStore.getState().setInitializationReady();
       return {
         needsRebuild: result.needsRebuild,
