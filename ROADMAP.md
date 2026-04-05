@@ -396,34 +396,24 @@ Add support for collapsible sections using the `<details>` HTML pattern, includi
 
 ---
 
-### Phase 10: Extract Todos From Notes
+### Phase 10: Extract Todos From Notes ✅
 
 Turn inline `todo:` entries inside note blocks into first-class tracked todos that stay linked back to the originating note context.
 
-**Status**: Planned
-**Task file**: `tasks/001-extract-todos-from-notes.md`
+**Status**: Implemented
 **Current implementation evidence**:
-- Todo notes already exist as a first-class note type with status metadata in frontmatter, storage mappers, and note-list filters
-- Wikilink resolution and create-on-miss flows already exist in the editor, including exact-title matching and stub-note creation
-- Note type derivation already recognizes todo-like content, but inline block content is not yet promoted into individually tracked todo records
-**Goals**:
-- Detect `todo:` prefixes typed inside note blocks and convert them into wikilinked todo references instead of leaving them as plain text
-- Reuse or create a canonical todo target so repeated references resolve consistently through the existing wikilink infrastructure
-- Track todo lifecycle metadata separately from the parent note body, including when the todo was first created and when it was later marked done
-- Preserve enough metadata to calculate or display the elapsed time between todo creation and completion
-**Candidate files**:
-- `src/components/editor/blocks/UnifiedBlock.tsx`
-- `src/components/editor/HybridEditor.tsx`
+- Typing `todo: ` in a block triggers conversion into a `[[TODO: ...]]` wikilink via `wikiLinkUtils.ts` (`makeTodoTitle` helper)
+- `HybridEditor` strips the `todo: ` prefix when resolving existing todos while preserving the full `TODO: ` title for new-note creation
+- Wikilink create-on-miss flow generates stub todo notes with the canonical `TODO: <text>` title format
+- Todo lifecycle metadata (`createdAt`, `completedAt`) is persisted through frontmatter and storage mappers
+- Automated test coverage exists in `HybridEditorWikilinkEditing.jest.test.tsx` for trigger conversion, exact-title resolution, and stub-note creation
+
+**Key files**:
 - `src/components/editor/wikilinks/wikiLinkUtils.ts`
-- `src/services/notes/types.ts`
+- `src/components/editor/HybridEditor.tsx`
 - `src/services/notes/frontmatter.ts`
-- `src/services/notes/editorEntryPersistence.ts`
-- `src/components/NoteEditorView.tsx`
-- `src/services/notes/indexDb/mapper.ts`
-**Open design points**:
-- Whether tracked todos remain ordinary todo notes with richer metadata or require a dedicated linked-task record shape
-- How to normalize duplicate `todo:` text across notes so unrelated todos do not collapse onto the same wikilink target by accident
-- Where completion timing should be surfaced in the UI: todo note metadata, note list badges, backlinks, or all three
+- `src/services/notes/types.ts`
+- `src/components/editor/__tests__/HybridEditorWikilinkEditing.jest.test.tsx`
 
 ---
 

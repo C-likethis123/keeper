@@ -2,10 +2,14 @@
 
 ## Status
 
-- Planned
-- Roadmap entry: `Phase 10: Extract Todos From Notes`
+- ✅ Implemented
+- Roadmap entry: `Phase 10: Extract Todos From Notes ✅`
 
-## Overview
+## Summary
+
+Inline `todo: ` capture inside note blocks is now supported. Typing `todo: ` in a block converts it into a `[[TODO: ...]]` wikilink via `wikiLinkUtils.ts` (`makeTodoTitle`), the wikilink create-on-miss flow generates a stub todo note with the canonical title, and todo lifecycle metadata (`createdAt`, `completedAt`) is persisted through frontmatter and storage mappers. Automated test coverage exists in `HybridEditorWikilinkEditing.jest.test.tsx`.
+
+## Original Overview
 
 Support inline `todo:` capture directly inside note blocks. When a user types `todo: ` in note content, Keeper should convert that text into a wikilinked todo reference, ensure the referenced todo can be tracked independently, and preserve lifecycle timing from creation through completion.
 
