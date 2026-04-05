@@ -150,20 +150,28 @@ describe("HybridEditor wikilink editing flows", () => {
 		expect(useEditorState.getState().getContent()).toBe("[[");
 	});
 
-	it("converts typed todo text immediately and links the todo in the background", async () => {
+	it("converts typed todo text when leaving the block and links the todo in the background", async () => {
 		mockListNotes.mockResolvedValue({ items: [] });
 		const saveDeferred =
 			createDeferred<Awaited<ReturnType<typeof mockSaveNote>>>();
 		mockSaveNote.mockReturnValue(saveDeferred.promise);
 
-		renderEditor("");
+		renderEditor("todo do this\nNext block");
 
-		const input = screen.UNSAFE_getByType(TextInput);
-		fireEvent(input, "focus");
-		fireEvent.changeText(input, "todo do this");
-		fireEvent(input, "selectionChange", {
+		const inputs = screen.UNSAFE_getAllByType(TextInput);
+		fireEvent(inputs[0], "focus");
+		fireEvent(inputs[0], "selectionChange", {
 			nativeEvent: { selection: { start: 12, end: 12 } },
 		});
+		expect(useEditorState.getState().document.blocks[0]).toEqual(
+			expect.objectContaining({
+				type: "paragraph",
+				content: "todo do this",
+			}),
+		);
+
+		fireEvent(inputs[0], "blur");
+		fireEvent(inputs[1], "focus");
 
 		await waitFor(() => {
 			expect(useEditorState.getState().document.blocks[0]).toEqual(
@@ -215,6 +223,52 @@ describe("HybridEditor wikilink editing flows", () => {
 		expect(
 			screen.queryByPlaceholderText("Search or create notes..."),
 		).not.toBeOnTheScreen();
+	});
+
+	it("converts a matching todo when the block loses focus entirely", async () => {
+		mockSaveNote.mockResolvedValue({
+			id: "todo-note-id-blur",
+			title: "TODO: Ship blur",
+			content: "",
+			lastUpdated: 1,
+			isPinned: false,
+			noteType: "todo",
+			status: "open",
+			createdAt: 1710000000000,
+			completedAt: null,
+		});
+
+		renderEditor("");
+
+		const input = screen.UNSAFE_getByType(TextInput);
+		fireEvent(input, "focus");
+		fireEvent.changeText(input, "todo: Ship blur");
+		fireEvent(input, "selectionChange", {
+			nativeEvent: { selection: { start: 15, end: 15 } },
+		});
+
+		expect(useEditorState.getState().document.blocks[0]).toEqual(
+			expect.objectContaining({
+				type: "paragraph",
+				content: "todo: Ship blur",
+			}),
+		);
+
+		fireEvent(input, "blur");
+
+		await waitFor(() => {
+			expect(useEditorState.getState().document.blocks[0]).toEqual(
+				expect.objectContaining({
+					type: "checkboxList",
+					content: "[[TODO: Ship blur]]",
+					attributes: expect.objectContaining({
+						checked: false,
+						listLevel: 0,
+						linkedNoteId: "todo-note-id-blur",
+					}),
+				}),
+			);
+		});
 	});
 
 	it("creates tracked todo blocks when Enter is used on a typed todo line", async () => {

@@ -22,6 +22,7 @@ interface BlockRowHandlers {
 	onBackspaceAtStart: (index: number) => void;
 	onSpace: (index: number, cursorOffset: number) => boolean;
 	onEnter: (index: number, cursorOffset: number) => void;
+	onBlockExit?: (index: number) => void;
 	onSelectionChange: (index: number, start: number, end: number) => void;
 	onDelete: (index: number) => void;
 	onCheckboxToggle: (index: number) => void;
@@ -62,6 +63,7 @@ export const BlockRow = React.memo(function BlockRow({
 		onBackspaceAtStart: handlers.onBackspaceAtStart,
 		onSpace: handlers.onSpace,
 		onEnter: handlers.onEnter,
+		onBlockExit: handlers.onBlockExit,
 		onSelectionChange: handlers.onSelectionChange,
 		onDelete: handlers.onDelete,
 		listItemNumber,

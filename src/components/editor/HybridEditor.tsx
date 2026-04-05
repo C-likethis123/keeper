@@ -11,7 +11,7 @@ import {
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
 	Platform,
 	Pressable,
@@ -30,11 +30,11 @@ import {
 } from "./core/BlockNode";
 import { createCollapsedSelection } from "./core/Selection";
 import { TransactionBuilder } from "./core/Transaction";
-import { parseTodoTrigger } from "./rendering/InlineMarkdown";
 import {
 	SlashCommandProvider,
 	useSlashCommandContext,
 } from "./slash-commands/SlashCommandContext";
+import { parseTodoTrigger } from "./todoTrigger";
 import { SlashCommandModal } from "./slash-commands/SlashCommandModal";
 import { WikiLinkActions } from "./wikilinks/WikiLinkActions";
 import {
@@ -84,9 +84,6 @@ function HybridEditorContent() {
 	const ignoreNextContentChangeRef = useRef<number | null>(null);
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
-	const todoConversionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-		null,
-	);
 	const { scrollViewRef, updateScrollY, updateViewHeight } =
 		useEditorScrollView();
 	const { focusBlock } = useFocusBlock();
@@ -214,82 +211,37 @@ function HybridEditorContent() {
 		[focusBlock, syncTrackedTodoLink],
 	);
 
-	useEffect(() => {
-		if (todoConversionTimeoutRef.current) {
-			clearTimeout(todoConversionTimeoutRef.current);
-			todoConversionTimeoutRef.current = null;
-		}
-
-		const focusedIndex = selection?.focus.blockIndex ?? null;
-		if (focusedIndex === null) {
-			return undefined;
-		}
-
-		if (
-			selection?.anchor.blockIndex !== focusedIndex ||
-			selection?.anchor.offset !== selection?.focus.offset
-		) {
-			return undefined;
-		}
-
-		const block = blocks[focusedIndex];
-		if (
-			!block ||
-			!(
-				block.type === BlockType.paragraph ||
-				block.type === BlockType.bulletList ||
-				block.type === BlockType.numberedList
-			)
-		) {
-			return undefined;
-		}
-
-		const todoMatch = parseTodoTrigger(block.content);
-		if (!todoMatch) {
-			return undefined;
-		}
-
-		if (selection.focus.offset !== block.content.length) {
-			return undefined;
-		}
-
-		const expectedContent = block.content;
-		todoConversionTimeoutRef.current = setTimeout(() => {
-			todoConversionTimeoutRef.current = null;
-			const currentState = useEditorState.getState();
-			const currentBlock = currentState.document.blocks[focusedIndex];
-			const currentSelection = currentState.selection;
-			if (
-				!currentBlock ||
-				!(
-					currentBlock.type === BlockType.paragraph ||
-					currentBlock.type === BlockType.bulletList ||
-					currentBlock.type === BlockType.numberedList
-				) ||
-				currentBlock.content !== expectedContent ||
-				!currentSelection ||
-				currentSelection.anchor.blockIndex !== focusedIndex ||
-				currentSelection.focus.blockIndex !== focusedIndex ||
-				currentSelection.anchor.offset !== currentSelection.focus.offset ||
-				currentSelection.focus.offset !== currentBlock.content.length
-			) {
-				return;
-			}
-
-			convertTodoBlock(focusedIndex);
-		}, 500);
-
-		return () => {
-			if (todoConversionTimeoutRef.current) {
-				clearTimeout(todoConversionTimeoutRef.current);
-				todoConversionTimeoutRef.current = null;
-			}
-		};
-	}, [blocks, convertTodoBlock, selection]);
-
 	const getBlockAtIndex = useCallback((index: number) => {
 		return useEditorState.getState().document.blocks[index] ?? null;
 	}, []);
+
+	const maybeConvertTrackedTodo = useCallback(
+		(
+			index: number,
+			options?: {
+				insertNextBlock?: boolean;
+			},
+		) => {
+			const block = useEditorState.getState().document.blocks[index];
+			if (
+				!block ||
+				!(
+					block.type === BlockType.paragraph ||
+					block.type === BlockType.bulletList ||
+					block.type === BlockType.numberedList
+				)
+			) {
+				return false;
+			}
+
+			if (!parseTodoTrigger(block.content)) {
+				return false;
+			}
+
+			return convertTodoBlock(index, options);
+		},
+		[convertTodoBlock],
+	);
 
 	const handleContentChange = useCallback(
 		(index: number, content: string) => {
@@ -510,14 +462,7 @@ function HybridEditorContent() {
 				return; // Conversion happened, don't split
 			}
 
-			const todoMatch = parseTodoTrigger(block.content);
-			if (
-				todoMatch &&
-				(block.type === BlockType.paragraph ||
-					block.type === BlockType.bulletList ||
-					block.type === BlockType.numberedList)
-			) {
-				convertTodoBlock(index, { insertNextBlock: true });
+			if (maybeConvertTrackedTodo(index, { insertNextBlock: true })) {
 				return;
 			}
 
@@ -541,7 +486,7 @@ function HybridEditorContent() {
 		},
 		[
 			handleBlockTypeDetection,
-			convertTodoBlock,
+			maybeConvertTrackedTodo,
 			focusBlock,
 			updateBlockType,
 			splitBlock,
@@ -571,6 +516,13 @@ function HybridEditorContent() {
 			});
 		},
 		[setSelection],
+	);
+
+	const handleBlockExit = useCallback(
+		(index: number) => {
+			maybeConvertTrackedTodo(index);
+		},
+		[maybeConvertTrackedTodo],
 	);
 
 	const handleOpenWikiLink = useCallback(
@@ -656,6 +608,7 @@ function HybridEditorContent() {
 			onBackspaceAtStart: handleBackspaceAtStart,
 			onSpace: handleSpace,
 			onEnter: handleEnter,
+			onBlockExit: handleBlockExit,
 			onSelectionChange: handleSelectionChange,
 			onDelete: handleDelete,
 			onCheckboxToggle: handleCheckboxToggle,
@@ -668,6 +621,7 @@ function HybridEditorContent() {
 			handleBackspaceAtStart,
 			handleSpace,
 			handleEnter,
+			handleBlockExit,
 			handleSelectionChange,
 			handleDelete,
 			handleCheckboxToggle,

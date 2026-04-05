@@ -42,6 +42,7 @@ export interface BlockConfig {
 	onBackspaceAtStart: (index: number) => void;
 	onSpace: (index: number, cursorOffset: number) => boolean;
 	onEnter: (index: number, cursorOffset: number, zone?: string) => void;
+	onBlockExit?: (index: number) => void;
 	onSelectionChange: (index: number, start: number, end: number) => void;
 	onDelete: (index: number) => void;
 	listItemNumber?: number; // For numbered list items

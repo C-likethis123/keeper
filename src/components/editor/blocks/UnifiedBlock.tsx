@@ -41,6 +41,7 @@ export function UnifiedBlock({
 	onBackspaceAtStart,
 	onSpace,
 	onEnter,
+	onBlockExit,
 	onSelectionChange,
 	listItemNumber,
 	onCheckboxToggle,
@@ -95,11 +96,12 @@ export function UnifiedBlock({
 	}, [focusBlock, index, isFocused]);
 
 	const handleBlur = useCallback(() => {
+		onBlockExit?.(index);
 		const currentFocus = getFocusedBlockIndex();
 		if (currentFocus === index) {
 			blurBlock();
 		}
-	}, [blurBlock, getFocusedBlockIndex, index]);
+	}, [blurBlock, getFocusedBlockIndex, index, onBlockExit]);
 
 	const handleSelectionChange = useCallback(
 		(e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {

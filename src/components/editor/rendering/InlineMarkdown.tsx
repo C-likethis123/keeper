@@ -24,12 +24,6 @@ interface TextSegment {
 	isMath?: boolean; // For inline math rendering
 }
 
-export interface TodoTriggerMatch {
-	keyword: string;
-	body: string;
-	separator: string;
-}
-
 /// Renders inline markdown formatting (bold, italic, code, links, wiki links, math)
 export function InlineMarkdown({
 	text,
@@ -134,20 +128,6 @@ export function InlineMarkdown({
 			{elements.length > 0 ? elements : <Text style={style}>{"\u200B"}</Text>}
 		</View>
 	);
-}
-
-export function parseTodoTrigger(text: string): TodoTriggerMatch | null {
-	const match = /^\s*(todo)(:?)(\s+)(.+)\s*$/i.exec(text);
-	const body = match?.[4]?.trim();
-	if (!match || !body) {
-		return null;
-	}
-
-	return {
-		keyword: match[1],
-		separator: `${match[2]}${match[3]}`,
-		body,
-	};
 }
 
 function parseInlineMarkdown(
