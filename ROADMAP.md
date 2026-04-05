@@ -417,33 +417,26 @@ Turn inline `todo:` entries inside note blocks into first-class tracked todos th
 
 ---
 
-### Phase 11: Investigate Local-First Note Sections and Ranking
+### Phase 11: Local-First Note Sections and Ranking
 
-Investigate how Keeper should group notes into sections and rank them within those sections without assuming a server-side ranking service.
+Group notes into derived sections (Pinned → Recently Edited → MOC collections → All Notes) with graph-powered ranking, no server dependency.
 
-**Status**: Planned
+**Status**: In Progress
 **Task file**: `tasks/002-investigate-local-note-sections-and-ranking.md`
-**Current implementation evidence**:
-- Note metadata and content-derived note types already exist in frontmatter, storage indexes, and note-list filtering flows
-- SQLite-backed search already ranks query results locally through FTS, so some relevance infrastructure already exists on device
-- The current note list supports filtering, but not higher-level grouped sections with an explicit section-aware ranking model
-**Goals**:
-- Define what a "section" should mean in Keeper: explicit groups, derived buckets, note-type sections, or a hybrid model
-- Identify ranking signals that can be computed locally from existing note content, metadata, timestamps, and link relationships
-- Determine how section grouping and ranking should interact with the current note filters and future organization views
-- Prefer an initial implementation that is deterministic, explainable, and tunable without introducing a server dependency
-**Candidate files**:
-- `src/services/notes/notesIndexDb.ts`
-- `src/services/notes/notesIndex.ts`
-- `src/services/notes/noteTypeDerivation.ts`
-- `src/hooks/useNotes.ts`
-- `src/app/index.tsx`
-- `src/components/NoteFiltersDropdown.tsx`
-- `src/components/NoteGrid.tsx`
-**Open design points**:
-- Whether sections should be persisted as explicit metadata, derived at read time, or handled as a hybrid
-- How much of the ranking pipeline should live in SQLite queries versus TypeScript post-processing
-- How to make section membership and ranking feel understandable rather than arbitrary to the user
+**Grove workspace**: `codex-local-note-sec-15df` / branch `codex/local-note-sections-ranking`
+**Design decisions**:
+- **Sections are derived views**, not user-managed metadata: computed buckets (Recently Edited, Pinned) + MOC-style collections detected by outgoing-link count
+- **Graph queries use `WITH RECURSIVE` CTEs** — no native SQLite extension needed. Recursive CTEs are built into SQLite, perform well at note-vault scale, and work on iOS/Android/desktop. A C extension can be added for Tauri desktop only if performance demands it later.
+**Implementation plan** (7 steps):
+1. Add `wiki_links` edge table (migration 004) — source_id → target_id for graph traversal
+2. Populate `wiki_links` during index rebuild — parse `[[wikilink]]` patterns from note bodies
+3. Add `modified` column to notes index — from frontmatter, with file `mtime` fallback
+4. Add graph query functions — backlinks, transitive backlinks, outgoing links, neighborhood, MOC scores, orphans (all via recursive CTEs)
+5. Build sectioned note list in `useNotes` — Pinned → Recently Edited (7-day window) → All Notes, with dynamic MOC sections for notes with 3+ outgoing links
+6. Update `NoteGrid` to render sections with headers
+7. Desktop parity — equivalent schema and queries in Tauri/Rust storage layer
+**Key files**: `src/services/notes/notesIndexDb.ts`, `src/services/notes/notesIndex.ts`, `src/hooks/useNotes.ts`, `src/components/NoteGrid.tsx`, `src-tauri/src/storage/`
+**Risks**: Indexing performance on large vaults (mitigation: incremental re-parse), MOC detection threshold tuning, circular wikilink handling (capped depth + UNION dedup)
 
 ---
 
