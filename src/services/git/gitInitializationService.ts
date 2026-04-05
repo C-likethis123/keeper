@@ -2,7 +2,9 @@ import {
 	type StartupTelemetry,
 	createNoopStartupTelemetry,
 } from "@/services/startup/startupTelemetry";
+import { NOTES_ROOT } from "@/services/notes/Notes";
 import { getStorageEngine } from "@/services/storage/storageEngine";
+import { GitService } from "./gitService";
 import { getGitEngine } from "./gitEngine";
 import { DefaultDbSyncService } from "./init/dbSyncService";
 import { DefaultGitInitErrorMapper } from "./init/errorMapper";
@@ -213,11 +215,31 @@ export class GitInitializationService {
 			console.log(
 				"[GitInitializationService] Valid repository already exists, skipping clone",
 			);
+			const hasPendingJournal = await dependencies.stateStore
+				.readPendingJournal()
+				.then((entries) => entries.length > 0);
+			if (hasPendingJournal) {
+				await GitService.prepareRecoveryForRemoteSync();
+			}
 			const syncResult =
 				await dependencies.remoteSyncService.syncWithRemote(telemetry);
 			this.applySyncMetrics(metrics, syncResult.metrics);
 
 			if (syncResult.success) {
+				if (hasPendingJournal) {
+					const recoveryResult = await GitService.recoverPendingChanges();
+					if (!recoveryResult.success) {
+						console.warn(
+							"[GitInitializationService] Recovery push failed:",
+							recoveryResult.error,
+						);
+					}
+					if (recoveryResult.didPush) {
+						const recoveredHead =
+							await dependencies.gitEngine.resolveHeadOid(NOTES_ROOT);
+						await dependencies.stateStore.writeLastSyncedOid(recoveredHead);
+					}
+				}
 				console.log(
 					"[GitInitializationService] Successfully synced with remote",
 				);
@@ -232,6 +254,9 @@ export class GitInitializationService {
 				"[GitInitializationService] Failed to sync with remote:",
 				syncResult.error,
 			);
+			if (hasPendingJournal) {
+				await GitService.restorePendingChangesFromJournal();
+			}
 			return {
 				success: true,
 				wasCloned: false,

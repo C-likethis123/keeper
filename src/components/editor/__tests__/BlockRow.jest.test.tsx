@@ -4,7 +4,7 @@ import { createDocumentFromMarkdown } from "@/components/editor/core/Document";
 import { useEditorState } from "@/stores/editorStore";
 import { render } from "@testing-library/react-native";
 import React from "react";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 import { blockRegistry } from "../blocks/BlockRegistry";
 
 const handlers = {
@@ -67,7 +67,7 @@ describe("BlockRow", () => {
 		expect(UNSAFE_getAllByType(View)[0].props.style).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					position: "sticky",
+					position: Platform.OS === "web" ? "sticky" : "relative",
 					top: 0,
 					zIndex: 20,
 				}),

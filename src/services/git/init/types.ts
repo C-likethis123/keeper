@@ -1,4 +1,5 @@
 import type { GitEngine } from "@/services/git/engines/GitEngine";
+import type { NoteSaveInput } from "@/services/notes/types";
 import type { StartupTelemetry } from "@/services/startup/startupTelemetry";
 
 export interface GitHubConfig {
@@ -54,6 +55,15 @@ export interface SyncWithRemoteResult {
 	metrics: RemoteSyncMetrics;
 }
 
+export type GitJournalOperation = "add" | "modify" | "delete";
+
+export interface GitJournalEntry {
+	filePath: string;
+	operation: GitJournalOperation;
+	note?: NoteSaveInput;
+	updatedAt: number;
+}
+
 export interface SyncDbAfterPullResult {
 	didDbSync: boolean;
 	dbSyncMs: number;
@@ -79,6 +89,8 @@ export interface GitSyncStateStore {
 	writeLastSyncedOid(oid: string): Promise<void>;
 	shouldForceRepoReset(): Promise<boolean>;
 	clearForceRepoResetFlag(): Promise<void>;
+	readPendingJournal(): Promise<GitJournalEntry[]>;
+	writePendingJournal(entries: GitJournalEntry[]): Promise<void>;
 }
 
 export interface RepoBootstrapper {
