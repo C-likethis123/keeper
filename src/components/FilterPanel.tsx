@@ -48,13 +48,15 @@ function FilterRow({
 			accessibilityRole="button"
 			accessibilityState={{ selected }}
 		>
-			<Text
-				style={[styles.optionText, selected && styles.optionTextSelected]}
-			>
+			<Text style={[styles.optionText, selected && styles.optionTextSelected]}>
 				{label}
 			</Text>
 			{selected ? (
-				<FontAwesome name="check" size={16} color={theme.colors.primaryContrast} />
+				<FontAwesome
+					name="check"
+					size={16}
+					color={theme.colors.primaryContrast}
+				/>
 			) : null}
 		</Pressable>
 	);
@@ -105,7 +107,11 @@ export function FilterPanel() {
 							accessibilityLabel="Close filter"
 							hitSlop={8}
 						>
-							<FontAwesome name="times" size={20} color={theme.colors.textMuted} />
+							<FontAwesome
+								name="times"
+								size={20}
+								color={theme.colors.textMuted}
+							/>
 						</Pressable>
 					</View>
 					<ScrollView style={styles.content}>

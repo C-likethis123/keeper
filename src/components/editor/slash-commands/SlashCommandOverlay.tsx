@@ -1,5 +1,5 @@
-import type { ExtendedTheme } from "@/constants/themes/types";
 import Loader from "@/components/shared/Loader";
+import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";

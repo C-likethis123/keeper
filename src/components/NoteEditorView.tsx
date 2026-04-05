@@ -1,11 +1,11 @@
-import type { ExtendedTheme } from "@/constants/themes/types";
 import NoteEditorHeader from "@/components/NoteEditorHeader";
 import TemplatePickerModal from "@/components/TemplatePickerModal";
 import { FilterChip } from "@/components/shared/FilterChip";
+import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useAutoSave } from "@/hooks/useAutoSave";
-import { useStyles } from "@/hooks/useStyles";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { useStyles } from "@/hooks/useStyles";
 import { GitService } from "@/services/git/gitService";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";

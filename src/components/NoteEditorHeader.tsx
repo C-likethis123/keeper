@@ -47,11 +47,7 @@ export default function NoteEditorHeader({
 						accessibilityRole="button"
 						accessibilityLabel="Back"
 					>
-						<FontAwesome
-							name="arrow-left"
-							size={24}
-							style={styles.backIcon}
-						/>
+						<FontAwesome name="arrow-left" size={24} style={styles.backIcon} />
 					</Pressable>
 				</View>
 				<View style={styles.headerTitleWrapper}>
@@ -101,11 +97,7 @@ export default function NoteEditorHeader({
 						accessibilityRole="button"
 						accessibilityLabel="Delete note"
 					>
-						<FontAwesome
-							name="trash"
-							size={24}
-							style={styles.deleteIcon}
-						/>
+						<FontAwesome name="trash" size={24} style={styles.deleteIcon} />
 					</Pressable>
 				</View>
 			</View>

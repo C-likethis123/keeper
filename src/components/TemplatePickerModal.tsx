@@ -1,6 +1,6 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
-import useSuspenseTemplates from "@/hooks/useSuspenseTemplates";
 import { useStyles } from "@/hooks/useStyles";
+import useSuspenseTemplates from "@/hooks/useSuspenseTemplates";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";

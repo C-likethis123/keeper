@@ -1,6 +1,4 @@
-import {
-	InlineMarkdown,
-} from "@/components/editor/rendering/InlineMarkdown";
+import { InlineMarkdown } from "@/components/editor/rendering/InlineMarkdown";
 import { parseTodoTrigger } from "@/components/editor/todoTrigger";
 import { render } from "@testing-library/react-native";
 import React from "react";

@@ -7,8 +7,8 @@ import { useAppStartup } from "@/hooks/useAppStartup";
 import { useStyles } from "@/hooks/useStyles";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { ThemeProvider } from "@react-navigation/native";
-import { Drawer } from "expo-router/drawer";
 import { Stack } from "expo-router";
+import { Drawer } from "expo-router/drawer";
 import { useEffect } from "react";
 import {
 	ActivityIndicator,

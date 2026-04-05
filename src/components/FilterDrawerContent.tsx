@@ -5,13 +5,7 @@ import { useFilterStore } from "@/stores/filterStore";
 import { FontAwesome } from "@expo/vector-icons";
 import type { DrawerContentComponentProps } from "@react-navigation/drawer";
 import React from "react";
-import {
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	Text,
-	View,
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 const FILTER_OPTIONS: { label: string; value?: NoteType }[] = [
 	{ label: "All notes", value: undefined },
@@ -48,13 +42,15 @@ function FilterRow({
 			accessibilityRole="button"
 			accessibilityState={{ selected }}
 		>
-			<Text
-				style={[styles.optionText, selected && styles.optionTextSelected]}
-			>
+			<Text style={[styles.optionText, selected && styles.optionTextSelected]}>
 				{label}
 			</Text>
 			{selected ? (
-				<FontAwesome name="check" size={16} color={theme.colors.primaryContrast} />
+				<FontAwesome
+					name="check"
+					size={16}
+					color={theme.colors.primaryContrast}
+				/>
 			) : null}
 		</Pressable>
 	);

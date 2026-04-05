@@ -52,10 +52,16 @@ describe("NoteCard", () => {
 
 	it("opens the note when the card is pressed", () => {
 		render(
-			<NoteCard note={makeNote()} onDelete={jest.fn()} onPinToggle={jest.fn()} />,
+			<NoteCard
+				note={makeNote()}
+				onDelete={jest.fn()}
+				onPinToggle={jest.fn()}
+			/>,
 		);
 
-		fireEvent.press(screen.getByRole("button", { name: "Open note First note" }));
+		fireEvent.press(
+			screen.getByRole("button", { name: "Open note First note" }),
+		);
 
 		expect(mockPush).toHaveBeenCalledWith("/editor?id=note-1");
 	});
@@ -63,11 +69,19 @@ describe("NoteCard", () => {
 	it("deletes without opening the note when delete is pressed", () => {
 		const onDelete = jest.fn();
 
-		render(<NoteCard note={makeNote()} onDelete={onDelete} onPinToggle={jest.fn()} />);
+		render(
+			<NoteCard
+				note={makeNote()}
+				onDelete={onDelete}
+				onPinToggle={jest.fn()}
+			/>,
+		);
 
 		fireEvent.press(screen.getByLabelText("Delete note"));
 
-		expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: "note-1" }));
+		expect(onDelete).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "note-1" }),
+		);
 		expect(mockPush).not.toHaveBeenCalled();
 	});
 
@@ -75,7 +89,11 @@ describe("NoteCard", () => {
 		const onPinToggle = jest.fn();
 
 		render(
-			<NoteCard note={makeNote()} onDelete={jest.fn()} onPinToggle={onPinToggle} />,
+			<NoteCard
+				note={makeNote()}
+				onDelete={jest.fn()}
+				onPinToggle={onPinToggle}
+			/>,
 		);
 
 		fireEvent.press(screen.getByLabelText("Pin note"));

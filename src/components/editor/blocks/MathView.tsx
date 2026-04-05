@@ -73,7 +73,15 @@ export function MathView({
 
 	if (!expression.trim()) {
 		return (
-			<View style={[styles.container, displayMode ? { width: "100%", minHeight: 60 } : { alignSelf: "flex-start", minHeight: 24 }, style]}>
+			<View
+				style={[
+					styles.container,
+					displayMode
+						? { width: "100%", minHeight: 60 }
+						: { alignSelf: "flex-start", minHeight: 24 },
+					style,
+				]}
+			>
 				<Text style={[styles.fallback, styles.fallbackText]}>
 					{expression || " "}
 				</Text>
@@ -84,7 +92,15 @@ export function MathView({
 	if (Platform.OS === "web") {
 		if (error) {
 			return (
-				<View style={[styles.container, displayMode ? { width: "100%", minHeight: 60 } : { alignSelf: "flex-start", minHeight: 24 }, style]}>
+				<View
+					style={[
+						styles.container,
+						displayMode
+							? { width: "100%", minHeight: 60 }
+							: { alignSelf: "flex-start", minHeight: 24 },
+						style,
+					]}
+				>
 					<Text style={[styles.fallback, styles.fallbackError]}>
 						{expression}
 					</Text>

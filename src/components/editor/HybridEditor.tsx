@@ -34,8 +34,8 @@ import {
 	SlashCommandProvider,
 	useSlashCommandContext,
 } from "./slash-commands/SlashCommandContext";
-import { parseTodoTrigger } from "./todoTrigger";
 import { SlashCommandModal } from "./slash-commands/SlashCommandModal";
+import { parseTodoTrigger } from "./todoTrigger";
 import { WikiLinkActions } from "./wikilinks/WikiLinkActions";
 import {
 	WikiLinkProvider,

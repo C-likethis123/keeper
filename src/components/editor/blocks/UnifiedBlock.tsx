@@ -2,8 +2,8 @@ import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVert
 import TextInput from "@/components/shared/TextInput";
 import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { useStyles } from "@/hooks/useStyles";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { useStyles } from "@/hooks/useStyles";
 import { useEditorBlockSelection, useEditorState } from "@/stores/editorStore";
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import type { GestureResponderEvent } from "react-native";

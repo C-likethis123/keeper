@@ -50,14 +50,8 @@ export function IconButton({
 					size={size}
 					style={
 						variant === "circle"
-							? [
-									styles.icon,
-									disabled && styles.iconDisabled,
-								]
-							: [
-									styles.iconFlat,
-									disabled && styles.iconDisabled,
-								]
+							? [styles.icon, disabled && styles.iconDisabled]
+							: [styles.iconFlat, disabled && styles.iconDisabled]
 					}
 				/>
 			</Pressable>

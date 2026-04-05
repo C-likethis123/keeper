@@ -117,12 +117,14 @@ describe("EditorToolbar", () => {
 			}),
 		});
 
-		expect(
-			screen.getByRole("button", { name: "indent" }),
-		).toHaveProp("accessibilityState", { disabled: false });
-		expect(
-			screen.getByRole("button", { name: "dedent" }),
-		).toHaveProp("accessibilityState", { disabled: false });
+		expect(screen.getByRole("button", { name: "indent" })).toHaveProp(
+			"accessibilityState",
+			{ disabled: false },
+		);
+		expect(screen.getByRole("button", { name: "dedent" })).toHaveProp(
+			"accessibilityState",
+			{ disabled: false },
+		);
 	});
 
 	it("disables indent when a list item is already at the maximum supported level", () => {
@@ -133,12 +135,14 @@ describe("EditorToolbar", () => {
 			}),
 		});
 
-		expect(
-			screen.getByRole("button", { name: "indent" }),
-		).toHaveProp("accessibilityState", { disabled: true });
-		expect(
-			screen.getByRole("button", { name: "dedent" }),
-		).toHaveProp("accessibilityState", { disabled: false });
+		expect(screen.getByRole("button", { name: "indent" })).toHaveProp(
+			"accessibilityState",
+			{ disabled: true },
+		);
+		expect(screen.getByRole("button", { name: "dedent" })).toHaveProp(
+			"accessibilityState",
+			{ disabled: false },
+		);
 	});
 
 	it("disables checkbox conversion when the focused block is already a checkbox", () => {
@@ -149,9 +153,10 @@ describe("EditorToolbar", () => {
 			}),
 		});
 
-		expect(
-			screen.getByRole("button", { name: "square-o" }),
-		).toHaveProp("accessibilityState", { disabled: true });
+		expect(screen.getByRole("button", { name: "square-o" })).toHaveProp(
+			"accessibilityState",
+			{ disabled: true },
+		);
 	});
 
 	it("dispatches undo, redo, indent, outdent, and checkbox actions from toolbar presses", () => {
@@ -191,9 +196,7 @@ describe("EditorToolbar", () => {
 		renderToolbar();
 
 		expect(screen.getByText("TODO: Insert Image")).toBeTruthy();
-		expect(
-			screen.queryByRole("button", { name: "image" }),
-		).toBeNull();
+		expect(screen.queryByRole("button", { name: "image" })).toBeNull();
 	});
 
 	it("renders the native image button outside web and wires it to image insertion", () => {

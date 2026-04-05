@@ -1,5 +1,5 @@
-import { create } from "zustand";
 import type { NoteStatus, NoteType } from "@/services/notes/types";
+import { create } from "zustand";
 
 interface FilterState {
 	noteTypes: NoteType[];

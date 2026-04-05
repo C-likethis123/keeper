@@ -1,11 +1,7 @@
-import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import { FilterDrawerContent } from "@/components/FilterDrawerContent";
 import { useFilterStore } from "@/stores/filterStore";
-import {
-	fireEvent,
-	render,
-	screen,
-} from "@testing-library/react-native";
+import type { DrawerNavigationProp } from "@react-navigation/drawer";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 import React from "react";
 
 const mockCloseDrawer = jest.fn();

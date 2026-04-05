@@ -225,9 +225,7 @@ describe("Index", () => {
 
 		render(<Index />);
 
-		await user.press(
-			screen.getByRole("button", { name: "Open filters" }),
-		);
+		await user.press(screen.getByRole("button", { name: "Open filters" }));
 
 		expect(mockOpenPanel).toHaveBeenCalled();
 	});

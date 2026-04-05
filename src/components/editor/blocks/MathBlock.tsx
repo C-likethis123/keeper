@@ -1,8 +1,8 @@
 import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
 import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { useStyles } from "@/hooks/useStyles";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { useStyles } from "@/hooks/useStyles";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	type NativeSyntheticEvent,

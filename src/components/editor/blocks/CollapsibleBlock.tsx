@@ -1,14 +1,9 @@
 import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { useStyles } from "@/hooks/useStyles";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { useStyles } from "@/hooks/useStyles";
 import { useEditorState } from "@/stores/editorStore";
-import React, {
-	useCallback,
-	useEffect,
-	useRef,
-	useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
 	Platform,
 	Pressable,
