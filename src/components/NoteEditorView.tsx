@@ -1,9 +1,10 @@
+import type { ExtendedTheme } from "@/constants/themes/types";
 import NoteEditorHeader from "@/components/NoteEditorHeader";
 import TemplatePickerModal from "@/components/TemplatePickerModal";
 import { FilterChip } from "@/components/shared/FilterChip";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useAutoSave } from "@/hooks/useAutoSave";
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { GitService } from "@/services/git/gitService";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
@@ -17,7 +18,6 @@ import React, {
 	useCallback,
 	useEffect,
 	useLayoutEffect,
-	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -43,9 +43,8 @@ export default function NoteEditorView({
 }) {
 	const navigation = useNavigation();
 	const router = useRouter();
-	const theme = useExtendedTheme();
 	const { focusBlock } = useFocusBlock();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const styles = useStyles(createStyles);
 	const id = note.id;
 	const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
 	const [title, setTitle] = useState<string>(note.title);
@@ -310,7 +309,7 @@ export default function NoteEditorView({
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+function createStyles(theme: ExtendedTheme) {
 	return StyleSheet.create({
 		screen: {
 			flex: 1,

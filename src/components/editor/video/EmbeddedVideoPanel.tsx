@@ -1,6 +1,7 @@
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import type { ExtendedTheme } from "@/constants/themes/types";
+import { useStyles } from "@/hooks/useStyles";
 import { MaterialIcons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import React from "react";
 import {
 	Platform,
 	Pressable,
@@ -26,8 +27,7 @@ export function EmbeddedVideoPanel({
 	mode = "normal",
 	onToggleMode,
 }: EmbeddedVideoPanelProps) {
-	const theme = useExtendedTheme();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const styles = useStyles(createStyles);
 	const { height: viewportHeight } = useWindowDimensions();
 
 	const isMinimised = mode === "minimised";
@@ -53,7 +53,7 @@ export function EmbeddedVideoPanel({
 							<MaterialIcons
 								name={isMinimised ? "expand-more" : "expand-less"}
 								size={18}
-								color={theme.colors.text}
+								style={styles.expandIcon}
 							/>
 						</Pressable>
 					}
@@ -109,7 +109,7 @@ export function EmbeddedVideoPanel({
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+function createStyles(theme: ExtendedTheme) {
 	const isWeb = Platform.OS === "web";
 	return StyleSheet.create({
 		panel: {
@@ -163,6 +163,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			borderWidth: 1,
 			borderColor: theme.colors.border,
 			backgroundColor: theme.colors.background,
+		},
+		expandIcon: {
+			color: theme.colors.text,
 		},
 		playerFrame: {
 			overflow: "hidden",

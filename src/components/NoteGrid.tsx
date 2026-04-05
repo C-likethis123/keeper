@@ -1,12 +1,14 @@
 import NoteCard from "@/components/NoteCard";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
 import type React from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import {
 	ActivityIndicator,
 	FlatList,
 	RefreshControl,
+	StyleSheet,
 	View,
 	useWindowDimensions,
 } from "react-native";
@@ -39,6 +41,7 @@ export default function NoteGrid({
 }) {
 	const { width } = useWindowDimensions();
 	const theme = useExtendedTheme();
+	const styles = useStyles(createStyles);
 
 	// Responsive column count (matches Flutter logic)
 	let numColumns = 2;
@@ -57,11 +60,8 @@ export default function NoteGrid({
 			key={numColumns}
 			numColumns={numColumns}
 			keyExtractor={(item) => item.id}
-			columnWrapperStyle={{ gap: 8, marginBottom: 8 }}
-			contentContainerStyle={{
-				padding: 8,
-				paddingBottom: 100,
-			}}
+			columnWrapperStyle={styles.columnWrapper}
+			contentContainerStyle={styles.contentContainer}
 			ListHeaderComponent={listHeaderComponent}
 			ListEmptyComponent={
 				<EmptyState title={emptyTitle} subtitle={emptySubtitle} />
@@ -79,7 +79,7 @@ export default function NoteGrid({
 			onEndReachedThreshold={0.5}
 			ListFooterComponent={
 				isLoadingMore ? (
-					<View style={{ padding: 16, alignItems: "center" }}>
+					<View style={styles.footerLoader}>
 						<ActivityIndicator size="small" color={theme.colors.primary} />
 					</View>
 				) : null
@@ -89,4 +89,21 @@ export default function NoteGrid({
 			)}
 		/>
 	);
+}
+
+function createStyles(_theme: ReturnType<typeof useExtendedTheme>) {
+	return StyleSheet.create({
+		columnWrapper: {
+			gap: 8,
+			marginBottom: 8,
+		},
+		contentContainer: {
+			padding: 8,
+			paddingBottom: 100,
+		},
+		footerLoader: {
+			padding: 16,
+			alignItems: "center",
+		},
+	});
 }

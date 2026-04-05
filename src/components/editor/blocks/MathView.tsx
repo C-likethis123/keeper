@@ -1,5 +1,6 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useStyles } from "@/hooks/useStyles";
+import React, { useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 
 const LazyMathJaxSvg = React.lazy(() =>
@@ -23,6 +24,7 @@ export function MathView({
 }: MathViewProps) {
 	const theme = useExtendedTheme();
 	const textColor = theme.colors.text;
+	const styles = useStyles(createStyles);
 	const [html, setHtml] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const onErrorRef = useRef(onError);
@@ -69,12 +71,10 @@ export function MathView({
 		};
 	}, [expression, displayMode, textColor]);
 
-	const styles = useMemo(() => createStyles(displayMode), [displayMode]);
-
 	if (!expression.trim()) {
 		return (
-			<View style={[styles.container, style]}>
-				<Text style={[styles.fallback, { color: theme.colors.text }]}>
+			<View style={[styles.container, displayMode ? { width: "100%", minHeight: 60 } : { alignSelf: "flex-start", minHeight: 24 }, style]}>
+				<Text style={[styles.fallback, styles.fallbackText]}>
 					{expression || " "}
 				</Text>
 			</View>
@@ -84,8 +84,8 @@ export function MathView({
 	if (Platform.OS === "web") {
 		if (error) {
 			return (
-				<View style={[styles.container, style]}>
-					<Text style={[styles.fallback, { color: theme.colors.error }]}>
+				<View style={[styles.container, displayMode ? { width: "100%", minHeight: 60 } : { alignSelf: "flex-start", minHeight: 24 }, style]}>
+					<Text style={[styles.fallback, styles.fallbackError]}>
 						{expression}
 					</Text>
 				</View>
@@ -114,7 +114,7 @@ export function MathView({
 		<View style={[styles.container, style]}>
 			<React.Suspense
 				fallback={
-					<Text style={[styles.fallback, { color: theme.colors.text }]}>
+					<Text style={[styles.fallback, styles.fallbackText]}>
 						{expression}
 					</Text>
 				}
@@ -131,13 +131,11 @@ export function MathView({
 	);
 }
 
-function createStyles(displayMode: boolean) {
+function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		container: {
-			...(displayMode ? { width: "100%" } : { alignSelf: "flex-start" }),
 			alignItems: "center",
 			justifyContent: "center",
-			minHeight: displayMode ? 60 : 24,
 			backgroundColor: "transparent",
 		},
 		mathJaxContainer: {
@@ -149,6 +147,12 @@ function createStyles(displayMode: boolean) {
 		fallback: {
 			fontSize: 16,
 			fontFamily: "monospace",
+		},
+		fallbackText: {
+			color: theme.colors.text,
+		},
+		fallbackError: {
+			color: theme.colors.error,
 		},
 	});
 }

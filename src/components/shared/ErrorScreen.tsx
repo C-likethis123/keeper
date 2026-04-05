@@ -1,4 +1,5 @@
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import type { ExtendedTheme } from "@/constants/themes/types";
+import { useStyles } from "@/hooks/useStyles";
 import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -12,8 +13,7 @@ export default function ErrorScreen({
 	errorMessage,
 	onRetry,
 }: ErrorScreenProps) {
-	const theme = useExtendedTheme();
-	const styles = createStyles(theme);
+	const styles = useStyles(createStyles);
 
 	return (
 		<View style={styles.container}>
@@ -21,7 +21,7 @@ export default function ErrorScreen({
 				<MaterialIcons
 					name="error-outline"
 					size={48}
-					color={theme.colors.error}
+					style={styles.errorIcon}
 				/>
 				<Text style={styles.errorMessage}>{errorMessage}</Text>
 				{onRetry && (
@@ -40,7 +40,7 @@ export default function ErrorScreen({
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+function createStyles(theme: ExtendedTheme) {
 	return StyleSheet.create({
 		container: {
 			flex: 1,
@@ -53,6 +53,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			alignItems: "center",
 			maxWidth: 420,
 			gap: 16,
+		},
+		errorIcon: {
+			color: theme.colors.error,
 		},
 		errorMessage: {
 			fontSize: 16,

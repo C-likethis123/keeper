@@ -2,6 +2,7 @@ import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVert
 import TextInput from "@/components/shared/TextInput";
 import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockSelection, useEditorState } from "@/stores/editorStore";
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
@@ -265,21 +266,21 @@ export function UnifiedBlock({
 	);
 
 	const theme = useExtendedTheme();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const styles = useStyles(createStyles);
 
 	// Compute text style based on block type
 	const textStyle: TextStyle = useMemo(() => {
 		switch (block.type) {
 			case BlockType.heading1:
-				return theme.typography.heading1;
+				return styles.heading1Style;
 			case BlockType.heading2:
-				return theme.typography.heading2;
+				return styles.heading2Style;
 			case BlockType.heading3:
-				return theme.typography.heading3;
+				return styles.heading3Style;
 			default:
-				return theme.typography.body;
+				return styles.bodyStyle;
 		}
-	}, [block.type, theme.typography]);
+	}, [block.type, styles]);
 	const selectionProp =
 		isFocused && selectionRange
 			? (() => {
@@ -412,5 +413,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		hidden: {
 			display: "none",
 		},
+		heading1Style: theme.typography.heading1,
+		heading2Style: theme.typography.heading2,
+		heading3Style: theme.typography.heading3,
+		bodyStyle: theme.typography.body,
 	});
 }

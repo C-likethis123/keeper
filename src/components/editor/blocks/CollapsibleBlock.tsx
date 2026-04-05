@@ -1,11 +1,11 @@
 import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorState } from "@/stores/editorStore";
 import React, {
 	useCallback,
 	useEffect,
-	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -181,7 +181,7 @@ export function CollapsibleBlock({
 		[bodyValue, bodySelection, onEnter, index],
 	);
 
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const styles = useStyles(createStyles);
 
 	const chevron = isExpanded ? "▾" : "▸";
 

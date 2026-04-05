@@ -1,5 +1,6 @@
+import type { ExtendedTheme } from "@/constants/themes/types";
 import Loader from "@/components/shared/Loader";
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { SlashCommandItem } from "./SlashCommandContext";
@@ -20,8 +21,7 @@ export function SlashCommandOverlay({
 	isLoading = false,
 	onSelect,
 }: SlashCommandOverlayProps) {
-	const theme = useExtendedTheme();
-	const styles = createStyles(theme);
+	const styles = useStyles(createStyles);
 	const needsScrolling = results.length * ITEM_HEIGHT > MAX_HEIGHT;
 
 	return (
@@ -74,7 +74,7 @@ export function SlashCommandOverlay({
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+function createStyles(theme: ExtendedTheme) {
 	return StyleSheet.create({
 		container: {
 			maxHeight: MAX_HEIGHT,

@@ -1,8 +1,9 @@
 import { useVerticalArrowNavigation } from "@/components/editor/keyboard/useVerticalArrowNavigation";
 import { webMultilineTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	type NativeSyntheticEvent,
 	Platform,
@@ -38,6 +39,7 @@ export function MathBlock({
 	const [renderError, setRenderError] = useState<string | null>(null);
 	const { focusBlock, blurBlock } = useFocusBlock();
 	const theme = useExtendedTheme();
+	const styles = useStyles(createStyles);
 	const handleVerticalArrow = useVerticalArrowNavigation(index, selection);
 
 	// Sync value with block content when it changes externally
@@ -88,8 +90,6 @@ export function MathBlock({
 			return;
 		}
 	};
-
-	const styles = useMemo(() => createStyles(theme), [theme]);
 
 	const renderMath = () => {
 		if (!value.trim()) {

@@ -1,10 +1,11 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import React from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 export default function Loader() {
 	const theme = useExtendedTheme();
-	const styles = createStyles(theme);
+	const styles = useStyles(createStyles);
 
 	return (
 		<View style={styles.container}>

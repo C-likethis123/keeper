@@ -1,11 +1,12 @@
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import type { ExtendedTheme } from "@/constants/themes/types";
 import useSuspenseTemplates from "@/hooks/useSuspenseTemplates";
+import { useStyles } from "@/hooks/useStyles";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
-import React, { Suspense, useCallback, useMemo } from "react";
+import React, { Suspense, useCallback } from "react";
 import {
 	Modal,
 	Pressable,
@@ -24,8 +25,7 @@ export default function TemplatePickerModal({
 	visible: boolean;
 	onDismiss: () => void;
 }) {
-	const theme = useExtendedTheme();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const styles = useStyles(createStyles);
 
 	if (!visible) return null;
 
@@ -41,7 +41,7 @@ export default function TemplatePickerModal({
 					<View style={styles.modalHeader}>
 						<Text style={styles.modalTitle}>Choose template</Text>
 						<Pressable onPress={onDismiss}>
-							<MaterialIcons name="close" size={22} color={theme.colors.text} />
+							<MaterialIcons name="close" size={22} style={styles.closeIcon} />
 						</Pressable>
 					</View>
 					<Suspense fallback={<Loader />}>
@@ -129,7 +129,7 @@ function TemplatePickerContent({
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+function createStyles(theme: ExtendedTheme) {
 	return StyleSheet.create({
 		modalBackdrop: {
 			flex: 1,
@@ -150,6 +150,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			alignItems: "center",
 			justifyContent: "space-between",
 			marginBottom: 12,
+		},
+		closeIcon: {
+			color: theme.colors.text,
 		},
 		modalTitle: {
 			fontSize: 18,

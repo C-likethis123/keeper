@@ -1,9 +1,10 @@
 import { SaveIndicator, type SaveStatus } from "@/components/SaveIndicator";
 import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import React from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -34,7 +35,7 @@ export default function NoteEditorHeader({
 }: Props) {
 	const theme = useExtendedTheme();
 	const insets = useSafeAreaInsets();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const styles = useStyles(createStyles);
 
 	return (
 		<View style={[styles.headerShell, { paddingTop: insets.top + 8 }]}>
@@ -49,7 +50,7 @@ export default function NoteEditorHeader({
 						<MaterialIcons
 							name="arrow-back"
 							size={24}
-							color={theme.colors.text}
+							style={styles.backIcon}
 						/>
 					</Pressable>
 				</View>
@@ -84,13 +85,14 @@ export default function NoteEditorHeader({
 						<MaterialIcons
 							name="push-pin"
 							size={24}
-							color={
+							style={[
+								styles.pinIcon,
 								noteType === "template"
-									? theme.colors.textFaded
+									? styles.pinIconTemplate
 									: isPinned
-										? theme.colors.primary
-										: theme.colors.textMuted
-							}
+										? styles.pinIconPinned
+										: null,
+							]}
 						/>
 					</Pressable>
 					<Pressable
@@ -102,7 +104,7 @@ export default function NoteEditorHeader({
 						<MaterialIcons
 							name="delete"
 							size={24}
-							color={theme.colors.textMuted}
+							style={styles.deleteIcon}
 						/>
 					</Pressable>
 				</View>
@@ -160,6 +162,21 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		headerIconButton: {
 			paddingVertical: 8,
 			paddingHorizontal: 4,
+		},
+		backIcon: {
+			color: theme.colors.text,
+		},
+		pinIcon: {
+			color: theme.colors.textMuted,
+		},
+		pinIconPinned: {
+			color: theme.colors.primary,
+		},
+		pinIconTemplate: {
+			color: theme.colors.textFaded,
+		},
+		deleteIcon: {
+			color: theme.colors.textMuted,
 		},
 	});
 }

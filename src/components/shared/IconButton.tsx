@@ -1,5 +1,5 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import { MaterialIcons } from "@expo/vector-icons";
 import type React from "react";
 import { Pressable, StyleSheet } from "react-native";
@@ -19,8 +19,7 @@ export function IconButton({
 	disabled?: boolean;
 	testID?: string;
 }) {
-	const theme = useExtendedTheme();
-	const styles = StyleSheet.create(createStyles(theme));
+	const styles = useStyles(createStyles);
 
 	return (
 		<Pressable
@@ -32,14 +31,14 @@ export function IconButton({
 			<MaterialIcons
 				name={name}
 				size={size}
-				color={disabled ? theme.colors.textDisabled : theme.colors.text}
+				style={disabled ? styles.iconDisabled : styles.icon}
 			/>
 		</Pressable>
 	);
 }
 
 function createStyles(theme: ExtendedTheme) {
-	return {
+	return StyleSheet.create({
 		button: {
 			width: 40,
 			height: 40,
@@ -53,5 +52,11 @@ function createStyles(theme: ExtendedTheme) {
 		buttonPressed: {
 			opacity: 0.7,
 		},
-	};
+		icon: {
+			color: theme.colors.text,
+		},
+		iconDisabled: {
+			color: theme.colors.textDisabled,
+		},
+	});
 }

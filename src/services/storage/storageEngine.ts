@@ -1,17 +1,7 @@
-import { MobileStorageEngine } from "@/services/storage/engines/MobileStorageEngine";
-import type { StorageEngine } from "@/services/storage/engines/StorageEngine";
-import { TauriStorageEngine } from "@/services/storage/engines/TauriStorageEngine";
-import { isTauriRuntime } from "@/services/storage/runtime";
-
-let storageEngine: StorageEngine | null = null;
-
-export function getStorageEngine(): StorageEngine {
-	if (storageEngine) {
-		return storageEngine;
-	}
-
-	storageEngine = isTauriRuntime()
-		? new TauriStorageEngine()
-		: new MobileStorageEngine();
-	return storageEngine;
-}
+// Platform-specific storage engine selection
+// .native.ts -> MobileStorageEngine (iOS/Android)
+// .web.ts -> TauriStorageEngine (web/desktop)
+// 
+// Jest tests will be mocked via jest.doMock in test files
+export { storageEngine } from "./storageEngine.native";
+export { getStorageEngine } from "./storageEngine.native";
