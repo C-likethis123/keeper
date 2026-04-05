@@ -54,45 +54,67 @@ export default function NoteGrid({
 		}
 	}, [hasMore, isLoadingMore, onEndReached]);
 
+	const isEmpty = notes.length === 0;
+
+	const listHeader = useMemo(() => {
+		if (!listHeaderComponent) return null;
+		return <View style={styles.headerWrapper}>{listHeaderComponent}</View>;
+	}, [listHeaderComponent, styles.headerWrapper]);
+
 	return (
-		<FlatList
-			data={notes}
-			key={numColumns}
-			numColumns={numColumns}
-			keyExtractor={(item) => item.id}
-			columnWrapperStyle={styles.columnWrapper}
-			contentContainerStyle={styles.contentContainer}
-			ListHeaderComponent={listHeaderComponent}
-			ListEmptyComponent={
-				<EmptyState title={emptyTitle} subtitle={emptySubtitle} />
-			}
-			showsVerticalScrollIndicator
-			refreshControl={
-				<RefreshControl
-					refreshing={refreshing}
-					onRefresh={onRefresh}
-					tintColor={theme.colors.primary}
-					colors={[theme.colors.primary]}
-				/>
-			}
-			onEndReached={handleEndReached}
-			onEndReachedThreshold={0.5}
-			ListFooterComponent={
-				isLoadingMore ? (
-					<View style={styles.footerLoader}>
-						<ActivityIndicator size="small" color={theme.colors.primary} />
-					</View>
-				) : null
-			}
-			renderItem={({ item }) => (
-				<NoteCard note={item} onDelete={onDelete} onPinToggle={onPinToggle} />
-			)}
-		/>
+		<View style={styles.root}>
+			{listHeader}
+			<FlatList
+				data={notes}
+				key={numColumns}
+				numColumns={numColumns}
+				keyExtractor={(item) => item.id}
+				columnWrapperStyle={styles.columnWrapper}
+				contentContainerStyle={styles.contentContainer}
+				ListHeaderComponent={null}
+				ListEmptyComponent={
+					isEmpty ? (
+						<EmptyState title={emptyTitle} subtitle={emptySubtitle} />
+					) : undefined
+				}
+				showsVerticalScrollIndicator
+				refreshControl={
+					<RefreshControl
+						refreshing={refreshing}
+						onRefresh={onRefresh}
+						tintColor={theme.colors.primary}
+						colors={[theme.colors.primary]}
+					/>
+				}
+				onEndReached={handleEndReached}
+				onEndReachedThreshold={0.5}
+				ListFooterComponent={
+					isLoadingMore ? (
+						<View style={styles.footerLoader}>
+							<ActivityIndicator size="small" color={theme.colors.primary} />
+						</View>
+					) : null
+				}
+				renderItem={({ item }) => (
+					<NoteCard note={item} onDelete={onDelete} onPinToggle={onPinToggle} />
+				)}
+			/>
+		</View>
 	);
 }
 
 function createStyles(_theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
+		root: {
+			flex: 1,
+		},
+		headerWrapper: {
+			maxWidth: 640,
+			width: "100%",
+			alignSelf: "center",
+			paddingHorizontal: 8,
+			paddingTop: 12,
+		},
 		columnWrapper: {
 			gap: 8,
 			marginBottom: 8,
