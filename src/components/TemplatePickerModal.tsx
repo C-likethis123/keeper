@@ -1,11 +1,11 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import useSuspenseTemplates from "@/hooks/useSuspenseTemplates";
 import { NoteService } from "@/services/notes/noteService";
-import { NotesIndexService } from "@/services/notes/notesIndex";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useCallback, useMemo } from "react";
 import {
 	Modal,
 	ScrollView,
@@ -15,6 +15,7 @@ import {
 	View,
 } from "react-native";
 import Loader from "./shared/Loader";
+import QueryErrorBoundary from "./shared/QueryErrorBoundary";
 
 export default function TemplatePickerModal({
 	visible,
@@ -25,43 +26,56 @@ export default function TemplatePickerModal({
 }) {
 	const theme = useExtendedTheme();
 	const styles = useMemo(() => createStyles(theme), [theme]);
-	const [templates, setTemplates] = useState<Note[]>([]);
-	const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+
+	if (!visible) return null;
+
+	return (
+		<Modal
+			visible={visible}
+			animationType="slide"
+			transparent
+			onRequestClose={onDismiss}
+		>
+			<View style={styles.modalBackdrop}>
+				<View style={styles.modalCard}>
+					<View style={styles.modalHeader}>
+						<Text style={styles.modalTitle}>Choose template</Text>
+						<TouchableOpacity onPress={onDismiss}>
+							<MaterialIcons name="close" size={22} color={theme.colors.text} />
+						</TouchableOpacity>
+					</View>
+					<Suspense fallback={<Loader />}>
+						<QueryErrorBoundary
+							fallbackRender={(error, reset) => (
+								<View>
+									<Text style={styles.emptyTemplatesText}>
+										Failed to load templates.
+									</Text>
+									<TouchableOpacity onPress={reset}>
+										<Text style={styles.emptyTemplatesText}>Retry</Text>
+									</TouchableOpacity>
+								</View>
+							)}
+						>
+							<TemplatePickerContent onDismiss={onDismiss} styles={styles} />
+						</QueryErrorBoundary>
+					</Suspense>
+				</View>
+			</View>
+		</Modal>
+	);
+}
+
+function TemplatePickerContent({
+	onDismiss,
+	styles,
+}: {
+	onDismiss: () => void;
+	styles: ReturnType<typeof createStyles>;
+}) {
+	const templates = useSuspenseTemplates();
 	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s) => s.loadMarkdown);
-
-	useEffect(() => {
-		if (!visible) return;
-
-		let cancelled = false;
-		setIsLoadingTemplates(true);
-		NotesIndexService.listNotes("", 100, 0, { noteTypes: ["template"] })
-			.then((result) => {
-				if (cancelled) return;
-				const notes: Note[] = result.items.map((item) => ({
-					id: item.noteId,
-					title: item.title,
-					content: item.summary ?? "",
-					lastUpdated: item.updatedAt,
-					isPinned: item.isPinned,
-					noteType: item.noteType,
-					status: item.status,
-				}));
-				setTemplates(notes);
-			})
-			.catch((error) => {
-				if (cancelled) return;
-				console.warn("Failed to load templates:", error);
-				showToast("Failed to load templates");
-			})
-			.finally(() => {
-				if (!cancelled) setIsLoadingTemplates(false);
-			});
-
-		return () => {
-			cancelled = true;
-		};
-	}, [visible, showToast]);
 
 	const applyTemplate = useCallback(
 		async (template: Note) => {
@@ -82,50 +96,33 @@ export default function TemplatePickerModal({
 		[loadMarkdown, onDismiss, showToast],
 	);
 
+	if (templates.length === 0) {
+		return (
+			<Text style={styles.emptyTemplatesText}>
+				No templates yet. Change a note type to Template to create one.
+			</Text>
+		);
+	}
+
 	return (
-		<Modal
-			visible={visible}
-			animationType="slide"
-			transparent
-			onRequestClose={onDismiss}
-		>
-			<View style={styles.modalBackdrop}>
-				<View style={styles.modalCard}>
-					<View style={styles.modalHeader}>
-						<Text style={styles.modalTitle}>Choose template</Text>
-						<TouchableOpacity onPress={onDismiss}>
-							<MaterialIcons name="close" size={22} color={theme.colors.text} />
-						</TouchableOpacity>
-					</View>
-					{isLoadingTemplates ? (
-						<Loader />
-					) : templates.length === 0 ? (
-						<Text style={styles.emptyTemplatesText}>
-							No templates yet. Change a note type to Template to create one.
-						</Text>
-					) : (
-						<ScrollView contentContainerStyle={styles.templateList}>
-							{templates.map((template) => (
-								<TouchableOpacity
-									key={template.id}
-									style={styles.templateCard}
-									onPress={() => {
-										void applyTemplate(template);
-									}}
-								>
-									<Text style={styles.templateCardTitle}>
-										{template.title || "Untitled template"}
-									</Text>
-									<Text style={styles.templateCardContent} numberOfLines={4}>
-										{template.content || "Empty template"}
-									</Text>
-								</TouchableOpacity>
-							))}
-						</ScrollView>
-					)}
-				</View>
-			</View>
-		</Modal>
+		<ScrollView contentContainerStyle={styles.templateList}>
+			{templates.map((template) => (
+				<TouchableOpacity
+					key={template.id}
+					style={styles.templateCard}
+					onPress={() => {
+						void applyTemplate(template);
+					}}
+				>
+					<Text style={styles.templateCardTitle}>
+						{template.title || "Untitled template"}
+					</Text>
+					<Text style={styles.templateCardContent} numberOfLines={4}>
+						{template.content || "Empty template"}
+					</Text>
+				</TouchableOpacity>
+			))}
+		</ScrollView>
 	);
 }
 
