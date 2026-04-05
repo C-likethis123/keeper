@@ -417,27 +417,21 @@ Turn inline `todo:` entries inside note blocks into first-class tracked todos th
 
 ---
 
-### Phase 11: Local-First Note Sections and Ranking
+### Phase 11: Local-First Note Sections and Ranking ✅
 
 Group notes into derived sections (Pinned → Recently Edited → MOC collections → All Notes) with graph-powered ranking.
 
-**Status**: In Progress
+**Status**: Implemented
 **Task file**: `tasks/002-investigate-local-note-sections-and-ranking.md`
-**Grove workspace**: `codex-local-note-sec-15df` / branch `codex/local-note-sections-ranking`
-**Design decisions**:
-- **Sections are derived views**, not user-managed metadata: computed buckets (Recently Edited, Pinned) + MOC-style collections detected by outgoing-link count
-- **Graph approach: TypeScript over `wiki_links` edge table + recursive CTEs.** No C extension, no native compilation, no cross-compilation risk. `WITH RECURSIVE` CTEs have been built into SQLite since 3.8.3 and work in `expo-sqlite` and `rusqlite` with zero setup. Note-vault scale (hundreds–low-thousands of nodes) is well within CTE performance bounds.
-- **Rejected: C extensions (GraphQLite, sqlite-graph)** — all require cross-compiling C code for iOS arm64, Android arm64-v8a, macOS arm64, Linux x86_64. The algorithms we need for v1 (degree centrality, BFS neighborhood, backlinks) are single SQL queries. If we later need Louvain community detection or PageRank at scale, we can evaluate an extension then.
-**Implementation plan** (7 steps):
-1. Add `wiki_links` edge table (migration 004) — source_id → target_id, indexed both directions
-2. Populate `wiki_links` during index rebuild — parse `[[wikilink]]` patterns, resolve to IDs, incremental sync via content hash
-3. Add `modified` column to notes index (migration 005) — from frontmatter, with file `mtime` fallback
-4. Add graph query functions via recursive CTEs — backlinks, transitive backlinks, outgoing links, BFS neighborhood, MOC scores, orphans
-5. Build sectioned note list in `useNotes` — Pinned → Recently Edited (7-day window) → MOC sections (notes with ≥3 outgoing links, showing BFS neighborhood) → All Notes
-6. Update `NoteGrid` to render sections with headers
-7. Desktop parity — equivalent `wiki_links` table and CTE queries in Tauri/Rust via `rusqlite`
-**Key files**: `src/services/notes/notesIndexDb.ts`, `src/services/notes/notesIndex.ts`, `src/hooks/useNotes.ts`, `src/components/NoteGrid.tsx`, `src-tauri/src/storage/mod.rs`
-**Risks**: Indexing performance on large vaults (mitigation: incremental sync via content hash), MOC detection threshold tuning, circular wikilink handling (capped depth + UNION dedup). Zero native compilation risk.
+**Current**: Home screen now shows sectioned view with Pinned notes, Recently Edited (7-day window), dynamic MOC collections (notes with ≥3 outgoing wikilinks showing their BFS neighborhood), and All Notes. Wikilink graph is persisted in a `wiki_links` edge table and queried via recursive CTEs.
+**Key files**: `src/services/notes/indexDb/repository.ts`, `src/services/notes/notesIndexDb.ts`, `src/services/notes/wikiLinkParser.ts`, `src/hooks/useNotes.ts`, `src/hooks/useSuspenseNotes.ts`, `src/components/NoteGrid.tsx`, `src-tauri/storage_core/src/lib.rs`
+**Implementation details**:
+- `wiki_links` edge table (migration 004) with `source_id → target_id` indexed both directions
+- `modified` column (migration 005) populated from frontmatter with file `mtime` fallback
+- Incremental wikilink sync via `content_hash` dedup during rebuild and git sync
+- 7 graph query functions: backlinks, transitive backlinks, outgoing links, MOC scores, BFS neighborhood, orphaned notes, recently edited
+- `NoteGrid` renders sections with headers; backward-compatible with flat note lists
+- Desktop parity via Tauri/Rust `rusqlite` equivalents for all graph queries
 
 ---
 
