@@ -3,6 +3,7 @@ import { useStyles } from "@/hooks/useStyles";
 import type { NoteType } from "@/services/notes/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
+import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 function QuickActionButton({
@@ -34,7 +35,7 @@ function QuickActionButton({
         onHoverOut={() => setIsHovered(false)}
         style={styles.iconButton}
       >
-        <MaterialIcons name={icon} size={22} color={iconColor} />
+        <Ionicons name={icon} size={22} style={styles.iconButton} />
       </Pressable>
       {isHovered ? (
         <View pointerEvents="none" style={styles.tooltip}>
@@ -72,14 +73,14 @@ export default function HomeQuickComposer({
         <View style={styles.actions}>
           <QuickActionButton
             label="Create todo"
-            icon="check-box"
+            icon="checkbox"
             onPress={() => onPress({ noteType: "todo", title: "TODO:" })}
             iconColor={theme.colors.textMuted}
             styles={styles}
           />
           <QuickActionButton
             label="Create journal"
-            icon="menu-book"
+            icon="journal"
             onPress={() => onPress({ noteType: "journal", title: "Journal: " })}
             iconColor={theme.colors.textMuted}
             styles={styles}
