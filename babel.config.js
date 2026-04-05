@@ -3,6 +3,8 @@ module.exports = (api) => {
 	api.cache(() => isTest);
 	return {
 		presets: ["babel-preset-expo"],
-		plugins: isTest ? ["babel-plugin-dynamic-import-node"] : [],
+		plugins: isTest
+			? ["babel-plugin-dynamic-import-node"]
+			: ["react-native-reanimated/plugin"],
 	};
 };

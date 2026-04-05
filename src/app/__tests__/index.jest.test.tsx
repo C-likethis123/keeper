@@ -140,7 +140,7 @@ function makeUseNotesResult(
 	return {
 		notes: [{ id: "note-1", title: "First note" }],
 		query: "",
-		noteTypeFilter: [],
+		noteTypeFilter: undefined,
 		statusFilter: undefined,
 		hasMore: false,
 		isLoading: false,
@@ -186,9 +186,9 @@ describe("Index", () => {
 		expect(
 			screen.getByRole("button", { name: "Take a note" }),
 		).toBeOnTheScreen();
-		expect(
-			screen.getByRole("button", { name: "Filter notes" }),
-		).toBeOnTheScreen();
+		expect(screen.getByText("All notes")).toBeOnTheScreen();
+		expect(screen.getByText("Journals")).toBeOnTheScreen();
+		expect(screen.getByText("Todos")).toBeOnTheScreen();
 		expect(handleRefresh).toHaveBeenCalledTimes(1);
 	});
 
@@ -208,7 +208,7 @@ describe("Index", () => {
 		expect(setQuery).toHaveBeenCalledWith("ideas");
 	});
 
-	it("opens the filter dropdown and selects a note type", async () => {
+	it("selects a note type tab to filter notes", async () => {
 		const user = userEvent.setup();
 		const setNoteTypeFilter = jest.fn();
 		const setStatusFilter = jest.fn();
@@ -222,10 +222,9 @@ describe("Index", () => {
 
 		render(<Index />);
 
-		await user.press(screen.getByRole("button", { name: "Filter notes" }));
-		await user.press(screen.getByRole("checkbox", { name: "Journals" }));
+		await user.press(screen.getByText("Journals"));
 
-		expect(setNoteTypeFilter).toHaveBeenCalledWith(["journal"]);
+		expect(setNoteTypeFilter).toHaveBeenCalledWith("journal");
 		expect(setStatusFilter).toHaveBeenCalledWith(undefined);
 	});
 

@@ -244,9 +244,12 @@ describe("GitService", () => {
     await flushMicrotasks();
 
     expect(backgroundSave).toHaveBeenCalledTimes(1);
-    expect(mockPush).not.toHaveBeenCalled();
-
+    // With the new fire-and-forget approach, the commit is triggered asynchronously
     saveDeferred.resolve();
+    await flushMicrotasks();
+
+    // Advance timers to allow the background commit to complete
+    jest.advanceTimersByTime(100);
     await flushMicrotasks();
 
     expect(mockCommit).toHaveBeenCalledTimes(1);
@@ -319,5 +322,47 @@ describe("GitService", () => {
       noUpdateHead: true,
       force: true,
     });
+  });
+
+  it("logs exit state to journal without blocking", async () => {
+    const { GitService } = await import("../gitService");
+
+    await GitService.queueChangeAsync("note-1.md", "modify");
+    
+    // Verify journal has entry without exit log
+    const hasExitLogBefore = await GitService.hasExitLogInJournal();
+    expect(hasExitLogBefore).toBe(false);
+
+    // Simulate the internal logExitState behavior by directly testing the journal
+    // The actual logExitState is private, but we can verify through handleAppStateChange
+    appStateHandler?.("background");
+    await flushMicrotasks();
+
+    // Exit log should be attached to journal entries
+    const hasExitLogAfter = await GitService.hasExitLogInJournal();
+    expect(hasExitLogAfter).toBe(true);
+
+    const exitLog = await GitService.getLatestExitLogFromJournal();
+    expect(exitLog).toBeDefined();
+    expect(exitLog?.reason).toBe("app-background");
+    expect(exitLog?.timestamp).toBeDefined();
+  });
+
+  it("triggers background commit without blocking caller", async () => {
+    const { GitService } = await import("../gitService");
+
+    await GitService.queueChangeAsync("note-1.md", "modify");
+    
+    // Trigger background commit (fire-and-forget)
+    GitService.triggerBackgroundCommit("test");
+
+    // Should return immediately without waiting
+    // The commit happens asynchronously
+    jest.advanceTimersByTime(100);
+    await flushMicrotasks();
+
+    // Verify commit was triggered
+    expect(mockCommit).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledTimes(1);
   });
 });

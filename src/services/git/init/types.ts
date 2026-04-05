@@ -57,11 +57,22 @@ export interface SyncWithRemoteResult {
 
 export type GitJournalOperation = "add" | "modify" | "delete";
 
+export interface GitExitLog {
+	/** Timestamp when the app exited/went to background */
+	timestamp: number;
+	/** Reason for the exit (e.g., "app-background", "user-quit") */
+	reason: string;
+	/** Editor document version at the time of exit, if available */
+	documentVersion?: number;
+}
+
 export interface GitJournalEntry {
 	filePath: string;
 	operation: GitJournalOperation;
 	note?: NoteSaveInput;
 	updatedAt: number;
+	/** Optional exit log indicating when/why this state was captured */
+	exitLog?: GitExitLog;
 }
 
 export interface SyncDbAfterPullResult {

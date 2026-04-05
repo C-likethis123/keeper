@@ -1,3 +1,4 @@
+import { FilterDrawerContent } from "@/components/FilterDrawerContent";
 import { ToastOverlay } from "@/components/shared/Toast";
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
@@ -6,6 +7,7 @@ import { useAppStartup } from "@/hooks/useAppStartup";
 import { useStyles } from "@/hooks/useStyles";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { ThemeProvider } from "@react-navigation/native";
+import { Drawer } from "expo-router/drawer";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
 import {
@@ -15,6 +17,7 @@ import {
 	View,
 	useColorScheme,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-get-random-values";
 
 traceStartupBootstrapEvent("bootstrap.layout_module_evaluated");
@@ -56,10 +59,24 @@ const App = ({
 		);
 	}
 	return (
-		<>
-			<Stack />
+		<GestureHandlerRootView style={{ flex: 1 }}>
+			<Drawer
+				drawerContent={(props) => <FilterDrawerContent {...props} />}
+				screenOptions={{
+					headerShown: false,
+					drawerType: "slide",
+					swipeEnabled: true,
+					drawerStyle: { width: 280 },
+				}}
+			>
+				<Drawer.Screen name="index" />
+				<Drawer.Screen
+					name="editor"
+					options={{ drawerItemVisible: false, swipeEnabled: false }}
+				/>
+			</Drawer>
 			<ToastOverlay />
-		</>
+		</GestureHandlerRootView>
 	);
 };
 

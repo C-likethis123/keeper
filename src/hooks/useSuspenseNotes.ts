@@ -12,6 +12,7 @@ import type {
 	NoteStatus,
 	NoteType,
 } from "@/services/notes/types";
+import { useFilterStore } from "@/stores/filterStore";
 import { useStorageStore } from "@/stores/storageStore";
 import { waitForStorageReady } from "@/stores/storageSuspense";
 import {
@@ -69,10 +70,10 @@ export default function useSuspenseNotes() {
 	const contentVersion = useStorageStore((s) => s.contentVersion);
 	const [query, setQuery] = useState("");
 	const debouncedQuery = useDebounce(query, 300);
-	const [noteTypeFilter, setNoteTypeFilter] = useState<NoteType[]>([]);
-	const [statusFilter, setStatusFilter] = useState<NoteStatus | undefined>(
-		undefined,
-	);
+	const noteTypeFilter = useFilterStore((s) => s.noteTypes);
+	const statusFilter = useFilterStore((s) => s.status);
+	const setNoteTypeFilter = useFilterStore((s) => s.setNoteTypes);
+	const setStatusFilter = useFilterStore((s) => s.setStatus);
 	const [refreshVersion, setRefreshVersion] = useState(0);
 	const [paginationState, setPaginationState] = useState<{
 		baseKey: string;

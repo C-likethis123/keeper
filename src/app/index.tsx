@@ -11,8 +11,10 @@ import useSuspenseNotes from "@/hooks/useSuspenseNotes";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
+import { useFilterStore } from "@/stores/filterStore";
 import { useToastStore } from "@/stores/toastStore";
-import { Stack, useFocusEffect } from "expo-router";
+import { Stack, useFocusEffect, useNavigation } from "expo-router";
+import { DrawerActions } from "@react-navigation/native";
 import React, { Suspense, useCallback, useRef, useState } from "react";
 import {
 	Modal,
@@ -29,21 +31,23 @@ function IndexContent() {
 	const {
 		notes,
 		query,
-		noteTypeFilter,
-		statusFilter,
 		hasMore,
 		isLoading,
 		error,
 		handleRefresh,
 		loadMoreNotes,
 		setQuery,
-		setNoteTypeFilter,
-		setStatusFilter,
 	} = useSuspenseNotes();
+	const reset = useFilterStore((s) => s.reset);
 	const showToast = useToastStore((state) => state.showToast);
 	const [isResetting, setIsResetting] = React.useState(false);
 	const [isResetModalVisible, setIsResetModalVisible] = useState(false);
 	const createAndOpenNote = useCreateAndOpenNote();
+	const navigation = useNavigation();
+
+	const handleMenuPress = useCallback(() => {
+		navigation.dispatch(DrawerActions.toggleDrawer());
+	}, [navigation]);
 
 	const handleDeleteNote = useCallback(
 		async (note: Note) => {
@@ -101,7 +105,8 @@ function IndexContent() {
 	const handleConfirmReset = useCallback(() => {
 		setIsResetModalVisible(false);
 		void runReset();
-	}, [runReset]);
+		reset();
+	}, [runReset, reset]);
 
 	const handlePinToggle = useCallback(
 		async (updated: Note) => {
@@ -140,15 +145,7 @@ function IndexContent() {
 							searchQuery={query}
 							setSearchQuery={setQuery}
 							searchInputRef={searchInputRef}
-							noteTypes={noteTypeFilter}
-							status={statusFilter}
-							onNoteTypesChange={(values) => {
-								setNoteTypeFilter(values);
-								if (!values.includes("todo")) {
-									setStatusFilter(undefined);
-								}
-							}}
-							onStatusChange={setStatusFilter}
+							onMenuPress={handleMenuPress}
 							onReset={confirmReset}
 							resetDisabled={isResetting}
 						/>

@@ -2,7 +2,7 @@ import { NOTES_ROOT } from "@/services/notes/Notes";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { storageEngine } from "@/services/storage/storageEngine";
 import { AsyncGitSyncStateStore } from "./init/stateStore";
-import type { GitJournalEntry, GitJournalOperation } from "./init/types";
+import type { GitExitLog, GitJournalEntry, GitJournalOperation } from "./init/types";
 import {
   AppState,
   type AppStateStatus,
@@ -37,6 +37,7 @@ export class GitService {
   private static commitTimeout: ReturnType<typeof setTimeout> | null = null;
   private static inFlightFlush: Promise<GitFlushResult> | null = null;
   private static backgroundSaveHandler: (() => Promise<void>) | null = null;
+  private static backgroundCommitPromise: Promise<void> | null = null;
 
   private appStateSubscription: NativeEventSubscription | null = null;
 
@@ -154,9 +155,104 @@ export class GitService {
     await GitService.stateStore.writePendingJournal([...queue.values()]);
   }
 
+  /**
+   * Log the current exit state to the journal without waiting for flush.
+   * This records metadata about why the app is exiting, which helps with
+   * recovery and debugging. The actual commit happens asynchronously.
+   */
+  private static async logExitState(
+    reason: FlushReason,
+    documentVersion?: number,
+  ): Promise<void> {
+    const journal = await GitService.stateStore.readPendingJournal();
+    if (journal.length === 0) {
+      // No pending changes, nothing to log
+      return;
+    }
+
+    const exitLog: GitExitLog = {
+      timestamp: Date.now(),
+      reason,
+      documentVersion,
+    };
+
+    // Attach exit log to all entries in the journal
+    const updatedJournal = journal.map((entry) => ({
+      ...entry,
+      exitLog: entry.exitLog ?? exitLog,
+    }));
+
+    await GitService.stateStore.writePendingJournal(updatedJournal);
+  }
+
+  /**
+   * Trigger a background commit/push without blocking the caller.
+   * This is a fire-and-forget operation that uses the same runFlush() logic
+   * but doesn't block app exit. If the commit fails, the journal persists
+   * and will be retried on next app launch.
+   */
+  static triggerBackgroundCommit(reason: string): void {
+    // If there's already a background commit in progress, don't start another
+    if (GitService.backgroundCommitPromise) {
+      return;
+    }
+
+    // Clear any pending debounce timer since we're committing now
+    if (GitService.commitTimeout) {
+      clearTimeout(GitService.commitTimeout);
+      GitService.commitTimeout = null;
+    }
+
+    // Fire and forget - don't await
+    GitService.backgroundCommitPromise = GitService.runFlush(
+      `Auto-committed after ${reason}`,
+      false,
+    )
+      .then((result) => {
+        if (!result.success) {
+          console.warn(
+            `[GitService] Background commit failed for ${reason}:`,
+            result.error,
+          );
+        }
+      })
+      .catch((error) => {
+        console.warn(
+          `[GitService] Background commit error for ${reason}:`,
+          error,
+        );
+      })
+      .finally(() => {
+        GitService.backgroundCommitPromise = null;
+      });
+  }
+
   static async hasPendingJournal(): Promise<boolean> {
     const journal = await GitService.stateStore.readPendingJournal();
     return journal.length > 0;
+  }
+
+  /**
+   * Check if the journal contains exit logs from a previous session.
+   * This indicates the app exited without completing a commit.
+   */
+  static async hasExitLogInJournal(): Promise<boolean> {
+    const journal = await GitService.stateStore.readPendingJournal();
+    return journal.some((entry) => entry.exitLog != null);
+  }
+
+  /**
+   * Get the most recent exit log from the journal, if any.
+   */
+  static async getLatestExitLogFromJournal(): Promise<GitExitLog | null> {
+    const journal = await GitService.stateStore.readPendingJournal();
+    let latest: GitExitLog | null = null;
+    for (const entry of journal) {
+      if (entry.exitLog && (!latest || entry.exitLog.timestamp > latest.timestamp)) {
+        latest = entry.exitLog;
+      }
+    }
+    return latest;
   }
 
   static async prepareRecoveryForRemoteSync(): Promise<void> {
@@ -249,11 +345,20 @@ export class GitService {
       const gitEngine = GitService.ensureGitEngine();
       const status = await gitEngine.status(NOTES_ROOT);
       if (status.length > 0) {
-        const commitMessage =
-          message ||
-          (recovery
-            ? `Recover pending local note changes (${snapshot.length} files)`
-            : `Update ${snapshot.length} file(s)`);
+        let commitMessage = message;
+        if (!commitMessage) {
+          if (recovery) {
+            // Check if we're recovering from an exit log
+            const exitLog = snapshot.find((e) => e.exitLog)?.exitLog;
+            if (exitLog) {
+              commitMessage = `Recover ${snapshot.length} file(s) from ${exitLog.reason} exit (auto-committed on restart)`;
+            } else {
+              commitMessage = `Recover pending local note changes (${snapshot.length} files)`;
+            }
+          } else {
+            commitMessage = `Update ${snapshot.length} file(s)`;
+          }
+        }
         await gitEngine.commit(NOTES_ROOT, commitMessage);
         didCommit = true;
       }
@@ -348,16 +453,25 @@ export class GitService {
 
   private handleAppStateChange = (nextState: AppStateStatus) => {
     if (nextState !== "active") {
+      // Fire-and-forget: log exit state and trigger background commit
+      // The app can exit immediately without waiting for git operations
       void (async () => {
         try {
+          // Persist current editor state to disk
           await GitService.backgroundSaveHandler?.();
         } catch (error) {
           console.warn("[GitService] Background save failed:", error);
         }
-        await GitService.flushPendingChanges({
-          reason: "app-background",
-          timeoutMs: 8000,
-        });
+
+        try {
+          // Log the exit state to journal (non-blocking)
+          await GitService.logExitState("app-background");
+        } catch (error) {
+          console.warn("[GitService] Failed to log exit state:", error);
+        }
+
+        // Trigger background commit without blocking app exit
+        GitService.triggerBackgroundCommit("app-background");
       })();
     }
   };
