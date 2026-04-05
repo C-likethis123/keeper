@@ -6,9 +6,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use storage_core::{
     build_fts_match_query, delete_note, index_list, index_rebuild_from_disk, index_upsert,
-    list_note_files, parse_frontmatter, read_note, serialize_note, storage_initialize,
-    template_path_for_id, write_note, IndexListInput, IndexUpsertInput, WriteNoteInput,
-    NOTES_DIR,
+    list_note_files, parse_frontmatter, read_note, serialize_note, storage_initialize, write_note,
+    IndexListInput, IndexUpsertInput, WriteNoteInput, NOTES_DIR,
 };
 
 static NEXT_TEST_ID: AtomicU64 = AtomicU64::new(0);
@@ -170,7 +169,7 @@ fn serialize_note_omits_pinned_for_templates() {
 }
 
 #[test]
-fn write_note_routes_templates_into_templates_directory() {
+fn write_note_saves_templates_in_the_notes_directory() {
     let paths = TestStoragePaths::new();
     storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
 
@@ -189,10 +188,7 @@ fn write_note_routes_templates_into_templates_directory() {
     )
     .expect("write template");
 
-    assert!(template_path_for_id(&paths.notes_root, "template-1")
-        .expect("template path")
-        .exists());
-    assert!(!paths.notes_root.join("template-1.md").exists());
+    assert!(paths.notes_root.join("template-1.md").exists());
 }
 
 #[test]
@@ -223,8 +219,8 @@ fn read_note_reads_template_entry_through_unified_api() {
     let paths = TestStoragePaths::new();
     storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
     write_markdown(
-        &template_path_for_id(&paths.notes_root, "template-1").expect("template path"),
-        "---\ntitle: \"Checklist\"\nid: \"template-1\"\ntype: \"todo\"\nstatus: \"doing\"\n---\n- agenda",
+        &paths.notes_root.join("template-1.md"),
+        "---\ntitle: \"Checklist\"\nid: \"template-1\"\ntype: \"template\"\n---\n- agenda",
     );
 
     let note = read_note(&paths.notes_root, "template-1".to_string())
@@ -233,36 +229,23 @@ fn read_note_reads_template_entry_through_unified_api() {
 
     assert_eq!(note.note_type, "template");
     assert!(!note.is_pinned);
-    assert_eq!(note.status.as_deref(), Some("doing"));
+    assert_eq!(note.status, None);
 }
 
 #[test]
-fn read_note_errors_when_duplicate_note_and_template_exist() {
+fn delete_note_removes_template_entries_from_the_notes_directory() {
     let paths = TestStoragePaths::new();
     storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
-    write_markdown(&paths.notes_root.join("shared.md"), "---\ntitle: \"Note\"\n---\nbody");
     write_markdown(
-        &template_path_for_id(&paths.notes_root, "shared").expect("template path"),
-        "---\ntitle: \"Template\"\n---\nbody",
+        &paths.notes_root.join("template-1.md"),
+        "---\ntitle: \"Template\"\nid: \"template-1\"\ntype: \"template\"\n---\nbody",
     );
 
-    let err = read_note(&paths.notes_root, "shared".to_string()).expect_err("duplicate error");
-    assert!(err.contains("duplicate note entries found"));
-}
+    let deleted = delete_note(&paths.notes_root, "template-1".to_string())
+        .expect("delete template");
 
-#[test]
-fn delete_note_errors_when_duplicate_note_and_template_exist() {
-    let paths = TestStoragePaths::new();
-    storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
-    write_markdown(&paths.notes_root.join("shared.md"), "---\ntitle: \"Note\"\n---\nbody");
-    write_markdown(
-        &template_path_for_id(&paths.notes_root, "shared").expect("template path"),
-        "---\ntitle: \"Template\"\n---\nbody",
-    );
-
-    let err =
-        delete_note(&paths.notes_root, "shared".to_string()).expect_err("duplicate error");
-    assert!(err.contains("duplicate note entries found"));
+    assert!(deleted);
+    assert!(!paths.notes_root.join("template-1.md").exists());
 }
 
 #[test]
@@ -271,8 +254,8 @@ fn list_note_files_includes_templates() {
     storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
     write_markdown(&paths.notes_root.join("note-1.md"), "---\ntitle: \"Note\"\n---\nbody");
     write_markdown(
-        &template_path_for_id(&paths.notes_root, "template-1").expect("template path"),
-        "---\ntitle: \"Template\"\n---\nbody",
+        &paths.notes_root.join("template-1.md"),
+        "---\ntitle: \"Template\"\nid: \"template-1\"\ntype: \"template\"\n---\nbody",
     );
 
     let items = list_note_files(&paths.notes_root).expect("list note files");
@@ -286,8 +269,8 @@ fn index_rebuild_from_disk_indexes_templates() {
     let paths = TestStoragePaths::new();
     storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
     write_markdown(
-        &template_path_for_id(&paths.notes_root, "template-1").expect("template path"),
-        "---\ntitle: \"Template\"\nid: \"template-1\"\ntype: \"todo\"\nstatus: \"open\"\n---\n- agenda",
+        &paths.notes_root.join("template-1.md"),
+        "---\ntitle: \"Template\"\nid: \"template-1\"\ntype: \"template\"\n---\n- agenda",
     );
 
     let metrics =
@@ -310,7 +293,7 @@ fn index_rebuild_from_disk_indexes_templates() {
         .expect("read indexed row");
     assert_eq!(row.0, "template");
     assert_eq!(row.1, 0);
-    assert_eq!(row.2.as_deref(), Some("open"));
+    assert_eq!(row.2, None);
 }
 
 #[test]

@@ -514,10 +514,10 @@ describe("NoteEditorView", () => {
           title: "Template: Weekly Review",
           noteType: "template",
         }),
-        true,
+        false,
       );
     });
-    expect(mockDeleteNote).toHaveBeenCalledWith(note.id, "note");
+    expect(mockDeleteNote).not.toHaveBeenCalled();
   });
 
   it("flushes queued git changes after deleting before leaving", async () => {
@@ -529,7 +529,7 @@ describe("NoteEditorView", () => {
     await user.press(screen.getByLabelText("Delete note"));
 
     await waitFor(() => {
-      expect(mockDeleteNote).toHaveBeenCalledWith(note.id, "note");
+      expect(mockDeleteNote).toHaveBeenCalledWith(note.id);
     });
     expect(mockGitFlushPendingChanges).toHaveBeenCalledWith({
       reason: "delete",

@@ -125,12 +125,11 @@ describe("useAutoSave", () => {
 				isPinned: false,
 				noteType: "note",
 				status: undefined,
-				previousNoteType: "note",
 				isNewEntry: false,
 			});
 		});
 		expect(result.current.status).toBe("saved");
-		expect(onPersisted).toHaveBeenCalledWith("note");
+		expect(onPersisted).toHaveBeenCalledWith();
 
 		act(() => {
 			jest.advanceTimersByTime(1000);

@@ -1,5 +1,5 @@
 import { Directory, File } from "expo-file-system";
-import { NOTES_ROOT, getTemplatesRoot } from "../Notes";
+import { NOTES_ROOT } from "../Notes";
 import { mapWithConcurrency } from "./asyncUtils";
 import { getNotesIndexDb } from "./db";
 import { mapMarkdownFileToSqlItem } from "./mapper";
@@ -31,9 +31,7 @@ export async function rebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
 	}
 
 	const listStart = performance.now();
-	const markdownFiles = collectMarkdownFiles(dir).concat(
-		collectMarkdownFiles(new Directory(getTemplatesRoot())),
-	);
+	const markdownFiles = collectMarkdownFiles(dir);
 	const listMs = Math.round(performance.now() - listStart);
 
 	const parseStart = performance.now();

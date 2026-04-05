@@ -6,7 +6,3 @@ export let NOTES_ROOT = `${Paths.cache.uri}notes/`;
 export function setNotesRoot(path: string): void {
 	NOTES_ROOT = path;
 }
-
-export function getTemplatesRoot(): string {
-	return `${NOTES_ROOT}templates/`;
-}

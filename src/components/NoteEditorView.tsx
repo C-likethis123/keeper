@@ -1,6 +1,5 @@
 import NoteEditorHeader from "@/components/NoteEditorHeader";
 import TemplatePickerModal from "@/components/TemplatePickerModal";
-import type { EditorState } from "@/components/editor/core/EditorState";
 import { FilterChip } from "@/components/shared/FilterChip";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useAutoSave } from "@/hooks/useAutoSave";
@@ -57,37 +56,22 @@ export default function NoteEditorView({
   const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
   const showToast = useToastStore((s) => s.showToast);
   const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
-  const editorContent = useEditorState((s: EditorState) =>
-    s.getContentForVersion(s.document.version),
-  );
   // Track the note ID we've loaded to prevent reloads during save operations.
   // Reset on mount to ensure we always load on initial screen open.
   const loadedNoteIdRef = useRef<string | null>(null);
-  // derives note type when first initialised.
-  // TODO: this deriving note type thing is a little confusing it's littered all over the place.
   const [noteType, setNoteType] = useState<Note["noteType"]>(() =>
     deriveNoteType(note.title),
   );
 
-  // this latest draft thing also cofusing.
   const latestDraftRef = useRef({
     title,
     isPinned,
     noteType,
     todoStatus,
   });
-  // what are they for...
-  const lastPersistedTypeRef = useRef<Note["noteType"]>(note.noteType);
   const isNewEntryRef = useRef(!!isNew);
   const isLeavingRef = useRef(false);
   const bypassNextBeforeRemoveRef = useRef(false);
-  // why do we need the note type?
-  // - for filtering in note grid
-  // for the todos - it's for tracking completion times.
-  // - maybe i need to "mark done?"
-  //
-
-  // saves this note type in the latest draft.
   latestDraftRef.current = {
     title,
     isPinned,
@@ -101,7 +85,7 @@ export default function NoteEditorView({
     setTodoStatus((current) =>
       derived === "todo" ? (current ?? "open") : undefined,
     );
-  }, [deriveNoteType, title]);
+  }, [title]);
 
   const buildCurrentNotePayload = useCallback(
     (overrides?: Partial<NoteSaveInput>): NoteSaveInput => {
@@ -125,27 +109,23 @@ export default function NoteEditorView({
         ...overrides,
       };
     },
-    [deriveNoteType, id],
+    [id],
   );
-  // TODO: and why do we need this?
   const persistCurrentEntry = useCallback(
     async (overrides?: Partial<NoteSaveInput>) => {
       const payload = buildCurrentNotePayload(overrides);
       const isNewEntry = isNewEntryRef.current;
       await persistEditorEntry({
         ...payload,
-        previousNoteType: lastPersistedTypeRef.current,
         isNewEntry,
       });
-      lastPersistedTypeRef.current = payload.noteType;
       isNewEntryRef.current = false;
       return payload;
     },
     [buildCurrentNotePayload],
   );
 
-  const handlePersisted = useCallback((savedType: Note["noteType"]) => {
-    lastPersistedTypeRef.current = savedType;
+  const handlePersisted = useCallback(() => {
     isNewEntryRef.current = false;
   }, []);
 
@@ -169,7 +149,6 @@ export default function NoteEditorView({
       setTitle(note.title);
       setNoteType(note.noteType);
       setTodoStatus(note.noteType === "todo" ? (note.status ?? "open") : null);
-      lastPersistedTypeRef.current = note.noteType;
 
       // Only load markdown on initial mount or when note ID changes.
       // This prevents scroll/focus loss when save operations return a new note object
@@ -193,7 +172,7 @@ export default function NoteEditorView({
     const nextIsPinned = !latestDraftRef.current.isPinned;
     await persistCurrentEntry({ isPinned: nextIsPinned });
     setIsPinned(nextIsPinned);
-  }, [persistCurrentEntry, showToast]);
+  }, [persistCurrentEntry]);
 
   const flushGitAndToastOnFailure = useCallback(
     async (
@@ -237,7 +216,7 @@ export default function NoteEditorView({
   );
 
   const handleDeletePress = useCallback(async () => {
-    await NoteService.deleteNote(id, latestDraftRef.current.noteType);
+    await NoteService.deleteNote(id);
     await flushGitAndToastOnFailure(
       "delete",
       `Delete ${latestDraftRef.current.noteType}`,
@@ -278,7 +257,13 @@ export default function NoteEditorView({
         isPinned={isPinned}
         noteType={noteType}
         onChangeTitle={applyTitleChange}
-        onBlurTitle={() => setNoteType(deriveNoteType(title))}
+        onBlurTitle={() => {
+          const derived = deriveNoteType(title);
+          setNoteType(derived);
+          setTodoStatus((current) =>
+            derived === "todo" ? (current ?? "open") : undefined,
+          );
+        }}
         onSubmitEditing={() => focusBlock(0)}
         onBack={() => {
           void leaveEditor();

@@ -40,7 +40,6 @@ describe("persistEditorEntry", () => {
 			isPinned: false,
 			noteType: "note",
 			status: null,
-			previousNoteType: "note",
 		});
 
 		expect(mockSaveNote).not.toHaveBeenCalled();
@@ -66,7 +65,6 @@ describe("persistEditorEntry", () => {
 			isPinned: false,
 			noteType: "note",
 			status: null,
-			previousNoteType: "note",
 		});
 
 		expect(mockSaveNote).not.toHaveBeenCalled();
@@ -92,7 +90,6 @@ describe("persistEditorEntry", () => {
 			isPinned: false,
 			noteType: "note",
 			status: null,
-			previousNoteType: "note",
 		});
 
 		expect(mockSaveNote).toHaveBeenCalledWith(
@@ -128,8 +125,18 @@ describe("persistEditorEntry", () => {
 		);
 	});
 
-	it("deletes old note when transitioning to template", async () => {
-		mockLoadNote.mockResolvedValue(null);
+	it("updates an existing note when transitioning to template", async () => {
+		mockLoadNote.mockResolvedValue({
+			id: "note-1",
+			title: "Plain note",
+			content: "body",
+			lastUpdated: 1710000000000,
+			isPinned: false,
+			noteType: "note",
+			status: null,
+			createdAt: null,
+			completedAt: null,
+		});
 
 		await persistEditorEntry({
 			id: "note-1",
@@ -137,15 +144,30 @@ describe("persistEditorEntry", () => {
 			content: "body",
 			isPinned: false,
 			noteType: "template",
-			previousNoteType: "note",
 		});
 
-		expect(mockSaveNote).toHaveBeenCalled();
-		expect(mockDeleteNote).toHaveBeenCalledWith("note-1", "note");
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "note-1",
+				noteType: "template",
+			}),
+			false,
+		);
+		expect(mockDeleteNote).not.toHaveBeenCalled();
 	});
 
-	it("deletes old template when transitioning from template", async () => {
-		mockLoadNote.mockResolvedValue(null);
+	it("updates an existing template when transitioning from template", async () => {
+		mockLoadNote.mockResolvedValue({
+			id: "tmpl-1",
+			title: "Template",
+			content: "body",
+			lastUpdated: 1710000000000,
+			isPinned: false,
+			noteType: "template",
+			status: null,
+			createdAt: null,
+			completedAt: null,
+		});
 
 		await persistEditorEntry({
 			id: "tmpl-1",
@@ -153,15 +175,30 @@ describe("persistEditorEntry", () => {
 			content: "body",
 			isPinned: false,
 			noteType: "note",
-			previousNoteType: "template",
 		});
 
-		expect(mockSaveNote).toHaveBeenCalled();
-		expect(mockDeleteNote).toHaveBeenCalledWith("tmpl-1", "template");
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "tmpl-1",
+				noteType: "note",
+			}),
+			false,
+		);
+		expect(mockDeleteNote).not.toHaveBeenCalled();
 	});
 
 	it("does not delete the note when transitioning between note types that share storage", async () => {
-		mockLoadNote.mockResolvedValue(null);
+		mockLoadNote.mockResolvedValue({
+			id: "note-1",
+			title: "Plain note",
+			content: "body",
+			lastUpdated: 1710000000000,
+			isPinned: false,
+			noteType: "note",
+			status: null,
+			createdAt: null,
+			completedAt: null,
+		});
 
 		await persistEditorEntry({
 			id: "note-1",
@@ -169,7 +206,6 @@ describe("persistEditorEntry", () => {
 			content: "body",
 			isPinned: false,
 			noteType: "resource",
-			previousNoteType: "note",
 		});
 
 		expect(mockSaveNote).toHaveBeenCalledWith(
@@ -227,7 +263,6 @@ describe("persistEditorEntry", () => {
 			isPinned: false,
 			noteType: "todo",
 			status: "done",
-			previousNoteType: "todo",
 		});
 
 		expect(mockSaveNote).toHaveBeenCalledWith(

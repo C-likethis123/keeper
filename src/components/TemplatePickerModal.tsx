@@ -7,7 +7,6 @@ import { useToastStore } from "@/stores/toastStore";
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-	Alert,
 	Modal,
 	ScrollView,
 	StyleSheet,
@@ -66,36 +65,19 @@ export default function TemplatePickerModal({
 
 	const applyTemplate = useCallback(
 		async (template: Note) => {
-			const replaceBody = async () => {
-				try {
-					const fullTemplate = await NoteService.loadNote(template.id);
-					if (!fullTemplate) {
-						showToast("Template not found");
-						return;
-					}
-					loadMarkdown(fullTemplate.content);
-					onDismiss();
-					showToast(`Applied template "${fullTemplate.title || "Untitled"}"`);
-				} catch (error) {
-					console.warn("Failed to apply template:", error);
-					showToast("Failed to apply template");
+			try {
+				const fullTemplate = await NoteService.loadNote(template.id);
+				if (!fullTemplate) {
+					showToast("Template not found");
+					return;
 				}
-			};
-
-			Alert.alert(
-				"Replace note body?",
-				`Use "${template.title || "Untitled"}" and replace the current body?`,
-				[
-					{ text: "Cancel", style: "cancel" },
-					{
-						text: "Replace",
-						style: "destructive",
-						onPress: () => {
-							void replaceBody();
-						},
-					},
-				],
-			);
+				loadMarkdown(fullTemplate.content);
+				onDismiss();
+				showToast(`Applied template "${fullTemplate.title || "Untitled"}"`);
+			} catch (error) {
+				console.warn("Failed to apply template:", error);
+				showToast("Failed to apply template");
+			}
 		},
 		[loadMarkdown, onDismiss, showToast],
 	);

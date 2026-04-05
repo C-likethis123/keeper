@@ -14,13 +14,8 @@ type PersistEditorEntryInput = {
 	status?: Note["status"];
 	createdAt?: Note["createdAt"];
 	completedAt?: Note["completedAt"];
-	previousNoteType?: NoteType;
 	isNewEntry?: boolean;
 };
-
-function getPersistenceKey(id: string, noteType: NoteType): string {
-	return noteType === "template" ? `template:${id}` : `note:${id}`;
-}
 
 function buildPayload(
 	input: PersistEditorEntryInput,
@@ -76,24 +71,10 @@ export function normalizeMarkdownForPersistence(markdown: string): string {
 export async function persistEditorEntry(
 	input: PersistEditorEntryInput,
 ): Promise<void> {
-	const previousType = input.previousNoteType;
-	const isTypeTransition =
-		previousType !== undefined && previousType !== input.noteType;
-	const needsPathMove =
-		!!previousType &&
-		getPersistenceKey(input.id, previousType) !==
-			getPersistenceKey(input.id, input.noteType);
-
-	const existingNote = isTypeTransition
-		? null
-		: await NoteService.loadNote(input.id);
+	const existingNote = await NoteService.loadNote(input.id);
 	const payload = buildPayload(input, existingNote);
 
 	if (!existingNote || !isSamePayload(existingNote, payload)) {
-		await NoteService.saveNote(payload, input.isNewEntry || needsPathMove);
-	}
-
-	if (needsPathMove && previousType) {
-		await NoteService.deleteNote(input.id, previousType);
+		await NoteService.saveNote(payload, input.isNewEntry ?? false);
 	}
 }

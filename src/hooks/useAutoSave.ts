@@ -21,7 +21,7 @@ type AutoSaveInput = {
 	noteType: Note["noteType"];
 	status?: Note["status"];
 	initialNoteType?: Note["noteType"];
-	onPersisted?: (noteType: Note["noteType"]) => void;
+	onPersisted?: () => void;
 	isNew?: boolean;
 };
 
@@ -174,7 +174,6 @@ export function useAutoSave({
 				isPinned: currentNote.isPinned,
 				noteType: currentNote.noteType,
 				status: currentNote.status,
-				previousNoteType: previousNoteType,
 				isNewEntry: currentIsNewEntry,
 			});
 			isNewEntryRef.current = false;
@@ -201,7 +200,7 @@ export function useAutoSave({
 			noteType: currentNote.noteType,
 			status: currentNote.status,
 		};
-		onPersisted?.(currentNote.noteType);
+		onPersisted?.();
 		isSavingRef.current = false;
 		setStatus("saved");
 		statusTimeoutRef.current = setTimeout(() => {

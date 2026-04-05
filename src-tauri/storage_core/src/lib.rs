@@ -10,7 +10,6 @@ use std::time::UNIX_EPOCH;
 const TABLE: &str = "note_index";
 const FTS_TABLE: &str = "note_index_fts";
 pub const NOTES_DIR: &str = "notes";
-const TEMPLATES_DIR: &str = "templates";
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -106,18 +105,8 @@ pub struct RebuildMetrics {
     pub note_count: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum EntryLocation {
-    Note,
-    Template,
-}
-
 fn notes_root(data_dir: &Path) -> PathBuf {
     data_dir.join(NOTES_DIR)
-}
-
-fn templates_root(notes_root: &Path) -> PathBuf {
-    notes_root.join(TEMPLATES_DIR)
 }
 
 pub fn ensure_notes_dir(data_dir: &Path) -> Result<(), String> {
@@ -128,10 +117,7 @@ pub fn ensure_notes_dir(data_dir: &Path) -> Result<(), String> {
 }
 
 pub fn ensure_storage_dirs(data_dir: &Path) -> Result<(), String> {
-    let notes_root = notes_root(data_dir);
     ensure_notes_dir(data_dir)?;
-    fs::create_dir_all(templates_root(&notes_root))
-        .map_err(|e| format!("failed to create templates dir: {e}"))?;
     Ok(())
 }
 
@@ -172,38 +158,6 @@ fn sanitize_note_id(id: &str) -> Result<&str, String> {
 fn path_for_id(notes_root: &Path, id: &str) -> Result<PathBuf, String> {
     let clean_id = sanitize_note_id(id)?;
     Ok(notes_root.join(format!("{clean_id}.md")))
-}
-
-pub fn template_path_for_id(notes_root: &Path, id: &str) -> Result<PathBuf, String> {
-    let clean_id = sanitize_note_id(id)?;
-    Ok(templates_root(notes_root).join(format!("{clean_id}.md")))
-}
-
-fn path_for_note_type(notes_root: &Path, id: &str, note_type: &str) -> Result<PathBuf, String> {
-    if note_type == "template" {
-        template_path_for_id(notes_root, id)
-    } else {
-        path_for_id(notes_root, id)
-    }
-}
-
-fn resolve_existing_entry_path(
-    notes_root: &Path,
-    id: &str,
-) -> Result<Option<(EntryLocation, PathBuf)>, String> {
-    let note_path = path_for_id(notes_root, id)?;
-    let template_path = template_path_for_id(notes_root, id)?;
-    let has_note = note_path.exists();
-    let has_template = template_path.exists();
-
-    match (has_note, has_template) {
-        (false, false) => Ok(None),
-        (true, false) => Ok(Some((EntryLocation::Note, note_path))),
-        (false, true) => Ok(Some((EntryLocation::Template, template_path))),
-        (true, true) => Err(format!(
-            "duplicate note entries found for id '{id}' in notes and templates"
-        )),
-    }
 }
 
 fn file_mtime_ms(path: &Path) -> i64 {
@@ -404,9 +358,10 @@ pub fn storage_initialize(
 }
 
 pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>, String> {
-    let Some((location, path)) = resolve_existing_entry_path(notes_root, &id)? else {
+    let path = path_for_id(notes_root, &id)?;
+    if !path.exists() {
         return Ok(None);
-    };
+    }
     let markdown = fs::read_to_string(&path).map_err(|e| format!("failed to read note: {e}"))?;
     let (title, is_pinned, note_type, status, created_at, completed_at, content) =
         parse_frontmatter(&markdown);
@@ -414,32 +369,12 @@ pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>
         id,
         title,
         content,
-        is_pinned: if location == EntryLocation::Template {
-            false
-        } else {
-            is_pinned
-        },
+        is_pinned,
         last_updated: file_mtime_ms(&path),
-        note_type: if location == EntryLocation::Template {
-            "template".to_string()
-        } else {
-            note_type.clone()
-        },
-        status: if location == EntryLocation::Template && note_type != "todo" {
-            None
-        } else {
-            status
-        },
-        created_at: if location == EntryLocation::Template && note_type != "todo" {
-            None
-        } else {
-            created_at
-        },
-        completed_at: if location == EntryLocation::Template && note_type != "todo" {
-            None
-        } else {
-            completed_at
-        },
+        note_type,
+        status,
+        created_at,
+        completed_at,
     }))
 }
 
@@ -448,16 +383,17 @@ pub fn write_note(notes_root: &Path, input: WriteNoteInput) -> Result<i64, Strin
         .parent()
         .ok_or_else(|| "notes root is missing parent data dir".to_string())?;
     ensure_storage_dirs(data_dir)?;
-    let path = path_for_note_type(notes_root, &input.id, &input.note_type)?;
+    let path = path_for_id(notes_root, &input.id)?;
     let markdown = serialize_note(&input)?;
     fs::write(&path, markdown).map_err(|e| format!("failed to write note: {e}"))?;
     Ok(file_mtime_ms(&path))
 }
 
 pub fn delete_note(notes_root: &Path, id: String) -> Result<bool, String> {
-    let Some((_, path)) = resolve_existing_entry_path(notes_root, &id)? else {
+    let path = path_for_id(notes_root, &id)?;
+    if !path.exists() {
         return Ok(false);
-    };
+    }
     fs::remove_file(path).map_err(|e| format!("failed to delete note: {e}"))?;
     Ok(true)
 }
@@ -471,22 +407,6 @@ pub fn list_note_files(notes_root: &Path) -> Result<Vec<NoteFileEntry>, String> 
     let entries =
         fs::read_dir(notes_root).map_err(|e| format!("failed to list notes dir: {e}"))?;
     for entry_result in entries {
-        let entry = entry_result.map_err(|e| format!("failed to read dir entry: {e}"))?;
-        let path = entry.path();
-        if path.extension().and_then(|x| x.to_str()) != Some("md") {
-            continue;
-        }
-        let Some(stem) = path.file_stem().and_then(|x| x.to_str()) else {
-            continue;
-        };
-        out.push(NoteFileEntry {
-            id: stem.to_string(),
-            updated_at: file_mtime_ms(&path),
-        });
-    }
-    let template_entries = fs::read_dir(templates_root(notes_root))
-        .map_err(|e| format!("failed to list templates dir: {e}"))?;
-    for entry_result in template_entries {
         let entry = entry_result.map_err(|e| format!("failed to read dir entry: {e}"))?;
         let path = entry.path();
         if path.extension().and_then(|x| x.to_str()) != Some("md") {
@@ -734,45 +654,6 @@ pub fn index_rebuild_from_disk(
         count += 1;
     }
 
-    let template_entries = fs::read_dir(templates_root(notes_root))
-        .map_err(|e| format!("failed to list templates dir: {e}"))?;
-    for entry_result in template_entries {
-        let entry = entry_result.map_err(|e| format!("failed to read dir entry: {e}"))?;
-        let path = entry.path();
-        if path.extension().and_then(|x| x.to_str()) != Some("md") {
-            continue;
-        }
-        let Some(id) = path.file_stem().and_then(|x| x.to_str()) else {
-            continue;
-        };
-        let markdown =
-            fs::read_to_string(&path).map_err(|e| format!("failed to read markdown: {e}"))?;
-        let (title, _, embedded_type, status, _, _, content) =
-            parse_frontmatter(&markdown);
-        let summary = extract_summary(&content, 6);
-        let status = if embedded_type == "todo" {
-            Some(status.as_deref().unwrap_or("open"))
-        } else {
-            None
-        };
-        tx.execute(
-            &format!(
-                "INSERT INTO {TABLE} (id, title, summary, is_pinned, updated_at, note_type, status)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-                 ON CONFLICT(id) DO UPDATE SET
-                   title = excluded.title,
-                   summary = excluded.summary,
-                   is_pinned = excluded.is_pinned,
-                   updated_at = excluded.updated_at,
-                   note_type = excluded.note_type,
-                   status = excluded.status"
-            ),
-            params![id, title, summary, 0, file_mtime_ms(&path), "template", status],
-        )
-        .map_err(|e| format!("failed to insert template index row: {e}"))?;
-        count += 1;
-    }
-
     tx.execute(
         &format!("INSERT INTO {FTS_TABLE}({FTS_TABLE}) VALUES('rebuild')"),
         [],
@@ -783,4 +664,3 @@ pub fn index_rebuild_from_disk(
         .map_err(|e| format!("failed to commit rebuild transaction: {e}"))?;
     Ok(RebuildMetrics { note_count: count })
 }
-

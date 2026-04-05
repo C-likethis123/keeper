@@ -42,7 +42,7 @@ describe("NoteService", () => {
 	});
 
 	describe("saveNote - git path routing", () => {
-		it("queues template saves with templates/ prefix", async () => {
+		it("queues template saves in the notes root", async () => {
 			mockSaveNote.mockResolvedValue({
 				id: "tmpl-1",
 				title: "My Template",
@@ -65,10 +65,7 @@ describe("NoteService", () => {
 				true,
 			);
 
-			expect(mockQueueChange).toHaveBeenCalledWith(
-				"templates/tmpl-1.md",
-				"add",
-			);
+			expect(mockQueueChange).toHaveBeenCalledWith("tmpl-1.md", "add");
 		});
 
 		it("queues regular note saves without prefix", async () => {
@@ -133,15 +130,12 @@ describe("NoteService", () => {
 	});
 
 	describe("deleteNote - git path routing", () => {
-		it("queues template deletes with templates/ prefix", async () => {
+		it("queues template deletes in the notes root", async () => {
 			mockDeleteNote.mockResolvedValue(true);
 
-			await NoteService.deleteNote("tmpl-1", "template");
+			await NoteService.deleteNote("tmpl-1");
 
-			expect(mockQueueChange).toHaveBeenCalledWith(
-				"templates/tmpl-1.md",
-				"delete",
-			);
+			expect(mockQueueChange).toHaveBeenCalledWith("tmpl-1.md", "delete");
 		});
 
 		it("queues regular note deletes without prefix", async () => {

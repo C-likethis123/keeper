@@ -1,4 +1,4 @@
-import { NOTES_ROOT, getTemplatesRoot } from "@/services/notes/Notes";
+import { NOTES_ROOT } from "@/services/notes/Notes";
 import {
 	parseFrontmatter,
 	stringifyFrontmatter,
@@ -78,53 +78,33 @@ export class MobileStorageEngine implements StorageEngine {
 	async loadNote(id: string): Promise<Note | null> {
 		try {
 			const file = new File(NOTES_ROOT, `${id}.md`);
-			if (file.exists) {
-				const parsed = parseFrontmatter(await file.text());
-				return {
-					id,
-					title: parsed.title,
-					content: parsed.content,
-					lastUpdated: file.modificationTime ?? 0,
-					isPinned: parsed.isPinned,
-					noteType: parsed.noteType,
-					status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
-					createdAt:
-						parsed.noteType === "todo" ? (parsed.createdAt ?? null) : null,
-					completedAt:
-						parsed.noteType === "todo" ? (parsed.completedAt ?? null) : null,
-				};
+			if (!file.exists) {
+				return null;
 			}
-			const templateFile = new File(getTemplatesRoot(), `${id}.md`);
-			if (templateFile.exists) {
-				const parsed = parseFrontmatter(await templateFile.text());
-				return {
-					id,
-					title: parsed.title,
-					content: parsed.content,
-					lastUpdated: templateFile.modificationTime ?? 0,
-					isPinned: false,
-					noteType: parsed.noteType,
-					status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
-					createdAt:
-						parsed.noteType === "todo" ? (parsed.createdAt ?? null) : null,
-					completedAt:
-						parsed.noteType === "todo" ? (parsed.completedAt ?? null) : null,
-				};
-			}
-			return null;
+			const parsed = parseFrontmatter(await file.text());
+			return {
+				id,
+				title: parsed.title,
+				content: parsed.content,
+				lastUpdated: file.modificationTime ?? 0,
+				isPinned: parsed.isPinned,
+				noteType: parsed.noteType,
+				status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
+				createdAt: parsed.noteType === "todo" ? (parsed.createdAt ?? null) : null,
+				completedAt:
+					parsed.noteType === "todo" ? (parsed.completedAt ?? null) : null,
+			};
 		} catch {
 			return null;
 		}
 	}
 
 	async saveNote(note: NoteSaveInput): Promise<Note> {
-		const isTemplate = note.noteType === "template";
-		const root = isTemplate ? getTemplatesRoot() : NOTES_ROOT;
-		const dir = new Directory(root);
+		const dir = new Directory(NOTES_ROOT);
 		if (!dir.exists) {
 			dir.create({ intermediates: true });
 		}
-		const file = new File(root, `${note.id}.md`);
+		const file = new File(NOTES_ROOT, `${note.id}.md`);
 		const content = stringifyFrontmatter(note);
 		await file.write(content);
 		const updatedAt = file.modificationTime ?? Date.now();
@@ -137,16 +117,11 @@ export class MobileStorageEngine implements StorageEngine {
 
 	async deleteNote(id: string): Promise<boolean> {
 		const file = new File(NOTES_ROOT, `${id}.md`);
-		if (file.exists) {
-			file.delete();
-			return true;
+		if (!file.exists) {
+			return false;
 		}
-		const templateFile = new File(getTemplatesRoot(), `${id}.md`);
-		if (templateFile.exists) {
-			templateFile.delete();
-			return true;
-		}
-		return false;
+		file.delete();
+		return true;
 	}
 
 	async listNoteFiles(): Promise<NoteFileEntry[]> {
@@ -155,18 +130,6 @@ export class MobileStorageEngine implements StorageEngine {
 		const notesDir = new Directory(NOTES_ROOT);
 		if (notesDir.exists) {
 			for (const entry of notesDir.list()) {
-				if (entry instanceof File && entry.name.endsWith(".md")) {
-					items.push({
-						id: entry.name.replace(/\.md$/, ""),
-						updatedAt: entry.modificationTime ?? 0,
-					});
-				}
-			}
-		}
-
-		const templatesDir = new Directory(getTemplatesRoot());
-		if (templatesDir.exists) {
-			for (const entry of templatesDir.list()) {
 				if (entry instanceof File && entry.name.endsWith(".md")) {
 					items.push({
 						id: entry.name.replace(/\.md$/, ""),
