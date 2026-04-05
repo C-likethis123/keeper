@@ -1,4 +1,4 @@
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
 import { FontAwesome } from "@expo/vector-icons";
@@ -32,7 +32,6 @@ export default function NoteCard({
   onPinToggle: (updated: Note) => void;
 }) {
   const router = useRouter();
-  const theme = useExtendedTheme();
   const styles = useStyles(createStyles);
   const typeLabel = formatNoteType(note);
 
@@ -71,7 +70,7 @@ export default function NoteCard({
             <FontAwesome
               name="thumb-tack"
               size={18}
-              color={theme.colors.primary}
+              style={styles.activeIconButton}
             />
           </Pressable>
         )}
@@ -109,7 +108,7 @@ export default function NoteCard({
               <FontAwesome
                 name="thumb-tack"
                 size={18}
-                color={theme.colors.textMuted}
+                style={styles.iconButton}
               />
             </Pressable>
           )}
@@ -141,6 +140,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
     },
     cardPressed: {
       opacity: 0.8,
+    },
+    activeIconButton: {
+      color: theme.colors.primary,
     },
     iconButton: {
       color: theme.colors.textMuted,

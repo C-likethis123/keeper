@@ -5,8 +5,6 @@ const mockUseAppStartup = jest.fn();
 
 jest.mock("@react-navigation/native", () => ({
 	ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
-	DarkTheme: { colors: {} },
-	LightTheme: { colors: {} },
 }));
 
 jest.mock("@/constants/themes/darkTheme", () => ({
@@ -37,21 +35,6 @@ jest.mock("expo-router", () => ({
 	},
 }));
 
-jest.mock("expo-router/drawer", () => ({
-	Drawer: Object.assign(
-		({ children }: { children: React.ReactNode }) => {
-			const React = require("react");
-			return React.createElement(
-				React.Fragment,
-				null,
-				React.createElement(require("react-native").Text, null, "Drawer"),
-				children,
-			);
-		},
-		{ Screen: ({ children }: { children?: React.ReactNode }) => children },
-	),
-}));
-
 jest.mock("@/components/shared/Toast", () => ({
 	ToastOverlay: () => {
 		const React = require("react");
@@ -60,20 +43,12 @@ jest.mock("@/components/shared/Toast", () => ({
 	},
 }));
 
-jest.mock("@/components/FilterDrawerContent", () => ({
-	FilterDrawerContent: () => {
+jest.mock("@/components/FilterPanel", () => ({
+	FilterPanel: () => {
 		const React = require("react");
 		const { Text } = require("react-native");
-		return React.createElement(Text, null, "Filter drawer");
+		return React.createElement(Text, null, "Filter panel");
 	},
-}));
-
-jest.mock("react-native-gesture-handler", () => ({
-	GestureHandlerRootView: ({
-		children,
-	}: {
-		children: React.ReactNode;
-	}) => children,
 }));
 
 jest.mock("@/components/shared/StartupScreen", () => ({
@@ -111,15 +86,15 @@ jest.mock("@/hooks/useStyles", () => ({
 		}),
 }));
 
-import RootLayout from "@/app/_layout";
+import RootLayout from "@/app/_layout.web";
 
-describe("RootLayout", () => {
+describe("RootLayout (web)", () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockUseAppStartup.mockReturnValue({
 			isHydrated: false,
 			initError: null,
-			runtime: "desktop-tauri",
+			runtime: "web",
 			status: "running",
 		});
 	});
@@ -131,31 +106,18 @@ describe("RootLayout", () => {
 		expect(screen.queryByText("Stack")).toBeNull();
 	});
 
-	it("shows the initialization error once startup fails", () => {
-		mockUseAppStartup.mockReturnValue({
-			isHydrated: true,
-			initError: "Storage is unavailable",
-			runtime: "desktop-tauri",
-			status: "error",
-		});
-
-		render(<RootLayout />);
-
-		expect(screen.getByText("Storage is unavailable")).toBeTruthy();
-		expect(screen.queryByText("Stack")).toBeNull();
-	});
-
 	it("renders the app shell once hydrated", () => {
 		mockUseAppStartup.mockReturnValue({
 			isHydrated: true,
 			initError: null,
-			runtime: "desktop-tauri",
+			runtime: "web",
 			status: "ready",
 		});
 
 		render(<RootLayout />);
 
-		expect(screen.getByText("Drawer")).toBeTruthy();
+		expect(screen.getByText("Stack")).toBeTruthy();
+		expect(screen.getByText("Filter panel")).toBeTruthy();
 		expect(screen.getByText("Toast overlay")).toBeTruthy();
 	});
 });

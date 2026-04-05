@@ -15,6 +15,7 @@ const mockUseSuspenseNotes = jest.fn();
 const mockShowToast = jest.fn();
 const mockRouterPush = jest.fn();
 const mockUseFocusEffect = jest.fn();
+const mockOpenPanel = jest.fn();
 
 jest.mock("@/hooks/useSuspenseNotes", () => ({
 	__esModule: true,
@@ -29,6 +30,15 @@ jest.mock("@/stores/toastStore", () => ({
 	useToastStore: (
 		selector: (state: { showToast: typeof mockShowToast }) => unknown,
 	) => selector({ showToast: mockShowToast }),
+}));
+
+jest.mock("@/stores/filterStore", () => ({
+	useFilterStore: (
+		selector: (state: {
+			reset: typeof mockShowToast;
+			openPanel: typeof mockOpenPanel;
+		}) => unknown,
+	) => selector({ reset: mockShowToast, openPanel: mockOpenPanel }),
 }));
 
 jest.mock("@expo/vector-icons", () => {
@@ -160,6 +170,7 @@ describe("Index", () => {
 		mockShowToast.mockReset();
 		mockRouterPush.mockReset();
 		mockUseFocusEffect.mockReset();
+		mockOpenPanel.mockReset();
 		(NoteService.saveNote as jest.Mock).mockReset();
 		(NoteService.saveNote as jest.Mock).mockResolvedValue(undefined);
 		useStorageStore.setState({
@@ -186,9 +197,9 @@ describe("Index", () => {
 		expect(
 			screen.getByRole("button", { name: "Take a note" }),
 		).toBeOnTheScreen();
-		expect(screen.getByText("All notes")).toBeOnTheScreen();
-		expect(screen.getByText("Journals")).toBeOnTheScreen();
-		expect(screen.getByText("Todos")).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "Open filters" }),
+		).toBeOnTheScreen();
 		expect(handleRefresh).toHaveBeenCalledTimes(1);
 	});
 
@@ -208,24 +219,18 @@ describe("Index", () => {
 		expect(setQuery).toHaveBeenCalledWith("ideas");
 	});
 
-	it("selects a note type tab to filter notes", async () => {
+	it("opens the filter panel from the hamburger button", async () => {
 		const user = userEvent.setup();
-		const setNoteTypeFilter = jest.fn();
-		const setStatusFilter = jest.fn();
 		mockUseFocusEffect.mockImplementation(() => {});
-		mockUseSuspenseNotes.mockReturnValue(
-			makeUseNotesResult({
-				setNoteTypeFilter,
-				setStatusFilter,
-			}),
-		);
+		mockUseSuspenseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
 
-		await user.press(screen.getByText("Journals"));
+		await user.press(
+			screen.getByRole("button", { name: "Open filters" }),
+		);
 
-		expect(setNoteTypeFilter).toHaveBeenCalledWith("journal");
-		expect(setStatusFilter).toHaveBeenCalledWith(undefined);
+		expect(mockOpenPanel).toHaveBeenCalled();
 	});
 
 	it("creates a blank note and routes into the editor from the quick composer", async () => {

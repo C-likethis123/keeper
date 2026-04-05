@@ -13,8 +13,7 @@ import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useFilterStore } from "@/stores/filterStore";
 import { useToastStore } from "@/stores/toastStore";
-import { Stack, useFocusEffect, useNavigation } from "expo-router";
-import { DrawerActions } from "@react-navigation/native";
+import { Stack, useFocusEffect } from "expo-router";
 import React, { Suspense, useCallback, useRef, useState } from "react";
 import {
 	Modal,
@@ -39,15 +38,15 @@ function IndexContent() {
 		setQuery,
 	} = useSuspenseNotes();
 	const reset = useFilterStore((s) => s.reset);
+	const openFilterPanel = useFilterStore((s) => s.openPanel);
 	const showToast = useToastStore((state) => state.showToast);
 	const [isResetting, setIsResetting] = React.useState(false);
 	const [isResetModalVisible, setIsResetModalVisible] = useState(false);
 	const createAndOpenNote = useCreateAndOpenNote();
-	const navigation = useNavigation();
 
 	const handleMenuPress = useCallback(() => {
-		navigation.dispatch(DrawerActions.toggleDrawer());
-	}, [navigation]);
+		openFilterPanel();
+	}, [openFilterPanel]);
 
 	const handleDeleteNote = useCallback(
 		async (note: Note) => {
