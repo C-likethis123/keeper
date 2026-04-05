@@ -284,9 +284,6 @@ describe("NoteEditorView", () => {
 		beforeRemoveListener = undefined;
 		useEditorState.getState().resetState();
 		useStorageStore.setState({
-			capabilities: {
-				backend: "mobile-native",
-			},
 			initializationStatus: "ready",
 			initializationError: undefined,
 			contentVersion: 0,

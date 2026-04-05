@@ -21,7 +21,6 @@ describe("useLoadNote", () => {
 	beforeEach(() => {
 		jest.restoreAllMocks();
 		useStorageStore.setState({
-			capabilities: { backend: "mobile-native" },
 			initializationStatus: "ready",
 			initializationError: undefined,
 			contentVersion: 0,
