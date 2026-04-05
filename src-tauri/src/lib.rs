@@ -134,7 +134,15 @@ pub fn run() {
             storage::index_delete,
             storage::index_list,
             storage::index_rebuild_from_disk,
-            storage::notes_root_path_command
+            storage::notes_root_path_command,
+            storage::wiki_links_upsert,
+            storage::wiki_links_delete_for_note,
+            storage::wiki_links_get_backlinks,
+            storage::wiki_links_get_outgoing,
+            storage::wiki_links_get_moc_scores,
+            storage::wiki_links_get_neighborhood,
+            storage::wiki_links_get_orphaned_notes,
+            storage::wiki_links_get_recently_edited
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

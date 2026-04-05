@@ -2,8 +2,9 @@ use std::path::PathBuf;
 use tauri::Manager;
 
 pub use storage_core::{
-    IndexListInput, IndexListResult, IndexUpsertInput, NoteFileEntry, ReadNoteResult,
-    RebuildMetrics, StorageInitResult, WriteNoteInput,
+    IndexItem, IndexListInput, IndexListResult, IndexUpsertInput, NoteFileEntry, ReadNoteResult,
+    RebuildMetrics, StorageInitResult, WriteNoteInput, WikiLinksUpsertInput, MocScore,
+    GraphNeighbor,
 };
 
 const NOTES_DIR: &str = "notes";
@@ -102,4 +103,77 @@ pub fn notes_root_path_command(app: tauri::AppHandle) -> Result<String, String> 
             .ok_or_else(|| "notes root is missing parent data dir".to_string())?,
     )?;
     Ok(notes_root.to_string_lossy().to_string())
+}
+
+// ─── Wiki Links Commands ───────────────────────────────────────
+
+#[tauri::command]
+pub fn wiki_links_upsert(
+    app: tauri::AppHandle,
+    input: WikiLinksUpsertInput,
+) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::wiki_links_upsert(&index_db, input)
+}
+
+#[tauri::command]
+pub fn wiki_links_delete_for_note(
+    app: tauri::AppHandle,
+    note_id: String,
+) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::wiki_links_delete_for_note(&index_db, note_id)
+}
+
+#[tauri::command]
+pub fn wiki_links_get_backlinks(
+    app: tauri::AppHandle,
+    note_id: String,
+) -> Result<Vec<String>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::wiki_links_get_backlinks(&index_db, note_id)
+}
+
+#[tauri::command]
+pub fn wiki_links_get_outgoing(
+    app: tauri::AppHandle,
+    note_id: String,
+) -> Result<Vec<String>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::wiki_links_get_outgoing(&index_db, note_id)
+}
+
+#[tauri::command]
+pub fn wiki_links_get_moc_scores(
+    app: tauri::AppHandle,
+    min_links: i64,
+) -> Result<Vec<MocScore>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::wiki_links_get_moc_scores(&index_db, min_links)
+}
+
+#[tauri::command]
+pub fn wiki_links_get_neighborhood(
+    app: tauri::AppHandle,
+    note_id: String,
+    max_depth: i64,
+) -> Result<Vec<GraphNeighbor>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::wiki_links_get_neighborhood(&index_db, note_id, max_depth)
+}
+
+#[tauri::command]
+pub fn wiki_links_get_orphaned_notes(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::wiki_links_get_orphaned_notes(&index_db)
+}
+
+#[tauri::command]
+pub fn wiki_links_get_recently_edited(
+    app: tauri::AppHandle,
+    limit: i64,
+    days_back: i64,
+) -> Result<Vec<IndexItem>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::wiki_links_get_recently_edited(&index_db, limit, days_back)
 }

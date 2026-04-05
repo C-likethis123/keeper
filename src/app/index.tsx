@@ -29,6 +29,7 @@ const LazyNoteGrid = React.lazy(() => import("@/components/NoteGrid"));
 function IndexContent() {
 	const {
 		notes,
+		sections,
 		query,
 		hasMore,
 		isLoading,
@@ -154,6 +155,7 @@ function IndexContent() {
 			<Suspense fallback={<Loader />}>
 				<LazyNoteGrid
 					notes={notes}
+					sections={sections}
 					emptySubtitle={emptySubtitle}
 					onDelete={handleDeleteNote}
 					onPinToggle={handlePinToggle}

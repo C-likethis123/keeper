@@ -8,6 +8,7 @@ interface ParsedFrontmatter {
 	status?: NoteStatus;
 	createdAt?: number;
 	completedAt?: number;
+	modified?: number;
 	content: string;
 }
 
@@ -60,6 +61,7 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	let status: NoteStatus | undefined;
 	let createdAt: number | undefined;
 	let completedAt: number | undefined;
+	let modified: number | undefined;
 	let id = "";
 	const frontmatter = match[1];
 	const content = markdown.slice(match[0].length);
@@ -86,6 +88,8 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 			createdAt = parseTimestamp(value);
 		} else if (key === "completedAt") {
 			completedAt = parseTimestamp(value);
+		} else if (key === "modified") {
+			modified = parseTimestamp(value);
 		}
 	}
 
@@ -97,11 +101,14 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 		status: noteType === "todo" ? status : undefined,
 		createdAt: noteType === "todo" ? createdAt : undefined,
 		completedAt: noteType === "todo" ? completedAt : undefined,
+		modified,
 		content,
 	};
 }
 
-export function stringifyFrontmatter(note: Omit<Note, "lastUpdated">): string {
+export function stringifyFrontmatter(
+	note: Omit<Note, "lastUpdated"> & { modified?: number },
+): string {
 	const frontmatterLines = [
 		"---",
 		`pinned: ${note.isPinned ? "true" : "false"}`,
@@ -119,6 +126,9 @@ export function stringifyFrontmatter(note: Omit<Note, "lastUpdated">): string {
 	}
 	if (note.noteType === "todo" && note.completedAt) {
 		frontmatterLines.push(`completedAt: ${note.completedAt}`);
+	}
+	if (note.modified) {
+		frontmatterLines.push(`modified: ${note.modified}`);
 	}
 	frontmatterLines.push("---");
 

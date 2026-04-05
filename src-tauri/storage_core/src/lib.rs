@@ -664,3 +664,230 @@ pub fn index_rebuild_from_disk(
         .map_err(|e| format!("failed to commit rebuild transaction: {e}"))?;
     Ok(RebuildMetrics { note_count: count })
 }
+
+// ─── Wiki Links ─────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiLinksUpsertInput {
+    pub source_id: String,
+    pub target_ids: Vec<String>,
+}
+
+pub fn wiki_links_upsert(
+    index_db_path: &Path,
+    input: WikiLinksUpsertInput,
+) -> Result<(), String> {
+    if input.target_ids.is_empty() {
+        return Ok(());
+    }
+    let conn = open_index_db(index_db_path)?;
+    let placeholders: Vec<String> = input.target_ids.iter().map(|_| "(?, ?)".to_string()).collect();
+    let sql = format!(
+        "INSERT OR IGNORE INTO wiki_links (source_id, target_id) VALUES {}",
+        placeholders.join(", ")
+    );
+    let mut params_vec: Vec<Value> = Vec::new();
+    for target_id in &input.target_ids {
+        params_vec.push(Value::Text(input.source_id.clone()));
+        params_vec.push(Value::Text(target_id.clone()));
+    }
+    conn.execute(&sql, rusqlite::params_from_iter(params_vec.iter()))
+        .map_err(|e| format!("wiki_links_upsert failed: {e}"))?;
+    Ok(())
+}
+
+pub fn wiki_links_delete_for_note(index_db_path: &Path, note_id: String) -> Result<(), String> {
+    let conn = open_index_db(index_db_path)?;
+    conn.execute(
+        "DELETE FROM wiki_links WHERE source_id = ? OR target_id = ?",
+        params![note_id, note_id],
+    )
+    .map_err(|e| format!("wiki_links_delete_for_note failed: {e}"))?;
+    Ok(())
+}
+
+pub fn wiki_links_delete_all(index_db_path: &Path) -> Result<(), String> {
+    let conn = open_index_db(index_db_path)?;
+    conn.execute("DELETE FROM wiki_links", [])
+        .map_err(|e| format!("wiki_links_delete_all failed: {e}"))?;
+    Ok(())
+}
+
+// ─── Graph Queries ──────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MocScore {
+    pub note_id: String,
+    pub outgoing_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphNeighbor {
+    pub note_id: String,
+    pub depth: i64,
+}
+
+pub fn wiki_links_get_backlinks(
+    index_db_path: &Path,
+    note_id: String,
+) -> Result<Vec<String>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let mut stmt = conn
+        .prepare("SELECT source_id FROM wiki_links WHERE target_id = ?")
+        .map_err(|e| format!("wiki_links_get_backlinks prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map(params![note_id], |row| row.get(0))
+        .map_err(|e| format!("wiki_links_get_backlinks query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("wiki_links_get_backlinks row failed: {e}"))?);
+    }
+    Ok(result)
+}
+
+pub fn wiki_links_get_outgoing(
+    index_db_path: &Path,
+    note_id: String,
+) -> Result<Vec<String>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let mut stmt = conn
+        .prepare("SELECT target_id FROM wiki_links WHERE source_id = ?")
+        .map_err(|e| format!("wiki_links_get_outgoing prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map(params![note_id], |row| row.get(0))
+        .map_err(|e| format!("wiki_links_get_outgoing query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("wiki_links_get_outgoing row failed: {e}"))?);
+    }
+    Ok(result)
+}
+
+pub fn wiki_links_get_moc_scores(
+    index_db_path: &Path,
+    min_links: i64,
+) -> Result<Vec<MocScore>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT source_id, COUNT(*) as outgoing_count
+             FROM wiki_links
+             GROUP BY source_id
+             HAVING outgoing_count >= ?
+             ORDER BY outgoing_count DESC",
+        )
+        .map_err(|e| format!("wiki_links_get_moc_scores prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map(params![min_links], |row| {
+            Ok(MocScore {
+                note_id: row.get(0)?,
+                outgoing_count: row.get(1)?,
+            })
+        })
+        .map_err(|e| format!("wiki_links_get_moc_scores query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("wiki_links_get_moc_scores row failed: {e}"))?);
+    }
+    Ok(result)
+}
+
+pub fn wiki_links_get_neighborhood(
+    index_db_path: &Path,
+    note_id: String,
+    max_depth: i64,
+) -> Result<Vec<GraphNeighbor>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let sql = format!(
+        "WITH RECURSIVE neighborhood(target_id, depth) AS (
+            SELECT target_id, 1 FROM wiki_links WHERE source_id = ?
+            UNION
+            SELECT wl.target_id, n.depth + 1
+            FROM wiki_links wl
+            JOIN neighborhood n ON wl.source_id = n.target_id
+            WHERE n.depth < ?
+        )
+        SELECT DISTINCT target_id, MIN(depth) as depth
+        FROM neighborhood
+        WHERE target_id != ?
+        GROUP BY target_id"
+    );
+    let mut stmt = conn
+        .prepare(&sql)
+        .map_err(|e| format!("wiki_links_get_neighborhood prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map(params![note_id, max_depth, note_id], |row| {
+            Ok(GraphNeighbor {
+                note_id: row.get(0)?,
+                depth: row.get(1)?,
+            })
+        })
+        .map_err(|e| format!("wiki_links_get_neighborhood query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("wiki_links_get_neighborhood row failed: {e}"))?);
+    }
+    Ok(result)
+}
+
+pub fn wiki_links_get_orphaned_notes(index_db_path: &Path) -> Result<Vec<String>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT n.id FROM note_index n
+             WHERE n.id NOT IN (SELECT source_id FROM wiki_links)
+               AND n.id NOT IN (SELECT target_id FROM wiki_links)",
+        )
+        .map_err(|e| format!("wiki_links_get_orphaned_notes prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| format!("wiki_links_get_orphaned_notes query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("wiki_links_get_orphaned_notes row failed: {e}"))?);
+    }
+    Ok(result)
+}
+
+pub fn wiki_links_get_recently_edited(
+    index_db_path: &Path,
+    limit: i64,
+    days_back: i64,
+) -> Result<Vec<IndexItem>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let cutoff_timestamp = std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+        - (days_back * 24 * 60 * 60 * 1000);
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, title, summary, is_pinned, updated_at, note_type, status
+             FROM note_index
+             WHERE modified >= ?
+             ORDER BY modified DESC
+             LIMIT ?",
+        )
+        .map_err(|e| format!("wiki_links_get_recently_edited prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map(params![cutoff_timestamp, limit], |row| {
+            Ok(IndexItem {
+                note_id: row.get(0)?,
+                title: row.get(1)?,
+                summary: row.get(2)?,
+                is_pinned: row.get::<_, i64>(3)? != 0,
+                updated_at: row.get(4)?,
+                note_type: row.get(5)?,
+                status: row.get(6)?,
+            })
+        })
+        .map_err(|e| format!("wiki_links_get_recently_edited query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("wiki_links_get_recently_edited row failed: {e}"))?);
+    }
+    Ok(result)
+}

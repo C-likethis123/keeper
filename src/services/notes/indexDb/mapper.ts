@@ -1,6 +1,7 @@
 import { File } from "expo-file-system";
 import { NOTES_ROOT } from "../Notes";
 import { parseFrontmatter } from "../frontmatter";
+import { computeContentHash } from "../wikiLinkParser";
 import type { NoteIndexItem, NoteIndexRow, NoteIndexSqlItem } from "./types";
 
 export function extractSummary(markdown: string, maxLines = 6): string {
@@ -61,29 +62,35 @@ export async function mapMarkdownPathToSqlItem(
 	if (!file.exists) {
 		return null;
 	}
-	const parsed = parseFrontmatter(await file.text());
+	const content = await file.text();
+	const parsed = parseFrontmatter(content);
 	return {
 		id: parsed.id,
 		title: parsed.title,
 		summary: extractSummary(parsed.content),
 		isPinned: parsed.isPinned ? 1 : 0,
 		updatedAt: file.modificationTime ?? 0,
+		modified: parsed.modified ?? file.modificationTime ?? 0,
 		noteType: parsed.noteType ?? null,
 		status: parsed.noteType === "todo" ? (parsed.status ?? "open") : null,
+		contentHash: computeContentHash(content),
 	};
 }
 
 export async function mapMarkdownFileToSqlItem(
 	entry: File,
 ): Promise<NoteIndexSqlItem> {
-	const parsed = parseFrontmatter(await entry.text());
+	const content = await entry.text();
+	const parsed = parseFrontmatter(content);
 	return {
 		id: parsed.id,
 		title: parsed.title,
 		summary: extractSummary(parsed.content),
 		isPinned: parsed.isPinned ? 1 : 0,
 		updatedAt: entry.modificationTime ?? 0,
+		modified: parsed.modified ?? entry.modificationTime ?? 0,
 		noteType: parsed.noteType ?? null,
 		status: parsed.noteType === "todo" ? (parsed.status ?? "open") : null,
+		contentHash: computeContentHash(content),
 	};
 }

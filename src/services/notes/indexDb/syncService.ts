@@ -1,11 +1,23 @@
+import { normalizeWikiLinkTitle } from "@/components/editor/wikilinks/wikiLinkUtils";
 import {
 	getNoteIdFromMarkdownPath,
 	isIndexedNoteMarkdownPath,
 } from "@/services/notes/templatePaths";
+import { File } from "expo-file-system";
+import type { SQLiteDatabase } from "expo-sqlite";
+import { NOTES_ROOT } from "../Notes";
+import { parseWikiLinksFromBody } from "../wikiLinkParser";
 import { mapWithConcurrency } from "./asyncUtils";
 import { getNotesIndexDb } from "./db";
 import { mapMarkdownPathToSqlItem } from "./mapper";
-import { deleteBatch, upsertBatch } from "./repository";
+import {
+	deleteBatch,
+	deleteLinksForNote,
+	getContentHash,
+	insertWikiLinks,
+	setContentHash,
+	upsertBatch,
+} from "./repository";
 import type {
 	NoteIndexSqlItem,
 	NoteIndexSyncChangedPaths,
@@ -26,8 +38,11 @@ export async function syncChanges(
 		...changedPaths.added,
 		...changedPaths.modified,
 	].filter(isIndexedNoteMarkdownPath);
-	const { items: upsertItems, readParseMs } =
-		await collectUpserts(markdownPaths);
+	const {
+		items: upsertItems,
+		readParseMs,
+		contentByPath,
+	} = await collectUpserts(markdownPaths);
 	const deleteIds = changedPaths.deleted
 		.filter(isIndexedNoteMarkdownPath)
 		.map(getNoteIdFromMarkdownPath);
@@ -38,6 +53,41 @@ export async function syncChanges(
 	await database.withTransactionAsync(async () => {
 		await upsertBatch(database, upsertItems, SYNC_BATCH_SIZE);
 		await deleteBatch(database, deleteIds, SYNC_BATCH_SIZE);
+
+		// Incremental wiki_links update
+		for (const item of upsertItems) {
+			const content = contentByPath.get(
+				markdownPaths.find((p) => p.endsWith(`${item.id}.md`)) ?? "",
+			);
+			if (!content) continue;
+
+			const oldHash = await getContentHash(database, item.id);
+			const newHash = item.contentHash ?? null;
+			if (oldHash === newHash) continue; // content unchanged
+
+			// Delete old links and insert new ones
+			await deleteLinksForNote(database, item.id);
+
+			// Build title->noteId map for resolution
+			const titleToNoteId = await buildTitleToNoteIdMap(database);
+			const linkTitles = parseWikiLinksFromBody(content);
+			const targetIds = linkTitles
+				.map((title) => titleToNoteId.get(normalizeWikiLinkTitle(title)))
+				.filter((id): id is string => id != null && id !== item.id);
+			if (targetIds.length > 0) {
+				const uniqueTargets = [...new Set(targetIds)];
+				await insertWikiLinks(database, item.id, uniqueTargets);
+			}
+
+			if (newHash) {
+				await setContentHash(database, item.id, newHash);
+			}
+		}
+
+		// Cascade delete wiki_links for deleted notes
+		for (const noteId of deleteIds) {
+			await deleteLinksForNote(database, noteId);
+		}
 	});
 
 	const metrics: NotesIndexSyncMetrics = {
@@ -57,11 +107,26 @@ export async function syncChanges(
 	return metrics;
 }
 
+async function buildTitleToNoteIdMap(
+	database: SQLiteDatabase,
+): Promise<Map<string, string>> {
+	const rows = await database.getAllAsync<{ id: string; title: string }>(
+		"SELECT id, title FROM note_index",
+	);
+	const map = new Map<string, string>();
+	for (const row of rows ?? []) {
+		map.set(normalizeWikiLinkTitle(row.title), row.id);
+	}
+	return map;
+}
+
 async function collectUpserts(markdownPaths: string[]): Promise<{
 	items: NoteIndexSqlItem[];
 	readParseMs: number;
+	contentByPath: Map<string, string>;
 }> {
 	const upsertItems: NoteIndexSqlItem[] = [];
+	const contentByPath = new Map<string, string>();
 	const readParseStart = performance.now();
 	for (
 		let chunkStart = 0;
@@ -75,7 +140,16 @@ async function collectUpserts(markdownPaths: string[]): Promise<{
 		const parsedChunk = await mapWithConcurrency(
 			chunk,
 			SYNC_PARSE_CONCURRENCY,
-			(path) => mapMarkdownPathToSqlItem(path),
+			async (path) => {
+				const file = new File(NOTES_ROOT, path);
+				if (!file.exists) return null;
+				const content = await file.text();
+				const item = await mapMarkdownPathToSqlItem(path);
+				if (item) {
+					contentByPath.set(path, content);
+				}
+				return item;
+			},
 		);
 		for (const item of parsedChunk) {
 			if (item) {
@@ -85,5 +159,5 @@ async function collectUpserts(markdownPaths: string[]): Promise<{
 	}
 
 	const readParseMs = Math.round(performance.now() - readParseStart);
-	return { items: upsertItems, readParseMs };
+	return { items: upsertItems, readParseMs, contentByPath };
 }

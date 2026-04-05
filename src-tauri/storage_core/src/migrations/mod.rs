@@ -1,6 +1,8 @@
 mod v1_init;
 mod v2_add_fts;
 mod v3_add_note_metadata;
+mod v4_add_wiki_links;
+mod v5_add_modified_column;
 
 use rusqlite::Connection;
 
@@ -21,6 +23,14 @@ const MIGRATIONS: &[Migration] = &[
     Migration {
         version: 3,
         apply: v3_add_note_metadata::apply,
+    },
+    Migration {
+        version: 4,
+        apply: v4_add_wiki_links::apply,
+    },
+    Migration {
+        version: 5,
+        apply: v5_add_modified_column::apply,
     },
 ];
 

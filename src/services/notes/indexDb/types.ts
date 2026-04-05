@@ -1,3 +1,4 @@
+import type { Note } from "@/services/notes/types";
 import type {
 	NoteListFilters,
 	NoteStatus,
@@ -66,6 +67,24 @@ export interface NoteIndexSqlItem {
 	updatedAt: number;
 	noteType: NoteType | null;
 	status: NoteStatus | null;
+	modified?: number | null;
+	contentHash?: string | null;
+}
+
+export interface WikiLinkRow {
+	source_id: string;
+	target_id: string;
+}
+
+export interface ContentHashRow {
+	note_id: string;
+	content_hash: string;
+}
+
+export interface NoteSection {
+	id: string;
+	title: string;
+	notes: Note[];
 }
 
 type NoteIndexFilters = NoteListFilters;

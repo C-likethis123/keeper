@@ -3,7 +3,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import * as SQLite from "expo-sqlite";
 
 const DB_NAME = "notes-index.db";
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 5;
 
 let db: SQLite.SQLiteDatabase | null = null;
 

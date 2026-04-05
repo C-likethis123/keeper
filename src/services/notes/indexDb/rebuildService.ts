@@ -1,11 +1,15 @@
+import { normalizeWikiLinkTitle } from "@/components/editor/wikilinks/wikiLinkUtils";
 import { Directory, File } from "expo-file-system";
+import type { SQLiteDatabase } from "expo-sqlite";
 import { NOTES_ROOT } from "../Notes";
+import { parseWikiLinksFromBody } from "../wikiLinkParser";
 import { mapWithConcurrency } from "./asyncUtils";
 import { getNotesIndexDb } from "./db";
 import { mapMarkdownFileToSqlItem } from "./mapper";
 import {
 	clearTable,
 	createFtsTriggers,
+	deleteAllWikiLinks,
 	dropFtsTriggers,
 	rebuildFts,
 	upsertBatch,
@@ -35,7 +39,7 @@ export async function rebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
 	const listMs = Math.round(performance.now() - listStart);
 
 	const parseStart = performance.now();
-	const rows = await collectRows(markdownFiles);
+	const { rows, contentByNoteId } = await collectRows(markdownFiles);
 	const readParseMs = Math.round(performance.now() - parseStart);
 
 	const database = await getNotesIndexDb();
@@ -45,7 +49,28 @@ export async function rebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
 		const sqlStart = performance.now();
 		await dropFtsTriggers(database);
 		await clearTable(database);
+		await deleteAllWikiLinks(database);
 		await upsertBatch(database, rows, REBUILD_SQL_BATCH_SIZE);
+
+		// Build title->noteId map for wikilink resolution
+		const titleToNoteId = new Map<string, string>();
+		for (const row of rows) {
+			titleToNoteId.set(normalizeWikiLinkTitle(row.title), row.id);
+		}
+
+		// Parse and insert wiki_links
+		for (const row of rows) {
+			const content = contentByNoteId.get(row.id) ?? "";
+			const linkTitles = parseWikiLinksFromBody(content);
+			const targetIds = linkTitles
+				.map((title) => titleToNoteId.get(normalizeWikiLinkTitle(title)))
+				.filter((id): id is string => id != null && id !== row.id);
+			if (targetIds.length > 0) {
+				const uniqueTargets = [...new Set(targetIds)];
+				await insertWikiLinksBatch(database, row.id, uniqueTargets);
+			}
+		}
+
 		sqlInsertMs = Math.round(performance.now() - sqlStart);
 
 		const ftsStart = performance.now();
@@ -66,6 +91,15 @@ export async function rebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
 	return metrics;
 }
 
+async function insertWikiLinksBatch(
+	database: SQLiteDatabase,
+	sourceId: string,
+	targetIds: string[],
+): Promise<void> {
+	const { insertWikiLinks } = await import("./repository");
+	await insertWikiLinks(database, sourceId, targetIds);
+}
+
 function collectMarkdownFiles(dir: Directory): File[] {
 	if (!dir.exists) {
 		return [];
@@ -79,8 +113,12 @@ function collectMarkdownFiles(dir: Directory): File[] {
 		);
 }
 
-async function collectRows(markdownFiles: File[]): Promise<NoteIndexSqlItem[]> {
+async function collectRows(markdownFiles: File[]): Promise<{
+	rows: NoteIndexSqlItem[];
+	contentByNoteId: Map<string, string>;
+}> {
 	const rows: NoteIndexSqlItem[] = [];
+	const contentByNoteId = new Map<string, string>();
 	for (
 		let chunkStart = 0;
 		chunkStart < markdownFiles.length;
@@ -93,9 +131,20 @@ async function collectRows(markdownFiles: File[]): Promise<NoteIndexSqlItem[]> {
 		const chunkRows = await mapWithConcurrency(
 			chunk,
 			REBUILD_PARSE_CONCURRENCY,
-			(entry) => mapMarkdownFileToSqlItem(entry),
+			async (entry) => {
+				const content = await entry.text();
+				const sqlItem = await mapMarkdownFileToSqlItem(entry);
+				if (sqlItem) {
+					contentByNoteId.set(sqlItem.id, content);
+				}
+				return sqlItem;
+			},
 		);
-		rows.push(...chunkRows);
+		for (const row of chunkRows) {
+			if (row) {
+				rows.push(row);
+			}
+		}
 	}
-	return rows;
+	return { rows, contentByNoteId };
 }

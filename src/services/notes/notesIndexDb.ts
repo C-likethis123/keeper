@@ -1,9 +1,22 @@
 import type { NoteListFilters } from "@/services/notes/types";
 import { getNotesIndexDb } from "./indexDb/db";
-import { deleteById, hasRows, listAll, upsertItem } from "./indexDb/repository";
+import {
+	deleteById,
+	getBacklinks,
+	getGraphNeighborhood,
+	getMocScores,
+	getOrphanedNotes,
+	getOutgoingLinks,
+	getRecentlyEditedNotes,
+	getTransitiveBacklinks,
+	hasRows,
+	listAll,
+	upsertItem,
+} from "./indexDb/repository";
 import type {
 	ListNotesResult,
 	NoteIndexItem,
+	NoteIndexRow,
 	NotesIndexRebuildMetrics,
 	NotesIndexSyncMetrics,
 } from "./indexDb/types";
@@ -38,4 +51,56 @@ export async function notesIndexDbListAll(
 ): Promise<ListNotesResult> {
 	const database = await getNotesIndexDb();
 	return listAll(database, query, limit, offset, filters);
+}
+
+// ─── Graph Query Wrappers ─────────────────────────────────────
+
+export async function notesIndexDbGetBacklinks(
+	noteId: string,
+): Promise<string[]> {
+	const database = await getNotesIndexDb();
+	return getBacklinks(database, noteId);
+}
+
+export async function notesIndexDbGetOutgoingLinks(
+	noteId: string,
+): Promise<string[]> {
+	const database = await getNotesIndexDb();
+	return getOutgoingLinks(database, noteId);
+}
+
+export async function notesIndexDbGetTransitiveBacklinks(
+	noteId: string,
+	maxDepth = 3,
+): Promise<{ noteId: string; depth: number }[]> {
+	const database = await getNotesIndexDb();
+	return getTransitiveBacklinks(database, noteId, maxDepth);
+}
+
+export async function notesIndexDbGetMocScores(
+	minLinks = 3,
+): Promise<{ noteId: string; outgoingCount: number }[]> {
+	const database = await getNotesIndexDb();
+	return getMocScores(database, minLinks);
+}
+
+export async function notesIndexDbGetGraphNeighborhood(
+	noteId: string,
+	maxDepth = 2,
+): Promise<{ noteId: string; depth: number }[]> {
+	const database = await getNotesIndexDb();
+	return getGraphNeighborhood(database, noteId, maxDepth);
+}
+
+export async function notesIndexDbGetOrphanedNotes(): Promise<string[]> {
+	const database = await getNotesIndexDb();
+	return getOrphanedNotes(database);
+}
+
+export async function notesIndexDbGetRecentlyEditedNotes(
+	limit = 10,
+	daysBack = 7,
+): Promise<NoteIndexRow[]> {
+	const database = await getNotesIndexDb();
+	return getRecentlyEditedNotes(database, limit, daysBack);
 }

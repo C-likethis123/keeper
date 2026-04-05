@@ -1,9 +1,15 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
+import type { NoteSection } from "@/services/notes/indexDb/types";
 import {
 	type NoteIndexItem,
 	NotesIndexService,
 } from "@/services/notes/notesIndex";
+import {
+	notesIndexDbGetGraphNeighborhood,
+	notesIndexDbGetMocScores,
+	notesIndexDbGetRecentlyEditedNotes,
+} from "@/services/notes/notesIndexDb";
 import type {
 	Note,
 	NoteListFilters,
@@ -25,6 +31,69 @@ function toNote(item: NoteIndexItem): Note {
 	};
 }
 
+function computeSections(
+	allNotes: Note[],
+	pinnedNotes: Note[],
+	recentlyEditedNoteIds: Set<string>,
+	mocNeighborhoods: Map<string, Set<string>>,
+): NoteSection[] {
+	const sections: NoteSection[] = [];
+
+	// 1. Pinned section
+	if (pinnedNotes.length > 0) {
+		sections.push({
+			id: "pinned",
+			title: "Pinned",
+			notes: pinnedNotes,
+		});
+	}
+
+	// 2. Recently Edited section
+	const recentlyEditedNotes = allNotes.filter((n) =>
+		recentlyEditedNoteIds.has(n.id),
+	);
+	if (recentlyEditedNotes.length > 0) {
+		sections.push({
+			id: "recently-edited",
+			title: "Recently Edited",
+			notes: recentlyEditedNotes,
+		});
+	}
+
+	// 3. MOC sections
+	for (const [mocNoteId, neighborhoodIds] of mocNeighborhoods) {
+		const mocNote = allNotes.find((n) => n.id === mocNoteId);
+		if (!mocNote) continue;
+
+		const neighborhoodNotes = allNotes.filter((n) => neighborhoodIds.has(n.id));
+		if (neighborhoodNotes.length > 0) {
+			sections.push({
+				id: `moc-${mocNoteId}`,
+				title: mocNote.title,
+				notes: neighborhoodNotes,
+			});
+		}
+	}
+
+	// 4. All Notes (everything not already shown)
+	const shownNoteIds = new Set<string>();
+	for (const section of sections) {
+		for (const note of section.notes) {
+			shownNoteIds.add(note.id);
+		}
+	}
+	const allNotesSection = allNotes.filter((n) => !shownNoteIds.has(n.id));
+	if (allNotesSection.length > 0) {
+		sections.push({
+			id: "all-notes",
+			title: "All Notes",
+			notes: allNotesSection,
+		});
+	}
+
+	return sections;
+}
+
 export default function useNotes() {
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
 	const initializationError = useStorageStore((s) => s.initializationError);
@@ -36,6 +105,7 @@ export default function useNotes() {
 		undefined,
 	);
 	const [notes, setNotes] = useState<Note[]>([]);
+	const [sections, setSections] = useState<NoteSection[]>([]);
 	const [hasMore, setHasMore] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -92,6 +162,46 @@ export default function useNotes() {
 					setNotes(newNotes);
 				}
 				setHasMore(!!results.cursor);
+
+				// Compute sections (only on initial load, not on append)
+				if (!append) {
+					const allNotes = newNotes;
+					const pinnedNotes = allNotes.filter((n) => n.isPinned);
+
+					// Fetch recently edited note IDs
+					const recentlyEditedRows = await notesIndexDbGetRecentlyEditedNotes(
+						10,
+						7,
+					);
+					const recentlyEditedNoteIds = new Set(
+						recentlyEditedRows.map((r) => r.id),
+					);
+
+					// Fetch MOC scores and neighborhoods
+					const mocScores = await notesIndexDbGetMocScores(3);
+					const mocNeighborhoods = new Map<string, Set<string>>();
+					for (const score of mocScores.slice(0, 5)) {
+						// Cap at 5 MOCs to avoid overwhelming UI
+						const neighborhood = await notesIndexDbGetGraphNeighborhood(
+							score.noteId,
+							2,
+						);
+						const neighborhoodIds = new Set(
+							neighborhood.map((n) => n.noteId).slice(0, 8),
+						); // Cap at 8 notes per MOC
+						if (neighborhoodIds.size > 0) {
+							mocNeighborhoods.set(score.noteId, neighborhoodIds);
+						}
+					}
+
+					const computedSections = computeSections(
+						allNotes,
+						pinnedNotes,
+						recentlyEditedNoteIds,
+						mocNeighborhoods,
+					);
+					setSections(computedSections);
+				}
 			} catch (err: unknown) {
 				if (err instanceof Error) {
 					setError(err.message);
@@ -151,6 +261,7 @@ export default function useNotes() {
 
 	return {
 		notes,
+		sections,
 		hasMore,
 		isLoading,
 		loadMoreNotes,

@@ -1,11 +1,17 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
+import type { NoteSection } from "@/services/notes/indexDb/types";
 import { getCachedQueryPromise } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
 import {
 	type NoteIndexItem,
 	NotesIndexService,
 } from "@/services/notes/notesIndex";
+import {
+	notesIndexDbGetGraphNeighborhood,
+	notesIndexDbGetMocScores,
+	notesIndexDbGetRecentlyEditedNotes,
+} from "@/services/notes/notesIndexDb";
 import type {
 	Note,
 	NoteListFilters,
@@ -34,6 +40,69 @@ function toNote(item: NoteIndexItem): Note {
 		noteType: item.noteType ?? "note",
 		status: item.status,
 	};
+}
+
+function computeSections(
+	allNotes: Note[],
+	pinnedNotes: Note[],
+	recentlyEditedNoteIds: Set<string>,
+	mocNeighborhoods: Map<string, Set<string>>,
+): NoteSection[] {
+	const sections: NoteSection[] = [];
+
+	// 1. Pinned section
+	if (pinnedNotes.length > 0) {
+		sections.push({
+			id: "pinned",
+			title: "Pinned",
+			notes: pinnedNotes,
+		});
+	}
+
+	// 2. Recently Edited section
+	const recentlyEditedNotes = allNotes.filter((n) =>
+		recentlyEditedNoteIds.has(n.id),
+	);
+	if (recentlyEditedNotes.length > 0) {
+		sections.push({
+			id: "recently-edited",
+			title: "Recently Edited",
+			notes: recentlyEditedNotes,
+		});
+	}
+
+	// 3. MOC sections
+	for (const [mocNoteId, neighborhoodIds] of mocNeighborhoods) {
+		const mocNote = allNotes.find((n) => n.id === mocNoteId);
+		if (!mocNote) continue;
+
+		const neighborhoodNotes = allNotes.filter((n) => neighborhoodIds.has(n.id));
+		if (neighborhoodNotes.length > 0) {
+			sections.push({
+				id: `moc-${mocNoteId}`,
+				title: mocNote.title,
+				notes: neighborhoodNotes,
+			});
+		}
+	}
+
+	// 4. All Notes (everything not already shown)
+	const shownNoteIds = new Set<string>();
+	for (const section of sections) {
+		for (const note of section.notes) {
+			shownNoteIds.add(note.id);
+		}
+	}
+	const allNotesSection = allNotes.filter((n) => !shownNoteIds.has(n.id));
+	if (allNotesSection.length > 0) {
+		sections.push({
+			id: "all-notes",
+			title: "All Notes",
+			notes: allNotesSection,
+		});
+	}
+
+	return sections;
 }
 
 function buildNotesQueryKey(args: {
@@ -202,8 +271,28 @@ export default function useSuspenseNotes() {
 		});
 	}, []);
 
+	const allNotes = useMemo(
+		() => [...baseNotes, ...activePagination.notes],
+		[baseNotes, activePagination.notes],
+	);
+
+	// Compute sections (memoized)
+	const sections = useMemo(() => {
+		const pinnedNotes = allNotes.filter((n) => n.isPinned);
+		const recentlyEditedNoteIds = new Set<string>();
+		const mocNeighborhoods = new Map<string, Set<string>>();
+
+		return computeSections(
+			allNotes,
+			pinnedNotes,
+			recentlyEditedNoteIds,
+			mocNeighborhoods,
+		);
+	}, [allNotes]);
+
 	return {
-		notes: [...baseNotes, ...activePagination.notes],
+		notes: allNotes,
+		sections,
 		hasMore: activePagination.nextOffset != null,
 		isLoading: activePagination.isLoadingMore,
 		loadMoreNotes,
