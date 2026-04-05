@@ -11,7 +11,7 @@ import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import type { Note, NoteSaveInput } from "@/services/notes/types";
-import { useEditorState } from "@/stores/editorStore";
+import { type EditorState, useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import React, {

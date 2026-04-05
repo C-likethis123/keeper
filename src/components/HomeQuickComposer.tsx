@@ -22,7 +22,7 @@ export default function HomeQuickComposer({
 						styles.primaryAction,
 						pressed && styles.primaryActionPressed,
 					]}
-					onPress={onPress}
+					onPress={() => onPress()}
 				>
 					<Text style={[styles.placeholder]}>Take a note...</Text>
 				</Pressable>
@@ -44,13 +44,6 @@ export default function HomeQuickComposer({
 						name="bookmark-o"
 						variant="flat"
 						onPress={() => onPress({ noteType: "resource", title: "Source: " })}
-					/>
-					<IconButton
-						label="Create drawing"
-						name="paint-brush"
-						variant="flat"
-						testID="home-quick-composer-brush"
-						onPress={() => onPress({ noteType: "drawing", title: "Drawing: " })}
 					/>
 				</View>
 			</View>

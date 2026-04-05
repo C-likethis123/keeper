@@ -1,4 +1,5 @@
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import { withOpacity } from "@/utils/color";
 import { FontAwesome } from "@expo/vector-icons";
 import React, { useMemo } from "react";
