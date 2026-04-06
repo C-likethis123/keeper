@@ -4,9 +4,17 @@ import {
 } from "@/components/editor/blocks/BlockRegistry";
 import { BlockType } from "@/components/editor/core/BlockNode";
 import { getListItemNumber } from "@/components/editor/core/Document";
+import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import { useEditorBlock, useEditorState } from "@/stores/editorStore";
 import React from "react";
-import { Platform, Pressable, StyleSheet, View } from "react-native";
+import {
+	type GestureResponderEvent,
+	Platform,
+	Pressable,
+	StyleSheet,
+	View,
+} from "react-native";
 
 interface BlockRowHandlers {
 	onContentChange: (index: number, content: string) => void;
@@ -27,10 +35,10 @@ interface BlockRowHandlers {
 	onDelete: (index: number) => void;
 	onCheckboxToggle: (index: number) => void;
 	onOpenWikiLink: (title: string) => void;
-	selectBlock: (index: number) => void;
-	selectBlockRange: (anchor: number, focus: number) => void;
-	selectGap: (index: number) => void;
-	clearStructuredSelection: () => void;
+	onSelectBlock: (index: number) => void;
+	onSelectBlockRange: (index: number) => void;
+	onSelectGap: (index: number) => void;
+	onClearStructuredSelection: () => void;
 }
 
 interface BlockRowProps {
@@ -42,24 +50,20 @@ interface BlockRowProps {
 export const BlockRow = React.memo(function BlockRow({
 	index,
 	handlers,
-	isLastBlock,
 }: BlockRowProps) {
+	const theme = useExtendedTheme();
+	const styles = useStyles(createStyles);
 	const block = useEditorBlock(index);
 	const isFocused = useEditorState(
 		(s) => (s.selection?.focus.blockIndex ?? null) === index,
 	);
-	const blockSelection = useEditorState((s) => s.blockSelection);
-	const blockSelectionAnchor = useEditorState((s) => s.blockSelectionAnchor);
-	const gapSelection = useEditorState((s) => s.gapSelection);
-
-	const isBlockSelected =
-		blockSelection !== null &&
-		index >= blockSelection.start &&
-		index <= blockSelection.end;
-
-	const isGapSelected = gapSelection === index;
-	const isLastGapSelected = isLastBlock && gapSelection === index + 1;
-
+	const hasBlockSelection = useEditorState((s) => {
+		const selection = s.blockSelection;
+		return (
+			selection != null && index >= selection.start && index <= selection.end
+		);
+	});
+	const isGapSelected = useEditorState((s) => s.gapSelection?.index === index);
 	const listItemNumber = useEditorState((s) => {
 		const b = s.document.blocks[index];
 		return b?.type === BlockType.numberedList
@@ -75,7 +79,7 @@ export const BlockRow = React.memo(function BlockRow({
 		block,
 		index,
 		isFocused,
-		hasBlockSelection: isBlockSelected,
+		hasBlockSelection,
 		isGapSelected,
 		onContentChange: handlers.onContentChange,
 		onBlockTypeChange: handlers.onBlockTypeChange,
@@ -89,92 +93,102 @@ export const BlockRow = React.memo(function BlockRow({
 		listItemNumber,
 		onCheckboxToggle: handlers.onCheckboxToggle,
 		onOpenWikiLink: handlers.onOpenWikiLink,
+		clearStructuredSelection: handlers.onClearStructuredSelection,
 	};
 
-	const handleGutterPress = (e: any) => {
-		if (e.shiftKey && blockSelectionAnchor !== null) {
-			handlers.selectBlockRange(blockSelectionAnchor, index);
-		} else {
-			handlers.selectBlock(index);
+	const handleGutterPress = (event: GestureResponderEvent) => {
+		const nativeEvent =
+			event.nativeEvent as GestureResponderEvent["nativeEvent"] & {
+				shiftKey?: boolean;
+			};
+		if (nativeEvent.shiftKey) {
+			handlers.onSelectBlockRange(index);
+			return;
 		}
+		handlers.onSelectBlock(index);
 	};
 
 	return (
-		<View style={styles.rowContainer}>
-			{/* Gap above block i (Gap i) */}
+		<View style={styles.blockWrapper} collapsable={false}>
 			<Pressable
-				style={[styles.gap, isGapSelected && styles.gapSelected]}
-				onPress={() => handlers.selectGap(index)}
-			/>
-
-			<View style={[styles.blockRow, isBlockSelected && styles.rowSelected]}>
-				<Pressable style={styles.gutter} onPress={handleGutterPress}>
-					<View style={styles.gutterHandle} />
-				</Pressable>
-
+				accessibilityRole="button"
+				accessibilityLabel={`Select gap before block ${index + 1}`}
+				testID={`block-gap-${index}`}
+				style={styles.gapPressable}
+				onPress={() => handlers.onSelectGap(index)}
+			>
 				<View
 					style={[
-						styles.blockWrapper,
-						{
-							position:
-								Platform.OS === "web" && config.block.type === BlockType.video
-									? // biome-ignore lint/suspicious/noExplicitAny: sticky is web-only
-										("sticky" as any)
-									: "relative",
-							zIndex: config.block.type === BlockType.video ? 20 : 1,
-							top: config.block.type === BlockType.video ? 0 : undefined,
-						},
+						styles.gapIndicator,
+						isGapSelected && { backgroundColor: theme.colors.primary },
 					]}
-					collapsable={false}
-				>
-					{blockRegistry.build(config)}
-				</View>
-			</View>
-
-			{/* Gap below the very last block (Gap blocks.length) */}
-			{isLastBlock && (
-				<Pressable
-					style={[styles.gap, isLastGapSelected && styles.gapSelected]}
-					onPress={() => handlers.selectGap(index + 1)}
 				/>
-			)}
+			</Pressable>
+			<View
+				style={[
+					styles.rowShell,
+					hasBlockSelection && styles.rowShellSelected,
+					{
+						position:
+							Platform.OS === "web" && config.block.type === BlockType.video
+								? // biome-ignore lint/suspicious/noExplicitAny: sticky is web-only
+									("sticky" as any)
+								: "relative",
+						zIndex: config.block.type === BlockType.video ? 20 : 1,
+						top: config.block.type === BlockType.video ? 0 : undefined,
+					},
+				]}
+			>
+				<Pressable
+					accessibilityRole="button"
+					accessibilityLabel={`Select block ${index + 1}`}
+					testID={`block-gutter-${index}`}
+					style={[
+						styles.gutter,
+						hasBlockSelection && { backgroundColor: theme.colors.primary },
+					]}
+					onPress={handleGutterPress}
+				/>
+				<View style={styles.blockContent}>{blockRegistry.build(config)}</View>
+			</View>
 		</View>
 	);
 });
 
-const styles = StyleSheet.create({
-	rowContainer: {
-		width: "100%",
-	},
-	blockRow: {
-		flexDirection: "row",
-		width: "100%",
-		paddingLeft: 4,
-	},
-	rowSelected: {
-		backgroundColor: "rgba(0, 122, 255, 0.1)",
-	},
-	gutter: {
-		width: 12,
-		justifyContent: "center",
-		alignItems: "center",
-		marginRight: 4,
-	},
-	gutterHandle: {
-		width: 4,
-		height: "80%",
-		backgroundColor: "rgba(0, 0, 0, 0.05)",
-		borderRadius: 2,
-	},
-	gap: {
-		height: 4,
-		width: "100%",
-	},
-	gapSelected: {
-		backgroundColor: "#007AFF",
-		height: 4,
-	},
-	blockWrapper: {
-		flex: 1,
-	},
-});
+function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+	return StyleSheet.create({
+		blockWrapper: {
+			width: "100%",
+		},
+		gapPressable: {
+			paddingHorizontal: 14,
+			paddingVertical: 4,
+		},
+		gapIndicator: {
+			borderRadius: 999,
+			height: 3,
+			backgroundColor: theme.custom.editor.blockBorder,
+		},
+		rowShell: {
+			flexDirection: "row",
+			alignItems: "stretch",
+			borderRadius: 10,
+			borderWidth: 1,
+			borderColor: "transparent",
+		},
+		rowShellSelected: {
+			backgroundColor: theme.custom.editor.blockFocused,
+			borderColor: theme.colors.primary,
+		},
+		gutter: {
+			width: 10,
+			marginLeft: 4,
+			marginRight: 6,
+			borderRadius: 999,
+			backgroundColor: theme.custom.editor.blockBorder,
+		},
+		blockContent: {
+			flex: 1,
+		},
+	});
+}

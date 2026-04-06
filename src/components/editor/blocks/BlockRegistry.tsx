@@ -50,6 +50,7 @@ export interface BlockConfig {
 	listItemNumber?: number; // For numbered list items
 	onCheckboxToggle: (index: number) => void;
 	onOpenWikiLink: (title: string) => void;
+	clearStructuredSelection: () => void;
 }
 
 interface BlockBuilder {

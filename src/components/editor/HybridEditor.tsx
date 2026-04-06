@@ -73,6 +73,12 @@ function HybridEditorContent() {
 	const blocks = useEditorState((s) => s.document.blocks);
 	const setSelection = useEditorState((s) => s.setSelection);
 	const selection = useEditorState((s) => s.selection);
+	const clearStructuredSelectionState = useEditorState(
+		(s) => s.clearStructuredSelection,
+	);
+	const selectBlockState = useEditorState((s) => s.selectBlock);
+	const selectBlockRangeState = useEditorState((s) => s.selectBlockRange);
+	const selectGapState = useEditorState((s) => s.selectGap);
 	const updateBlockType = useEditorState((s) => s.updateBlockType);
 	const splitBlock = useEditorState((s) => s.splitBlock);
 	const deleteBlock = useEditorState((s) => s.deleteBlock);
@@ -334,6 +340,34 @@ function HybridEditorContent() {
 		},
 		[deleteBlock, focusBlock],
 	);
+
+	const selectBlock = useCallback(
+		(index: number) => {
+			selectBlockState(index);
+		},
+		[selectBlockState],
+	);
+
+	const selectBlockRange = useCallback(
+		(index: number) => {
+			const state = useEditorState.getState();
+			const anchor =
+				state.blockSelectionAnchor ?? state.blockSelection?.start ?? index;
+			selectBlockRangeState(anchor, index);
+		},
+		[selectBlockRangeState],
+	);
+
+	const selectGap = useCallback(
+		(index: number) => {
+			selectGapState(index);
+		},
+		[selectGapState],
+	);
+
+	const clearStructuredSelection = useCallback(() => {
+		clearStructuredSelectionState();
+	}, [clearStructuredSelectionState]);
 
 	const handleSpace = useCallback(
 		(index: number, cursorOffset: number) => {
@@ -615,6 +649,10 @@ function HybridEditorContent() {
 			onDelete: handleDelete,
 			onCheckboxToggle: handleCheckboxToggle,
 			onOpenWikiLink: handleOpenWikiLink,
+			onSelectBlock: selectBlock,
+			onSelectBlockRange: selectBlockRange,
+			onSelectGap: selectGap,
+			onClearStructuredSelection: clearStructuredSelection,
 		}),
 		[
 			handleContentChange,
@@ -628,6 +666,10 @@ function HybridEditorContent() {
 			handleDelete,
 			handleCheckboxToggle,
 			handleOpenWikiLink,
+			selectBlock,
+			selectBlockRange,
+			selectGap,
+			clearStructuredSelection,
 		],
 	);
 

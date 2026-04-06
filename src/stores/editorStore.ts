@@ -104,6 +104,8 @@ export const useEditorState = create<EditorState>()((set, get) => {
 		selectBlockRange: (anchor: number, focus: number) =>
 			dispatch({ type: "SELECT_BLOCK_RANGE", anchor, focus }),
 
+		selectGap: (index: number) => dispatch({ type: "SELECT_GAP", index }),
+
 		selectAllBlocks: () => dispatch({ type: "SELECT_ALL_BLOCKS" }),
 
 		selectGap: (index: number) => dispatch({ type: "SELECT_GAP", index }),

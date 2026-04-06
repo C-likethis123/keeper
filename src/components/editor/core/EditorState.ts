@@ -13,12 +13,16 @@ export interface BlockSelection {
 	readonly end: number;
 }
 
+export interface GapSelection {
+	readonly index: number;
+}
+
 export interface EditorStateSlice {
 	document: Document;
 	selection: DocumentSelection | null;
 	blockSelection: BlockSelection | null;
 	blockSelectionAnchor: number | null;
-	gapSelection: number | null;
+	gapSelection: GapSelection | null;
 	isComposing: boolean;
 	preparedMarkdown: string | null;
 	preparedVersion: number | null;
@@ -31,6 +35,7 @@ export interface EditorState extends EditorStateSlice {
 	clearStructuredSelection: () => void;
 	selectBlock: (index: number) => void;
 	selectBlockRange: (anchor: number, focus: number) => void;
+	selectGap: (index: number) => void;
 	selectAllBlocks: () => void;
 	selectGap: (index: number) => void;
 	deleteSelectedBlocks: () => void;
@@ -92,6 +97,7 @@ type EditorAction =
 	| { type: "CLEAR_STRUCTURED_SELECTION" }
 	| { type: "SELECT_BLOCK"; index: number }
 	| { type: "SELECT_BLOCK_RANGE"; anchor: number; focus: number }
+	| { type: "SELECT_GAP"; index: number }
 	| { type: "SELECT_ALL_BLOCKS" }
 	| { type: "SELECT_GAP"; index: number }
 	| { type: "APPLY_TRANSACTION"; transaction: Transaction }
@@ -110,6 +116,9 @@ export function editorReducer(
 				...state,
 				document: action.document,
 				selection: null,
+				blockSelection: null,
+				blockSelectionAnchor: null,
+				gapSelection: null,
 			};
 
 		case "SET_SELECTION":
@@ -131,6 +140,7 @@ export function editorReducer(
 		case "CLEAR_STRUCTURED_SELECTION":
 			return {
 				...state,
+				selection: null,
 				blockSelection: null,
 				blockSelectionAnchor: null,
 				gapSelection: null,
@@ -141,8 +151,8 @@ export function editorReducer(
 				...state,
 				blockSelection: { start: action.index, end: action.index },
 				blockSelectionAnchor: action.index,
-				gapSelection: null,
 				selection: null,
+				gapSelection: null,
 			};
 
 		case "SELECT_BLOCK_RANGE": {
@@ -152,10 +162,19 @@ export function editorReducer(
 				...state,
 				blockSelection: { start, end },
 				blockSelectionAnchor: action.anchor,
-				gapSelection: null,
 				selection: null,
+				gapSelection: null,
 			};
 		}
+
+		case "SELECT_GAP":
+			return {
+				...state,
+				gapSelection: { index: action.index },
+				selection: null,
+				blockSelection: null,
+				blockSelectionAnchor: null,
+			};
 
 		case "SELECT_ALL_BLOCKS":
 			if (state.document.blocks.length === 0) return state;
@@ -163,17 +182,8 @@ export function editorReducer(
 				...state,
 				blockSelection: { start: 0, end: state.document.blocks.length - 1 },
 				blockSelectionAnchor: 0,
+				selection: null,
 				gapSelection: null,
-				selection: null,
-			};
-
-		case "SELECT_GAP":
-			return {
-				...state,
-				blockSelection: null,
-				blockSelectionAnchor: null,
-				gapSelection: action.index,
-				selection: null,
 			};
 
 		case "APPLY_TRANSACTION": {

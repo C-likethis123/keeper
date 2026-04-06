@@ -7,6 +7,36 @@ import React from "react";
 import { Platform, Text, View } from "react-native";
 import { blockRegistry } from "../blocks/BlockRegistry";
 
+jest.mock("@/hooks/useExtendedTheme", () => ({
+	useExtendedTheme: () => ({
+		dark: false,
+		colors: {
+			primary: "#2563eb",
+			text: "#111827",
+			background: "#ffffff",
+		},
+		typography: {
+			body: { fontSize: 16, lineHeight: 24 },
+			heading1: {},
+			heading2: {},
+			heading3: {},
+		},
+		custom: {
+			editor: {
+				blockFocused: "#f3f4f6",
+				blockBorder: "#d1d5db",
+				blockBackground: "#ffffff",
+				placeholder: "#9ca3af",
+				inlineCode: {
+					fontFamily: "monospace",
+					backgroundColor: "#f3f4f6",
+					color: "#111827",
+				},
+			},
+		},
+	}),
+}));
+
 const handlers = {
 	onContentChange: jest.fn(),
 	onBlockTypeChange: jest.fn(),
@@ -17,6 +47,10 @@ const handlers = {
 	onDelete: jest.fn(),
 	onCheckboxToggle: jest.fn(),
 	onOpenWikiLink: jest.fn(),
+	onSelectBlock: jest.fn(),
+	onSelectBlockRange: jest.fn(),
+	onSelectGap: jest.fn(),
+	onClearStructuredSelection: jest.fn(),
 };
 
 describe("BlockRow", () => {
@@ -44,6 +78,29 @@ describe("BlockRow", () => {
 		);
 	});
 
+	it("passes block and gap selection state into the block registry", () => {
+		const buildSpy = jest
+			.spyOn(blockRegistry, "build")
+			.mockReturnValue(<Text>Mock Block</Text>);
+
+		useEditorState.setState({
+			document: createDocumentFromMarkdown("Alpha\nBeta"),
+			blockSelection: { start: 0, end: 1 },
+			blockSelectionAnchor: 0,
+			gapSelection: { index: 1 },
+		});
+
+		render(<BlockRow index={1} handlers={handlers} />);
+
+		expect(buildSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				hasBlockSelection: true,
+				isGapSelected: true,
+				clearStructuredSelection: handlers.onClearStructuredSelection,
+			}),
+		);
+	});
+
 	it("wraps video blocks in a sticky container", () => {
 		const buildSpy = jest
 			.spyOn(blockRegistry, "build")
@@ -64,14 +121,18 @@ describe("BlockRow", () => {
 				block: expect.objectContaining({ type: BlockType.video }),
 			}),
 		);
-		expect(UNSAFE_getAllByType(View)[0].props.style).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					position: Platform.OS === "web" ? "sticky" : "relative",
-					top: 0,
-					zIndex: 20,
-				}),
-			]),
-		);
+		expect(
+			UNSAFE_getAllByType(View).some((view) =>
+				Array.isArray(view.props.style)
+					? view.props.style.some(
+							(style: Record<string, unknown> | undefined) =>
+								style?.position ===
+									(Platform.OS === "web" ? "sticky" : "relative") &&
+								style.top === 0 &&
+								style.zIndex === 20,
+						)
+					: false,
+			),
+		).toBe(true);
 	});
 });

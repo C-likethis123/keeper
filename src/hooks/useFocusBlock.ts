@@ -12,12 +12,13 @@ export function useFocusBlock(): UseFocusBlockReturn {
 	const setSelection = useEditorState((s) => s.setSelection);
 	const focusBlockAt = useCallback(
 		(index: number, offset: number) => {
-			const document = useEditorState.getState().document;
+			const { clearStructuredSelection, document } = useEditorState.getState();
 			const block = document.blocks[index];
 			const nextOffset = Math.max(
 				0,
 				Math.min(offset, block?.content.length ?? 0),
 			);
+			clearStructuredSelection();
 			setSelection(
 				createCollapsedSelection({ blockIndex: index, offset: nextOffset }),
 			);

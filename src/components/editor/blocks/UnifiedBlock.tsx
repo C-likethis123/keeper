@@ -39,7 +39,6 @@ export function UnifiedBlock({
 	index,
 	isFocused,
 	hasBlockSelection,
-	isGapSelected,
 	onContentChange,
 	onBackspaceAtStart,
 	onSpace,
@@ -49,6 +48,7 @@ export function UnifiedBlock({
 	listItemNumber,
 	onCheckboxToggle,
 	onOpenWikiLink,
+	clearStructuredSelection,
 }: BlockConfig) {
 	const { focusBlock, blurBlock } = useFocusBlock();
 	const { scrollViewRef, scrollYRef, viewHeightRef } = useEditorScrollView();
@@ -95,14 +95,18 @@ export function UnifiedBlock({
 	}, [isFocused, scrollViewRef, scrollYRef, viewHeightRef]);
 
 	const handleFocus = useCallback(() => {
-		if (hasBlockSelection) {
-			clearStructuredSelection();
-		}
-		if (isFocused) {
+		if (isFocused && !hasBlockSelection) {
 			return;
 		}
+		clearStructuredSelection();
 		focusBlock(index);
-	}, [focusBlock, index, isFocused, hasBlockSelection, clearStructuredSelection]);
+	}, [
+		clearStructuredSelection,
+		focusBlock,
+		hasBlockSelection,
+		index,
+		isFocused,
+	]);
 
 	const handleBlur = useCallback(() => {
 		onBlockExit?.(index);
@@ -369,7 +373,7 @@ export function UnifiedBlock({
 					style={[
 						{ flex: 1 },
 						applyListStyles ? styles.overlayContent : styles.overlay,
-						showInput ? styles.hidden : null,
+						isFocused && !hasBlockSelection ? styles.hidden : null,
 					]}
 					pointerEvents="box-none"
 				>
@@ -382,7 +386,10 @@ export function UnifiedBlock({
 				</View>
 				<TextInput
 					{...textInputProps}
-					style={[textInputProps.style, !showInput ? styles.hidden : null]}
+					style={[
+						textInputProps.style,
+						!isFocused || hasBlockSelection ? styles.hidden : null,
+					]}
 					textAlignVertical={applyListStyles ? undefined : "top"}
 				/>
 			</View>
