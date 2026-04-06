@@ -27,6 +27,7 @@ import {
 	useCallback,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 
@@ -133,6 +134,29 @@ async function loadNotesPage(args: {
 	);
 }
 
+async function loadSectionMetadata() {
+	const recentlyEditedRows = await notesIndexDbGetRecentlyEditedNotes(10, 7);
+	const recentlyEditedNoteIds = new Set(recentlyEditedRows.map((row) => row.id));
+
+	const mocScores = await notesIndexDbGetMocScores(3);
+	const mocNeighborhoods = new Map<string, Set<string>>();
+
+	for (const score of mocScores.slice(0, 5)) {
+		const neighborhood = await notesIndexDbGetGraphNeighborhood(score.noteId, 2);
+		const neighborhoodIds = new Set(
+			neighborhood.map((entry) => entry.noteId).slice(0, 8),
+		);
+		if (neighborhoodIds.size > 0) {
+			mocNeighborhoods.set(score.noteId, neighborhoodIds);
+		}
+	}
+
+	return {
+		recentlyEditedNoteIds,
+		mocNeighborhoods,
+	};
+}
+
 export default function useSuspenseNotes() {
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
 	const initializationError = useStorageStore((s) => s.initializationError);
@@ -157,6 +181,14 @@ export default function useSuspenseNotes() {
 		isLoadingMore: false,
 		error: null,
 	});
+	const [sectionMetadata, setSectionMetadata] = useState<{
+		recentlyEditedNoteIds: Set<string>;
+		mocNeighborhoods: Map<string, Set<string>>;
+	}>({
+		recentlyEditedNoteIds: new Set(),
+		mocNeighborhoods: new Map(),
+	});
+	const sectionRequestVersionRef = useRef(0);
 
 	const filters = useMemo<NoteListFilters>(
 		() => ({
@@ -276,19 +308,53 @@ export default function useSuspenseNotes() {
 		[baseNotes, activePagination.notes],
 	);
 
-	// Compute sections (memoized)
+	useEffect(() => {
+		void contentVersion;
+		void refreshVersion;
+
+		const requestVersion = sectionRequestVersionRef.current + 1;
+		sectionRequestVersionRef.current = requestVersion;
+
+		let cancelled = false;
+
+		void loadSectionMetadata()
+			.then((metadata) => {
+				if (cancelled) {
+					return;
+				}
+				if (sectionRequestVersionRef.current !== requestVersion) {
+					return;
+				}
+				setSectionMetadata(metadata);
+			})
+			.catch(() => {
+				if (cancelled) {
+					return;
+				}
+				if (sectionRequestVersionRef.current !== requestVersion) {
+					return;
+				}
+				setSectionMetadata({
+					recentlyEditedNoteIds: new Set(),
+					mocNeighborhoods: new Map(),
+				});
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [contentVersion, refreshVersion]);
+
 	const sections = useMemo(() => {
 		const pinnedNotes = allNotes.filter((n) => n.isPinned);
-		const recentlyEditedNoteIds = new Set<string>();
-		const mocNeighborhoods = new Map<string, Set<string>>();
 
 		return computeSections(
 			allNotes,
 			pinnedNotes,
-			recentlyEditedNoteIds,
-			mocNeighborhoods,
+			sectionMetadata.recentlyEditedNoteIds,
+			sectionMetadata.mocNeighborhoods,
 		);
-	}, [allNotes]);
+	}, [allNotes, sectionMetadata]);
 
 	return {
 		notes: allNotes,

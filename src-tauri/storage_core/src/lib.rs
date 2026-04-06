@@ -451,13 +451,14 @@ pub fn index_upsert(index_db_path: &Path, input: IndexUpsertInput) -> Result<(),
     };
     conn.execute(
         &format!(
-            "INSERT INTO {TABLE} (id, title, summary, is_pinned, updated_at, note_type, status)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            "INSERT INTO {TABLE} (id, title, summary, is_pinned, updated_at, modified, note_type, status)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
              ON CONFLICT(id) DO UPDATE SET
                title = excluded.title,
                summary = excluded.summary,
                is_pinned = excluded.is_pinned,
                updated_at = excluded.updated_at,
+               modified = excluded.modified,
                note_type = excluded.note_type,
                status = excluded.status"
         ),
@@ -466,6 +467,7 @@ pub fn index_upsert(index_db_path: &Path, input: IndexUpsertInput) -> Result<(),
             input.title,
             input.summary,
             if input.is_pinned { 1 } else { 0 },
+            input.updated_at,
             input.updated_at,
             input.note_type,
             status,
@@ -877,8 +879,8 @@ pub fn wiki_links_get_recently_edited(
         .prepare(
             "SELECT id, title, summary, is_pinned, updated_at, note_type, status
              FROM note_index
-             WHERE modified >= ?
-             ORDER BY modified DESC
+             WHERE COALESCE(modified, updated_at) >= ?
+             ORDER BY COALESCE(modified, updated_at) DESC
              LIMIT ?",
         )
         .map_err(|e| format!("wiki_links_get_recently_edited prepare failed: {e}"))?;

@@ -102,4 +102,32 @@ describe("NoteGrid", () => {
 
 		expect(screen.getByText("Take a note...")).toBeOnTheScreen();
 	});
+
+	it("renders section headers when grouped sections are provided", () => {
+		const notes = makeNotes(3);
+
+		render(
+			<NoteGrid
+				notes={notes}
+				sections={[
+					{
+						id: "pinned",
+						title: "Pinned",
+						notes: [notes[0]],
+					},
+					{
+						id: "recent",
+						title: "Recently Edited",
+						notes: [notes[1], notes[2]],
+					},
+				]}
+				onDelete={() => {}}
+				onPinToggle={() => {}}
+				onRefresh={() => {}}
+			/>,
+		);
+
+		expect(screen.getByText("Pinned")).toBeOnTheScreen();
+		expect(screen.getByText("Recently Edited")).toBeOnTheScreen();
+	});
 });

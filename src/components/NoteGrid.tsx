@@ -58,25 +58,36 @@ export default function NoteGrid({
 		}
 	}, [hasMore, isLoadingMore, onEndReached]);
 
-	// Flatten sections into a list with headers
-	const flattenedData = useMemo(() => {
+	const rowData = useMemo(() => {
+		const chunkNotes = (sectionNotes: Note[]) => {
+			const rows: Note[][] = [];
+			for (let index = 0; index < sectionNotes.length; index += numColumns) {
+				rows.push(sectionNotes.slice(index, index + numColumns));
+			}
+			return rows;
+		};
+
 		if (sections && sections.length > 0) {
 			const items: Array<
-				{ type: "header"; section: NoteSection } | { type: "note"; note: Note }
+				| { type: "header"; section: NoteSection }
+				| { type: "note-row"; notes: Note[] }
 			> = [];
 			for (const section of sections) {
 				items.push({ type: "header", section });
-				for (const note of section.notes) {
-					items.push({ type: "note", note });
+				for (const row of chunkNotes(section.notes)) {
+					items.push({ type: "note-row", notes: row });
 				}
 			}
 			return items;
 		}
-		// Fallback to flat notes
-		return notes.map((note) => ({ type: "note" as const, note }));
-	}, [sections, notes]);
 
-	const isEmpty = flattenedData.filter((d) => d.type === "note").length === 0;
+		return chunkNotes(notes).map((row) => ({
+			type: "note-row" as const,
+			notes: row,
+		}));
+	}, [notes, numColumns, sections]);
+
+	const isEmpty = rowData.length === 0;
 
 	const listHeader = useMemo(() => {
 		if (!listHeaderComponent) return null;
@@ -87,15 +98,13 @@ export default function NoteGrid({
 		<View style={styles.root}>
 			{listHeader}
 			<FlatList
-				data={flattenedData}
-				key={numColumns}
-				numColumns={numColumns}
+				data={rowData}
+				key={`note-grid-${numColumns}`}
 				keyExtractor={(item, index) =>
 					item.type === "header"
 						? `header-${item.section.id}`
-						: `note-${item.note.id}-${index}`
+						: `note-row-${item.notes.map((note) => note.id).join("-")}-${index}`
 				}
-				columnWrapperStyle={styles.columnWrapper}
 				contentContainerStyle={styles.contentContainer}
 				ListHeaderComponent={null}
 				ListEmptyComponent={
@@ -131,12 +140,29 @@ export default function NoteGrid({
 							</View>
 						);
 					}
+
 					return (
-						<NoteCard
-							note={item.note}
-							onDelete={onDelete}
-							onPinToggle={onPinToggle}
-						/>
+						<View style={styles.noteRow}>
+							{item.notes.map((note) => (
+								<View key={note.id} style={styles.noteCell}>
+									<NoteCard
+										note={note}
+										onDelete={onDelete}
+										onPinToggle={onPinToggle}
+									/>
+								</View>
+							))}
+							{Array.from(
+								{ length: Math.max(0, numColumns - item.notes.length) },
+								(_, offset) => item.notes.length + offset + 1,
+							).map((columnNumber) => (
+								<View
+									key={`empty-column-${columnNumber}`}
+									style={styles.noteCell}
+									pointerEvents="none"
+								/>
+							))}
+						</View>
 					);
 				}}
 			/>
@@ -156,9 +182,13 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			paddingHorizontal: 8,
 			paddingTop: 12,
 		},
-		columnWrapper: {
+		noteRow: {
+			flexDirection: "row",
 			gap: 8,
 			marginBottom: 8,
+		},
+		noteCell: {
+			flex: 1,
 		},
 		contentContainer: {
 			padding: 8,
