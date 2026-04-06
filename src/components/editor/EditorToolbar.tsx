@@ -19,7 +19,17 @@ const styles = StyleSheet.create({
 	},
 });
 
-export function EditorToolbar() {
+interface EditorToolbarProps {
+	onAttachDocument?: () => void;
+	hasAttachment?: boolean;
+	onRemoveAttachment?: () => void;
+}
+
+export function EditorToolbar({
+	onAttachDocument,
+	hasAttachment = false,
+	onRemoveAttachment,
+}: EditorToolbarProps) {
 	const getCanUndo = useEditorState((s) => s.getCanUndo);
 	const getCanRedo = useEditorState((s) => s.getCanRedo);
 	const getFocusedBlock = useEditorState((s) => s.getFocusedBlock);
@@ -76,6 +86,21 @@ export function EditorToolbar() {
 				<IconButton name="image" onPress={handleInsertImage} />
 			) : (
 				<Text>TODO: Insert Image</Text>
+			)}
+			{/* Attach PDF/ePub */}
+			{hasAttachment ? (
+				<IconButton
+					name="times-circle"
+					onPress={onRemoveAttachment ?? (() => {})}
+					label="Remove attachment"
+				/>
+			) : (
+				<IconButton
+					name="paperclip"
+					onPress={onAttachDocument ?? (() => {})}
+					label="Attach PDF or ePub"
+					disabled={!onAttachDocument}
+				/>
 			)}
 		</View>
 	);

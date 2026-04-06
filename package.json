@@ -20,7 +20,9 @@
 		"test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
 		"lint": "biome lint .",
 		"lint:fix": "biome check . --apply",
-		"knip": "knip"
+		"knip": "knip",
+		"build:viewers": "node scripts/build-viewers.js",
+		"postinstall": "node scripts/build-viewers.js"
 	},
 	"dependencies": {
 		"@expo/vector-icons": "^15.0.3",
@@ -54,6 +56,8 @@
 		"react-native-safe-area-context": "~5.6.0",
 		"react-native-screens": "~4.16.0",
 		"react-native-svg": "15.15.3",
+		"epubjs": "^0.3.93",
+		"pdfjs-dist": "^4.10.38",
 		"react-native-web": "~0.21.0",
 		"react-native-webview": "13.15.0",
 		"react-syntax-highlighter": "^16.1.0",
