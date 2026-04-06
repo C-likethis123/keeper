@@ -1,6 +1,7 @@
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
+import { useTabStore } from "@/stores/tabStore";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
@@ -35,7 +36,10 @@ export default function NoteCard({
 	const styles = useStyles(createStyles);
 	const typeLabel = formatNoteType(note);
 
-	const openNote = () => router.push(`/editor?id=${note.id}`);
+	const openNote = () => {
+		useTabStore.getState().openTab(note.id, note.title);
+		router.push(`/editor?id=${note.id}`);
+	};
 
 	const handlePinToggle = () => {
 		const updated = { ...note, isPinned: !note.isPinned };

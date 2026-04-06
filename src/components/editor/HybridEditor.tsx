@@ -10,6 +10,7 @@ import {
 } from "@/components/editor/wikilinks/wikiLinkUtils";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
+import { useTabStore } from "@/stores/tabStore";
 import { useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef } from "react";
 import {
@@ -532,6 +533,7 @@ function HybridEditorContent() {
 				return;
 			}
 
+			useTabStore.getState().openTab(noteId, title);
 			router.push(`/editor?id=${noteId}`);
 		},
 		[router],

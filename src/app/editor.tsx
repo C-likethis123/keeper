@@ -7,8 +7,9 @@ import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { useSuspenseLoadNote } from "@/hooks/useSuspenseLoadNote";
 import type { Note } from "@/services/notes/types";
+import { useTabStore } from "@/stores/tabStore";
 import { useLocalSearchParams } from "expo-router";
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 
 function NoteEditorContent({
@@ -35,6 +36,13 @@ function NoteEditorContent({
 	}
 
 	const note = useSuspenseLoadNote(id);
+	const { activeTabId, updateTabTitle } = useTabStore();
+
+	useEffect(() => {
+		if (activeTabId && note?.title) {
+			updateTabTitle(activeTabId, note.title);
+		}
+	}, [activeTabId, note?.title, updateTabTitle]);
 
 	if (!note) {
 		return <ErrorScreen errorMessage="Note not found" onRetry={() => {}} />;
@@ -45,7 +53,12 @@ function NoteEditorContent({
 
 export default function NoteEditorScreen() {
 	const params = useLocalSearchParams();
-	const noteId = typeof params.id === "string" ? params.id : "";
+	const { activeTabId, tabs } = useTabStore();
+	const activeTab = tabs.find((t) => t.id === activeTabId);
+	const noteId =
+		typeof params.id === "string" && params.id
+			? params.id
+			: (activeTab?.noteId ?? "");
 	const isNew = params.isNew === "true";
 	const initialTitle =
 		typeof params.title === "string" ? params.title : undefined;

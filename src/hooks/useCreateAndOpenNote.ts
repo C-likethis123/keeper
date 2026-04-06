@@ -1,5 +1,6 @@
 import { NoteService } from "@/services/notes/noteService";
 import type { NoteType } from "@/services/notes/types";
+import { useTabStore } from "@/stores/tabStore";
 import { useToastStore } from "@/stores/toastStore";
 import { router } from "expo-router";
 import { nanoid } from "nanoid";
@@ -13,6 +14,8 @@ export function useCreateAndOpenNote() {
 			const newId = nanoid();
 
 			try {
+				const { openTab } = useTabStore.getState();
+				openTab(newId, options?.title ?? "");
 				router.push({
 					pathname: "/editor",
 					params: {
