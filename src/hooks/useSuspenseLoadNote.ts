@@ -10,7 +10,7 @@ export function useSuspenseLoadNote(id: string): Note | null {
 	const initializationError = useStorageStore((s) => s.initializationError);
 
 	// Deliberately NOT using contentVersion in the cache key.
-	// contentVersion is for list-level refresh (useNotes/useSuspenseNotes).
+	// contentVersion is for list-level refresh (useNotes).
 	// Including it here would cause re-suspension on every save, which
 	// unmounts/remounts the editor via the Suspense boundary and loses focus.
 	// The note content on disk is what we just saved, so stale data isn't a concern.

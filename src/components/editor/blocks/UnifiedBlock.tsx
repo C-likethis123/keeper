@@ -38,6 +38,8 @@ export function UnifiedBlock({
 	block,
 	index,
 	isFocused,
+	hasBlockSelection,
+	isGapSelected,
 	onContentChange,
 	onBackspaceAtStart,
 	onSpace,
@@ -56,6 +58,9 @@ export function UnifiedBlock({
 	const selectionRange = useEditorBlockSelection(index);
 	const getFocusedBlockIndex = useEditorState(
 		(state) => state.getFocusedBlockIndex,
+	);
+	const clearStructuredSelection = useEditorState(
+		(s) => s.clearStructuredSelection,
 	);
 	const handleVerticalArrow = useVerticalArrowNavigation(index, selectionRange);
 
@@ -90,11 +95,14 @@ export function UnifiedBlock({
 	}, [isFocused, scrollViewRef, scrollYRef, viewHeightRef]);
 
 	const handleFocus = useCallback(() => {
+		if (hasBlockSelection) {
+			clearStructuredSelection();
+		}
 		if (isFocused) {
 			return;
 		}
 		focusBlock(index);
-	}, [focusBlock, index, isFocused]);
+	}, [focusBlock, index, isFocused, hasBlockSelection, clearStructuredSelection]);
 
 	const handleBlur = useCallback(() => {
 		onBlockExit?.(index);
@@ -303,6 +311,8 @@ export function UnifiedBlock({
 		? { minHeight: minimumLineHeight }
 		: { minHeight: minimumLineHeight, maxHeight: Number.MAX_SAFE_INTEGER };
 
+	const showInput = isFocused && !hasBlockSelection;
+
 	const textInputProps = {
 		ref: inputRef,
 		style: [styles.input, inputSizeStyle, textStyle, styles.inputVisible],
@@ -359,7 +369,7 @@ export function UnifiedBlock({
 					style={[
 						{ flex: 1 },
 						applyListStyles ? styles.overlayContent : styles.overlay,
-						isFocused ? styles.hidden : null,
+						showInput ? styles.hidden : null,
 					]}
 					pointerEvents="box-none"
 				>
@@ -372,7 +382,7 @@ export function UnifiedBlock({
 				</View>
 				<TextInput
 					{...textInputProps}
-					style={[textInputProps.style, !isFocused ? styles.hidden : null]}
+					style={[textInputProps.style, !showInput ? styles.hidden : null]}
 					textAlignVertical={applyListStyles ? undefined : "top"}
 				/>
 			</View>

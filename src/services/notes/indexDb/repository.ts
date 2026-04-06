@@ -103,6 +103,8 @@ export async function listAll(
   if (filters?.status) {
     whereClauses.push(`${TABLE}.status = ?`);
     params.push(filters.status);
+  } else if (filters?.hideDone) {
+    whereClauses.push(`(${TABLE}.status IS NULL OR ${TABLE}.status != 'done')`);
   }
 
   const whereSql =

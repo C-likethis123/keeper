@@ -17,6 +17,8 @@ export interface EditorStateSlice {
 	document: Document;
 	selection: DocumentSelection | null;
 	blockSelection: BlockSelection | null;
+	blockSelectionAnchor: number | null;
+	gapSelection: number | null;
 	isComposing: boolean;
 	preparedMarkdown: string | null;
 	preparedVersion: number | null;
@@ -26,9 +28,11 @@ export interface EditorState extends EditorStateSlice {
 	setDocument: (document: Document) => void;
 	setSelection: (selection: DocumentSelection | null) => void;
 	clearBlockSelection: () => void;
+	clearStructuredSelection: () => void;
 	selectBlock: (index: number) => void;
-	selectBlockRange: (start: number, end: number) => void;
+	selectBlockRange: (anchor: number, focus: number) => void;
 	selectAllBlocks: () => void;
+	selectGap: (index: number) => void;
 	deleteSelectedBlocks: () => void;
 	applyTransaction: (transaction: Transaction) => void;
 	undo: () => boolean;
@@ -74,6 +78,8 @@ export const initialEditorStateSlice: EditorStateSlice = {
 	document: createEmptyDocument(),
 	selection: null,
 	blockSelection: null,
+	blockSelectionAnchor: null,
+	gapSelection: null,
 	isComposing: false,
 	preparedMarkdown: null,
 	preparedVersion: null,
@@ -83,6 +89,7 @@ type EditorAction =
 	| { type: "SET_DOCUMENT"; document: Document }
 	| { type: "SET_SELECTION"; selection: DocumentSelection | null }
 	| { type: "CLEAR_BLOCK_SELECTION" }
+	| { type: "CLEAR_STRUCTURED_SELECTION" }
 	| { type: "SELECT_BLOCK"; index: number }
 	| { type: "SELECT_BLOCK_RANGE"; anchor: number; focus: number }
 	| { type: "SELECT_ALL_BLOCKS" }
@@ -106,24 +113,46 @@ export function editorReducer(
 			};
 
 		case "SET_SELECTION":
-			return { ...state, selection: action.selection };
+			return {
+				...state,
+				selection: action.selection,
+				blockSelection: null,
+				blockSelectionAnchor: null,
+				gapSelection: null,
+			};
 
 		case "CLEAR_BLOCK_SELECTION":
-			return { ...state, blockSelection: null };
+			return {
+				...state,
+				blockSelection: null,
+				blockSelectionAnchor: null,
+			};
+
+		case "CLEAR_STRUCTURED_SELECTION":
+			return {
+				...state,
+				blockSelection: null,
+				blockSelectionAnchor: null,
+				gapSelection: null,
+			};
 
 		case "SELECT_BLOCK":
 			return {
 				...state,
 				blockSelection: { start: action.index, end: action.index },
+				blockSelectionAnchor: action.index,
+				gapSelection: null,
 				selection: null,
 			};
 
 		case "SELECT_BLOCK_RANGE": {
-			const start = Math.min(action.start, action.end);
-			const end = Math.max(action.start, action.end);
+			const start = Math.min(action.anchor, action.focus);
+			const end = Math.max(action.anchor, action.focus);
 			return {
 				...state,
 				blockSelection: { start, end },
+				blockSelectionAnchor: action.anchor,
+				gapSelection: null,
 				selection: null,
 			};
 		}
@@ -133,6 +162,17 @@ export function editorReducer(
 			return {
 				...state,
 				blockSelection: { start: 0, end: state.document.blocks.length - 1 },
+				blockSelectionAnchor: 0,
+				gapSelection: null,
+				selection: null,
+			};
+
+		case "SELECT_GAP":
+			return {
+				...state,
+				blockSelection: null,
+				blockSelectionAnchor: null,
+				gapSelection: action.index,
 				selection: null,
 			};
 

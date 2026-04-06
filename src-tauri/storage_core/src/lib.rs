@@ -79,6 +79,7 @@ pub struct IndexListInput {
 pub struct IndexListFilters {
     pub note_type: Option<String>,
     pub status: Option<String>,
+    pub hide_done: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -497,23 +498,25 @@ pub fn index_list(index_db_path: &Path, input: IndexListInput) -> Result<IndexLi
     let fts_match_query = build_fts_match_query(&normalized_query);
     let filters = input.filters;
 
-    let mut where_clauses: Vec<&str> = Vec::new();
+    let mut where_clauses: Vec<String> = Vec::new();
     let mut params_vec: Vec<Value> = Vec::new();
 
     if let Some(fts_match_query) = fts_match_query.as_ref() {
-        where_clauses.push("note_index_fts MATCH ?");
+        where_clauses.push("note_index_fts MATCH ?".to_string());
         params_vec.push(Value::Text(fts_match_query.clone()));
     }
     if let Some(note_type) = filters
         .as_ref()
         .and_then(|value| value.note_type.as_ref())
     {
-        where_clauses.push("note_index.note_type = ?");
+        where_clauses.push("note_index.note_type = ?".to_string());
         params_vec.push(Value::Text(note_type.clone()));
     }
     if let Some(status) = filters.as_ref().and_then(|value| value.status.as_ref()) {
-        where_clauses.push("note_index.status = ?");
+        where_clauses.push("note_index.status = ?".to_string());
         params_vec.push(Value::Text(status.clone()));
+    } else if filters.as_ref().and_then(|f| f.hide_done).unwrap_or(false) {
+        where_clauses.push("(note_index.status IS NULL OR note_index.status != 'done')".to_string());
     }
     let where_sql = if where_clauses.is_empty() {
         String::new()

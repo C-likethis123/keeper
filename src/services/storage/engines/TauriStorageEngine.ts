@@ -115,6 +115,7 @@ export class TauriStorageEngine implements StorageEngine {
 								? filters.noteTypes[0]
 								: undefined,
 						status: filters.status,
+						hideDone: filters.hideDone,
 					};
 
 		return this.invoke<NoteIndexListResult>("index_list", {

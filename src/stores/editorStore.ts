@@ -96,12 +96,17 @@ export const useEditorState = create<EditorState>()((set, get) => {
 
 		clearBlockSelection: () => dispatch({ type: "CLEAR_BLOCK_SELECTION" }),
 
+		clearStructuredSelection: () =>
+			dispatch({ type: "CLEAR_STRUCTURED_SELECTION" }),
+
 		selectBlock: (index: number) => dispatch({ type: "SELECT_BLOCK", index }),
 
-		selectBlockRange: (start: number, end: number) =>
-			dispatch({ type: "SELECT_BLOCK_RANGE", start, end }),
+		selectBlockRange: (anchor: number, focus: number) =>
+			dispatch({ type: "SELECT_BLOCK_RANGE", anchor, focus }),
 
 		selectAllBlocks: () => dispatch({ type: "SELECT_ALL_BLOCKS" }),
+
+		selectGap: (index: number) => dispatch({ type: "SELECT_GAP", index }),
 
 		deleteSelectedBlocks: () => {
 			const s = get();

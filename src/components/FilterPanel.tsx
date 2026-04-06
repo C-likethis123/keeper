@@ -68,9 +68,11 @@ export function FilterPanel() {
 	const styles = useStyles(createStyles);
 	const noteTypes = useFilterStore((s) => s.noteTypes);
 	const status = useFilterStore((s) => s.status);
+	const hideDone = useFilterStore((s) => s.hideDone);
 	const isPanelOpen = useFilterStore((s) => s.isPanelOpen);
 	const setNoteTypes = useFilterStore((s) => s.setNoteTypes);
 	const setStatus = useFilterStore((s) => s.setStatus);
+	const setHideDone = useFilterStore((s) => s.setHideDone);
 	const closePanel = useFilterStore((s) => s.closePanel);
 	const insets = useSafeAreaInsets();
 
@@ -131,6 +133,14 @@ export function FilterPanel() {
 								styles={styles}
 							/>
 						))}
+						<Text style={[styles.sectionTitle, styles.sectionTop]}>Options</Text>
+						<FilterRow
+							label="Hide done"
+							selected={hideDone}
+							onPress={() => setHideDone(!hideDone)}
+							theme={theme}
+							styles={styles}
+						/>
 						{selectedType === "todo" ? (
 							<>
 								<Text style={[styles.sectionTitle, styles.sectionTop]}>

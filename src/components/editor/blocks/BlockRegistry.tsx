@@ -29,6 +29,8 @@ export interface BlockConfig {
 	block: BlockNode;
 	index: number;
 	isFocused: boolean;
+	hasBlockSelection: boolean;
+	isGapSelected: boolean;
 	onContentChange: (index: number, content: string) => void;
 	onBlockTypeChange?: (
 		index: number,

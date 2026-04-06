@@ -1,6 +1,7 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { NoteSection } from "@/services/notes/indexDb/types";
+import { getCachedQueryPromise } from "@/services/notes/noteQueryCache";
 import {
 	type NoteIndexItem,
 	NotesIndexService,
@@ -10,14 +11,19 @@ import {
 	notesIndexDbGetMocScores,
 	notesIndexDbGetRecentlyEditedNotes,
 } from "@/services/notes/notesIndexDb";
-import type {
-	Note,
-	NoteListFilters,
-	NoteStatus,
-	NoteType,
-} from "@/services/notes/types";
+import type { Note, NoteListFilters } from "@/services/notes/types";
+import { useFilterStore } from "@/stores/filterStore";
 import { useStorageStore } from "@/stores/storageStore";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { waitForStorageReady } from "@/stores/storageSuspense";
+import {
+	startTransition,
+	use,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 
 function toNote(item: NoteIndexItem): Note {
 	return {
@@ -94,176 +100,263 @@ function computeSections(
 	return sections;
 }
 
+function buildNotesQueryKey(args: {
+	query: string;
+	filters: NoteListFilters;
+	contentVersion: number;
+	refreshVersion: number;
+}) {
+	return JSON.stringify({
+		scope: "notes",
+		query: args.query,
+		filters: args.filters,
+		contentVersion: args.contentVersion,
+		refreshVersion: args.refreshVersion,
+	});
+}
+
+async function loadNotesPage(args: {
+	query: string;
+	filters: NoteListFilters;
+	offset: number;
+}) {
+	return NotesIndexService.listNotes(
+		args.query,
+		PAGE_SIZE,
+		args.offset,
+		args.filters,
+	);
+}
+
+async function loadSectionMetadata() {
+	const recentlyEditedRows = await notesIndexDbGetRecentlyEditedNotes(10, 7);
+	const recentlyEditedNoteIds = new Set(recentlyEditedRows.map((row) => row.id));
+
+	const mocScores = await notesIndexDbGetMocScores(3);
+	const mocNeighborhoods = new Map<string, Set<string>>();
+
+	for (const score of mocScores.slice(0, 5)) {
+		const neighborhood = await notesIndexDbGetGraphNeighborhood(score.noteId, 2);
+		const neighborhoodIds = new Set(
+			neighborhood.map((entry) => entry.noteId).slice(0, 8),
+		);
+		if (neighborhoodIds.size > 0) {
+			mocNeighborhoods.set(score.noteId, neighborhoodIds);
+		}
+	}
+
+	return {
+		recentlyEditedNoteIds,
+		mocNeighborhoods,
+	};
+}
+
 export default function useNotes() {
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
 	const initializationError = useStorageStore((s) => s.initializationError);
 	const contentVersion = useStorageStore((s) => s.contentVersion);
 	const [query, setQuery] = useState("");
 	const debouncedQuery = useDebounce(query, 300);
-	const [noteTypeFilter, setNoteTypeFilter] = useState<NoteType[]>([]);
-	const [statusFilter, setStatusFilter] = useState<NoteStatus | undefined>(
-		undefined,
-	);
-	const [notes, setNotes] = useState<Note[]>([]);
-	const [sections, setSections] = useState<NoteSection[]>([]);
-	const [hasMore, setHasMore] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-
-	const loadingRef = useRef(false);
-	const pendingRefreshRef = useRef(false);
-	const nextOffsetRef = useRef<number | undefined>(undefined);
+	const noteTypeFilter = useFilterStore((s) => s.noteTypes);
+	const statusFilter = useFilterStore((s) => s.status);
+	const hideDone = useFilterStore((s) => s.hideDone);
+	const setNoteTypeFilter = useFilterStore((s) => s.setNoteTypes);
+	const setStatusFilter = useFilterStore((s) => s.setStatus);
+	const [refreshVersion, setRefreshVersion] = useState(0);
+	const [paginationState, setPaginationState] = useState<{
+		baseKey: string;
+		notes: Note[];
+		nextOffset?: number;
+		isLoadingMore: boolean;
+		error: string | null;
+	}>({
+		baseKey: "",
+		notes: [],
+		nextOffset: undefined,
+		isLoadingMore: false,
+		error: null,
+	});
+	const [sectionMetadata, setSectionMetadata] = useState<{
+		recentlyEditedNoteIds: Set<string>;
+		mocNeighborhoods: Map<string, Set<string>>;
+	}>({
+		recentlyEditedNoteIds: new Set(),
+		mocNeighborhoods: new Map(),
+	});
+	const sectionRequestVersionRef = useRef(0);
 
 	const filters = useMemo<NoteListFilters>(
 		() => ({
 			noteTypes: noteTypeFilter.length > 0 ? noteTypeFilter : undefined,
 			status: statusFilter,
+			hideDone,
 		}),
-		[noteTypeFilter, statusFilter],
+		[noteTypeFilter, statusFilter, hideDone],
 	);
-	const latestQueryRef = useRef(debouncedQuery);
 
-	const fetchNotes = useCallback(
-		async (
-			append: boolean,
-			overrides?: {
-				searchQuery?: string;
-				filters?: NoteListFilters;
-			},
-		) => {
-			if (initializationStatus !== "ready") return;
-			const searchQuery = overrides?.searchQuery ?? latestQueryRef.current;
-			if (loadingRef.current) {
-				if (!append) {
-					pendingRefreshRef.current = true;
-					latestQueryRef.current = searchQuery;
-				}
-				return;
-			}
-			loadingRef.current = true;
-			setIsLoading(true);
-			try {
-				const offset = append ? (nextOffsetRef.current ?? 0) : 0;
-				if (!append) {
-					nextOffsetRef.current = undefined;
-					setError(null);
-				}
-				const results = await NotesIndexService.listNotes(
-					searchQuery,
-					PAGE_SIZE,
-					offset,
-					filters,
-				);
-				nextOffsetRef.current = results.cursor;
-				const newNotes = results.items.map(toNote);
-				if (append) {
-					setNotes((prev) => [...prev, ...newNotes]);
-				} else {
-					setNotes(newNotes);
-				}
-				setHasMore(!!results.cursor);
+	if (initializationStatus === "pending") {
+		throw waitForStorageReady();
+	}
 
-				// Compute sections (only on initial load, not on append)
-				if (!append) {
-					const allNotes = newNotes;
-					const pinnedNotes = allNotes.filter((n) => n.isPinned);
+	if (initializationStatus === "failed") {
+		throw new Error(initializationError ?? "Storage is unavailable");
+	}
 
-					// Fetch recently edited note IDs
-					const recentlyEditedRows = await notesIndexDbGetRecentlyEditedNotes(
-						10,
-						7,
-					);
-					const recentlyEditedNoteIds = new Set(
-						recentlyEditedRows.map((r) => r.id),
-					);
-
-					// Fetch MOC scores and neighborhoods
-					const mocScores = await notesIndexDbGetMocScores(3);
-					const mocNeighborhoods = new Map<string, Set<string>>();
-					for (const score of mocScores.slice(0, 5)) {
-						// Cap at 5 MOCs to avoid overwhelming UI
-						const neighborhood = await notesIndexDbGetGraphNeighborhood(
-							score.noteId,
-							2,
-						);
-						const neighborhoodIds = new Set(
-							neighborhood.map((n) => n.noteId).slice(0, 8),
-						); // Cap at 8 notes per MOC
-						if (neighborhoodIds.size > 0) {
-							mocNeighborhoods.set(score.noteId, neighborhoodIds);
-						}
-					}
-
-					const computedSections = computeSections(
-						allNotes,
-						pinnedNotes,
-						recentlyEditedNoteIds,
-						mocNeighborhoods,
-					);
-					setSections(computedSections);
-				}
-			} catch (err: unknown) {
-				if (err instanceof Error) {
-					setError(err.message);
-				}
-			} finally {
-				loadingRef.current = false;
-				setIsLoading(false);
-				if (pendingRefreshRef.current) {
-					pendingRefreshRef.current = false;
-					void fetchNotes(false);
-				}
-			}
-		},
-		[initializationStatus, filters],
+	const baseKey = buildNotesQueryKey({
+		query: debouncedQuery,
+		filters,
+		contentVersion,
+		refreshVersion,
+	});
+	const baseResult = use(
+		getCachedQueryPromise(baseKey, () =>
+			loadNotesPage({
+				query: debouncedQuery,
+				filters,
+				offset: 0,
+			}),
+		),
 	);
+	const baseNotes = useMemo(() => baseResult.items.map(toNote), [baseResult]);
+	const activePagination =
+		paginationState.baseKey === baseKey
+			? paginationState
+			: {
+					baseKey,
+					notes: [],
+					nextOffset: baseResult.cursor,
+					isLoadingMore: false,
+					error: null,
+				};
+
+	useEffect(() => {
+		setPaginationState({
+			baseKey,
+			notes: [],
+			nextOffset: baseResult.cursor,
+			isLoadingMore: false,
+			error: null,
+		});
+	}, [baseKey, baseResult.cursor]);
 
 	const loadMoreNotes = useCallback(async () => {
-		if (!hasMore || isLoading) return;
-		await fetchNotes(true);
-	}, [hasMore, isLoading, fetchNotes]);
-
-	const handleRefresh = useCallback(async () => {
-		await fetchNotes(false);
-	}, [fetchNotes]);
-
-	useEffect(() => {
-		latestQueryRef.current = debouncedQuery;
-	}, [debouncedQuery]);
-
-	useEffect(() => {
-		if (initializationStatus === "pending") {
-			setIsLoading(true);
+		if (activePagination.isLoadingMore || activePagination.nextOffset == null) {
 			return;
 		}
 
-		if (initializationStatus === "failed") {
-			setIsLoading(false);
-			setNotes([]);
-			setHasMore(false);
-			setError(initializationError ?? "Storage is unavailable");
-			return;
-		}
+		setPaginationState((current) =>
+			current.baseKey === baseKey
+				? {
+						...current,
+						isLoadingMore: true,
+						error: null,
+					}
+				: current,
+		);
 
-		void contentVersion;
-		void fetchNotes(false, {
-			searchQuery: debouncedQuery,
-			filters,
-		});
+		try {
+			const result = await loadNotesPage({
+				query: debouncedQuery,
+				filters,
+				offset: activePagination.nextOffset,
+			});
+			setPaginationState((current) => {
+				if (current.baseKey !== baseKey) {
+					return current;
+				}
+
+				return {
+					...current,
+					notes: [...current.notes, ...result.items.map(toNote)],
+					nextOffset: result.cursor,
+					isLoadingMore: false,
+				};
+			});
+		} catch (error) {
+			setPaginationState((current) => {
+				if (current.baseKey !== baseKey) {
+					return current;
+				}
+
+				return {
+					...current,
+					isLoadingMore: false,
+					error: error instanceof Error ? error.message : String(error),
+				};
+			});
+		}
 	}, [
-		fetchNotes,
+		activePagination.isLoadingMore,
+		activePagination.nextOffset,
+		baseKey,
 		debouncedQuery,
 		filters,
-		initializationError,
-		contentVersion,
-		initializationStatus,
 	]);
 
+	const handleRefresh = useCallback(async () => {
+		startTransition(() => {
+			setRefreshVersion((current) => current + 1);
+		});
+	}, []);
+
+	const allNotes = useMemo(
+		() => [...baseNotes, ...activePagination.notes],
+		[baseNotes, activePagination.notes],
+	);
+
+	useEffect(() => {
+		void contentVersion;
+		void refreshVersion;
+
+		const requestVersion = sectionRequestVersionRef.current + 1;
+		sectionRequestVersionRef.current = requestVersion;
+
+		let cancelled = false;
+
+		void loadSectionMetadata()
+			.then((metadata) => {
+				if (cancelled) {
+					return;
+				}
+				if (sectionRequestVersionRef.current !== requestVersion) {
+					return;
+				}
+				setSectionMetadata(metadata);
+			})
+			.catch(() => {
+				if (cancelled) {
+					return;
+				}
+				if (sectionRequestVersionRef.current !== requestVersion) {
+					return;
+				}
+				setSectionMetadata({
+					recentlyEditedNoteIds: new Set(),
+					mocNeighborhoods: new Map(),
+				});
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [contentVersion, refreshVersion]);
+
+	const sections = useMemo(() => {
+		const pinnedNotes = allNotes.filter((n) => n.isPinned);
+
+		return computeSections(
+			allNotes,
+			pinnedNotes,
+			sectionMetadata.recentlyEditedNoteIds,
+			sectionMetadata.mocNeighborhoods,
+		);
+	}, [allNotes, sectionMetadata]);
+
 	return {
-		notes,
+		notes: allNotes,
 		sections,
-		hasMore,
-		isLoading,
+		hasMore: activePagination.nextOffset != null,
+		isLoading: activePagination.isLoadingMore,
 		loadMoreNotes,
 		setQuery,
 		noteTypeFilter,
@@ -271,7 +364,7 @@ export default function useNotes() {
 		statusFilter,
 		setStatusFilter,
 		query,
-		error,
+		error: activePagination.error,
 		handleRefresh,
 	};
 }

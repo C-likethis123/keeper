@@ -7,7 +7,7 @@ import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
-import useSuspenseNotes from "@/hooks/useSuspenseNotes";
+import useNotes from "@/hooks/useNotes";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
@@ -39,7 +39,7 @@ function IndexContent() {
 		handleRefresh,
 		loadMoreNotes,
 		setQuery,
-	} = useSuspenseNotes();
+	} = useNotes();
 	const reset = useFilterStore((s) => s.reset);
 	const openFilterPanel = useFilterStore((s) => s.openPanel);
 	const showToast = useToastStore((state) => state.showToast);

@@ -4,6 +4,7 @@ export type NoteStatus = "open" | "blocked" | "doing" | "done";
 export interface NoteListFilters {
 	noteTypes?: NoteType[];
 	status?: NoteStatus;
+	hideDone?: boolean;
 }
 
 export interface Note {
