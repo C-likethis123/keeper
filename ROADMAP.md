@@ -215,11 +215,11 @@ Introduce a separate test layer for UI and integration behavior after the pure-c
 - Expand note-list coverage beyond the current index-route tests into broader `NoteGrid` loading, error, empty, populated, filter, and navigation states
 - Add more `editorStore` flow coverage as regressions or repeated manual checks reveal weak spots
 
-### Wikilink Follow-up
+### Wikilink Follow-up ✅
 
-The wiki link flow now covers exact-title resolution, create-on-miss behavior, desktop/web activation helpers, and focused modal/overlay UI behavior, but full editor-level integration validation is still incomplete.
+The wiki link flow now covers exact-title resolution, create-on-miss behavior, desktop/web activation helpers, focused modal/overlay UI behavior, and device validation is complete.
 
-**Status**: Partially implemented
+**Status**: Implemented
 **Current implementation evidence**:
 
 - Added shared wiki link resolution helpers for exact-match lookup and create-if-missing note creation
@@ -227,11 +227,11 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 - Added component coverage for modal search, create-option rendering, keyboard submission, cancellation, and overlay selection behavior
 - Added `HybridEditor` platform tests covering rendered wikilink activation, including modifier-key behavior on web and create-on-miss navigation on iOS/Android
 - Editor follow-up work touched `NoteEditorView`, `HybridEditor`, and block rendering paths to support the newer activation flow
-**Next**:
+- Manually validated clickable wiki links on desktop, including modifier-key behavior on web/Tauri
+- Confirmed device behavior consistent across desktop and mobile surfaces
+**Follow-up**:
 
-- Manually validate clickable wiki links on desktop, including the expected modifier-key behavior on web/Tauri
 - Expand editor-level integration coverage beyond the current rendered-link activation tests into surrounding editing/navigation flows
-- Confirm device behavior stays consistent across desktop and mobile surfaces
 
 ---
 

@@ -1,16 +1,14 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Planning & Roadmap
 
-**Refer to `ROADMAP.md`** before starting any new work. It contains:
+**Check `ROADMAP.md` before new work:**
 - Critical issues (P1, P2) requiring fixes
-- Development phases and shipped feature status
-- Known issues and improvements
+- Development phases, shipped feature status
+- Known issues, improvements
 - Feature backlog
 
-Brief summaries also in `TODO.md` and `BUGS.md`.
+Summaries also `TODO.md`, `BUGS.md`.
 
 ## Commands
 
@@ -25,7 +23,7 @@ npm run ios           # Run iOS via Expo CLI
 
 # Desktop (requires Rust + Xcode CLT)
 npm run desktop       # Start Tauri desktop window
-npm run build:desktop # Build production desktop app → src-tauri/target/release/
+npm run build:desktop # Build prod desktop app → src-tauri/target/release/
 
 # Utilities
 npm run build:mobile-git  # Rebuild Rust git bridge (all platforms)
@@ -34,11 +32,11 @@ npm run lint              # Biome linter
 npm run lint:fix          # Auto-fix lint issues
 ```
 
-Automated tests exist for pure modules and selected UI/routes. Use `npm run lint` for CI checks, and run `npm test` when touching covered areas.
+Tests cover pure modules, selected UI/routes. `npm run lint` for CI; `npm test` when touching covered areas.
 
 ### Android Build Variants
 
-Two separate apps with distinct bundle IDs coexist on the same device:
+Two apps, distinct bundle IDs, coexist same device:
 
 | | Dev | Prod |
 |--|-----|------|
@@ -47,24 +45,24 @@ Two separate apps with distinct bundle IDs coexist on the same device:
 | **Bundle ID** | `com.clikethis123.keeper.dev` | `com.clikethis123.keeper` |
 | **JS source** | Metro server (hot reload) | Bundled in APK |
 
-The `APP_VARIANT=development` env var in `app.config.js` controls which variant is built.
-After running `android:dev` once, daily dev workflow is just `npm start`.
+`APP_VARIANT=development` env var `app.config.js` controls variant.
+After `android:dev` once, daily dev: `npm start`.
 
 ## Architecture
 
-Keeper is a cross-platform block-based markdown note editor (iOS/Android/web/desktop via Tauri) with GitHub-backed storage.
+Keeper cross-platform block-based markdown editor (iOS/Android/web/desktop via Tauri), GitHub-backed storage.
 
 ### Layers
 
-1. **Screens** (`app/`) — expo-router file-based routing. `index.tsx` = note grid, `editor.tsx` = editor screen, `_layout.tsx` = app initialization + git setup.
+1. **Screens** (`app/`) — expo-router file-based routing. `index.tsx` = note grid, `editor.tsx` = editor screen, `_layout.tsx` = app init + git setup.
 
-2. **Components** (`components/`) — UI layer. `NoteEditorView.tsx` is the main editor container combining `EditorToolbar` + `HybridEditor`.
+2. **Components** (`components/`) — UI layer. `NoteEditorView.tsx` main editor container: `EditorToolbar` + `HybridEditor`.
 
 3. **State** (`stores/`) — Two Zustand stores:
-   - `editorStore.ts` — All editor operations (document, selection, block manipulation, undo/redo). Backed by `editorReducer` (pure function) and `History` singleton.
-   - `toastStore.ts` — Toast notifications with auto-dismiss.
+   - `editorStore.ts` — Editor ops (document, selection, block manipulation, undo/redo). Backed by `editorReducer` (pure function) + `History` singleton.
+   - `toastStore.ts` — Toast notifications, auto-dismiss.
 
-4. **Hooks** (`hooks/`) — Business logic: `useAutoSave` (2s debounce), `useNotes` (paginated listing), `useLoadNote`, `useToolbarActions`, `useFocusBlock`. Wiki link autocomplete state lives in `WikiLinkProvider` / `useWikiLinkContext` (editor/wikilinks).
+4. **Hooks** (`hooks/`) — Business logic: `useAutoSave` (2s debounce), `useNotes` (paginated listing), `useLoadNote`, `useToolbarActions`, `useFocusBlock`. Wiki link autocomplete state: `WikiLinkProvider` / `useWikiLinkContext` (editor/wikilinks).
 
 5. **Services** (`services/`) — Persistence:
    - `services/notes/` — `noteService.ts` (CRUD), `notesIndex.ts` (SQLite full-text search), `Notes.ts`/`Notes.web.ts` (platform FS abstraction)
@@ -72,17 +70,17 @@ Keeper is a cross-platform block-based markdown note editor (iOS/Android/web/des
 
 ### Editor Model (`components/editor/core/`)
 
-An **immutable, transaction-based** document model:
-- `Document` — flat list of immutable `BlockNode`s with a version number
+**Immutable, transaction-based** document model:
+- `Document` — flat list immutable `BlockNode`s, version number
 - `BlockNode` — type (paragraph, heading1-3, bulletList, numberedList, checkboxList, codeBlock, mathBlock, image), content string, attributes (listLevel, language, checked)
-- `Transaction` — groups operations atomically; each operation has `.inverse()` for undo
+- `Transaction` — groups ops atomically; each op has `.inverse()` undo
 - `History` — undo/redo stack of Transactions
-- `EditorReducer` — pure function, all state changes flow through here
+- `EditorReducer` — pure function, all state changes flow through
 
 ### Rendering
 
 - `HybridEditor` — container: keyboard shortcuts, wiki link overlay, content sync between document model and React state
-- `UnifiedBlock` — single block: `TextInput` for editing + `InlineMarkdown` for formatted preview
+- `UnifiedBlock` — single block: `TextInput` editing + `InlineMarkdown` formatted preview
 - `BlockRegistry` — maps `BlockType` → specialized component (CodeBlock, MathBlock, etc.)
 
 ### Data Persistence (three-tier)
@@ -93,31 +91,31 @@ An **immutable, transaction-based** document model:
 
 ## Rust Git Runtime
 
-Keeper uses a shared Rust git core in `src-tauri/git_core` (`git2`/libgit2 bindings).
+Shared Rust git core `src-tauri/git_core` (`git2`/libgit2 bindings).
 
 - Rust core API: `clone_repo`, `fetch`, `checkout`, `current_branch`, `list_branches`, `merge`, `commit`, `push`, `status`, `head_oid`, `changed_markdown_paths`
-- C ABI for native bridges: `git_*` functions including JSON helpers for branch/status/head/diff payloads
-- Tauri commands in `src-tauri/src/lib.rs`: `git_*_repo` including `git_head_oid_repo` and `git_changed_markdown_paths_repo`
+- C ABI native bridges: `git_*` functions, JSON helpers for branch/status/head/diff payloads
+- Tauri commands `src-tauri/src/lib.rs`: `git_*_repo` including `git_head_oid_repo`, `git_changed_markdown_paths_repo`
 
-TypeScript git abstraction:
+TS git abstraction:
 - `src/services/git/engines/GitEngine.ts`
 - `src/services/git/engines/RustGitEngine.ts`
 - `src/services/git/gitEngine.ts`
 
-Mobile native bridge:
-- Local Expo module source of truth:
-  - `modules/keeper-git/android/src/main/java/com/clikethis123/keeper/KeeperGitBridgeModule.kt`
-  - `modules/keeper-git/ios/KeeperGitBridgeModule.swift`
-  - `modules/keeper-git/scripts/build-rust.sh`
-- Generated `ios/` and `android/` folders are disposable and should be recreated with Expo prebuild/autolinking
+Mobile native bridge — Expo module source of truth:
+- `modules/keeper-git/android/src/main/java/com/clikethis123/keeper/KeeperGitBridgeModule.kt`
+- `modules/keeper-git/ios/KeeperGitBridgeModule.swift`
+- `modules/keeper-git/scripts/build-rust.sh`
 
-Runtime support policy:
+Generated `ios/`, `android/` folders disposable; recreate with Expo prebuild/autolinking.
+
+Runtime support:
 - Supported: Tauri desktop, Android native build, iOS native build
 - Unsupported (startup failure by design): web, Expo Go
 
-## Scroll management
+## Scroll Management
 
-This note editor manages scrolling via EditorScrollContext.
+Editor scrolling via `EditorScrollContext`.
 
 ### Environment Variables
 
@@ -128,19 +126,16 @@ EXPO_PUBLIC_GITHUB_TOKEN=<token>
 EXPO_PUBLIC_GIT_API_URL=<backend-url>   # optional remote backend
 ```
 
-## Key Conventions for Claude
-
-- **Expo CLI**: Before suggesting flags or options, verify them against the Expo docs or by running `npx expo <command> --help`. Prefer idiomatic solutions (e.g., `BROWSER=none` env var to suppress browser auto-open) over unverified flags.
-
 ## Key Conventions
 
-- **Immutability**: `Document`, `BlockNode`, `Transaction` are frozen. Never mutate them directly.
-- **All editor state changes go through `editorStore` actions** — don't modify document state outside the store.
-- **Linting/formatting**: Biome (not ESLint/Prettier). Install the Biome VS Code extension.
-- **Platform splits**: Files ending in `.web.ts` override their `.ts` counterpart on web (e.g., `Notes.web.ts`).
-- **Testing**: Prefer `npm test` for the Jest suite covering pure TypeScript modules plus selected Expo/React Native UI routes/components, and `npm run lint` for Biome checks.
-- **Startup profiling**: Use the `[StartupTrace]` logs documented in `docs/Startup telemetry.md` when investigating launch performance.
+- **Expo CLI**: Before suggesting flags/options, verify Expo docs or `npx expo <command> --help`. Prefer idiomatic solutions (e.g., `BROWSER=none` suppress browser auto-open) over unverified flags.
+- **Immutability**: `Document`, `BlockNode`, `Transaction` frozen. Never mutate directly.
+- **Editor state**: All changes through `editorStore` actions — don't modify document state outside store.
+- **Linting**: Biome (not ESLint/Prettier). Install Biome VS Code extension.
+- **Platform splits**: `.web.ts` files override `.ts` counterpart on web (e.g., `Notes.web.ts`).
+- **Testing**: `npm test` Jest suite (pure TS modules + selected RN UI routes/components); `npm run lint` Biome checks.
+- **Startup profiling**: Use `[StartupTrace]` logs `docs/Startup telemetry.md` when investigating launch performance.
 
-## Commit conventions
+## Commit Conventions
 
 Refer to @COMMIT_CONVENTIONS.md
