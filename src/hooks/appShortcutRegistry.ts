@@ -1,4 +1,4 @@
-type AppCommandId = "focusSearch" | "createNote" | "forceSave";
+type AppCommandId = "focusSearch" | "createNote" | "forceSave" | "newTab" | "closeTab";
 
 const appShortcutRegistry = new Map<string, AppCommandId>([
 	["Meta+K", "focusSearch"],
@@ -9,6 +9,10 @@ const appShortcutRegistry = new Map<string, AppCommandId>([
 	["Ctrl+N", "createNote"],
 	["Meta+S", "forceSave"],
 	["Ctrl+S", "forceSave"],
+	["Meta+T", "newTab"],
+	["Ctrl+T", "newTab"],
+	["Meta+W", "closeTab"],
+	["Ctrl+W", "closeTab"],
 ]);
 
 export function getAppShortcutCommand(chord: string): AppCommandId | null {

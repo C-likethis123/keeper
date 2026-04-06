@@ -4,13 +4,15 @@ import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
+import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
+import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { useSuspenseLoadNote } from "@/hooks/useSuspenseLoadNote";
 import type { Note } from "@/services/notes/types";
 import { useTabStore } from "@/stores/tabStore";
-import { useLocalSearchParams } from "expo-router";
-import React, { Suspense, useEffect } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { Suspense, useCallback, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 
 function NewNoteEditorContent({
@@ -75,7 +77,7 @@ function NoteEditorContent({
 
 export default function NoteEditorScreen() {
 	const params = useLocalSearchParams();
-	const { activeTabId, tabs } = useTabStore();
+	const { activeTabId, tabs, closeTab } = useTabStore();
 	const activeTab = tabs.find((t) => t.id === activeTabId);
 	const noteId =
 		typeof params.id === "string" && params.id
@@ -86,6 +88,27 @@ export default function NoteEditorScreen() {
 		typeof params.title === "string" ? params.title : undefined;
 	const initialNoteType =
 		typeof params.noteType === "string" ? params.noteType : undefined;
+
+	const createAndOpenNote = useCreateAndOpenNote();
+
+	const handleCloseActiveTab = useCallback(() => {
+		if (!activeTabId) return;
+		closeTab(activeTabId);
+		const { activeTabId: nextId, tabs: remaining } = useTabStore.getState();
+		if (nextId) {
+			const nextTab = remaining.find((t) => t.id === nextId);
+			if (nextTab) {
+				router.replace(`/editor?id=${nextTab.noteId}`);
+				return;
+			}
+		}
+		router.replace("/");
+	}, [activeTabId, closeTab]);
+
+	useAppKeyboardShortcuts({
+		onNewTab: () => void createAndOpenNote(),
+		onCloseTab: handleCloseActiveTab,
+	});
 
 	const styles = useStyles(createStyles);
 
