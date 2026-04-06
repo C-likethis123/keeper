@@ -18,7 +18,7 @@ import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { createParagraphBlock } from "@/components/editor/core/BlockNode";
-import { useEditorState } from "@/stores/editorStore";
+import { type EditorState, useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";

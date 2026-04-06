@@ -1,4 +1,5 @@
 import { webTextInputReset } from "@/components/shared/textInputWebStyles";
+import type { ExtendedTheme } from "@/constants/themes/types";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -15,6 +16,7 @@ import { SlashCommandOverlay } from "./SlashCommandOverlay";
 
 export function SlashCommandModal() {
 	const theme = useExtendedTheme();
+	const styles = createStyles(theme);
 	const inputRef = useRef<TextInput>(null);
 	const slashCommands = useSlashCommandContext();
 	const [inputValue, setInputValue] = useState("");
@@ -105,35 +107,37 @@ export function SlashCommandModal() {
 	);
 }
 
-const styles = StyleSheet.create({
-	backdrop: {
-		flex: 1,
-		backgroundColor: "rgba(0,0,0,0.4)",
-		justifyContent: "center",
-		alignItems: "center",
-		padding: 24,
-	},
-	card: {
-		width: "100%",
-		maxWidth: 420,
-		borderRadius: 12,
-		padding: 12,
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.2,
-		shadowRadius: 12,
-		elevation: 12,
-		backgroundColor: theme.colors.card,
-	},
-	input: {
-		height: 44,
-		borderWidth: 1,
-		borderRadius: 8,
-		paddingHorizontal: 12,
-		fontSize: 16,
-		marginBottom: 8,
-		borderColor: theme.colors.border,
-		color: theme.colors.text,
-		...webTextInputReset,
-	},
-});
+function createStyles(theme: ExtendedTheme) {
+	return StyleSheet.create({
+		backdrop: {
+			flex: 1,
+			backgroundColor: "rgba(0,0,0,0.4)",
+			justifyContent: "center",
+			alignItems: "center",
+			padding: 24,
+		},
+		card: {
+			width: "100%",
+			maxWidth: 420,
+			borderRadius: 12,
+			padding: 12,
+			shadowColor: "#000",
+			shadowOffset: { width: 0, height: 4 },
+			shadowOpacity: 0.2,
+			shadowRadius: 12,
+			elevation: 12,
+			backgroundColor: theme.colors.card,
+		},
+		input: {
+			height: 44,
+			borderWidth: 1,
+			borderRadius: 8,
+			paddingHorizontal: 12,
+			fontSize: 16,
+			marginBottom: 8,
+			borderColor: theme.colors.border,
+			color: theme.colors.text,
+			...webTextInputReset,
+		},
+	});
+}

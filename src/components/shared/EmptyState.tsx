@@ -1,6 +1,6 @@
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
-import { FontAwesome } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -33,7 +33,7 @@ export default function EmptyState({
 						]}
 						onPress={onActionPress}
 					>
-						<Ionicons name="gear" size={18} style={styles.buttonIcon} />
+						<Ionicons name="create-outline" size={18} style={styles.buttonIcon} />
 						<Text style={styles.buttonLabel}>{actionLabel}</Text>
 					</Pressable>
 				)}

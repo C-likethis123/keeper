@@ -6,3 +6,10 @@ export const webMultilineTextInputReset: TextStyle =
 				overflow: "hidden",
 			}
 		: {};
+
+export const webTextInputReset: TextStyle =
+	Platform.OS === "web"
+		? {
+				outline: "none",
+			}
+		: {};

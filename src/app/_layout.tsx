@@ -72,7 +72,7 @@ const App = ({
 				<Drawer.Screen name="index" />
 				<Drawer.Screen
 					name="editor"
-					options={{ drawerItemVisible: false, swipeEnabled: false }}
+					options={{ swipeEnabled: false }}
 				/>
 			</Drawer>
 			<ToastOverlay />

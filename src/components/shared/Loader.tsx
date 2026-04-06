@@ -8,7 +8,7 @@ export default function Loader() {
 
 	return (
 		<View style={styles.container}>
-			<ActivityIndicator size="large" style={styles.indicator} />
+			<ActivityIndicator size="large" color={styles.indicator.color} />
 		</View>
 	);
 }

@@ -3,7 +3,7 @@ import {
 	type StartupTelemetry,
 	createNoopStartupTelemetry,
 } from "@/services/startup/startupTelemetry";
-import { storageEngine } from "@/services/storage/storageEngine";
+import { getStorageEngine } from "@/services/storage/storageEngine";
 import { getGitEngine } from "./gitEngine";
 import { GitService } from "./gitService";
 import { DefaultDbSyncService } from "./init/dbSyncService";
@@ -128,7 +128,7 @@ export class GitInitializationService {
 			}
 
 			if (await dependencies.stateStore.shouldForceRepoReset()) {
-				await storageEngine().resetAllData();
+				await getStorageEngine().resetAllData();
 				await dependencies.stateStore.clearForceRepoResetFlag();
 			}
 

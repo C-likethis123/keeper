@@ -71,7 +71,7 @@ export function WikiLinkActions({ onOpenWikiLink }: WikiLinkActionsProps) {
 						</Pressable>
 
 						<Pressable style={styles.actionItem} onPress={handleCopy}>
-							<FontAwesome name="copy" size={22} color={styles.actionIcon} />
+							<FontAwesome name="copy" size={22} style={styles.actionIcon} />
 							<Text style={styles.actionText}>Copy Title</Text>
 						</Pressable>
 
