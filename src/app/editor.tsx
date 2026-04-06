@@ -1,4 +1,5 @@
 import NoteEditorView from "@/components/NoteEditorView";
+import { TabBar } from "@/components/TabBar";
 import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
@@ -99,6 +100,7 @@ export default function NoteEditorScreen() {
 	}
 	return (
 		<View style={styles.screen}>
+			<TabBar />
 			<View style={styles.content}>
 				<QueryErrorBoundary
 					fallbackRender={(error) => (
