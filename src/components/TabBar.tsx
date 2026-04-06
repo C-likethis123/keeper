@@ -2,7 +2,8 @@ import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import { useTabStore } from "@/stores/tabStore";
 import { FontAwesome } from "@expo/vector-icons";
-import React from "react";
+import { router } from "expo-router";
+import React, { useCallback } from "react";
 import {
 	Platform,
 	Pressable,
@@ -20,6 +21,32 @@ export function TabBar() {
 	const pinTab = useTabStore((s) => s.pinTab);
 
 	const styles = useStyles(createStyles);
+
+	const handleActivateTab = useCallback(
+		(tabId: string, noteId: string) => {
+			activateTab(tabId);
+			router.replace(`/editor?id=${noteId}`);
+		},
+		[activateTab],
+	);
+
+	const handleCloseTab = useCallback(
+		(tabId: string) => {
+			closeTab(tabId);
+			// After closing, navigate based on new store state
+			const { activeTabId: nextActiveId, tabs: remainingTabs } =
+				useTabStore.getState();
+			if (nextActiveId) {
+				const nextTab = remainingTabs.find((t) => t.id === nextActiveId);
+				if (nextTab) {
+					router.replace(`/editor?id=${nextTab.noteId}`);
+					return;
+				}
+			}
+			router.replace("/");
+		},
+		[closeTab],
+	);
 
 	// On mobile, hide when there is 1 or fewer tabs
 	if (Platform.OS !== "web" && tabs.length <= 1) {
@@ -46,7 +73,7 @@ export function TabBar() {
 								isActive ? styles.chipActive : styles.chipInactive,
 								pressed && styles.chipPressed,
 							]}
-							onPress={() => activateTab(tab.id)}
+							onPress={() => handleActivateTab(tab.id, tab.noteId)}
 							onLongPress={() => pinTab(tab.id)}
 						>
 							{tab.isPinned && (
@@ -67,7 +94,7 @@ export function TabBar() {
 									accessibilityRole="button"
 									accessibilityLabel={`Close ${tab.title}`}
 									hitSlop={8}
-									onPress={() => closeTab(tab.id)}
+									onPress={() => handleCloseTab(tab.id)}
 									style={styles.closeButton}
 								>
 									<FontAwesome
