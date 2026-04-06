@@ -16,10 +16,11 @@ interface TabState {
 	closeTab: (tabId: string) => void;
 	pinTab: (tabId: string) => void;
 	activateTab: (tabId: string) => void;
-	updateTabTitle: (noteId: string, title: string) => void;
+	updateTabTitle: (tabId: string, title: string) => void;
 	closeAllUnpinned: () => void;
 }
 
+// Tab state is not persisted — tabs reset on app restart.
 export const useTabStore = create<TabState>((set) => ({
 	tabs: [],
 	activeTabId: null,
@@ -55,16 +56,22 @@ export const useTabStore = create<TabState>((set) => ({
 
 	pinTab: (tabId) =>
 		set((state) => ({
+			// If tabId is not found, the map silently leaves state unchanged (acceptable behavior)
 			tabs: state.tabs.map((t) =>
 				t.id === tabId ? { ...t, isPinned: !t.isPinned } : t,
 			),
 		})),
 
-	activateTab: (tabId) => set({ activeTabId: tabId }),
+	activateTab: (tabId) =>
+		set((state) => {
+			const tabExists = state.tabs.some((t) => t.id === tabId);
+			if (!tabExists) return state;
+			return { activeTabId: tabId };
+		}),
 
-	updateTabTitle: (noteId, title) =>
+	updateTabTitle: (tabId, title) =>
 		set((state) => ({
-			tabs: state.tabs.map((t) => (t.noteId === noteId ? { ...t, title } : t)),
+			tabs: state.tabs.map((t) => (t.id === tabId ? { ...t, title } : t)),
 		})),
 
 	closeAllUnpinned: () =>
