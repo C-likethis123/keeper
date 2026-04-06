@@ -280,33 +280,6 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 - Android and iOS share the same local module approach
 - `npm run build:mobile-git` remains as a convenience rebuild path for the Rust library
 
-### Note Organization & Relevance
-
-**Status**: In progress
-**Current implementation evidence**: note type and todo-status metadata are now persisted in frontmatter and storage indexes, editable in the note editor, filterable from the note list UI, and selectable from the home quick composer when creating new journal, resource, and todo entries. Template notes are now also persisted as first-class note types, indexed alongside other notes, and reusable from the editor's "Insert from template" flow. Note type is now derived automatically from title prefixes and lightweight content heuristics via `deriveNoteType`; checklist-heavy bodies fall into todos, link-heavy bodies fall into resources, and dated journal-style bodies can be categorized as journals even when the title is generic. `NoteEditorView` now persists those content-derived categories through autosave and explicit saves.
-**Key files**: `src/services/notes/frontmatter.ts`, `src/services/notes/notesIndexDb.ts`, `src/services/notes/noteTypeDerivation.ts`, `src/components/NoteEditorView.tsx`, `src/components/NoteFiltersDropdown.tsx`, `src/components/HomeQuickComposer.tsx`, `src/app/index.tsx`, `src/hooks/useNotes.ts`, `src/migrations/003_add_note_metadata.ts`, `src-tauri/src/storage/migrations/v3_add_note_metadata.rs`
-**Next**: validate migration/backfill behavior on existing notes, tune the content-based categorization heuristics against real notes, decide how metadata should affect default sorting/relevance, and add higher-level organization views beyond the current filters.
-
-**Goals**:
-
-- Sort notes by theme, priority, or relevance
-- Auto-process notes into categories (recommendation system)
-- Relevance signals: time, topic, relation to other notes
-- Investigate grouping notes into sections and ranking notes within those sections using only local/on-device signals where possible
-
-**Potential additions from note-taking reflections**:
-
-- Add note-level metadata for note intent so journals, resources, and action notes can be organized differently without relying on folders alone
-- Support lighter-weight organization than folders alone, such as index/MOC notes and optional Johnny.Decimal-style collections for related notes
-- Add a "Now / Next / Notes" workflow view so active work, near-term follow-ups, and longer-lived reference notes are separated without duplicating content
-
-**Note types**:
-
-- Journals (time-based)
-- Resources (reference material)
-- Todos (action items)
-- Templates (reusable note bodies)
-
 ### Testing Architecture
 
 **Status**: In progress
