@@ -12,29 +12,27 @@ import { useLocalSearchParams } from "expo-router";
 import React, { Suspense, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 
-function NoteEditorContent({
+function NewNoteEditorContent({
 	id,
-	isNew,
 	initialTitle,
 	initialNoteType,
 }: {
 	id: string;
-	isNew?: boolean;
 	initialTitle?: string;
 	initialNoteType?: string;
 }) {
-	if (isNew) {
-		const virtualNote: Note = {
-			id,
-			title: initialTitle ?? "",
-			content: "",
-			isPinned: false,
-			noteType: (initialNoteType as Note["noteType"]) ?? "note",
-			lastUpdated: Date.now(),
-		};
-		return <NoteEditorView note={virtualNote} isNew />;
-	}
+	const virtualNote: Note = {
+		id,
+		title: initialTitle ?? "",
+		content: "",
+		isPinned: false,
+		noteType: (initialNoteType as Note["noteType"]) ?? "note",
+		lastUpdated: Date.now(),
+	};
+	return <NoteEditorView note={virtualNote} isNew />;
+}
 
+function ExistingNoteEditorContent({ id }: { id: string }) {
 	const note = useSuspenseLoadNote(id);
 	const { activeTabId, updateTabTitle } = useTabStore();
 
@@ -49,6 +47,29 @@ function NoteEditorContent({
 	}
 
 	return <NoteEditorView note={note} />;
+}
+
+function NoteEditorContent({
+	id,
+	isNew,
+	initialTitle,
+	initialNoteType,
+}: {
+	id: string;
+	isNew?: boolean;
+	initialTitle?: string;
+	initialNoteType?: string;
+}) {
+	if (isNew) {
+		return (
+			<NewNoteEditorContent
+				id={id}
+				initialTitle={initialTitle}
+				initialNoteType={initialNoteType}
+			/>
+		);
+	}
+	return <ExistingNoteEditorContent id={id} />;
 }
 
 export default function NoteEditorScreen() {

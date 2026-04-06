@@ -1,4 +1,3 @@
-import { NoteService } from "@/services/notes/noteService";
 import type { NoteType } from "@/services/notes/types";
 import { useTabStore } from "@/stores/tabStore";
 import { useToastStore } from "@/stores/toastStore";
