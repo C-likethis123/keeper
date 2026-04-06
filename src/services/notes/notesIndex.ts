@@ -23,16 +23,15 @@ interface NotesIndexSyncResult {
 
 export class NotesIndexService {
 	static instance = new NotesIndexService();
-	private static readonly storageEngine = storageEngine;
 
 	private constructor() {}
 
 	static async upsertNote(item: NoteIndexItem): Promise<void> {
-		await NotesIndexService.storageEngine.indexUpsert(item);
+		await storageEngine.indexUpsert(item);
 	}
 
 	static async deleteNote(noteId: string): Promise<void> {
-		await NotesIndexService.storageEngine.indexDelete(noteId);
+		await storageEngine.indexDelete(noteId);
 	}
 
 	static async listNotes(
@@ -41,16 +40,11 @@ export class NotesIndexService {
 		offset?: number,
 		filters?: NoteListFilters,
 	): Promise<ListNotesResult> {
-		return NotesIndexService.storageEngine.indexList(
-			query,
-			limit,
-			offset,
-			filters,
-		);
+		return storageEngine.indexList(query, limit, offset, filters);
 	}
 
 	static async rebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
-		return NotesIndexService.storageEngine.indexRebuildFromDisk();
+		return storageEngine.indexRebuildFromDisk();
 	}
 
 	static async syncChangedPaths(

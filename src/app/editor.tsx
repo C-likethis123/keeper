@@ -148,12 +148,10 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		screen: {
 			flex: 1,
+			backgroundColor: theme.colors.background,
 		},
 		content: {
 			flex: 1,
-			padding: 16,
-			paddingBottom: 16 + TOOLBAR_HEIGHT,
-			backgroundColor: theme.colors.background,
 		},
 		toolbarWrapper: {
 			position: "absolute",

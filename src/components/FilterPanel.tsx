@@ -12,6 +12,7 @@ import {
 	Text,
 	View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const FILTER_OPTIONS: { label: string; value?: NoteType }[] = [
 	{ label: "All notes", value: undefined },
@@ -71,6 +72,7 @@ export function FilterPanel() {
 	const setNoteTypes = useFilterStore((s) => s.setNoteTypes);
 	const setStatus = useFilterStore((s) => s.setStatus);
 	const closePanel = useFilterStore((s) => s.closePanel);
+	const insets = useSafeAreaInsets();
 
 	const selectedType = noteTypes.length > 0 ? noteTypes[0] : undefined;
 
@@ -98,7 +100,10 @@ export function FilterPanel() {
 			onRequestClose={closePanel}
 		>
 			<Pressable style={styles.backdrop} onPress={closePanel}>
-				<Pressable style={styles.panel} onPress={() => {}}>
+				<Pressable
+					style={[styles.panel, { paddingTop: insets.top }]}
+					onPress={() => {}}
+				>
 					<View style={styles.header}>
 						<Text style={styles.headerTitle}>Filter</Text>
 						<Pressable

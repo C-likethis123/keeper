@@ -6,6 +6,7 @@ import { FontAwesome } from "@expo/vector-icons";
 import type { DrawerContentComponentProps } from "@react-navigation/drawer";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const FILTER_OPTIONS: { label: string; value?: NoteType }[] = [
 	{ label: "All notes", value: undefined },
@@ -65,6 +66,7 @@ export function FilterDrawerContent({
 	const status = useFilterStore((s) => s.status);
 	const setNoteTypes = useFilterStore((s) => s.setNoteTypes);
 	const setStatus = useFilterStore((s) => s.setStatus);
+	const insets = useSafeAreaInsets();
 
 	const selectedType = noteTypes.length > 0 ? noteTypes[0] : undefined;
 
@@ -86,7 +88,7 @@ export function FilterDrawerContent({
 	};
 
 	return (
-		<View style={styles.container}>
+		<View style={[styles.container, { paddingTop: insets.top }]}>
 			<View style={styles.header}>
 				<Text style={styles.headerTitle}>Filter</Text>
 				<Pressable

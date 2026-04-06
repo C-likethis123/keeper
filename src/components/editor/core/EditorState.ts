@@ -84,8 +84,9 @@ type EditorAction =
 	| { type: "SET_SELECTION"; selection: DocumentSelection | null }
 	| { type: "CLEAR_BLOCK_SELECTION" }
 	| { type: "SELECT_BLOCK"; index: number }
-	| { type: "SELECT_BLOCK_RANGE"; start: number; end: number }
+	| { type: "SELECT_BLOCK_RANGE"; anchor: number; focus: number }
 	| { type: "SELECT_ALL_BLOCKS" }
+	| { type: "SELECT_GAP"; index: number }
 	| { type: "APPLY_TRANSACTION"; transaction: Transaction }
 	| { type: "UNDO" }
 	| { type: "REDO" };

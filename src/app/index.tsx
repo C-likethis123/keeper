@@ -13,10 +13,12 @@ import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useFilterStore } from "@/stores/filterStore";
 import { useToastStore } from "@/stores/toastStore";
-import { Stack, useFocusEffect } from "expo-router";
+import type { DrawerNavigationProp } from "@react-navigation/drawer";
+import { useFocusEffect, useNavigation } from "expo-router";
 import React, { Suspense, useCallback, useRef, useState } from "react";
 import {
 	Modal,
+	Platform,
 	Pressable,
 	StyleSheet,
 	Text,
@@ -44,10 +46,15 @@ function IndexContent() {
 	const [isResetting, setIsResetting] = React.useState(false);
 	const [isResetModalVisible, setIsResetModalVisible] = useState(false);
 	const createAndOpenNote = useCreateAndOpenNote();
+	const navigation = useNavigation<DrawerNavigationProp<any>>();
 
 	const handleMenuPress = useCallback(() => {
-		openFilterPanel();
-	}, [openFilterPanel]);
+		if (Platform.OS === "web") {
+			openFilterPanel();
+		} else {
+			navigation.openDrawer();
+		}
+	}, [openFilterPanel, navigation]);
 
 	const handleDeleteNote = useCallback(
 		async (note: Note) => {
@@ -138,19 +145,13 @@ function IndexContent() {
 
 	return (
 		<View style={styles.container}>
-			<Stack.Screen
-				options={{
-					header: () => (
-						<HomeScreenHeader
-							searchQuery={query}
-							setSearchQuery={setQuery}
-							searchInputRef={searchInputRef}
-							onMenuPress={handleMenuPress}
-							onReset={confirmReset}
-							resetDisabled={isResetting}
-						/>
-					),
-				}}
+			<HomeScreenHeader
+				searchQuery={query}
+				setSearchQuery={setQuery}
+				searchInputRef={searchInputRef}
+				onMenuPress={handleMenuPress}
+				onReset={confirmReset}
+				resetDisabled={isResetting}
 			/>
 			<Suspense fallback={<Loader />}>
 				<LazyNoteGrid
