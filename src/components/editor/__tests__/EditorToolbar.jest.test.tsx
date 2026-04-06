@@ -215,4 +215,50 @@ describe("EditorToolbar", () => {
 
 		expect(mockHandleInsertCollapsible).toHaveBeenCalledTimes(1);
 	});
+
+	describe("attachment controls", () => {
+		function setupDefaultState() {
+			mockUseEditorState.mockImplementation(
+				(selector: (value: MockState) => unknown) =>
+					selector({
+						getCanUndo: () => false,
+						getCanRedo: () => false,
+						getFocusedBlock: () => null,
+					}),
+			);
+		}
+
+		it("renders a disabled paperclip button when no onAttachDocument handler is provided", () => {
+			setupDefaultState();
+			render(<EditorToolbar />);
+
+			// The IconButton mock renders the icon name as text; no label prop forwarded.
+			expect(screen.getByRole("button", { name: "paperclip" })).toHaveProp(
+				"accessibilityState",
+				{ disabled: true },
+			);
+		});
+
+		it("renders an enabled paperclip button and calls onAttachDocument when pressed", () => {
+			setupDefaultState();
+			const onAttachDocument = jest.fn();
+			render(<EditorToolbar onAttachDocument={onAttachDocument} hasAttachment={false} />);
+
+			const btn = screen.getByRole("button", { name: "paperclip" });
+			expect(btn).toHaveProp("accessibilityState", { disabled: false });
+			fireEvent.press(btn);
+			expect(onAttachDocument).toHaveBeenCalledTimes(1);
+		});
+
+		it("shows the remove-attachment button instead of paperclip when hasAttachment is true", () => {
+			setupDefaultState();
+			const onRemoveAttachment = jest.fn();
+			render(<EditorToolbar hasAttachment onRemoveAttachment={onRemoveAttachment} />);
+
+			expect(screen.queryByRole("button", { name: "paperclip" })).toBeNull();
+			const removeBtn = screen.getByRole("button", { name: "times-circle" });
+			fireEvent.press(removeBtn);
+			expect(onRemoveAttachment).toHaveBeenCalledTimes(1);
+		});
+	});
 });
