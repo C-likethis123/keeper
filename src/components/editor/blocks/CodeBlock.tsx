@@ -24,7 +24,6 @@ import {
 	View,
 } from "react-native";
 import * as Braces from "../code/Braces";
-import * as Indentation from "../code/Indentation";
 import { LanguageRegistry } from "../code/LanguageRegistry";
 import { SmartEditingHandler } from "../code/SmartEditingHandler";
 import { BlockType, getBlockLanguage } from "../core/BlockNode";
@@ -129,35 +128,6 @@ export function CodeBlock({
 		);
 
 		if (result.handled) {
-			// Preserve the special brace pair logic from original implementation
-			// Check if we're between a brace pair and add extra newline/indentation
-			const leftChar = textBeforeNewline[cursorBeforeNewline - 1] || "";
-			const rightChar = textAfterNewline[0] || "";
-
-			if (Braces.isBracePair(leftChar, rightChar)) {
-				// Calculate the indentation for the closing brace line
-				const preLines = textBeforeNewline.split("\n");
-				const indentSize = Indentation.getSuggestedIndentSize(preLines);
-				const addedIndentionSize = Braces.isRegularBrace(leftChar)
-					? Math.max(indentSize - Indentation.INDENT_SIZE, 0)
-					: indentSize;
-
-				// Find where the newline was inserted in the result (should be at cursorBeforeNewline)
-				const newlineIndex = result.newText.indexOf("\n", cursorBeforeNewline);
-				if (newlineIndex !== -1) {
-					// Insert extra newline and indentation after the first newline
-					const beforeExtra = result.newText.substring(0, newlineIndex + 1);
-					const afterExtra = result.newText.substring(newlineIndex + 1);
-					const extraIndentation = `\n${Indentation.createIndentString(addedIndentionSize)}`;
-					const finalText = beforeExtra + extraIndentation + afterExtra;
-
-					// Adjust cursor position to account for the extra content
-					const adjustedCursor =
-						result.newCursorOffset + extraIndentation.length;
-					return { newText: finalText, newCursorOffset: adjustedCursor };
-				}
-			}
-
 			return {
 				newText: result.newText,
 				newCursorOffset: result.newCursorOffset,
@@ -174,9 +144,11 @@ export function CodeBlock({
 		key: string,
 	): { newText: string; newCursorOffset: number } => {
 		const cursorPosition = selection.start;
+		const textWithoutInsertedCharacter =
+			val.substring(0, cursorPosition) + val.substring(cursorPosition + 1);
 		const result = editingHandler.handleCharacterInsert(
 			key,
-			val,
+			textWithoutInsertedCharacter,
 			cursorPosition,
 		);
 

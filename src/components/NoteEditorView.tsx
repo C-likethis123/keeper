@@ -356,7 +356,12 @@ export default function NoteEditorView({
 			return;
 		}
 		try {
-			const relativePath = await copyPickedAttachmentToNote(pickedUri!, id);
+			const attachmentUri = pickedUri;
+			if (!attachmentUri) {
+				showToast("Failed to attach document.");
+				return;
+			}
+			const relativePath = await copyPickedAttachmentToNote(attachmentUri, id);
 			setAttachmentPath(relativePath);
 			setAttachmentType(type);
 			await persistCurrentEntry({ attachment: relativePath });

@@ -9,8 +9,8 @@
  * Run automatically via: npm install (postinstall) or npm run build:viewers
  */
 
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const OUT_DIR = path.join(ROOT, "src", "components", "editor", "document");

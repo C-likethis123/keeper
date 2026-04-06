@@ -11,7 +11,8 @@
 			"android/build",
 			"android/app/build",
 			".claude/skills"
-		]
+		],
+		"maxSize": 3000000
 	},
 	"formatter": {
 		"enabled": true
