@@ -423,8 +423,8 @@ Group notes into derived sections (Pinned → Recently Edited → MOC collection
 
 **Status**: Implemented
 **Task file**: `tasks/002-investigate-local-note-sections-and-ranking.md`
-**Current**: Home screen now shows sectioned view with Pinned notes, Recently Edited (7-day window), dynamic MOC collections (notes with ≥3 outgoing wikilinks showing their BFS neighborhood), and All Notes. Wikilink graph is persisted in a `wiki_links` edge table and queried via recursive CTEs.
-**Key files**: `src/services/notes/indexDb/repository.ts`, `src/services/notes/notesIndexDb.ts`, `src/services/notes/wikiLinkParser.ts`, `src/hooks/useNotes.ts`, `src/hooks/useSuspenseNotes.ts`, `src/components/NoteGrid.tsx`, `src-tauri/storage_core/src/lib.rs`
+**Current**: Home screen now shows sectioned view with Pinned notes, Recently Edited (7-day window), dynamic MOC collections (notes with ≥3 outgoing wikilinks showing their BFS neighborhood), and All Notes. Wikilink graph is persisted in a `wiki_links` edge table and queried via recursive CTEs. Section headers are rendered in `NoteGrid` with focused test coverage for load-more and section boundary behavior.
+**Key files**: `src/services/notes/indexDb/repository.ts`, `src/services/notes/notesIndexDb.ts`, `src/services/notes/wikiLinkParser.ts`, `src/hooks/useNotes.ts`, `src/hooks/useSuspenseNotes.ts`, `src/components/NoteGrid.tsx`, `src/components/__tests__/NoteGrid.jest.test.tsx`, `src-tauri/storage_core/src/lib.rs`
 **Implementation details**:
 - `wiki_links` edge table (migration 004) with `source_id → target_id` indexed both directions
 - `modified` column (migration 005) populated from frontmatter with file `mtime` fallback
@@ -432,6 +432,36 @@ Group notes into derived sections (Pinned → Recently Edited → MOC collection
 - 7 graph query functions: backlinks, transitive backlinks, outgoing links, MOC scores, BFS neighborhood, orphaned notes, recently edited
 - `NoteGrid` renders sections with headers; backward-compatible with flat note lists
 - Desktop parity via Tauri/Rust `rusqlite` equivalents for all graph queries
+
+---
+
+### Phase 12: PDF/ePub Split-Screen Viewer ✅
+
+Attach a PDF or ePub file to a note and read it side-by-side with the editor — left/right on desktop, top/bottom on mobile.
+
+**Status**: Implemented
+**Task file**: `tasks/003-pdf-epub-split-viewer.md`
+**Features**:
+- PDF rendered via PDF.js in a WebView (or native `<iframe>` on web/Tauri)
+- ePub rendered via epub.js in a WebView
+- Attachments copied into `_attachments/` inside the note directory; relative path persisted in frontmatter (`attachment:` key)
+- `splitMode` state in `NoteEditorView` controls `'none' | 'pdf' | 'epub'` panels
+- Desktop: left (document) / right (editor); Mobile: top (document) / bottom (editor)
+- Resizable divider via `PanResponder`; default 50/50 desktop, 40/60 mobile
+- Toolbar paperclip button to attach/remove documents
+- Text selection in the viewer sends a `postMessage` to insert a blockquote in the editor
+- Document scroll position persisted per note via `documentPositionStore`
+
+**Key files**:
+- `src/components/editor/document/DocumentPanel.tsx` — Native split panel with WebView
+- `src/components/editor/document/DocumentPanel.web.tsx` — Web/Tauri iframe panel
+- `src/components/editor/document/documentPositionStore.ts` — Position persistence
+- `src/components/editor/document/viewerTemplates.ts` — PDF.js / epub.js HTML templates
+- `src/services/notes/attachmentStorage.ts` — Attachment copy/resolve (native)
+- `src/services/notes/attachmentStorage.web.ts` — Attachment copy/resolve (web)
+- `src/components/NoteEditorView.tsx` — Split-screen orchestration
+- `src/components/editor/EditorToolbar.tsx` — Attachment toolbar button
+- `src-tauri/src/storage/mod.rs` — Tauri attachment path resolution
 
 ---
 
@@ -448,7 +478,6 @@ Use tabs to toggle between different views without leaving the current workspace
 ### Future Ideas from Google Keep
 
 - Drawings (low priority)
-- PDF viewer (Zotero-like)
 - Fix code editor issues
 - Logseq-style bottom toolbar
 - Flashcards
