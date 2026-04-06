@@ -50,6 +50,7 @@ pub struct WriteNoteInput {
     pub status: Option<String>,
     pub created_at: Option<i64>,
     pub completed_at: Option<i64>,
+    pub attachment: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -245,6 +246,7 @@ fn serialize_entry(
     created_at: Option<i64>,
     completed_at: Option<i64>,
     is_pinned: Option<bool>,
+    attachment: Option<&str>,
 ) -> Result<String, String> {
     let matter = Matter::<YAML>::new();
     let delimiter = matter.delimiter;
@@ -256,7 +258,7 @@ fn serialize_entry(
     });
 
     Ok(format!(
-        "{delimiter}{pinned}\ntitle: {title}\nid: {id}{note_type}{status}{created_at}{completed_at}\n{close_delimiter}\n{content}",
+        "{delimiter}{pinned}\ntitle: {title}\nid: {id}{note_type}{status}{created_at}{completed_at}{attachment}\n{close_delimiter}\n{content}",
         pinned = pinned.unwrap_or_default(),
         note_type = format!(
             "\ntype: {}",
@@ -284,7 +286,14 @@ fn serialize_entry(
                 .unwrap_or_default()
         } else {
             String::new()
-        }
+        },
+        attachment = attachment
+            .map(|value| {
+                stringify_yaml_string(value)
+                    .map(|v| format!("\nattachment: {v}"))
+                    .unwrap_or_default()
+            })
+            .unwrap_or_default()
     ))
 }
 
@@ -302,6 +311,7 @@ pub fn serialize_note(input: &WriteNoteInput) -> Result<String, String> {
         } else {
             Some(input.is_pinned)
         },
+        input.attachment.as_deref(),
     )
 }
 

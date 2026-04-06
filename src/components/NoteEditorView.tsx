@@ -7,24 +7,43 @@ import { useAutoSave } from "@/hooks/useAutoSave";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useStyles } from "@/hooks/useStyles";
 import { GitService } from "@/services/git/gitService";
+import {
+	copyPickedAttachmentToNote,
+	deleteAttachment,
+	inferAttachmentType,
+	type AttachmentType,
+} from "@/services/notes/attachmentStorage";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import type { Note, NoteSaveInput } from "@/services/notes/types";
+import { createParagraphBlock } from "@/components/editor/core/BlockNode";
 import { type EditorState, useEditorState } from "@/stores/editorStore";
 import { useToastStore } from "@/stores/toastStore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import React, {
 	useCallback,
 	useEffect,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import {
+	PanResponder,
+	Platform,
+	StyleSheet,
+	Text,
+	View,
+	useWindowDimensions,
+} from "react-native";
+import { DocumentPanel } from "./editor/document/DocumentPanel";
 import { EditorScrollProvider } from "./editor/EditorScrollContext";
 import { EditorToolbar } from "./editor/EditorToolbar";
 import { HybridEditor } from "./editor/HybridEditor";
+
+const SPLIT_RATIO_KEY = "doc-split-ratio";
 
 // TODO: refactor so we can do away with this???
 const TODO_STATUS_OPTIONS = [
@@ -54,6 +73,48 @@ export default function NoteEditorView({
 
 	const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
 	const showToast = useToastStore((s) => s.showToast);
+	const { width: windowWidth } = useWindowDimensions();
+	const isDesktop = Platform.OS === "web";
+
+	// Document split-screen state
+	const [attachmentPath, setAttachmentPath] = useState<string | null>(
+		note.attachment ?? null,
+	);
+	const [attachmentType, setAttachmentType] = useState<AttachmentType | null>(
+		() => (note.attachment ? inferAttachmentType(note.attachment) : null),
+	);
+	const [splitRatio, setSplitRatio] = useState(isDesktop ? 0.5 : 0.4);
+
+	// Load persisted split ratio
+	useEffect(() => {
+		AsyncStorage.getItem(SPLIT_RATIO_KEY).then((val) => {
+			if (val) setSplitRatio(Number.parseFloat(val));
+		});
+	}, []);
+
+	const panResponder = useMemo(
+		() =>
+			PanResponder.create({
+				onMoveShouldSetPanResponder: () => true,
+				onPanResponderMove: (_, gestureState) => {
+					const delta = isDesktop
+						? gestureState.dx / windowWidth
+						: gestureState.dy / (windowWidth * (9 / 16)); // approximate height
+					setSplitRatio((r) => Math.min(0.75, Math.max(0.25, r + delta)));
+				},
+				onPanResponderRelease: (_, gestureState) => {
+					const delta = isDesktop
+						? gestureState.dx / windowWidth
+						: gestureState.dy / (windowWidth * (9 / 16));
+					setSplitRatio((r) => {
+						const next = Math.min(0.75, Math.max(0.25, r + delta));
+						AsyncStorage.setItem(SPLIT_RATIO_KEY, String(next));
+						return next;
+					});
+				},
+			}),
+		[isDesktop, windowWidth],
+	);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
 	// Track the note ID we've loaded to prevent reloads during save operations.
 	// Reset on mount to ensure we always load on initial screen open.
@@ -224,6 +285,95 @@ export default function NoteEditorView({
 		router.back();
 	}, [flushGitAndToastOnFailure, id, router]);
 
+	const insertBlockAfter = useEditorState((s) => s.insertBlockAfter);
+
+	const handleTextSelected = useCallback(
+		(text: string) => {
+			const focusedIndex = useEditorState.getState().getFocusedBlockIndex() ?? 0;
+			insertBlockAfter(focusedIndex, createParagraphBlock(`> ${text}`));
+		},
+		[insertBlockAfter],
+	);
+
+	const handleAttachDocument = useCallback(async () => {
+		let pickedUri: string | null = null;
+		let pickedName: string | null = null;
+
+		if (Platform.OS === "web") {
+			// Tauri desktop: use the Tauri dialog API via invoke
+			const { isTauriRuntime, getTauriInvoke } = await import(
+				"@/services/storage/runtime"
+			);
+			if (isTauriRuntime()) {
+				const invoke = getTauriInvoke();
+				if (!invoke) return;
+				// Tauri 2.x: open file dialog via dialog plugin or fallback to input element
+				const paths = await invoke<string[] | null>("plugin:dialog|open", {
+					multiple: false,
+					filters: [
+						{
+							name: "Documents",
+							extensions: ["pdf", "epub"],
+						},
+					],
+				}).catch(() => null);
+				if (!paths || paths.length === 0) return;
+				pickedUri = paths[0];
+				pickedName = pickedUri.split(/[\\/]/).pop() ?? pickedUri;
+			} else {
+				// Browser fallback: use an invisible file input
+				pickedUri = await new Promise<string | null>((resolve) => {
+					const input = document.createElement("input");
+					input.type = "file";
+					input.accept = ".pdf,.epub,application/pdf,application/epub+zip";
+					input.onchange = () => {
+						const file = input.files?.[0];
+						if (!file) { resolve(null); return; }
+						resolve(URL.createObjectURL(file));
+					};
+					input.oncancel = () => resolve(null);
+					input.click();
+				});
+				if (!pickedUri) return;
+				pickedName = pickedUri;
+			}
+		} else {
+			// Native mobile: use expo-document-picker
+			const documentPickerModule = await import("expo-document-picker");
+			const result = await documentPickerModule.getDocumentAsync({
+				type: ["application/pdf", "application/epub+zip"],
+				copyToCacheDirectory: true,
+			});
+			if (result.canceled) return;
+			const asset = result.assets[0];
+			pickedUri = asset.uri;
+			pickedName = asset.name ?? asset.uri;
+		}
+
+		const type = inferAttachmentType(pickedName ?? pickedUri ?? "");
+		if (!type) {
+			showToast("Unsupported file type. Please pick a PDF or ePub.");
+			return;
+		}
+		try {
+			const relativePath = await copyPickedAttachmentToNote(pickedUri!, id);
+			setAttachmentPath(relativePath);
+			setAttachmentType(type);
+			await persistCurrentEntry({ attachment: relativePath });
+		} catch {
+			showToast("Failed to attach document.");
+		}
+	}, [id, showToast, persistCurrentEntry]);
+
+	const handleRemoveAttachment = useCallback(async () => {
+		if (attachmentPath) {
+			await deleteAttachment(attachmentPath).catch(() => null);
+		}
+		setAttachmentPath(null);
+		setAttachmentType(null);
+		await persistCurrentEntry({ attachment: null });
+	}, [attachmentPath, persistCurrentEntry]);
+
 	const applyTitleChange = useCallback((nextTitle: string) => {
 		setTitle(nextTitle);
 	}, []);
@@ -247,6 +397,9 @@ export default function NoteEditorView({
 
 		return unsubscribe;
 	}, [leaveEditor, navigation]);
+
+	const showSplit = attachmentPath !== null && attachmentType !== null;
+	const splitFlexDir = isDesktop ? "row" : "column";
 
 	return (
 		<View style={styles.screen}>
@@ -274,31 +427,68 @@ export default function NoteEditorView({
 					void handleDeletePress();
 				}}
 			/>
-			<View style={styles.content}>
-				{noteType === "todo" ? (
-					<View style={styles.metadataGroup}>
-						<Text style={styles.metadataLabel}>Status</Text>
-						<View style={styles.optionRow}>
-							{TODO_STATUS_OPTIONS.map((option) => (
-								<FilterChip
-									key={option.value}
-									label={option.label}
-									selected={(todoStatus ?? "open") === option.value}
-									onPress={() => setTodoStatus(option.value)}
-								/>
-							))}
-						</View>
-					</View>
-				) : null}
 
-				<EditorToolbar />
-				<EditorScrollProvider>
-					<HybridEditor
-						onInsertTemplateCommand={() => {
-							setIsTemplateModalVisible(true);
-						}}
-					/>
-				</EditorScrollProvider>
+			{/* Split-screen body */}
+			<View style={[styles.splitContainer, { flexDirection: splitFlexDir }]}>
+				{showSplit && (
+					<>
+						<View
+							style={[
+								styles.documentPane,
+								isDesktop
+									? { width: `${splitRatio * 100}%` as unknown as number }
+									: { height: `${splitRatio * 100}%` as unknown as number },
+							]}
+						>
+							<DocumentPanel
+								noteId={id}
+								attachmentPath={attachmentPath}
+								attachmentType={attachmentType}
+								onTextSelected={handleTextSelected}
+								onDismiss={handleRemoveAttachment}
+							/>
+						</View>
+						{/* Drag handle */}
+						<View
+							style={isDesktop ? styles.dividerV : styles.dividerH}
+							{...panResponder.panHandlers}
+						/>
+					</>
+				)}
+
+				{/* Editor pane */}
+				<View style={styles.editorPane}>
+					<View style={styles.content}>
+						{noteType === "todo" ? (
+							<View style={styles.metadataGroup}>
+								<Text style={styles.metadataLabel}>Status</Text>
+								<View style={styles.optionRow}>
+									{TODO_STATUS_OPTIONS.map((option) => (
+										<FilterChip
+											key={option.value}
+											label={option.label}
+											selected={(todoStatus ?? "open") === option.value}
+											onPress={() => setTodoStatus(option.value)}
+										/>
+									))}
+								</View>
+							</View>
+						) : null}
+
+						<EditorToolbar
+							onAttachDocument={() => void handleAttachDocument()}
+							hasAttachment={showSplit}
+							onRemoveAttachment={() => void handleRemoveAttachment()}
+						/>
+						<EditorScrollProvider>
+							<HybridEditor
+								onInsertTemplateCommand={() => {
+									setIsTemplateModalVisible(true);
+								}}
+							/>
+						</EditorScrollProvider>
+					</View>
+				</View>
 			</View>
 
 			<TemplatePickerModal
@@ -313,6 +503,24 @@ function createStyles(theme: ExtendedTheme) {
 	return StyleSheet.create({
 		screen: {
 			flex: 1,
+		},
+		splitContainer: {
+			flex: 1,
+		},
+		documentPane: {
+			overflow: "hidden",
+		},
+		dividerV: {
+			width: 4,
+			backgroundColor: theme.colors.border,
+		},
+		dividerH: {
+			height: 4,
+			backgroundColor: theme.colors.border,
+		},
+		editorPane: {
+			flex: 1,
+			overflow: "hidden",
 		},
 		content: {
 			flex: 1,

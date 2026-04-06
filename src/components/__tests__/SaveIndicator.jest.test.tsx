@@ -34,7 +34,7 @@ describe("SaveIndicator", () => {
 		render(<SaveIndicator status="saving" />);
 
 		expect(screen.getByText("Saving…")).toBeOnTheScreen();
-		expect(screen.getByText("sync")).toBeOnTheScreen();
+		expect(screen.getByText("spinner")).toBeOnTheScreen();
 	});
 
 	it("shows saved status copy and icon", () => {

@@ -9,6 +9,7 @@ interface ParsedFrontmatter {
 	createdAt?: number;
 	completedAt?: number;
 	modified?: number;
+	attachment?: string;
 	content: string;
 }
 
@@ -62,6 +63,7 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	let createdAt: number | undefined;
 	let completedAt: number | undefined;
 	let modified: number | undefined;
+	let attachment: string | undefined;
 	let id = "";
 	const frontmatter = match[1];
 	const content = markdown.slice(match[0].length);
@@ -90,6 +92,8 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 			completedAt = parseTimestamp(value);
 		} else if (key === "modified") {
 			modified = parseTimestamp(value);
+		} else if (key === "attachment") {
+			attachment = value;
 		}
 	}
 
@@ -102,12 +106,13 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 		createdAt: noteType === "todo" ? createdAt : undefined,
 		completedAt: noteType === "todo" ? completedAt : undefined,
 		modified,
+		attachment,
 		content,
 	};
 }
 
 export function stringifyFrontmatter(
-	note: Omit<Note, "lastUpdated"> & { modified?: number },
+	note: Omit<Note, "lastUpdated"> & { modified?: number; attachment?: string | null },
 ): string {
 	const frontmatterLines = [
 		"---",
@@ -129,6 +134,9 @@ export function stringifyFrontmatter(
 	}
 	if (note.modified) {
 		frontmatterLines.push(`modified: ${note.modified}`);
+	}
+	if (note.attachment) {
+		frontmatterLines.push(`attachment: ${JSON.stringify(note.attachment)}`);
 	}
 	frontmatterLines.push("---");
 

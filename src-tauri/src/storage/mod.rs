@@ -105,6 +105,36 @@ pub fn notes_root_path_command(app: tauri::AppHandle) -> Result<String, String> 
     Ok(notes_root.to_string_lossy().to_string())
 }
 
+// ─── Attachment Commands ──────────────────────────────────────
+
+#[tauri::command]
+pub fn copy_attachment(
+    app: tauri::AppHandle,
+    source_path: String,
+    note_id: String,
+    filename: String,
+) -> Result<String, String> {
+    let notes_root = notes_root_path(&app)?;
+    let attachments_dir = notes_root.join("_attachments");
+    std::fs::create_dir_all(&attachments_dir)
+        .map_err(|e| format!("failed to create _attachments dir: {e}"))?;
+    let dest = attachments_dir.join(&filename);
+    std::fs::copy(&source_path, &dest)
+        .map_err(|e| format!("failed to copy attachment: {e}"))?;
+    Ok(format!("_attachments/{}", filename))
+}
+
+#[tauri::command]
+pub fn delete_attachment(app: tauri::AppHandle, relative_path: String) -> Result<(), String> {
+    let notes_root = notes_root_path(&app)?;
+    let full_path = notes_root.join(&relative_path);
+    if full_path.exists() {
+        std::fs::remove_file(&full_path)
+            .map_err(|e| format!("failed to delete attachment: {e}"))?;
+    }
+    Ok(())
+}
+
 // ─── Wiki Links Commands ───────────────────────────────────────
 
 #[tauri::command]

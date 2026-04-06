@@ -60,6 +60,7 @@ export class TauriStorageEngine implements StorageEngine {
 				status: note.status,
 				createdAt: note.createdAt,
 				completedAt: note.completedAt,
+				attachment: note.attachment ?? null,
 			},
 		});
 		return {
