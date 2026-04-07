@@ -16,6 +16,7 @@ const mockShowToast = jest.fn();
 const mockRouterPush = jest.fn();
 const mockUseFocusEffect = jest.fn();
 const mockOpenPanel = jest.fn();
+const mockOpenDrawer = jest.fn();
 
 jest.mock("@/hooks/useNotes", () => ({
 	__esModule: true,
@@ -75,6 +76,9 @@ jest.mock("expo-router", () => {
 			push: (...args: unknown[]) => mockRouterPush(...args),
 		},
 		useFocusEffect: (callback: () => void) => mockUseFocusEffect(callback),
+		useNavigation: () => ({
+			openDrawer: (...args: unknown[]) => mockOpenDrawer(...args),
+		}),
 	};
 });
 
@@ -171,6 +175,7 @@ describe("Index", () => {
 		mockRouterPush.mockReset();
 		mockUseFocusEffect.mockReset();
 		mockOpenPanel.mockReset();
+		mockOpenDrawer.mockReset();
 		(NoteService.saveNote as jest.Mock).mockReset();
 		(NoteService.saveNote as jest.Mock).mockResolvedValue(undefined);
 		useStorageStore.setState({
@@ -227,7 +232,7 @@ describe("Index", () => {
 
 		await user.press(screen.getByRole("button", { name: "Open filters" }));
 
-		expect(mockOpenPanel).toHaveBeenCalled();
+		expect(mockOpenDrawer).toHaveBeenCalled();
 	});
 
 	it("creates a blank note and routes into the editor from the quick composer", async () => {

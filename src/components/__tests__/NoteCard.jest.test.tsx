@@ -34,13 +34,11 @@ function makeNote(overrides: Partial<Note> = {}): Note {
 		id: "note-1",
 		title: "First note",
 		content: "Body text",
-		lastUpdated: "2026-04-05T10:00:00.000Z",
+		lastUpdated: Date.parse("2026-04-05T10:00:00.000Z"),
 		isPinned: false,
 		noteType: "note",
 		status: undefined,
-		createdAt: "2026-04-05T09:00:00.000Z",
-		path: "First note.md",
-		attachments: [],
+		createdAt: Date.parse("2026-04-05T09:00:00.000Z"),
 		...overrides,
 	};
 }

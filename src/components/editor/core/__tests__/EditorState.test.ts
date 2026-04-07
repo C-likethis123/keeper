@@ -16,7 +16,7 @@ describe("EditorState", () => {
 
 		const next = editorReducer(
 			state,
-			{ type: "SELECT_BLOCK_RANGE", start: 2, end: 0 },
+			{ type: "SELECT_BLOCK_RANGE", anchor: 2, focus: 0 },
 			history,
 		);
 

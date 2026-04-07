@@ -1,6 +1,9 @@
 import { FilterDrawerContent } from "@/components/FilterDrawerContent";
 import { useFilterStore } from "@/stores/filterStore";
-import type { DrawerNavigationProp } from "@react-navigation/drawer";
+import type {
+	DrawerContentComponentProps,
+	DrawerNavigationProp,
+} from "@react-navigation/drawer";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import React from "react";
 
@@ -14,7 +17,11 @@ const mockDrawerProps = {
 	navigation: mockNavigation,
 	descriptors: {},
 	state: { routes: [], index: 0 },
-};
+} as unknown as DrawerContentComponentProps;
+
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+}));
 
 jest.mock("@/hooks/useExtendedTheme", () => ({
 	useExtendedTheme: () => ({

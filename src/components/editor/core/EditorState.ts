@@ -37,7 +37,6 @@ export interface EditorState extends EditorStateSlice {
 	selectBlockRange: (anchor: number, focus: number) => void;
 	selectGap: (index: number) => void;
 	selectAllBlocks: () => void;
-	selectGap: (index: number) => void;
 	deleteSelectedBlocks: () => void;
 	applyTransaction: (transaction: Transaction) => void;
 	undo: () => boolean;
@@ -99,7 +98,6 @@ type EditorAction =
 	| { type: "SELECT_BLOCK_RANGE"; anchor: number; focus: number }
 	| { type: "SELECT_GAP"; index: number }
 	| { type: "SELECT_ALL_BLOCKS" }
-	| { type: "SELECT_GAP"; index: number }
 	| { type: "APPLY_TRANSACTION"; transaction: Transaction }
 	| { type: "UNDO" }
 	| { type: "REDO" };

@@ -59,9 +59,6 @@ export function UnifiedBlock({
 	const getFocusedBlockIndex = useEditorState(
 		(state) => state.getFocusedBlockIndex,
 	);
-	const clearStructuredSelection = useEditorState(
-		(s) => s.clearStructuredSelection,
-	);
 	const handleVerticalArrow = useVerticalArrowNavigation(index, selectionRange);
 
 	useLayoutEffect(() => {

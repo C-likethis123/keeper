@@ -705,7 +705,12 @@ function HybridEditorContent() {
 				}}
 			>
 				{blockIds.map((id, index) => (
-					<BlockRow key={id} index={index} handlers={handlers} />
+					<BlockRow
+						key={id}
+						index={index}
+						handlers={handlers}
+						isLastBlock={index === blockIds.length - 1}
+					/>
 				))}
 				<Pressable
 					style={styles.pressableArea}

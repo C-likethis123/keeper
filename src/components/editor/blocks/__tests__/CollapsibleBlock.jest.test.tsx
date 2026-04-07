@@ -34,6 +34,8 @@ describe("CollapsibleBlock", () => {
 		block: createCollapsibleBlock("Summary", "Body"),
 		index: 0,
 		isFocused: true,
+		hasBlockSelection: false,
+		isGapSelected: false,
 		onContentChange: jest.fn(),
 		onAttributesChange: jest.fn(),
 		onBackspaceAtStart: jest.fn(),
@@ -43,6 +45,7 @@ describe("CollapsibleBlock", () => {
 		onSpace: jest.fn(),
 		onCheckboxToggle: jest.fn(),
 		onOpenWikiLink: jest.fn(),
+		clearStructuredSelection: jest.fn(),
 	};
 
 	beforeEach(() => {

@@ -68,7 +68,7 @@ describe("BlockRow", () => {
 			document: createDocumentFromMarkdown("1. First\n2. Second"),
 		});
 
-		render(<BlockRow index={1} handlers={handlers} />);
+		render(<BlockRow index={1} handlers={handlers} isLastBlock={false} />);
 
 		expect(buildSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -90,7 +90,7 @@ describe("BlockRow", () => {
 			gapSelection: { index: 1 },
 		});
 
-		render(<BlockRow index={1} handlers={handlers} />);
+		render(<BlockRow index={1} handlers={handlers} isLastBlock={true} />);
 
 		expect(buildSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -113,7 +113,7 @@ describe("BlockRow", () => {
 		});
 
 		const { UNSAFE_getAllByType } = render(
-			<BlockRow index={0} handlers={handlers} />,
+			<BlockRow index={0} handlers={handlers} isLastBlock={false} />,
 		);
 
 		expect(buildSpy).toHaveBeenCalledWith(
