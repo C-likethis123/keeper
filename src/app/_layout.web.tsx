@@ -58,7 +58,7 @@ const App = ({
 	}
 	return (
 		<>
-			<Stack />
+			<Stack screenOptions={{ headerShown: false }} />
 			<FilterPanel />
 			<ToastOverlay />
 		</>
