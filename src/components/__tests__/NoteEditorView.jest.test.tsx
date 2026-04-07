@@ -1,6 +1,7 @@
 import NoteEditorView from "@/components/NoteEditorView";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
+import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useStorageStore } from "@/stores/storageStore";
@@ -21,6 +22,7 @@ jest.useFakeTimers();
 const mockSaveNote = jest.fn();
 const mockLoadNote = jest.fn();
 const mockDeleteNote = jest.fn();
+const mockListNotesFallback = jest.fn();
 const mockIndexListNotes = jest.fn();
 const mockNavigationSetOptions = jest.fn();
 const mockNavigationDispatch = jest.fn();
@@ -121,6 +123,7 @@ jest.mock("@/services/notes/noteService", () => ({
 		loadNote: (...args: unknown[]) => mockLoadNote(...args),
 		saveNote: (...args: unknown[]) => mockSaveNote(...args),
 		deleteNote: (...args: unknown[]) => mockDeleteNote(...args),
+		listNotesFallback: (...args: unknown[]) => mockListNotesFallback(...args),
 	},
 }));
 
@@ -263,15 +266,18 @@ function createDeferred<T = void>() {
 
 describe("NoteEditorView", () => {
 	beforeEach(() => {
+		invalidateNoteQueryCache();
 		mockLoadNote.mockReset();
 		mockSaveNote.mockReset();
 		mockDeleteNote.mockReset();
+		mockListNotesFallback.mockReset();
 		mockIndexListNotes.mockReset();
 		mockGitFlushPendingChanges.mockReset();
 		mockNavigationDispatch.mockReset();
 		mockLoadNote.mockImplementation(async (id: string) => makeNote({ id }));
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
+		mockListNotesFallback.mockResolvedValue({ items: [], cursor: undefined });
 		mockIndexListNotes.mockResolvedValue({ items: [], cursor: undefined });
 		mockGitFlushPendingChanges.mockResolvedValue({
 			success: true,
@@ -565,6 +571,39 @@ describe("NoteEditorView", () => {
 			noteTypes: ["template"],
 		});
 		expect(screen.getByText("Daily template")).toBeTruthy();
+	});
+
+	it("shows templates from fallback note listing when the index is empty", async () => {
+		const user = userEvent.setup();
+		const note = makeNote();
+		mockIndexListNotes.mockResolvedValue({ items: [], cursor: undefined });
+		mockListNotesFallback.mockResolvedValue({
+			items: [
+				{
+					noteId: "template-1",
+					title: "Daily template",
+					summary: "Morning checklist",
+					updatedAt: 1,
+					isPinned: false,
+					noteType: "template",
+					status: null,
+				},
+			],
+			cursor: undefined,
+		});
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock editor");
+		await user.press(screen.getByText("Trigger insert template"));
+
+		await screen.findByText("Daily template");
+		expect(mockIndexListNotes).toHaveBeenCalledWith("", 100, 0, {
+			noteTypes: ["template"],
+		});
+		expect(mockListNotesFallback).toHaveBeenCalledWith("", 100, 0, {
+			noteTypes: ["template"],
+		});
 	});
 
 	it("applies the full template body instead of the indexed summary", async () => {

@@ -6,7 +6,7 @@ import { BlockType } from "@/components/editor/core/BlockNode";
 import { getListItemNumber } from "@/components/editor/core/Document";
 import { useEditorBlock, useEditorState } from "@/stores/editorStore";
 import React from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 
 interface BlockRowHandlers {
 	onContentChange: (index: number, content: string) => void;
