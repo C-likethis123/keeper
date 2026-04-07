@@ -7,7 +7,7 @@ import { getListItemNumber } from "@/components/editor/core/Document";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { useEditorBlock, useEditorState } from "@/stores/editorStore";
-import React from "react";
+import React, { useState } from "react";
 import {
   type GestureResponderEvent,
   Platform,
@@ -50,10 +50,10 @@ interface BlockRowProps {
 export const BlockRow = React.memo(function BlockRow({
   index,
   handlers,
-  isLastBlock,
+  isLastBlock: _isLastBlock,
 }: BlockRowProps) {
   const theme = useExtendedTheme();
-  const styles = useStyles(createStyles);
+  const styles = useStyles(makeStyles);
   const block = useEditorBlock(index);
   const isFocused = useEditorState(
     (s) => (s.selection?.focus.blockIndex ?? null) === index,
@@ -71,6 +71,8 @@ export const BlockRow = React.memo(function BlockRow({
       ? getListItemNumber(s.document, index)
       : undefined;
   });
+
+  const [isRowHovered, setIsRowHovered] = useState(false);
 
   if (!block) {
     return null;
@@ -110,7 +112,12 @@ export const BlockRow = React.memo(function BlockRow({
   };
 
   return (
-    <View style={styles.blockWrapper} collapsable={false}>
+    <View
+      style={styles.blockWrapper}
+      collapsable={false}
+      onPointerEnter={() => setIsRowHovered(true)}
+      onPointerLeave={() => setIsRowHovered(false)}
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Select gap before block ${index + 1}`}
@@ -146,6 +153,7 @@ export const BlockRow = React.memo(function BlockRow({
           testID={`block-gutter-${index}`}
           style={[
             styles.gutter,
+            (isRowHovered || hasBlockSelection) && styles.gutterVisible,
             hasBlockSelection && { backgroundColor: theme.colors.primary },
           ]}
           onPress={handleGutterPress}
@@ -156,7 +164,7 @@ export const BlockRow = React.memo(function BlockRow({
   );
 });
 
-function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
+function makeStyles(theme: ReturnType<typeof useExtendedTheme>) {
   return StyleSheet.create({
     blockWrapper: {
       width: "100%",
@@ -186,6 +194,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
       marginLeft: 4,
       marginRight: 6,
       borderRadius: 999,
+      backgroundColor: "transparent",
+    },
+    gutterVisible: {
       backgroundColor: theme.custom.editor.blockBorder,
     },
     blockContent: {
