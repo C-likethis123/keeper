@@ -17,13 +17,8 @@ jest.mock("expo-file-system", () => ({
 	File: class File {},
 }));
 
-jest.mock("@/services/storage/runtime", () => ({
-	isTauriRuntime: jest.fn().mockReturnValue(false),
-}));
-
 import type { GitEngine } from "@/services/git/engines/GitEngine";
-import { DefaultRepoBootstrapper } from "@/services/git/init/repoBootstrapper";
-import { isTauriRuntime } from "@/services/storage/runtime";
+import { DefaultRepoBootstrapper } from "@/services/git/init/repoBootstrapper.native";
 
 describe("DefaultRepoBootstrapper.validateRepository", () => {
 	const gitEngine = {
@@ -45,7 +40,6 @@ describe("DefaultRepoBootstrapper.validateRepository", () => {
 	beforeEach(() => {
 		mockDirectoryExists = false;
 		mockDirectoryEntries = [];
-		(isTauriRuntime as jest.Mock).mockReturnValue(false);
 		jest.clearAllMocks();
 	});
 
@@ -82,33 +76,3 @@ describe("DefaultRepoBootstrapper.validateRepository", () => {
 	});
 });
 
-describe("DefaultRepoBootstrapper.validateRepository on desktop (Tauri)", () => {
-	const gitEngine = {
-		resolveHeadOid: jest.fn(),
-	} as unknown as GitEngine;
-
-	const bootstrapper = new DefaultRepoBootstrapper(
-		gitEngine,
-		{ owner: "owner", repo: "repo", token: "token" },
-		{ resolveCloneFailure: jest.fn() },
-	);
-
-	beforeEach(() => {
-		(isTauriRuntime as jest.Mock).mockReturnValue(true);
-		jest.clearAllMocks();
-	});
-
-	it("reports exists: false when git validation fails on desktop (skips directory check)", async () => {
-		gitEngine.resolveHeadOid = jest
-			.fn()
-			.mockRejectedValue(new Error("repository not found"));
-
-		const result = await bootstrapper.validateRepository();
-
-		expect(result).toEqual({
-			exists: false,
-			isValid: false,
-			reason: "repository not found",
-		});
-	});
-});
