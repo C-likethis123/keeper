@@ -305,10 +305,9 @@ export default function NoteEditorView({
 				"@/services/storage/runtime"
 			);
 			if (isTauriRuntime()) {
-				const invoke = getTauriInvoke();
-				if (!invoke) return;
-				// Tauri 2.x: open file dialog via dialog plugin or fallback to input element
-				const paths = await invoke<string[] | null>("plugin:dialog|open", {
+				// Use @tauri-apps/plugin-dialog directly
+				const { open } = await import("@tauri-apps/plugin-dialog");
+				const selected = await open({
 					multiple: false,
 					filters: [
 						{
@@ -316,9 +315,10 @@ export default function NoteEditorView({
 							extensions: ["pdf", "epub"],
 						},
 					],
-				}).catch(() => null);
-				if (!paths || paths.length === 0) return;
-				pickedUri = paths[0];
+				});
+				if (!selected) return;
+				// selected can be string | string[] | null
+				pickedUri = Array.isArray(selected) ? selected[0] : selected;
 				pickedName = pickedUri.split(/[\\/]/).pop() ?? pickedUri;
 			} else {
 				// Browser fallback: use an invisible file input

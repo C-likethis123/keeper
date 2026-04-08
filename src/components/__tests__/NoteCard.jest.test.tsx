@@ -57,9 +57,10 @@ describe("NoteCard", () => {
 			/>,
 		);
 
-		fireEvent.press(
-			screen.getByRole("button", { name: "Open note First note" }),
-		);
+		const card = screen.getByRole("button", {
+			name: "Open note First note",
+		});
+		fireEvent(card, "click");
 
 		expect(mockPush).toHaveBeenCalledWith("/editor?id=note-1");
 	});

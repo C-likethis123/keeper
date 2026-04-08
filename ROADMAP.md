@@ -4,6 +4,8 @@ This is the central planning document for Keeper. It outlines critical issues, d
 
 ## Critical Issues (P1)
 
+PDF upload not working -- it shows "Unsupported asset URL"
+
 No currently confirmed P1 issues.
 
 ### Recently resolved

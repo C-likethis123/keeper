@@ -1,9 +1,11 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
+import { NOTES_ROOT } from "@/services/notes/Notes";
 import {
 	resolveAttachmentUri,
 	type AttachmentType,
 } from "@/services/notes/attachmentStorage";
+import { getTauriInvoke, isTauriRuntime } from "@/services/storage/runtime";
 import { FontAwesome } from "@expo/vector-icons";
 import React, {
 	useCallback,
@@ -110,9 +112,17 @@ export function DocumentPanel({
 		[noteId, attachmentPath, onTextSelected],
 	);
 
-	const handleOpenExternally = useCallback(() => {
-		if (fileUri) Linking.openURL(fileUri);
-	}, [fileUri]);
+	const handleOpenExternally = useCallback(async () => {
+		if (isTauriRuntime() && fileUri) {
+			// For Tauri, construct a file:// URL from the actual filesystem path
+			const base = NOTES_ROOT.endsWith("/") ? NOTES_ROOT.slice(0, -1) : NOTES_ROOT;
+			const fullPath = `${base}/${attachmentPath}`;
+			const fileUrl = `file://${fullPath}`;
+			Linking.openURL(fileUrl);
+		} else if (fileUri) {
+			Linking.openURL(fileUri);
+		}
+	}, [fileUri, attachmentPath]);
 
 	return (
 		<View style={[styles.panel, style]}>

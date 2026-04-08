@@ -11,6 +11,7 @@ import {
 	Text,
 	View,
 } from "react-native";
+import { useState } from "react";
 
 function formatNoteType(note: Note): string | null {
 	if (!note.noteType || note.noteType === "note") return null;
@@ -35,6 +36,7 @@ export default function NoteCard({
 	const router = useRouter();
 	const styles = useStyles(createStyles);
 	const typeLabel = formatNoteType(note);
+	const [isPressed, setIsPressed] = useState(false);
 
 	const openNote = () => {
 		useTabStore.getState().openTab(note.id, note.title);
@@ -50,11 +52,16 @@ export default function NoteCard({
 	};
 
 	return (
-		<Pressable
-			style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-			onPress={openNote}
+		<View
+			style={[styles.card, isPressed && styles.cardPressed]}
+			accessible={true}
 			accessibilityRole="button"
 			accessibilityLabel={`Open note ${note.title || "Untitled"}`}
+			accessibilityHint="Opens the note"
+			onClick={openNote}
+			onMouseDown={() => setIsPressed(true)}
+			onMouseUp={() => setIsPressed(false)}
+			onMouseLeave={() => setIsPressed(false)}
 		>
 			<View style={styles.titleRow}>
 				<Text style={styles.title} numberOfLines={2}>
@@ -128,7 +135,7 @@ export default function NoteCard({
 					</Pressable>
 				</View>
 			</View>
-		</Pressable>
+		</View>
 	);
 }
 
@@ -141,6 +148,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			borderColor: theme.colors.border,
 			padding: 12,
 			backgroundColor: theme.colors.card,
+			cursor: "pointer",
 		},
 		cardPressed: {
 			opacity: 0.8,

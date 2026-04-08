@@ -16,7 +16,8 @@ function uniqueId(): string {
 
 function tauriConvertFileSrc(absolutePath: string): string {
 	// Tauri 2.x asset protocol: asset://localhost/<url-encoded-path>
-	const encoded = encodeURIComponent(absolutePath).replace(/%2F/g, "/");
+	// The entire path must be fully URL-encoded
+	const encoded = encodeURIComponent(absolutePath);
 	const isWindows = /windows/i.test(navigator.userAgent);
 	return isWindows
 		? `https://asset.localhost/${encoded}`
