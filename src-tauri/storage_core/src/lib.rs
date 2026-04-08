@@ -37,6 +37,7 @@ pub struct ReadNoteResult {
     pub status: Option<String>,
     pub created_at: Option<i64>,
     pub completed_at: Option<i64>,
+    pub attachment: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -193,6 +194,7 @@ struct NoteFrontmatter {
     created_at: Option<i64>,
     #[serde(rename = "completedAt")]
     completed_at: Option<i64>,
+    attachment: Option<String>,
 }
 
 pub fn parse_frontmatter(
@@ -204,6 +206,7 @@ pub fn parse_frontmatter(
     Option<String>,
     Option<i64>,
     Option<i64>,
+    Option<String>,
     String,
 ) {
     let matter = Matter::<YAML>::new();
@@ -214,6 +217,7 @@ pub fn parse_frontmatter(
                 String::new(),
                 false,
                 "note".to_string(),
+                None,
                 None,
                 None,
                 None,
@@ -230,6 +234,7 @@ pub fn parse_frontmatter(
         frontmatter.status,
         frontmatter.created_at,
         frontmatter.completed_at,
+        frontmatter.attachment,
         parsed.content,
     )
 }
@@ -374,7 +379,7 @@ pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>
         return Ok(None);
     }
     let markdown = fs::read_to_string(&path).map_err(|e| format!("failed to read note: {e}"))?;
-    let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, content) =
         parse_frontmatter(&markdown);
     Ok(Some(ReadNoteResult {
         id,
@@ -386,6 +391,7 @@ pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>
         status,
         created_at,
         completed_at,
+        attachment,
     }))
 }
 
@@ -635,7 +641,7 @@ pub fn index_rebuild_from_disk(
         };
         let markdown =
             fs::read_to_string(&path).map_err(|e| format!("failed to read markdown: {e}"))?;
-        let (title, is_pinned, note_type, status, _, _, content) =
+        let (title, is_pinned, note_type, status, _, _, _, content) =
             parse_frontmatter(&markdown);
         let summary = extract_summary(&content, 6);
         let status = if note_type == "todo" {

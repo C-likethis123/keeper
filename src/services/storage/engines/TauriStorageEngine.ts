@@ -22,6 +22,7 @@ type ReadEntryResult = {
 	status: Note["status"];
 	createdAt: Note["createdAt"];
 	completedAt: Note["completedAt"];
+	attachment: Note["attachment"];
 };
 
 type TauriInvoke = NonNullable<ReturnType<typeof getTauriInvoke>>;

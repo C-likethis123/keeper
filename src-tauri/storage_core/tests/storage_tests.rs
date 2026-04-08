@@ -58,7 +58,7 @@ fn write_markdown(path: &Path, markdown: &str) {
 #[test]
 fn parse_frontmatter_unescapes_quoted_titles() {
     let markdown = "---\ntitle: \"He said \\\"hi\\\"\"\npinned: true\n---\nHello";
-    let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, content) =
         parse_frontmatter(markdown);
 
     assert_eq!(title, "He said \"hi\"");
@@ -67,13 +67,14 @@ fn parse_frontmatter_unescapes_quoted_titles() {
     assert_eq!(status, None);
     assert_eq!(created_at, None);
     assert_eq!(completed_at, None);
+    assert_eq!(attachment, None);
     assert_eq!(content, "Hello");
 }
 
 #[test]
 fn parse_frontmatter_falls_back_for_plain_markdown() {
     let markdown = "# Heading\n\nBody";
-    let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, content) =
         parse_frontmatter(markdown);
 
     assert_eq!(title, "");
@@ -82,13 +83,14 @@ fn parse_frontmatter_falls_back_for_plain_markdown() {
     assert_eq!(status, None);
     assert_eq!(created_at, None);
     assert_eq!(completed_at, None);
+    assert_eq!(attachment, None);
     assert_eq!(content, markdown);
 }
 
 #[test]
 fn parse_frontmatter_falls_back_for_invalid_yaml() {
     let markdown = "---\ntitle: \"unterminated\n---\nBody";
-    let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, content) =
         parse_frontmatter(markdown);
 
     assert_eq!(title, "");
@@ -97,6 +99,7 @@ fn parse_frontmatter_falls_back_for_invalid_yaml() {
     assert_eq!(status, None);
     assert_eq!(created_at, None);
     assert_eq!(completed_at, None);
+    assert_eq!(attachment, None);
     assert_eq!(content, markdown);
 }
 
@@ -111,10 +114,11 @@ fn serialize_note_writes_frontmatter_and_body() {
         status: Some("open".to_string()),
         created_at: Some(1710000000000),
         completed_at: Some(1710003600000),
+        attachment: None,
     })
     .expect("note should serialize");
 
-    let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, content) =
         parse_frontmatter(&markdown);
     assert_eq!(title, "He said \"hi\"");
     assert!(is_pinned);
@@ -122,6 +126,7 @@ fn serialize_note_writes_frontmatter_and_body() {
     assert_eq!(status.as_deref(), Some("open"));
     assert_eq!(created_at, Some(1710000000000));
     assert_eq!(completed_at, Some(1710003600000));
+    assert_eq!(attachment, None);
     assert_eq!(content, "# Heading\n- item");
     assert!(markdown.contains("\nid: \"note-1\"\n"));
 }
@@ -129,7 +134,7 @@ fn serialize_note_writes_frontmatter_and_body() {
 #[test]
 fn parse_frontmatter_reads_template_metadata() {
     let markdown = "---\ntitle: \"Meeting\"\nid: \"template-1\"\ntype: \"todo\"\nstatus: \"doing\"\n---\n- agenda";
-    let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, content) =
         parse_frontmatter(markdown);
 
     assert_eq!(title, "Meeting");
@@ -138,6 +143,7 @@ fn parse_frontmatter_reads_template_metadata() {
     assert_eq!(status.as_deref(), Some("doing"));
     assert_eq!(created_at, None);
     assert_eq!(completed_at, None);
+    assert_eq!(attachment, None);
     assert_eq!(content, "- agenda");
 }
 
@@ -152,10 +158,11 @@ fn serialize_note_omits_pinned_for_templates() {
         status: Some("open".to_string()),
         created_at: None,
         completed_at: None,
+        attachment: None,
     })
     .expect("template should serialize");
 
-    let (title, is_pinned, note_type, status, created_at, completed_at, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, content) =
         parse_frontmatter(&markdown);
     assert_eq!(title, "Checklist");
     assert!(!is_pinned);
@@ -163,9 +170,38 @@ fn serialize_note_omits_pinned_for_templates() {
     assert_eq!(status, None);
     assert_eq!(created_at, None);
     assert_eq!(completed_at, None);
+    assert_eq!(attachment, None);
     assert_eq!(content, "- [ ] item");
     assert!(markdown.contains("\nid: \"template-1\"\n"));
     assert!(!markdown.contains("\npinned:"));
+}
+
+#[test]
+fn serialize_note_and_parse_frontmatter_round_trip_attachment() {
+    let markdown = serialize_note(&WriteNoteInput {
+        id: "note-with-attachment".to_string(),
+        title: "Article Notes".to_string(),
+        content: "body".to_string(),
+        is_pinned: false,
+        note_type: "resource".to_string(),
+        status: None,
+        created_at: None,
+        completed_at: None,
+        attachment: Some("_attachments/article.pdf".to_string()),
+    })
+    .expect("note should serialize");
+
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, content) =
+        parse_frontmatter(&markdown);
+
+    assert_eq!(title, "Article Notes");
+    assert!(!is_pinned);
+    assert_eq!(note_type, "resource");
+    assert_eq!(status, None);
+    assert_eq!(created_at, None);
+    assert_eq!(completed_at, None);
+    assert_eq!(attachment.as_deref(), Some("_attachments/article.pdf"));
+    assert_eq!(content, "body");
 }
 
 #[test]
@@ -184,6 +220,7 @@ fn write_note_saves_templates_in_the_notes_directory() {
             status: None,
             created_at: None,
             completed_at: None,
+            attachment: None,
         },
     )
     .expect("write template");
@@ -207,6 +244,7 @@ fn write_note_routes_regular_notes_into_notes_directory() {
             status: None,
             created_at: None,
             completed_at: None,
+            attachment: None,
         },
     )
     .expect("write note");
@@ -230,6 +268,34 @@ fn read_note_reads_template_entry_through_unified_api() {
     assert_eq!(note.note_type, "template");
     assert!(!note.is_pinned);
     assert_eq!(note.status, None);
+}
+
+#[test]
+fn read_note_returns_attachment_metadata() {
+    let paths = TestStoragePaths::new();
+    storage_initialize(&paths.notes_root, &paths.index_db_path).expect("init storage");
+
+    write_note(
+        &paths.notes_root,
+        WriteNoteInput {
+            id: "resource-1".to_string(),
+            title: "Paper".to_string(),
+            content: "notes".to_string(),
+            is_pinned: false,
+            note_type: "resource".to_string(),
+            status: None,
+            created_at: None,
+            completed_at: None,
+            attachment: Some("_attachments/paper.pdf".to_string()),
+        },
+    )
+    .expect("write note");
+
+    let note = read_note(&paths.notes_root, "resource-1".to_string())
+        .expect("read note")
+        .expect("note exists");
+
+    assert_eq!(note.attachment.as_deref(), Some("_attachments/paper.pdf"));
 }
 
 #[test]
