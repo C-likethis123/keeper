@@ -250,12 +250,15 @@ describe("editorStore", () => {
 		it("clears structured selection correctly", () => {
 			const store = useEditorState.getState();
 			store.setDocument(createDocumentFromMarkdown("Alpha\n\nBeta"));
-			
+
 			// Set a block selection
 			store.selectBlock(0);
-			expect(useEditorState.getState().blockSelection).toEqual({ start: 0, end: 0 });
+			expect(useEditorState.getState().blockSelection).toEqual({
+				start: 0,
+				end: 0,
+			});
 			expect(useEditorState.getState().blockSelectionAnchor).toBe(0);
-			
+
 			// Clear it
 			store.clearStructuredSelection();
 			const state = useEditorState.getState();
@@ -268,22 +271,29 @@ describe("editorStore", () => {
 		it("handles mutually exclusive selection modes", () => {
 			const store = useEditorState.getState();
 			store.setDocument(createDocumentFromMarkdown("Alpha\n\nBeta"));
-			
+
 			// 1. Text selection -> Block selection
-			store.setSelection(createCollapsedSelection({ blockIndex: 0, offset: 0 }));
+			store.setSelection(
+				createCollapsedSelection({ blockIndex: 0, offset: 0 }),
+			);
 			expect(useEditorState.getState().selection).not.toBeNull();
-			
+
 			store.selectBlock(1);
 			expect(useEditorState.getState().selection).toBeNull();
-			expect(useEditorState.getState().blockSelection).toEqual({ start: 1, end: 1 });
-			
+			expect(useEditorState.getState().blockSelection).toEqual({
+				start: 1,
+				end: 1,
+			});
+
 			// 2. Block selection -> Gap selection
 			store.selectGap(1);
 			expect(useEditorState.getState().blockSelection).toBeNull();
 			expect(useEditorState.getState().gapSelection).toEqual({ index: 1 });
-			
+
 			// 3. Gap selection -> Text selection
-			store.setSelection(createCollapsedSelection({ blockIndex: 1, offset: 0 }));
+			store.setSelection(
+				createCollapsedSelection({ blockIndex: 1, offset: 0 }),
+			);
 			expect(useEditorState.getState().gapSelection).toBeNull();
 			expect(useEditorState.getState().selection).not.toBeNull();
 		});
@@ -291,17 +301,17 @@ describe("editorStore", () => {
 		it("extends block selection range from an anchor", () => {
 			const store = useEditorState.getState();
 			store.setDocument(createDocumentFromMarkdown("1\n\n2\n\n3\n\n4"));
-			
+
 			// Select block 1 as anchor
 			store.selectBlock(1);
 			expect(useEditorState.getState().blockSelectionAnchor).toBe(1);
-			
+
 			// Extend to block 3
 			store.selectBlockRange(1, 3);
 			let state = useEditorState.getState();
 			expect(state.blockSelection).toEqual({ start: 1, end: 3 });
 			expect(state.blockSelectionAnchor).toBe(1);
-			
+
 			// Extend backwards to block 0 (keeping anchor 1)
 			store.selectBlockRange(1, 0);
 			state = useEditorState.getState();
@@ -312,7 +322,7 @@ describe("editorStore", () => {
 		it("selects all blocks", () => {
 			const store = useEditorState.getState();
 			store.setDocument(createDocumentFromMarkdown("1\n\n2\n\n3"));
-			
+
 			store.selectAllBlocks();
 			const state = useEditorState.getState();
 			expect(state.blockSelection).toEqual({ start: 0, end: 4 });

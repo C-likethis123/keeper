@@ -130,13 +130,18 @@ async function loadNotesPage(args: {
 
 async function loadSectionMetadata() {
 	const recentlyEditedRows = await notesIndexDbGetRecentlyEditedNotes(10, 7);
-	const recentlyEditedNoteIds = new Set(recentlyEditedRows.map((row) => row.id));
+	const recentlyEditedNoteIds = new Set(
+		recentlyEditedRows.map((row) => row.id),
+	);
 
 	const mocScores = await notesIndexDbGetMocScores(3);
 	const mocNeighborhoods = new Map<string, Set<string>>();
 
 	for (const score of mocScores.slice(0, 5)) {
-		const neighborhood = await notesIndexDbGetGraphNeighborhood(score.noteId, 2);
+		const neighborhood = await notesIndexDbGetGraphNeighborhood(
+			score.noteId,
+			2,
+		);
 		const neighborhoodIds = new Set(
 			neighborhood.map((entry) => entry.noteId).slice(0, 8),
 		);

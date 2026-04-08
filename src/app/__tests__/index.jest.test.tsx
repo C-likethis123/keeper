@@ -15,7 +15,6 @@ const mockUseNotes = jest.fn();
 const mockShowToast = jest.fn();
 const mockRouterPush = jest.fn();
 const mockUseFocusEffect = jest.fn();
-const mockOpenPanel = jest.fn();
 const mockOpenDrawer = jest.fn();
 
 jest.mock("@/hooks/useNotes", () => ({
@@ -37,9 +36,8 @@ jest.mock("@/stores/filterStore", () => ({
 	useFilterStore: (
 		selector: (state: {
 			reset: typeof mockShowToast;
-			openPanel: typeof mockOpenPanel;
 		}) => unknown,
-	) => selector({ reset: mockShowToast, openPanel: mockOpenPanel }),
+	) => selector({ reset: mockShowToast }),
 }));
 
 jest.mock("@expo/vector-icons", () => {
@@ -174,7 +172,6 @@ describe("Index", () => {
 		mockShowToast.mockReset();
 		mockRouterPush.mockReset();
 		mockUseFocusEffect.mockReset();
-		mockOpenPanel.mockReset();
 		mockOpenDrawer.mockReset();
 		(NoteService.saveNote as jest.Mock).mockReset();
 		(NoteService.saveNote as jest.Mock).mockResolvedValue(undefined);

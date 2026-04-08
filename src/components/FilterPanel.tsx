@@ -133,7 +133,9 @@ export function FilterPanel() {
 								styles={styles}
 							/>
 						))}
-						<Text style={[styles.sectionTitle, styles.sectionTop]}>Options</Text>
+						<Text style={[styles.sectionTitle, styles.sectionTop]}>
+							Options
+						</Text>
 						<FilterRow
 							label="Hide done"
 							selected={hideDone}

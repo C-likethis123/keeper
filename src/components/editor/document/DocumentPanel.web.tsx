@@ -1,8 +1,8 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import {
-	resolveAttachmentUri,
 	type AttachmentType,
+	resolveAttachmentUri,
 } from "@/services/notes/attachmentStorage";
 import { FontAwesome } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -67,7 +67,11 @@ export function DocumentPanel({
 			try {
 				const msg =
 					typeof event.data === "string"
-						? (JSON.parse(event.data) as { type: string; cfi?: string; text?: string })
+						? (JSON.parse(event.data) as {
+								type: string;
+								cfi?: string;
+								text?: string;
+							})
 						: (event.data as { type: string; cfi?: string; text?: string });
 				if (msg.type === "cfi" && msg.cfi) {
 					saveDocumentPosition(noteId, attachmentPath, msg.cfi);
@@ -86,7 +90,12 @@ export function DocumentPanel({
 	const handleEpubLoad = useCallback(() => {
 		if (!fileUri || !iframeRef.current?.contentWindow) return;
 		iframeRef.current.contentWindow.postMessage(
-			JSON.stringify({ type: "open", fileUri, cfi: savedCfi ?? undefined, theme }),
+			JSON.stringify({
+				type: "open",
+				fileUri,
+				cfi: savedCfi ?? undefined,
+				theme,
+			}),
 			"*",
 		);
 	}, [fileUri, savedCfi, theme]);

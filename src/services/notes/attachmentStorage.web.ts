@@ -31,7 +31,9 @@ export async function copyPickedAttachmentToNote(
 	// Tauri desktop: use the Tauri command API
 	const invoke = getTauriInvoke();
 	if (!invoke) throw new Error("Tauri invoke unavailable");
-	const ext = uri.includes(".") ? `.${uri.split(".").pop()?.toLowerCase()}` : "";
+	const ext = uri.includes(".")
+		? `.${uri.split(".").pop()?.toLowerCase()}`
+		: "";
 	const filename = `${noteId}_${uniqueId()}${ext}`;
 	const relativePath = await invoke<string>("copy_attachment", {
 		sourcePath: uri,

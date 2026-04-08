@@ -6,25 +6,18 @@ import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { useStyles } from "@/hooks/useStyles";
 import useNotes from "@/hooks/useNotes";
+import { useStyles } from "@/hooks/useStyles";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useFilterStore } from "@/stores/filterStore";
 import { useToastStore } from "@/stores/toastStore";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
+import type { ParamListBase } from "@react-navigation/native";
 import { useFocusEffect, useNavigation } from "expo-router";
 import React, { Suspense, useCallback, useRef, useState } from "react";
-import {
-	Modal,
-	Platform,
-	Pressable,
-	StyleSheet,
-	Text,
-	type TextInput,
-	View,
-} from "react-native";
+import { Modal, Pressable, StyleSheet, Text, type TextInput, View } from "react-native";
 
 const LazyNoteGrid = React.lazy(() => import("@/components/NoteGrid"));
 
@@ -41,20 +34,15 @@ function IndexContent() {
 		setQuery,
 	} = useNotes();
 	const reset = useFilterStore((s) => s.reset);
-	const openFilterPanel = useFilterStore((s) => s.openPanel);
 	const showToast = useToastStore((state) => state.showToast);
 	const [isResetting, setIsResetting] = React.useState(false);
 	const [isResetModalVisible, setIsResetModalVisible] = useState(false);
 	const createAndOpenNote = useCreateAndOpenNote();
-	const navigation = useNavigation<DrawerNavigationProp<any>>();
+	const navigation = useNavigation<DrawerNavigationProp<ParamListBase>>();
 
 	const handleMenuPress = useCallback(() => {
-		if (Platform.OS === "web") {
-			openFilterPanel();
-		} else {
-			navigation.openDrawer();
-		}
-	}, [openFilterPanel, navigation]);
+		navigation.openDrawer();
+	}, [navigation]);
 
 	const handleDeleteNote = useCallback(
 		async (note: Note) => {

@@ -242,7 +242,12 @@ describe("EditorToolbar", () => {
 		it("renders an enabled paperclip button and calls onAttachDocument when pressed", () => {
 			setupDefaultState();
 			const onAttachDocument = jest.fn();
-			render(<EditorToolbar onAttachDocument={onAttachDocument} hasAttachment={false} />);
+			render(
+				<EditorToolbar
+					onAttachDocument={onAttachDocument}
+					hasAttachment={false}
+				/>,
+			);
 
 			const btn = screen.getByRole("button", { name: "paperclip" });
 			expect(btn).toHaveProp("accessibilityState", { disabled: false });
@@ -253,7 +258,9 @@ describe("EditorToolbar", () => {
 		it("shows the remove-attachment button instead of paperclip when hasAttachment is true", () => {
 			setupDefaultState();
 			const onRemoveAttachment = jest.fn();
-			render(<EditorToolbar hasAttachment onRemoveAttachment={onRemoveAttachment} />);
+			render(
+				<EditorToolbar hasAttachment onRemoveAttachment={onRemoveAttachment} />,
+			);
 
 			expect(screen.queryByRole("button", { name: "paperclip" })).toBeNull();
 			const removeBtn = screen.getByRole("button", { name: "times-circle" });

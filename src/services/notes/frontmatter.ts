@@ -112,7 +112,10 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 }
 
 export function stringifyFrontmatter(
-	note: Omit<Note, "lastUpdated"> & { modified?: number; attachment?: string | null },
+	note: Omit<Note, "lastUpdated"> & {
+		modified?: number;
+		attachment?: string | null;
+	},
 ): string {
 	const frontmatterLines = [
 		"---",

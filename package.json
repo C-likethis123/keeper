@@ -19,7 +19,7 @@
 		"test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
 		"test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
 		"lint": "biome lint .",
-		"lint:fix": "biome check . --apply",
+		"lint:fix": "biome check . --write",
 		"knip": "knip",
 		"build:viewers": "node scripts/build-viewers.js",
 		"postinstall": "node scripts/build-viewers.js"

@@ -30,12 +30,7 @@ jest.mock("@/hooks/useStyles", () => ({
 		}),
 }));
 
-function makeTab(
-	id: string,
-	noteId: string,
-	title: string,
-	isPinned = false,
-) {
+function makeTab(id: string, noteId: string, title: string, isPinned = false) {
 	return { id, noteId, title, isPinned };
 }
 

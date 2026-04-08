@@ -27,12 +27,19 @@ jest.mock("@/constants/themes/lightTheme", () => ({
 	},
 }));
 
-jest.mock("expo-router", () => ({
-	Stack: () => {
-		const React = require("react");
-		const { Text } = require("react-native");
-		return React.createElement(Text, null, "Stack");
-	},
+jest.mock("expo-router/drawer", () => ({
+	Drawer: Object.assign(
+		({ children }: { children: React.ReactNode }) => {
+			const React = require("react");
+			return React.createElement(
+				React.Fragment,
+				null,
+				React.createElement(require("react-native").Text, null, "Drawer"),
+				children,
+			);
+		},
+		{ Screen: ({ children }: { children?: React.ReactNode }) => children },
+	),
 }));
 
 jest.mock("@/components/shared/Toast", () => ({
@@ -43,12 +50,20 @@ jest.mock("@/components/shared/Toast", () => ({
 	},
 }));
 
-jest.mock("@/components/FilterPanel", () => ({
-	FilterPanel: () => {
+jest.mock("@/components/FilterDrawerContent", () => ({
+	FilterDrawerContent: () => {
 		const React = require("react");
 		const { Text } = require("react-native");
-		return React.createElement(Text, null, "Filter panel");
+		return React.createElement(Text, null, "Filter drawer");
 	},
+}));
+
+jest.mock("react-native-gesture-handler", () => ({
+	GestureHandlerRootView: ({
+		children,
+	}: {
+		children: React.ReactNode;
+	}) => children,
 }));
 
 jest.mock("@/components/shared/StartupScreen", () => ({
@@ -103,7 +118,7 @@ describe("RootLayout (web)", () => {
 		render(<RootLayout />);
 
 		expect(screen.getByText("Keeper")).toBeTruthy();
-		expect(screen.queryByText("Stack")).toBeNull();
+		expect(screen.queryByText("Drawer")).toBeNull();
 	});
 
 	it("renders the app shell once hydrated", () => {
@@ -116,8 +131,7 @@ describe("RootLayout (web)", () => {
 
 		render(<RootLayout />);
 
-		expect(screen.getByText("Stack")).toBeTruthy();
-		expect(screen.getByText("Filter panel")).toBeTruthy();
+		expect(screen.getByText("Drawer")).toBeTruthy();
 		expect(screen.getByText("Toast overlay")).toBeTruthy();
 	});
 });

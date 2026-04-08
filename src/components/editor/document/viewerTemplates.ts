@@ -139,7 +139,10 @@ ${EPUB_JS}
  * a follow-up. The PDF_JS bundle file is prepared by build-viewers.js for
  * future use.
  */
-export function buildPdfViewerHtml(fileUri: string, theme: "light" | "dark"): string {
+export function buildPdfViewerHtml(
+	fileUri: string,
+	theme: "light" | "dark",
+): string {
 	const bg = theme === "dark" ? "#1a1a1a" : "#f5f5f5";
 	return `<!DOCTYPE html>
 <html>

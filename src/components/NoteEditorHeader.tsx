@@ -80,10 +80,7 @@ export default function NoteEditorHeader({
 						<FontAwesome
 							name="thumb-tack"
 							size={24}
-							style={[
-								styles.pinIcon,
-								isPinned ? styles.pinIconPinned : null,
-							]}
+							style={[styles.pinIcon, isPinned ? styles.pinIconPinned : null]}
 						/>
 					</Pressable>
 					<Pressable

@@ -1,16 +1,11 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import {
-	resolveAttachmentUri,
 	type AttachmentType,
+	resolveAttachmentUri,
 } from "@/services/notes/attachmentStorage";
 import { FontAwesome } from "@expo/vector-icons";
-import React, {
-	useCallback,
-	useEffect,
-	useRef,
-	useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
 	Linking,
 	Platform,
@@ -173,11 +168,18 @@ export function DocumentPanel({
 				) : (
 					// Android fallback (PDF.js support is a follow-up)
 					<View style={styles.fallbackContainer}>
-						<FontAwesome name="file-pdf-o" size={40} style={styles.fallbackIcon} />
+						<FontAwesome
+							name="file-pdf-o"
+							size={40}
+							style={styles.fallbackIcon}
+						/>
 						<Text style={styles.fallbackText}>
 							PDF viewing on Android coming soon.
 						</Text>
-						<Pressable style={styles.openExternalButton} onPress={handleOpenExternally}>
+						<Pressable
+							style={styles.openExternalButton}
+							onPress={handleOpenExternally}
+						>
 							<Text style={styles.openExternalText}>Open in external app</Text>
 						</Pressable>
 					</View>

@@ -33,7 +33,11 @@ export default function EmptyState({
 						]}
 						onPress={onActionPress}
 					>
-						<Ionicons name="create-outline" size={18} style={styles.buttonIcon} />
+						<Ionicons
+							name="create-outline"
+							size={18}
+							style={styles.buttonIcon}
+						/>
 						<Text style={styles.buttonLabel}>{actionLabel}</Text>
 					</Pressable>
 				)}
