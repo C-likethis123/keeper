@@ -13,6 +13,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   View,
 } from "react-native";
 
@@ -37,20 +38,26 @@ interface BlockRowHandlers {
   onOpenWikiLink: (title: string) => void;
   onSelectBlock: (index: number) => void;
   onSelectBlockRange: (index: number) => void;
-  onSelectGap: (index: number) => void;
   onClearStructuredSelection: () => void;
 }
 
 interface BlockRowProps {
   index: number;
   handlers: BlockRowHandlers;
-  isLastBlock: boolean;
 }
+
+const DRAG_HANDLE_DOT_KEYS = [
+  "top-left",
+  "top-right",
+  "middle-left",
+  "middle-right",
+  "bottom-left",
+  "bottom-right",
+] as const;
 
 export const BlockRow = React.memo(function BlockRow({
   index,
   handlers,
-  isLastBlock: _isLastBlock,
 }: BlockRowProps) {
   const theme = useExtendedTheme();
   const styles = useStyles(makeStyles);
@@ -111,6 +118,9 @@ export const BlockRow = React.memo(function BlockRow({
     handlers.onSelectBlock(index);
   };
 
+  const showRowChrome =
+    isRowHovered || hasBlockSelection || isFocused || isGapSelected;
+
   return (
     <View
       style={styles.blockWrapper}
@@ -118,20 +128,6 @@ export const BlockRow = React.memo(function BlockRow({
       onPointerEnter={() => setIsRowHovered(true)}
       onPointerLeave={() => setIsRowHovered(false)}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Select gap before block ${index + 1}`}
-        testID={`block-gap-${index}`}
-        style={styles.gapPressable}
-        onPress={() => handlers.onSelectGap(index)}
-      >
-        <View
-          style={[
-            styles.gapIndicator,
-            isGapSelected && { backgroundColor: theme.colors.primary },
-          ]}
-        />
-      </Pressable>
       <View
         style={[
           styles.rowShell,
@@ -147,17 +143,35 @@ export const BlockRow = React.memo(function BlockRow({
           },
         ]}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Select block ${index + 1}`}
-          testID={`block-gutter-${index}`}
-          style={[
-            styles.gutter,
-            (isRowHovered || hasBlockSelection) && styles.gutterVisible,
-            hasBlockSelection && { backgroundColor: theme.colors.primary },
-          ]}
-          onPress={handleGutterPress}
-        />
+        <View style={styles.leftRail}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Select block ${index + 1}`}
+            testID={`block-gutter-${index}`}
+            style={[
+              styles.chromeButton,
+              showRowChrome && styles.chromeButtonVisible,
+              styles.dragHandle,
+              hasBlockSelection && {
+                backgroundColor: theme.colors.primary,
+                borderColor: theme.colors.primary,
+              },
+            ]}
+            onPress={handleGutterPress}
+          >
+            <View style={styles.dragHandleDots}>
+              {DRAG_HANDLE_DOT_KEYS.map((dotKey) => (
+                <View
+                  key={dotKey}
+                  style={[
+                    styles.dragHandleDot,
+                    hasBlockSelection && styles.dragHandleDotSelected,
+                  ]}
+                />
+              ))}
+            </View>
+          </Pressable>
+        </View>
         <View style={styles.blockContent}>{blockRegistry.build(config)}</View>
       </View>
     </View>
@@ -173,34 +187,79 @@ function makeStyles(theme: ReturnType<typeof useExtendedTheme>) {
       paddingHorizontal: 14,
       paddingVertical: 4,
     },
-    gapIndicator: {
-      borderRadius: 999,
-      height: 3,
-      backgroundColor: theme.custom.editor.blockBorder,
-    },
     rowShell: {
       flexDirection: "row",
       alignItems: "stretch",
       borderRadius: 10,
       borderWidth: 1,
       borderColor: "transparent",
+      backgroundColor: "transparent",
+    },
+    rowShellHovered: {
+      backgroundColor: theme.custom.editor.blockFocused,
     },
     rowShellSelected: {
       backgroundColor: theme.custom.editor.blockFocused,
       borderColor: theme.colors.primary,
     },
-    gutter: {
-      width: 10,
-      marginLeft: 4,
-      marginRight: 6,
-      borderRadius: 999,
-      backgroundColor: "transparent",
+    leftRail: {
+      width: 40,
+      paddingLeft: 6,
+      paddingRight: 4,
+      paddingVertical: 6,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
     },
-    gutterVisible: {
-      backgroundColor: theme.custom.editor.blockBorder,
+    chromeButton: {
+      width: 24,
+      height: 24,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: "transparent",
+      backgroundColor: "transparent",
+      alignItems: "center",
+      justifyContent: "center",
+      opacity: 0,
+    },
+    chromeButtonVisible: {
+      opacity: 1,
+      borderColor: theme.custom.editor.blockBorder,
+      backgroundColor: theme.colors.background,
+      shadowColor: theme.colors.shadow,
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 1,
+    },
+    chromeButtonText: {
+      color: theme.colors.textMuted,
+      fontSize: 16,
+      fontWeight: "600",
+      lineHeight: 18,
+    },
+    dragHandle: {
+      cursor: Platform.OS === "web" ? ("grab" as const) : undefined,
+    },
+    dragHandleDots: {
+      width: 10,
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      rowGap: 2,
+    },
+    dragHandleDot: {
+      width: 3,
+      height: 3,
+      borderRadius: 999,
+      backgroundColor: theme.colors.textMuted,
+    },
+    dragHandleDotSelected: {
+      backgroundColor: theme.colors.primaryContrast,
     },
     blockContent: {
       flex: 1,
+      minWidth: 0,
     },
   });
 }

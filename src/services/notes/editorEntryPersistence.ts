@@ -21,7 +21,6 @@ function buildPayload(
 	input: PersistEditorEntryInput,
 	existingNote: Note | null,
 ): NoteSaveInput {
-	const isTemplate = input.noteType === "template";
 	const nextStatus =
 		input.noteType === "todo" ? (input.status ?? "open") : null;
 	const now = Date.now();
@@ -42,7 +41,7 @@ function buildPayload(
 		id: input.id,
 		title: input.title,
 		content: input.content,
-		isPinned: isTemplate ? false : input.isPinned,
+		isPinned: input.isPinned,
 		noteType: input.noteType,
 		status: nextStatus,
 		createdAt,

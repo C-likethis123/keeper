@@ -55,7 +55,7 @@ export class TauriStorageEngine implements StorageEngine {
 				id: note.id,
 				title: note.title,
 				content: note.content,
-				isPinned: note.noteType === "template" ? false : note.isPinned,
+				isPinned: note.isPinned,
 				noteType: note.noteType,
 				status: note.status,
 				createdAt: note.createdAt,
@@ -65,7 +65,7 @@ export class TauriStorageEngine implements StorageEngine {
 		});
 		return {
 			...note,
-			isPinned: note.noteType === "template" ? false : note.isPinned,
+			isPinned: note.isPinned,
 			lastUpdated: updatedAt || Date.now(),
 		};
 	}

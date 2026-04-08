@@ -32,8 +32,7 @@ export class NoteService {
 
 	static async saveNote(note: NoteSaveInput, isNewNote = false): Promise<Note> {
 		const id = note.id.trim();
-		const isTemplate = note.noteType === "template";
-		const pinnedState = isTemplate ? false : !!note.isPinned;
+		const pinnedState = !!note.isPinned;
 		const title = (note.title ?? "").trim();
 		const saved = await storageEngine.saveNote({
 			...note,

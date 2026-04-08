@@ -74,7 +74,6 @@ export default function NoteEditorHeader({
 					<Pressable
 						onPress={onTogglePin}
 						style={styles.headerIconButton}
-						disabled={noteType === "template"}
 						accessibilityRole="button"
 						accessibilityLabel="Pin note"
 					>
@@ -83,11 +82,7 @@ export default function NoteEditorHeader({
 							size={24}
 							style={[
 								styles.pinIcon,
-								noteType === "template"
-									? styles.pinIconTemplate
-									: isPinned
-										? styles.pinIconPinned
-										: null,
+								isPinned ? styles.pinIconPinned : null,
 							]}
 						/>
 					</Pressable>
@@ -163,9 +158,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		pinIconPinned: {
 			color: theme.colors.primary,
-		},
-		pinIconTemplate: {
-			color: theme.colors.textFaded,
 		},
 		deleteIcon: {
 			color: theme.colors.textMuted,

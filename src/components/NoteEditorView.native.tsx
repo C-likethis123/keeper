@@ -148,9 +148,7 @@ export default function NoteEditorView({
       const content = useEditorState.getState().getContent();
       const resolvedNoteType =
         overrides?.noteType ?? deriveNoteType(draft.title);
-      const resolvedIsPinned =
-        (overrides?.isPinned ?? draft.isPinned) &&
-        resolvedNoteType !== "template";
+      const resolvedIsPinned = overrides?.isPinned ?? draft.isPinned;
       return {
         id,
         title: draft.title,
