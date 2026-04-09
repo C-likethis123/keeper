@@ -20,9 +20,9 @@ const styles = StyleSheet.create({
 });
 
 interface EditorToolbarProps {
-	onAttachDocument: () => void;
+	onAttachDocument?: () => void;
 	hasAttachment?: boolean;
-	onRemoveAttachment: () => void;
+	onRemoveAttachment?: () => void;
 }
 
 export function EditorToolbar({
@@ -57,6 +57,8 @@ export function EditorToolbar({
 		blockType != null && blockType !== BlockType.checkboxList;
 	const canUndo = getCanUndo();
 	const canRedo = getCanRedo();
+	const canAttachDocument = onAttachDocument != null;
+	const canRemoveAttachment = onRemoveAttachment != null;
 
 	return (
 		<View style={styles.toolbar}>
@@ -92,12 +94,14 @@ export function EditorToolbar({
 				<IconButton
 					name="times-circle"
 					onPress={onRemoveAttachment ?? (() => {})}
+					disabled={!canRemoveAttachment}
 					label="Remove attachment"
 				/>
 			) : (
 				<IconButton
 					name="paperclip"
-					onPress={onAttachDocument}
+					onPress={onAttachDocument ?? (() => {})}
+					disabled={!canAttachDocument}
 					label="Attach PDF or ePub"
 				/>
 			)}
