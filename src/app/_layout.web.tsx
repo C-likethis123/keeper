@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-get-random-values";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 traceStartupBootstrapEvent("bootstrap.layout_module_evaluated");
 
@@ -58,21 +59,23 @@ const App = ({
 		);
 	}
 	return (
-		<GestureHandlerRootView style={{ flex: 1 }}>
-			<Drawer
-				drawerContent={(props) => <FilterDrawerContent {...props} />}
-				screenOptions={{
-					headerShown: false,
-					drawerType: "slide",
-					swipeEnabled: true,
-					drawerStyle: { width: 280 },
-				}}
-			>
-				<Drawer.Screen name="index" />
-				<Drawer.Screen name="editor" options={{ swipeEnabled: false }} />
-			</Drawer>
-			<ToastOverlay />
-		</GestureHandlerRootView>
+		<SafeAreaProvider>
+			<GestureHandlerRootView style={{ flex: 1 }}>
+				<Drawer
+					drawerContent={(props) => <FilterDrawerContent {...props} />}
+					screenOptions={{
+						headerShown: false,
+						drawerType: "slide",
+						swipeEnabled: true,
+						drawerStyle: { width: 280 },
+					}}
+				>
+					<Drawer.Screen name="index" />
+					<Drawer.Screen name="editor" options={{ swipeEnabled: false }} />
+				</Drawer>
+				<ToastOverlay />
+			</GestureHandlerRootView>
+		</SafeAreaProvider>
 	);
 };
 

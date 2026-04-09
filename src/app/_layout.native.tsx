@@ -7,7 +7,6 @@ import { useAppStartup } from "@/hooks/useAppStartup";
 import { useStyles } from "@/hooks/useStyles";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { ThemeProvider } from "@react-navigation/native";
-import { Stack } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { useEffect } from "react";
 import {
@@ -19,6 +18,7 @@ import {
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-get-random-values";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 traceStartupBootstrapEvent("bootstrap.layout_module_evaluated");
 
@@ -59,21 +59,23 @@ const App = ({
 		);
 	}
 	return (
-		<GestureHandlerRootView style={{ flex: 1 }}>
-			<Drawer
-				drawerContent={(props) => <FilterDrawerContent {...props} />}
-				screenOptions={{
-					headerShown: false,
-					drawerType: "slide",
-					swipeEnabled: true,
-					drawerStyle: { width: 280 },
-				}}
-			>
-				<Drawer.Screen name="index" />
-				<Drawer.Screen name="editor" options={{ swipeEnabled: false }} />
-			</Drawer>
-			<ToastOverlay />
-		</GestureHandlerRootView>
+		<SafeAreaProvider>
+			<GestureHandlerRootView style={{ flex: 1 }}>
+				<Drawer
+					drawerContent={(props) => <FilterDrawerContent {...props} />}
+					screenOptions={{
+						headerShown: false,
+						drawerType: "slide",
+						swipeEnabled: true,
+						drawerStyle: { width: 280 },
+					}}
+				>
+					<Drawer.Screen name="index" />
+					<Drawer.Screen name="editor" options={{ swipeEnabled: false }} />
+				</Drawer>
+				<ToastOverlay />
+			</GestureHandlerRootView>
+		</SafeAreaProvider>
 	);
 };
 
