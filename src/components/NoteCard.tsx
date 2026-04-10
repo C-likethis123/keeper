@@ -4,7 +4,6 @@ import type { Note } from "@/services/notes/types";
 import { useTabStore } from "@/stores/tabStore";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
 import {
 	type GestureResponderEvent,
 	Pressable,
@@ -52,16 +51,13 @@ export default function NoteCard({
 	};
 
 	return (
-		<View
-			style={[styles.card, isPressed && styles.cardPressed]}
+		<Pressable
+			style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+			onPress={openNote}
 			accessible={true}
 			accessibilityRole="button"
 			accessibilityLabel={`Open note ${note.title || "Untitled"}`}
 			accessibilityHint="Opens the note"
-			onClick={openNote}
-			onMouseDown={() => setIsPressed(true)}
-			onMouseUp={() => setIsPressed(false)}
-			onMouseLeave={() => setIsPressed(false)}
 		>
 			<View style={styles.titleRow}>
 				<Text style={styles.title} numberOfLines={2}>
@@ -135,7 +131,7 @@ export default function NoteCard({
 					</Pressable>
 				</View>
 			</View>
-		</View>
+		</Pressable>
 	);
 }
 
@@ -148,7 +144,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			borderColor: theme.colors.border,
 			padding: 12,
 			backgroundColor: theme.colors.card,
-			cursor: "pointer",
 		},
 		cardPressed: {
 			opacity: 0.8,
