@@ -9,7 +9,6 @@ import { useStyles } from "@/hooks/useStyles";
 import { useEditorBlock, useEditorState } from "@/stores/editorStore";
 import { FontAwesome6 } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import {
 	type GestureResponderEvent,
 	Platform,
@@ -18,9 +17,12 @@ import {
 	Text,
 	View,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
 	useAnimatedStyle,
 	useSharedValue,
+	withSpring,
+	withTiming,
 } from "react-native-reanimated";
 
 interface BlockRowHandlers {
@@ -45,7 +47,7 @@ interface BlockRowHandlers {
 	onSelectBlock: (index: number) => void;
 	onSelectBlockRange: (index: number) => void;
 	onClearStructuredSelection: () => void;
-	onDragStart: (index: number) => void;
+	onDragStart: (index: number, initialY: number) => void;
 	onDragUpdate: (pageY: number) => void;
 	onDragEnd: () => void;
 	onLayout: (index: number, y: number, height: number) => void;
@@ -54,11 +56,21 @@ interface BlockRowHandlers {
 interface BlockRowProps {
 	index: number;
 	handlers: BlockRowHandlers;
+	activeDragIndex: Animated.SharedValue<number | null>;
+	dropIndex: Animated.SharedValue<number | null>;
+	draggedBlockHeight: Animated.SharedValue<number>;
+	dragAbsoluteY: Animated.SharedValue<number>;
+	dragStartY: Animated.SharedValue<number>;
 }
 
 export const BlockRow = React.memo(function BlockRow({
 	index,
 	handlers,
+	activeDragIndex,
+	dropIndex,
+	draggedBlockHeight,
+	dragAbsoluteY,
+	dragStartY,
 }: BlockRowProps) {
 	const theme = useExtendedTheme();
 	const styles = useStyles(makeStyles);
@@ -81,6 +93,42 @@ export const BlockRow = React.memo(function BlockRow({
 	});
 
 	const [isRowHovered, setIsRowHovered] = useState(false);
+
+	const animatedStyle = useAnimatedStyle(() => {
+		const isActive = activeDragIndex.value === index;
+		const currentDropIndex = dropIndex.value;
+		const shiftHeight = draggedBlockHeight.value;
+
+		if (isActive) {
+			return {
+				transform: [
+					{ translateY: dragAbsoluteY.value - dragStartY.value },
+					{ scale: withSpring(1.02) },
+				],
+				zIndex: 1000,
+				shadowOpacity: withSpring(0.2),
+				backgroundColor: theme.colors.background,
+			};
+		}
+
+		let translateY = 0;
+		if (activeDragIndex.value !== null && currentDropIndex !== null) {
+			// Shifting logic
+			if (index > activeDragIndex.value && index <= currentDropIndex) {
+				// Shifting up to make room below
+				translateY = -shiftHeight;
+			} else if (index < activeDragIndex.value && index >= currentDropIndex) {
+				// Shifting down to make room above
+				translateY = shiftHeight;
+			}
+		}
+
+		return {
+			transform: [{ translateY: withSpring(translateY) }],
+			zIndex: 1,
+			shadowOpacity: 0,
+		};
+	}, [index, theme]);
 
 	if (!block) {
 		return null;
@@ -121,7 +169,7 @@ export const BlockRow = React.memo(function BlockRow({
 
 	const panGesture = Gesture.Pan()
 		.onStart((e) => {
-			handlers.onDragStart(index);
+			handlers.onDragStart(index, e.absoluteY);
 		})
 		.onUpdate((e) => {
 			handlers.onDragUpdate(e.absoluteY);
@@ -134,13 +182,17 @@ export const BlockRow = React.memo(function BlockRow({
 		isRowHovered || hasBlockSelection || isFocused || isGapSelected;
 
 	return (
-		<View
-			style={styles.blockWrapper}
+		<Animated.View
+			style={[styles.blockWrapper, animatedStyle]}
 			collapsable={false}
 			onPointerEnter={() => setIsRowHovered(true)}
 			onPointerLeave={() => setIsRowHovered(false)}
 			onLayout={(e) => {
-				handlers.onLayout(index, e.nativeEvent.layout.y, e.nativeEvent.layout.height);
+				handlers.onLayout(
+					index,
+					e.nativeEvent.layout.y,
+					e.nativeEvent.layout.height,
+				);
 			}}
 		>
 			<View
@@ -181,7 +233,7 @@ export const BlockRow = React.memo(function BlockRow({
 				</View>
 				<View style={styles.blockContent}>{blockRegistry.build(config)}</View>
 			</View>
-		</View>
+		</Animated.View>
 	);
 });
 

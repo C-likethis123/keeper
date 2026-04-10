@@ -107,7 +107,9 @@ export function EditorToolbar({
 								? (onHideAttachment ?? (() => {}))
 								: (onShowAttachment ?? (() => {}))
 						}
-						disabled={isAttachmentVisible ? !canHideAttachment : !canShowAttachment}
+						disabled={
+							isAttachmentVisible ? !canHideAttachment : !canShowAttachment
+						}
 						label={isAttachmentVisible ? "Hide attachment" : "View attachment"}
 					/>
 					<IconButton

@@ -1,4 +1,5 @@
-import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStyles } from "@/hooks/useStyles";
 import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BlockType } from "../core/BlockNode";
@@ -18,8 +19,7 @@ export function ListMarker({
 	checked = false,
 	onToggle,
 }: ListMarkerProps) {
-	const theme = useExtendedTheme();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const styles = useStyles(createStyles);
 	const indent = listLevel * 16;
 
 	if (type === BlockType.numberedList) {

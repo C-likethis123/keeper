@@ -58,3 +58,6 @@ src-tauri/git_core/target/
 
 # grove
 .grove/workspace.json
+
+# python
+mlx-env

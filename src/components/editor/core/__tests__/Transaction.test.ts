@@ -66,4 +66,20 @@ describe("Transaction", () => {
 
 		expect(isTransactionEmpty(transaction)).toBe(true);
 	});
+
+	it("applies a moveBlock operation and its inverse correctly", () => {
+		const original = createDocumentFromMarkdown("A\nB\nC");
+		const transaction = new TransactionBuilder()
+			.moveBlock(0, 1)
+			.withDescription("Move A below B")
+			.build();
+
+		const updated = applyTransaction(transaction, original);
+		expect(documentToMarkdown(updated)).toBe("B\nA\nC");
+
+		const inverse = createInverseTransaction(transaction, original);
+		const restored = applyTransaction(inverse, updated);
+		expect(documentToMarkdown(restored)).toBe("A\nB\nC");
+		expect(inverse.description).toBe("Undo: Move A below B");
+	});
 });

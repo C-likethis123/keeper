@@ -1,5 +1,5 @@
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { getTauriInvoke } from "@/services/storage/runtime";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { NOTES_ROOT } from "./Notes";
 
 export type AttachmentType = "pdf" | "epub";

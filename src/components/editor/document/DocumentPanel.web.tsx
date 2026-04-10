@@ -62,9 +62,7 @@ export function DocumentPanel({
 	useEffect(() => {
 		if (attachmentType === "epub") {
 			setEpubHtml(
-				epubBase64
-					? buildEpubViewerHtml(theme, epubBase64, savedPosition)
-					: "",
+				epubBase64 ? buildEpubViewerHtml(theme, epubBase64, savedPosition) : "",
 			);
 			setPdfHtml("");
 		} else if (attachmentType === "pdf") {
@@ -101,7 +99,13 @@ export function DocumentPanel({
 
 	// Send open command to PDF viewer once data URI is ready
 	useEffect(() => {
-		if (attachmentType !== "pdf" || !pdfDataUri || !pdfHtml || !iframeRef.current) return;
+		if (
+			attachmentType !== "pdf" ||
+			!pdfDataUri ||
+			!pdfHtml ||
+			!iframeRef.current
+		)
+			return;
 		const msg = JSON.stringify({
 			type: "open",
 			fileUri: pdfDataUri,
@@ -126,7 +130,12 @@ export function DocumentPanel({
 								page?: string;
 								text?: string;
 							})
-						: (event.data as { type: string; cfi?: string; page?: string; text?: string });
+						: (event.data as {
+								type: string;
+								cfi?: string;
+								page?: string;
+								text?: string;
+							});
 				if (msg.type === "cfi" && msg.cfi) {
 					saveDocumentPosition(noteId, attachmentPath, msg.cfi);
 				} else if (msg.type === "page" && msg.page) {
@@ -169,7 +178,9 @@ export function DocumentPanel({
 			</View>
 
 			<View style={styles.viewerContainer}>
-				{!fileUri || (attachmentType === "epub" && !epubHtml) || (attachmentType === "pdf" && (!pdfHtml || !pdfDataUri)) ? (
+				{!fileUri ||
+				(attachmentType === "epub" && !epubHtml) ||
+				(attachmentType === "pdf" && (!pdfHtml || !pdfDataUri)) ? (
 					<View style={styles.loadingPlaceholder}>
 						<Text style={styles.loadingText}>Loading…</Text>
 					</View>

@@ -4,6 +4,7 @@ import {
 	createEmptyDocument,
 	documentToMarkdown,
 	getListItemNumber,
+	moveBlock,
 	removeBlock,
 	replaceBlocks,
 } from "../Document";
@@ -218,5 +219,31 @@ Next paragraph`);
 		expect(replaced.blocks).toHaveLength(1);
 		expect(replaced.blocks[0].type).toBe(BlockType.paragraph);
 		expect(replaced.blocks[0].content).toBe("");
+	});
+
+	describe("moveBlock", () => {
+		it("moves a block down", () => {
+			const doc = createDocumentFromMarkdown("A\nB\nC");
+			const moved = moveBlock(doc, 0, 1);
+			expect(documentToMarkdown(moved)).toBe("B\nA\nC");
+		});
+
+		it("moves a block up", () => {
+			const doc = createDocumentFromMarkdown("A\nB\nC");
+			const moved = moveBlock(doc, 2, 1);
+			expect(documentToMarkdown(moved)).toBe("A\nC\nB");
+		});
+
+		it("moves a block to the same index", () => {
+			const doc = createDocumentFromMarkdown("A\nB\nC");
+			const moved = moveBlock(doc, 1, 1);
+			expect(documentToMarkdown(moved)).toBe("A\nB\nC");
+		});
+
+		it("throws for out of bounds indexes", () => {
+			const doc = createDocumentFromMarkdown("A\nB");
+			expect(() => moveBlock(doc, -1, 1)).toThrow();
+			expect(() => moveBlock(doc, 0, 2)).toThrow();
+		});
 	});
 });

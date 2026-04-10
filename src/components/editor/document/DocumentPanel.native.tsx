@@ -68,9 +68,7 @@ export function DocumentPanel({
 	useEffect(() => {
 		if (attachmentType === "epub") {
 			setEpubHtml(
-				epubBase64
-					? buildEpubViewerHtml(theme, epubBase64, savedPosition)
-					: "",
+				epubBase64 ? buildEpubViewerHtml(theme, epubBase64, savedPosition) : "",
 			);
 			setPdfHtml("");
 		} else if (attachmentType === "pdf") {
@@ -117,7 +115,10 @@ export function DocumentPanel({
 			.base64()
 			.then((base64) => {
 				if (!isCancelled) {
-					console.log("[DocumentPanel] epub base64 loaded, length:", base64.length);
+					console.log(
+						"[DocumentPanel] epub base64 loaded, length:",
+						base64.length,
+					);
 					setEpubBase64(base64);
 				}
 			})

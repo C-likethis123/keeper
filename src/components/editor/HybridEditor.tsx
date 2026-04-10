@@ -20,7 +20,11 @@ import {
 	StyleSheet,
 	View,
 } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
+import {
+	runOnJS,
+	useAnimatedReaction,
+	useSharedValue,
+} from "react-native-reanimated";
 import { BlockRow } from "./BlockRow";
 import { blockRegistry } from "./blocks/BlockRegistry";
 import {
@@ -93,29 +97,81 @@ function HybridEditorContent() {
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
 
-	const [activeDragIndex, setActiveDragIndex] = useState<number | null>(null);
+	const [isDragging, setIsDragging] = useState(false);
+	const activeDragIndex = useSharedValue<number | null>(null);
+	const dropIndex = useSharedValue<number | null>(null);
+	const draggedBlockHeight = useSharedValue(0);
 	const dragAbsoluteY = useSharedValue(0);
+	const dragStartY = useSharedValue(0);
 	const blockLayouts = useRef<Map<number, { y: number; height: number }>>(
 		new Map(),
 	);
 
-	const handleDragStart = useCallback((index: number) => {
-		setActiveDragIndex(index);
-	}, []);
+	const handleDragStart = useCallback(
+		(index: number, absoluteY: number) => {
+			activeDragIndex.value = index;
+			dropIndex.value = index;
+			const layout = blockLayouts.current.get(index);
+			if (layout) {
+				draggedBlockHeight.value = layout.height;
+			}
+			setIsDragging(true);
+			dragStartY.value = absoluteY;
+			dragAbsoluteY.value = absoluteY;
+		},
+		[activeDragIndex, dragAbsoluteY, dragStartY, dropIndex, draggedBlockHeight],
+	);
 
 	const handleDragUpdate = useCallback(
 		(absoluteY: number) => {
 			dragAbsoluteY.value = absoluteY;
+
+			if (activeDragIndex.value === null) return;
+
+			const currentY = absoluteY;
+			const deltaY = currentY - dragStartY.value;
+
+			const draggedIdx = activeDragIndex.value;
+			const draggedBlockLayout = blockLayouts.current.get(draggedIdx);
+			if (!draggedBlockLayout) return;
+
+			const targetScrollRelativeY = draggedBlockLayout.y + deltaY;
+
+			let nextDropIndex = draggedIdx;
+			let minDistance = Number.MAX_VALUE;
+
+			for (const [idx, layout] of blockLayouts.current.entries()) {
+				const centerY = layout.y + layout.height / 2;
+				const distance = Math.abs(
+					targetScrollRelativeY + draggedBlockLayout.height / 2 - centerY,
+				);
+				if (distance < minDistance) {
+					minDistance = distance;
+					nextDropIndex = idx;
+				}
+			}
+
+			if (nextDropIndex !== dropIndex.value) {
+				dropIndex.value = nextDropIndex;
+			}
 		},
-		[dragAbsoluteY],
+		[activeDragIndex, dragAbsoluteY, dragStartY, dropIndex],
 	);
 
 	const handleDragEnd = useCallback(() => {
-		if (activeDragIndex === null) return;
-		// Determine the drop index based on dragAbsoluteY
-		// For now, let's keep it simple and just reset
-		setActiveDragIndex(null);
-	}, [activeDragIndex]);
+		if (activeDragIndex.value === null || dropIndex.value === null) return;
+
+		const draggedIdx = activeDragIndex.value;
+		const finalDropIndex = dropIndex.value;
+
+		if (finalDropIndex !== draggedIdx) {
+			moveBlock(draggedIdx, finalDropIndex);
+		}
+
+		activeDragIndex.value = null;
+		dropIndex.value = null;
+		setIsDragging(false);
+	}, [activeDragIndex, dropIndex, moveBlock]);
 
 	const handleLayout = useCallback(
 		(index: number, y: number, height: number) => {
@@ -131,6 +187,38 @@ function HybridEditorContent() {
 		scrollYRef,
 		viewHeightRef,
 	} = useEditorScrollView();
+
+	const scrollTo = useCallback(
+		(offset: number) => {
+			scrollViewRef.current?.scrollTo({ y: offset, animated: false });
+		},
+		[scrollViewRef],
+	);
+
+	useAnimatedReaction(
+		() => {
+			if (activeDragIndex.value === null) return null;
+			return {
+				y: dragAbsoluteY.value,
+				scrollY: scrollYRef.current,
+				viewHeight: viewHeightRef.current,
+			};
+		},
+		(data) => {
+			if (!data) return;
+			const { y, scrollY, viewHeight } = data;
+			const SCROLL_THRESHOLD = 50;
+			const SCROLL_STEP = 10;
+
+			if (y < SCROLL_THRESHOLD) {
+				runOnJS(scrollTo)(Math.max(0, scrollY - SCROLL_STEP));
+			} else if (y > viewHeight - SCROLL_THRESHOLD) {
+				runOnJS(scrollTo)(scrollY + SCROLL_STEP);
+			}
+		},
+		[scrollTo, scrollYRef, viewHeightRef],
+	);
+
 	const { focusBlock } = useFocusBlock();
 	const wikiLinks = useWikiLinkContext();
 	const slashCommands = useSlashCommandContext();
@@ -742,7 +830,16 @@ function HybridEditorContent() {
 				}}
 			>
 				{blockIds.map((id, index) => (
-					<BlockRow key={id} index={index} handlers={handlers} />
+					<BlockRow
+						key={id}
+						index={index}
+						handlers={handlers}
+						activeDragIndex={activeDragIndex}
+						dropIndex={dropIndex}
+						draggedBlockHeight={draggedBlockHeight}
+						dragAbsoluteY={dragAbsoluteY}
+						dragStartY={dragStartY}
+					/>
 				))}
 				<Pressable
 					style={styles.pressableArea}
