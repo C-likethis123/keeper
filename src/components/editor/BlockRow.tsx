@@ -9,6 +9,7 @@ import { useStyles } from "@/hooks/useStyles";
 import { useEditorBlock, useEditorState } from "@/stores/editorStore";
 import { FontAwesome6 } from "@expo/vector-icons";
 import React, { useState } from "react";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import {
 	type GestureResponderEvent,
 	Platform,
@@ -17,6 +18,10 @@ import {
 	Text,
 	View,
 } from "react-native";
+import Animated, {
+	useAnimatedStyle,
+	useSharedValue,
+} from "react-native-reanimated";
 
 interface BlockRowHandlers {
 	onContentChange: (index: number, content: string) => void;
@@ -40,6 +45,10 @@ interface BlockRowHandlers {
 	onSelectBlock: (index: number) => void;
 	onSelectBlockRange: (index: number) => void;
 	onClearStructuredSelection: () => void;
+	onDragStart: (index: number) => void;
+	onDragUpdate: (pageY: number) => void;
+	onDragEnd: () => void;
+	onLayout: (index: number, y: number, height: number) => void;
 }
 
 interface BlockRowProps {
@@ -110,6 +119,17 @@ export const BlockRow = React.memo(function BlockRow({
 		handlers.onSelectBlock(index);
 	};
 
+	const panGesture = Gesture.Pan()
+		.onStart((e) => {
+			handlers.onDragStart(index);
+		})
+		.onUpdate((e) => {
+			handlers.onDragUpdate(e.absoluteY);
+		})
+		.onEnd(() => {
+			handlers.onDragEnd();
+		});
+
 	const showRowChrome =
 		isRowHovered || hasBlockSelection || isFocused || isGapSelected;
 
@@ -119,6 +139,9 @@ export const BlockRow = React.memo(function BlockRow({
 			collapsable={false}
 			onPointerEnter={() => setIsRowHovered(true)}
 			onPointerLeave={() => setIsRowHovered(false)}
+			onLayout={(e) => {
+				handlers.onLayout(index, e.nativeEvent.layout.y, e.nativeEvent.layout.height);
+			}}
 		>
 			<View
 				style={[
@@ -136,23 +159,25 @@ export const BlockRow = React.memo(function BlockRow({
 				]}
 			>
 				<View style={styles.leftRail}>
-					<Pressable
-						accessibilityRole="button"
-						accessibilityLabel={`Select block ${index + 1}`}
-						testID={`block-gutter-${index}`}
-						style={[
-							styles.chromeButton,
-							showRowChrome && styles.chromeButtonVisible,
-							styles.dragHandle,
-							hasBlockSelection && {
-								backgroundColor: theme.colors.primary,
-								borderColor: theme.colors.primary,
-							},
-						]}
-						onPress={handleGutterPress}
-					>
-						<FontAwesome6 name="grip-vertical" style={styles.dragHandleDot} />
-					</Pressable>
+					<GestureDetector gesture={panGesture}>
+						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={`Select block ${index + 1}`}
+							testID={`block-gutter-${index}`}
+							style={[
+								styles.chromeButton,
+								showRowChrome && styles.chromeButtonVisible,
+								styles.dragHandle,
+								hasBlockSelection && {
+									backgroundColor: theme.colors.primary,
+									borderColor: theme.colors.primary,
+								},
+							]}
+							onPress={handleGutterPress}
+						>
+							<FontAwesome6 name="grip-vertical" style={styles.dragHandleDot} />
+						</Pressable>
+					</GestureDetector>
 				</View>
 				<View style={styles.blockContent}>{blockRegistry.build(config)}</View>
 			</View>

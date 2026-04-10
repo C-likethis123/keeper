@@ -3,6 +3,7 @@ import type { Document } from "./Document";
 import type { DocumentSelection } from "./Selection";
 import { DeleteBlockOperation } from "./operations/DeleteBlockOperation";
 import { InsertBlockOperation } from "./operations/InsertBlockOperation";
+import { MoveBlockOperation } from "./operations/MoveBlockOperation";
 import type { Operation } from "./operations/Operation";
 import { ReplaceBlocksOperation } from "./operations/ReplaceBlocksOperation";
 import { UpdateBlockAttributesOperation } from "./operations/UpdateBlockAttributesOperation";
@@ -157,6 +158,12 @@ export class TransactionBuilder {
 	/// Adds an operation to delete a block
 	deleteBlock(index: number, block: BlockNode): this {
 		this.operations.push(new DeleteBlockOperation(index, block));
+		return this;
+	}
+
+	/// Adds an operation to move a block
+	moveBlock(fromIndex: number, toIndex: number): this {
+		this.operations.push(new MoveBlockOperation(fromIndex, toIndex));
 		return this;
 	}
 

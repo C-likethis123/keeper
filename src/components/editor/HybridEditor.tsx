@@ -12,7 +12,7 @@ import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useEditorBlockIds, useEditorState } from "@/stores/editorStore";
 import { useTabStore } from "@/stores/tabStore";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
 	Platform,
 	Pressable,
@@ -20,6 +20,7 @@ import {
 	StyleSheet,
 	View,
 } from "react-native";
+import { useSharedValue } from "react-native-reanimated";
 import { BlockRow } from "./BlockRow";
 import { blockRegistry } from "./blocks/BlockRegistry";
 import {
@@ -85,13 +86,51 @@ function HybridEditorContent() {
 	const toggleCheckbox = useEditorState((s) => s.toggleCheckbox);
 	const getFocusedBlock = useEditorState((s) => s.getFocusedBlock);
 	const insertBlockAfter = useEditorState((s) => s.insertBlockAfter);
+	const moveBlock = useEditorState((s) => s.moveBlock);
 	const updateBlockContent = useEditorState((s) => s.updateBlockContent);
 	const updateBlockAttributes = useEditorState((s) => s.updateBlockAttributes);
 	const ignoreNextContentChangeRef = useRef<number | null>(null);
 	const ignoreSelectionChangeUntilRef = useRef(0);
 	const lastSelectionOffsetRef = useRef(0);
-	const { scrollViewRef, updateScrollY, updateViewHeight } =
-		useEditorScrollView();
+
+	const [activeDragIndex, setActiveDragIndex] = useState<number | null>(null);
+	const dragAbsoluteY = useSharedValue(0);
+	const blockLayouts = useRef<Map<number, { y: number; height: number }>>(
+		new Map(),
+	);
+
+	const handleDragStart = useCallback((index: number) => {
+		setActiveDragIndex(index);
+	}, []);
+
+	const handleDragUpdate = useCallback(
+		(absoluteY: number) => {
+			dragAbsoluteY.value = absoluteY;
+		},
+		[dragAbsoluteY],
+	);
+
+	const handleDragEnd = useCallback(() => {
+		if (activeDragIndex === null) return;
+		// Determine the drop index based on dragAbsoluteY
+		// For now, let's keep it simple and just reset
+		setActiveDragIndex(null);
+	}, [activeDragIndex]);
+
+	const handleLayout = useCallback(
+		(index: number, y: number, height: number) => {
+			blockLayouts.current.set(index, { y, height });
+		},
+		[],
+	);
+
+	const {
+		scrollViewRef,
+		updateScrollY,
+		updateViewHeight,
+		scrollYRef,
+		viewHeightRef,
+	} = useEditorScrollView();
 	const { focusBlock } = useFocusBlock();
 	const wikiLinks = useWikiLinkContext();
 	const slashCommands = useSlashCommandContext();
@@ -644,6 +683,10 @@ function HybridEditorContent() {
 			onSelectBlock: selectBlock,
 			onSelectBlockRange: selectBlockRange,
 			onClearStructuredSelection: clearStructuredSelection,
+			onDragStart: handleDragStart,
+			onDragUpdate: handleDragUpdate,
+			onDragEnd: handleDragEnd,
+			onLayout: handleLayout,
 		}),
 		[
 			handleContentChange,
@@ -660,6 +703,10 @@ function HybridEditorContent() {
 			selectBlock,
 			selectBlockRange,
 			clearStructuredSelection,
+			handleDragStart,
+			handleDragUpdate,
+			handleDragEnd,
+			handleLayout,
 		],
 	);
 

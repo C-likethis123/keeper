@@ -7,6 +7,7 @@ export enum OperationType {
 	updateBlock = "updateBlock",
 	updateBlockAttributes = "updateBlockAttributes",
 	replaceBlocks = "replaceBlocks",
+	moveBlock = "moveBlock",
 }
 
 /// Represents a single atomic operation on the document.

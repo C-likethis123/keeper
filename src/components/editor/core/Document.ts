@@ -275,6 +275,29 @@ export function removeBlock(document: Document, index: number): Document {
 	};
 }
 
+/// Creates a new document with a block moved from one index to another
+export function moveBlock(
+	document: Document,
+	fromIndex: number,
+	toIndex: number,
+): Document {
+	if (fromIndex < 0 || fromIndex >= document.blocks.length) {
+		throw new Error("From index out of range");
+	}
+	if (toIndex < 0 || toIndex >= document.blocks.length) {
+		throw new Error("To index out of range");
+	}
+
+	const newBlocks = [...document.blocks];
+	const [block] = newBlocks.splice(fromIndex, 1);
+	newBlocks.splice(toIndex, 0, block);
+
+	return {
+		blocks: Object.freeze(newBlocks),
+		version: document.version + 1,
+	};
+}
+
 /// Creates a new document with blocks replaced in a range
 export function replaceBlocks(
 	document: Document,

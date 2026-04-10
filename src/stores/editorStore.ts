@@ -392,6 +392,16 @@ export const useEditorState = create<EditorState>()((set, get) => {
 			dispatch({ type: "APPLY_TRANSACTION", transaction });
 		},
 
+		moveBlock: (fromIndex: number, toIndex: number) => {
+			if (fromIndex === toIndex) return;
+			const s = get();
+			const transaction = new TransactionBuilder()
+				.moveBlock(fromIndex, toIndex)
+				.withDescription("Move block")
+				.build();
+			dispatch({ type: "APPLY_TRANSACTION", transaction });
+		},
+
 		deleteBlock: (index: number) => {
 			const s = get();
 			if (s.document.blocks.length <= 1) {

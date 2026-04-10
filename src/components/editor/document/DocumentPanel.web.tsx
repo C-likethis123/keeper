@@ -5,8 +5,9 @@ import {
 	resolveAttachmentUri,
 } from "@/services/notes/attachmentStorage";
 import { FontAwesome } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+	Linking,
 	Pressable,
 	StyleSheet,
 	Text,
@@ -17,7 +18,7 @@ import {
 	loadDocumentPosition,
 	saveDocumentPosition,
 } from "./documentPositionStore";
-import { buildEpubViewerHtml } from "./viewerTemplates";
+import { buildEpubViewerHtml, buildPdfViewerHtml } from "./viewerTemplates";
 
 interface DocumentPanelProps {
 	noteId: string;
@@ -39,10 +40,13 @@ export function DocumentPanel({
 	theme = "light",
 }: DocumentPanelProps) {
 	const styles = useStyles(createStyles);
+	const iframeRef = useRef<HTMLIFrameElement>(null);
 	const [fileUri, setFileUri] = useState<string | null>(null);
-	const [savedCfi, setSavedCfi] = useState<string | null>(null);
+	const [savedPosition, setSavedPosition] = useState<string | null>(null);
 	const [epubBase64, setEpubBase64] = useState<string | null>(null);
 	const [epubHtml, setEpubHtml] = useState<string>("");
+	const [pdfHtml, setPdfHtml] = useState<string>("");
+	const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
 
 	const filename = attachmentPath.split("/").pop() ?? attachmentPath;
 
@@ -50,17 +54,32 @@ export function DocumentPanel({
 		const resolved = resolveAttachmentUri(attachmentPath);
 		setFileUri(resolved);
 		loadDocumentPosition(noteId, attachmentPath).then((pos) => {
-			if (pos) setSavedCfi(pos);
+			if (pos) setSavedPosition(pos);
 		});
 	}, [noteId, attachmentPath]);
 
-	// Fetch epub as base64 so epub.js doesn't need to fetch asset:// URLs directly
+	// Build viewer HTML once data is ready
 	useEffect(() => {
-		if (!fileUri || attachmentType !== "epub") {
-			setEpubBase64(null);
+		if (attachmentType === "epub") {
+			setEpubHtml(
+				epubBase64
+					? buildEpubViewerHtml(theme, epubBase64, savedPosition)
+					: "",
+			);
+			setPdfHtml("");
+		} else if (attachmentType === "pdf") {
+			setPdfHtml(buildPdfViewerHtml(theme));
+			setEpubHtml("");
+		}
+	}, [attachmentType, theme, epubBase64, savedPosition]);
+
+	// Fetch PDF as base64 for the custom viewer
+	useEffect(() => {
+		let cancelled = false;
+		if (!fileUri || attachmentType !== "pdf") {
+			setPdfDataUri(null);
 			return;
 		}
-		let cancelled = false;
 		fetch(fileUri)
 			.then((r) => r.arrayBuffer())
 			.then((buf) => {
@@ -70,28 +89,32 @@ export function DocumentPanel({
 				for (let i = 0; i < bytes.byteLength; i++) {
 					binary += String.fromCharCode(bytes[i]);
 				}
-				setEpubBase64(btoa(binary));
+				setPdfDataUri(`data:application/pdf;base64,${btoa(binary)}`);
 			})
 			.catch(() => {
-				if (!cancelled) setEpubBase64(null);
+				if (!cancelled) setPdfDataUri(null);
 			});
 		return () => {
 			cancelled = true;
 		};
 	}, [fileUri, attachmentType]);
 
-	// Build viewer HTML once base64 is ready
+	// Send open command to PDF viewer once data URI is ready
 	useEffect(() => {
-		if (attachmentType !== "epub") {
-			setEpubHtml("");
-			return;
-		}
-		setEpubHtml(
-			epubBase64 ? buildEpubViewerHtml(theme, epubBase64, savedCfi) : "",
-		);
-	}, [attachmentType, theme, epubBase64, savedCfi]);
+		if (attachmentType !== "pdf" || !pdfDataUri || !pdfHtml || !iframeRef.current) return;
+		const msg = JSON.stringify({
+			type: "open",
+			fileUri: pdfDataUri,
+			page: savedPosition ?? undefined,
+		});
+		// Give the iframe a tick to mount
+		const timer = setTimeout(() => {
+			iframeRef.current?.contentWindow?.postMessage(msg, "*");
+		}, 100);
+		return () => clearTimeout(timer);
+	}, [attachmentType, pdfDataUri, pdfHtml, savedPosition]);
 
-	// Listen for messages from the epub.js iframe
+	// Listen for messages from document iframes (epub + pdf)
 	useEffect(() => {
 		function handleMessage(event: MessageEvent) {
 			try {
@@ -100,11 +123,14 @@ export function DocumentPanel({
 						? (JSON.parse(event.data) as {
 								type: string;
 								cfi?: string;
+								page?: string;
 								text?: string;
 							})
-						: (event.data as { type: string; cfi?: string; text?: string });
+						: (event.data as { type: string; cfi?: string; page?: string; text?: string });
 				if (msg.type === "cfi" && msg.cfi) {
 					saveDocumentPosition(noteId, attachmentPath, msg.cfi);
+				} else if (msg.type === "page" && msg.page) {
+					saveDocumentPosition(noteId, attachmentPath, msg.page);
 				} else if (msg.type === "textSelected" && msg.text) {
 					onTextSelected?.(msg.text);
 				}
@@ -115,6 +141,12 @@ export function DocumentPanel({
 		window.addEventListener("message", handleMessage);
 		return () => window.removeEventListener("message", handleMessage);
 	}, [noteId, attachmentPath, onTextSelected]);
+
+	const handleOpenExternally = useCallback(async () => {
+		if (fileUri) {
+			Linking.openURL(fileUri);
+		}
+	}, [fileUri]);
 
 	return (
 		<View style={[styles.panel, style]}>
@@ -137,25 +169,44 @@ export function DocumentPanel({
 			</View>
 
 			<View style={styles.viewerContainer}>
-				{!fileUri || (attachmentType === "epub" && !epubHtml) ? (
+				{!fileUri || (attachmentType === "epub" && !epubHtml) || (attachmentType === "pdf" && (!pdfHtml || !pdfDataUri)) ? (
 					<View style={styles.loadingPlaceholder}>
 						<Text style={styles.loadingText}>Loading…</Text>
 					</View>
 				) : attachmentType === "pdf" ? (
-					// Browsers render PDFs natively in an iframe
 					<iframe
-						src={fileUri}
+						ref={iframeRef}
+						srcDoc={pdfHtml}
 						title={filename}
+						sandbox="allow-scripts allow-same-origin"
 						style={{ width: "100%", height: "100%", border: "none" }}
 					/>
 				) : epubHtml ? (
 					<iframe
+						ref={iframeRef}
 						srcDoc={epubHtml}
 						title={filename}
 						sandbox="allow-scripts allow-same-origin"
 						style={{ width: "100%", height: "100%", border: "none" }}
 					/>
-				) : null}
+				) : (
+					<View style={styles.fallbackContainer}>
+						<FontAwesome
+							name="file-pdf-o"
+							size={40}
+							style={styles.fallbackIcon}
+						/>
+						<Text style={styles.fallbackText}>
+							Unable to load this document.
+						</Text>
+						<Pressable
+							style={styles.openExternalButton}
+							onPress={handleOpenExternally}
+						>
+							<Text style={styles.openExternalText}>Open in external app</Text>
+						</Pressable>
+					</View>
+				)}
 			</View>
 		</View>
 	);
@@ -212,6 +263,32 @@ function createStyles(theme: ExtendedTheme) {
 		loadingText: {
 			color: theme.colors.textMuted,
 			fontSize: 14,
+		},
+		fallbackContainer: {
+			flex: 1,
+			alignItems: "center",
+			justifyContent: "center",
+			padding: 24,
+			gap: 16,
+		},
+		fallbackIcon: {
+			color: theme.colors.textMuted,
+		},
+		fallbackText: {
+			fontSize: 14,
+			color: theme.colors.textMuted,
+			textAlign: "center",
+		},
+		openExternalButton: {
+			paddingHorizontal: 16,
+			paddingVertical: 10,
+			borderRadius: 8,
+			backgroundColor: theme.colors.primary,
+		},
+		openExternalText: {
+			fontSize: 14,
+			color: "#ffffff",
+			fontWeight: "600",
 		},
 	});
 }

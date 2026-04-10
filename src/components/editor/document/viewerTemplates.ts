@@ -44,6 +44,17 @@ export function buildEpubViewerHtml(
   }
   #prev { left: 0; }
   #next { right: 0; }
+  #location-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    text-align: center; padding: 6px 0;
+    font-size: 12px; color: ${fg};
+    background: rgba(0,0,0,0.3);
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  #location-bar.visible { opacity: 1; }
   .error { color: #e74c3c; padding: 20px; font-family: sans-serif; }
 </style>
 </head>
@@ -51,6 +62,7 @@ export function buildEpubViewerHtml(
 <div id="viewer"></div>
 <button id="prev" aria-label="Previous page">‹</button>
 <button id="next" aria-label="Next page">›</button>
+<div id="location-bar"></div>
 <script>
 ${EPUB_JS}
 </script>
@@ -59,6 +71,8 @@ ${EPUB_JS}
   var book = null;
   var rendition = null;
   var renditionReady = false;
+  var totalLocations = 0;
+  var locationsGenerated = false;
 
   function postMsg(msg) {
     if (window.ReactNativeWebView) {
@@ -67,6 +81,33 @@ ${EPUB_JS}
       window.parent.postMessage(JSON.stringify(msg), '*');
     }
   }
+
+  function updateLocationDisplay() {
+    if (!rendition || !renditionReady || !locationsGenerated) return;
+    var locationBar = document.getElementById('location-bar');
+    if (!locationBar) return;
+    var cfi = rendition.currentLocation();
+    if (cfi && typeof cfi === 'object' && cfi.start) {
+      var loc = book.locations.locationFromCfi(cfi.start);
+      if (loc !== null && loc !== undefined) {
+        var label = (loc + 1) + ' / ' + totalLocations;
+        locationBar.textContent = label;
+        locationBar.classList.add('visible');
+        postMsg({ type: 'location', label: label, current: loc + 1, total: totalLocations });
+      }
+    }
+  }
+
+  // Tap to toggle location bar visibility
+  var locationBarVisible = false;
+  document.getElementById('viewer').addEventListener('click', function() {
+    locationBarVisible = !locationBarVisible;
+    var locationBar = document.getElementById('location-bar');
+    if (locationBar) {
+      if (locationBarVisible) locationBar.classList.add('visible');
+      else locationBar.classList.remove('visible');
+    }
+  });
 
   function openBook(source, initialCfi, theme, isBase64) {
     renditionReady = false;
@@ -89,6 +130,7 @@ ${EPUB_JS}
       rendition.on('relocated', function(location) {
         if (location && location.start && location.start.cfi) {
           postMsg({ type: 'cfi', cfi: location.start.cfi });
+          updateLocationDisplay();
         }
       });
 
@@ -100,6 +142,14 @@ ${EPUB_JS}
       var display = initialCfi ? rendition.display(initialCfi) : rendition.display();
       display.then(function() {
         renditionReady = true;
+        // Generate locations for the location display
+        book.locations.generate(1024).then(function() {
+          totalLocations = book.locations.total;
+          locationsGenerated = totalLocations > 0;
+          updateLocationDisplay();
+        }).catch(function() {
+          // locations generation failed, skip location display
+        });
         postMsg({ type: 'ready' });
       }).catch(function(err) {
         postMsg({ type: 'error', message: 'display failed: ' + String(err) });
