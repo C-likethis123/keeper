@@ -255,17 +255,41 @@ describe("EditorToolbar", () => {
 			expect(onAttachDocument).toHaveBeenCalledTimes(1);
 		});
 
-		it("shows the remove-attachment button instead of paperclip when hasAttachment is true", () => {
+		it("shows the attachment visibility and remove controls when an attachment exists", () => {
 			setupDefaultState();
+			const onShowAttachment = jest.fn();
 			const onRemoveAttachment = jest.fn();
 			render(
-				<EditorToolbar hasAttachment onRemoveAttachment={onRemoveAttachment} />,
+				<EditorToolbar
+					hasAttachment
+					isAttachmentVisible={false}
+					onShowAttachment={onShowAttachment}
+					onRemoveAttachment={onRemoveAttachment}
+				/>,
 			);
 
 			expect(screen.queryByRole("button", { name: "paperclip" })).toBeNull();
-			const removeBtn = screen.getByRole("button", { name: "times-circle" });
+			fireEvent.press(screen.getByRole("button", { name: "eye" }));
+			expect(onShowAttachment).toHaveBeenCalledTimes(1);
+
+			const removeBtn = screen.getByRole("button", { name: "trash" });
 			fireEvent.press(removeBtn);
 			expect(onRemoveAttachment).toHaveBeenCalledTimes(1);
+		});
+
+		it("uses the hide control when the attachment is visible", () => {
+			setupDefaultState();
+			const onHideAttachment = jest.fn();
+			render(
+				<EditorToolbar
+					hasAttachment
+					isAttachmentVisible
+					onHideAttachment={onHideAttachment}
+				/>,
+			);
+
+			fireEvent.press(screen.getByRole("button", { name: "times-circle" }));
+			expect(onHideAttachment).toHaveBeenCalledTimes(1);
 		});
 	});
 });

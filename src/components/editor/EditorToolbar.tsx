@@ -22,12 +22,18 @@ const styles = StyleSheet.create({
 interface EditorToolbarProps {
 	onAttachDocument?: () => void;
 	hasAttachment?: boolean;
+	isAttachmentVisible?: boolean;
+	onShowAttachment?: () => void;
+	onHideAttachment?: () => void;
 	onRemoveAttachment?: () => void;
 }
 
 export function EditorToolbar({
 	onAttachDocument,
 	hasAttachment = false,
+	isAttachmentVisible = false,
+	onShowAttachment,
+	onHideAttachment,
 	onRemoveAttachment,
 }: EditorToolbarProps) {
 	const getCanUndo = useEditorState((s) => s.getCanUndo);
@@ -58,6 +64,8 @@ export function EditorToolbar({
 	const canUndo = getCanUndo();
 	const canRedo = getCanRedo();
 	const canAttachDocument = onAttachDocument != null;
+	const canShowAttachment = onShowAttachment != null;
+	const canHideAttachment = onHideAttachment != null;
 	const canRemoveAttachment = onRemoveAttachment != null;
 
 	return (
@@ -91,12 +99,24 @@ export function EditorToolbar({
 			)}
 			{/* Attach PDF/ePub */}
 			{hasAttachment ? (
-				<IconButton
-					name="times-circle"
-					onPress={onRemoveAttachment ?? (() => {})}
-					disabled={!canRemoveAttachment}
-					label="Remove attachment"
-				/>
+				<>
+					<IconButton
+						name={isAttachmentVisible ? "times-circle" : "eye"}
+						onPress={
+							isAttachmentVisible
+								? (onHideAttachment ?? (() => {}))
+								: (onShowAttachment ?? (() => {}))
+						}
+						disabled={isAttachmentVisible ? !canHideAttachment : !canShowAttachment}
+						label={isAttachmentVisible ? "Hide attachment" : "View attachment"}
+					/>
+					<IconButton
+						name="trash"
+						onPress={onRemoveAttachment ?? (() => {})}
+						disabled={!canRemoveAttachment}
+						label="Remove attachment"
+					/>
+				</>
 			) : (
 				<IconButton
 					name="paperclip"

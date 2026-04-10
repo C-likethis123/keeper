@@ -81,6 +81,9 @@ export default function NoteEditorView({
 	const [attachmentType, setAttachmentType] = useState<AttachmentType | null>(
 		() => (note.attachment ? inferAttachmentType(note.attachment) : null),
 	);
+	const [isAttachmentVisible, setIsAttachmentVisible] = useState(
+		() => !!note.attachment,
+	);
 	const [splitRatio, setSplitRatio] = useState(isDesktop ? 0.5 : 0.4);
 
 	useEffect(() => {
@@ -159,10 +162,14 @@ export default function NoteEditorView({
 					resolvedNoteType === "todo"
 						? (overrides?.status ?? draft.todoStatus ?? "open")
 						: null,
+				attachment:
+					overrides?.attachment !== undefined
+						? overrides.attachment
+						: attachmentPath,
 				...overrides,
 			};
 		},
-		[id],
+		[attachmentPath, id],
 	);
 	const persistCurrentEntry = useCallback(
 		async (overrides?: Partial<NoteSaveInput>) => {
@@ -202,6 +209,11 @@ export default function NoteEditorView({
 			setTitle(note.title);
 			setNoteType(note.noteType);
 			setTodoStatus(note.noteType === "todo" ? (note.status ?? "open") : null);
+			setAttachmentPath(note.attachment ?? null);
+			setAttachmentType(
+				note.attachment ? inferAttachmentType(note.attachment) : null,
+			);
+			setIsAttachmentVisible(!!note.attachment);
 
 			if (loadedNoteIdRef.current !== note.id) {
 				loadedNoteIdRef.current = note.id;
@@ -209,6 +221,7 @@ export default function NoteEditorView({
 			}
 		}, [
 			loadMarkdown,
+			note.attachment,
 			note.content,
 			note.id,
 			note.isPinned,
@@ -315,11 +328,22 @@ export default function NoteEditorView({
 			const relativePath = await copyPickedAttachmentToNote(attachmentUri, id);
 			setAttachmentPath(relativePath);
 			setAttachmentType(type);
+			setIsAttachmentVisible(true);
 			await persistCurrentEntry({ attachment: relativePath });
 		} catch {
 			showToast("Failed to attach document.");
 		}
 	}, [id, showToast, persistCurrentEntry]);
+
+	const handleHideAttachment = useCallback(() => {
+		setIsAttachmentVisible(false);
+	}, []);
+
+	const handleShowAttachment = useCallback(() => {
+		if (attachmentPath && attachmentType) {
+			setIsAttachmentVisible(true);
+		}
+	}, [attachmentPath, attachmentType]);
 
 	const handleRemoveAttachment = useCallback(async () => {
 		if (attachmentPath) {
@@ -327,6 +351,7 @@ export default function NoteEditorView({
 		}
 		setAttachmentPath(null);
 		setAttachmentType(null);
+		setIsAttachmentVisible(false);
 		await persistCurrentEntry({ attachment: null });
 	}, [attachmentPath, persistCurrentEntry]);
 
@@ -354,7 +379,8 @@ export default function NoteEditorView({
 		return unsubscribe;
 	}, [leaveEditor, navigation]);
 
-	const showSplit = attachmentPath !== null && attachmentType !== null;
+	const hasAttachment = attachmentPath !== null && attachmentType !== null;
+	const showSplit = hasAttachment && isAttachmentVisible;
 	const splitFlexDir = isDesktop ? "row" : "column";
 
 	return (
@@ -400,7 +426,7 @@ export default function NoteEditorView({
 								attachmentPath={attachmentPath}
 								attachmentType={attachmentType}
 								onTextSelected={handleTextSelected}
-								onDismiss={handleRemoveAttachment}
+								onDismiss={handleHideAttachment}
 							/>
 						</View>
 						<View
@@ -430,7 +456,10 @@ export default function NoteEditorView({
 
 						<EditorToolbar
 							onAttachDocument={() => void handleAttachDocument()}
-							hasAttachment={showSplit}
+							hasAttachment={hasAttachment}
+							isAttachmentVisible={showSplit}
+							onShowAttachment={handleShowAttachment}
+							onHideAttachment={handleHideAttachment}
 							onRemoveAttachment={() => void handleRemoveAttachment()}
 						/>
 						<EditorScrollProvider>

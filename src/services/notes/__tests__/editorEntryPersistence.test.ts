@@ -102,6 +102,38 @@ describe("persistEditorEntry", () => {
 		);
 	});
 
+	it("preserves an existing attachment when autosave omits attachment metadata", async () => {
+		mockLoadNote.mockResolvedValue({
+			id: "note-1",
+			title: "Draft note",
+			content: "Initial body",
+			lastUpdated: 1710000000000,
+			isPinned: false,
+			noteType: "note",
+			status: null,
+			createdAt: null,
+			completedAt: null,
+			attachment: "_attachments/paper.pdf",
+		});
+
+		await persistEditorEntry({
+			id: "note-1",
+			title: "Draft note",
+			content: "Updated body",
+			isPinned: false,
+			noteType: "note",
+			status: null,
+		});
+
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "note-1",
+				attachment: "_attachments/paper.pdf",
+			}),
+			false,
+		);
+	});
+
 	it("saves templates through NoteService", async () => {
 		mockLoadNote.mockResolvedValue(null);
 

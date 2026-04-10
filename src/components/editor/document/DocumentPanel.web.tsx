@@ -5,7 +5,7 @@ import {
 	resolveAttachmentUri,
 } from "@/services/notes/attachmentStorage";
 import { FontAwesome } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
 	Pressable,
 	StyleSheet,
@@ -39,9 +39,9 @@ export function DocumentPanel({
 	theme = "light",
 }: DocumentPanelProps) {
 	const styles = useStyles(createStyles);
-	const iframeRef = useRef<HTMLIFrameElement>(null);
 	const [fileUri, setFileUri] = useState<string | null>(null);
 	const [savedCfi, setSavedCfi] = useState<string | null>(null);
+	const [epubBase64, setEpubBase64] = useState<string | null>(null);
 	const [epubHtml, setEpubHtml] = useState<string>("");
 
 	const filename = attachmentPath.split("/").pop() ?? attachmentPath;
@@ -54,12 +54,42 @@ export function DocumentPanel({
 		});
 	}, [noteId, attachmentPath]);
 
+	// Fetch epub as base64 so epub.js doesn't need to fetch asset:// URLs directly
 	useEffect(() => {
-		if (!fileUri) return;
-		if (attachmentType === "epub") {
-			setEpubHtml(buildEpubViewerHtml(theme));
+		if (!fileUri || attachmentType !== "epub") {
+			setEpubBase64(null);
+			return;
 		}
-	}, [fileUri, attachmentType, theme]);
+		let cancelled = false;
+		fetch(fileUri)
+			.then((r) => r.arrayBuffer())
+			.then((buf) => {
+				if (cancelled) return;
+				const bytes = new Uint8Array(buf);
+				let binary = "";
+				for (let i = 0; i < bytes.byteLength; i++) {
+					binary += String.fromCharCode(bytes[i]);
+				}
+				setEpubBase64(btoa(binary));
+			})
+			.catch(() => {
+				if (!cancelled) setEpubBase64(null);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [fileUri, attachmentType]);
+
+	// Build viewer HTML once base64 is ready
+	useEffect(() => {
+		if (attachmentType !== "epub") {
+			setEpubHtml("");
+			return;
+		}
+		setEpubHtml(
+			epubBase64 ? buildEpubViewerHtml(theme, epubBase64, savedCfi) : "",
+		);
+	}, [attachmentType, theme, epubBase64, savedCfi]);
 
 	// Listen for messages from the epub.js iframe
 	useEffect(() => {
@@ -86,20 +116,6 @@ export function DocumentPanel({
 		return () => window.removeEventListener("message", handleMessage);
 	}, [noteId, attachmentPath, onTextSelected]);
 
-	// Send init message to epub iframe after it loads
-	const handleEpubLoad = useCallback(() => {
-		if (!fileUri || !iframeRef.current?.contentWindow) return;
-		iframeRef.current.contentWindow.postMessage(
-			JSON.stringify({
-				type: "open",
-				fileUri,
-				cfi: savedCfi ?? undefined,
-				theme,
-			}),
-			"*",
-		);
-	}, [fileUri, savedCfi, theme]);
-
 	return (
 		<View style={[styles.panel, style]}>
 			<View style={styles.header}>
@@ -121,7 +137,7 @@ export function DocumentPanel({
 			</View>
 
 			<View style={styles.viewerContainer}>
-				{!fileUri ? (
+				{!fileUri || (attachmentType === "epub" && !epubHtml) ? (
 					<View style={styles.loadingPlaceholder}>
 						<Text style={styles.loadingText}>Loading…</Text>
 					</View>
@@ -134,11 +150,9 @@ export function DocumentPanel({
 					/>
 				) : epubHtml ? (
 					<iframe
-						ref={iframeRef}
 						srcDoc={epubHtml}
 						title={filename}
 						sandbox="allow-scripts allow-same-origin"
-						onLoad={handleEpubLoad}
 						style={{ width: "100%", height: "100%", border: "none" }}
 					/>
 				) : null}

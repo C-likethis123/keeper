@@ -5,6 +5,7 @@ import {
 	resolveAttachmentUri,
 } from "@/services/notes/attachmentStorage";
 import { FontAwesome } from "@expo/vector-icons";
+import { File } from "expo-file-system";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
 	Linking,
@@ -45,11 +46,11 @@ export function DocumentPanel({
 	const styles = useStyles(createStyles);
 	const webViewRef = useRef<WebView>(null);
 	const [fileUri, setFileUri] = useState<string | null>(null);
-	const [savedCfi, setSavedCfi] = useState<string | null>(null);
+	const [savedPosition, setSavedPosition] = useState<string | null>(null);
 	const [epubHtml, setEpubHtml] = useState<string>("");
-	const [pdfCanRenderNatively, setPdfCanRenderNatively] = useState(
-		Platform.OS === "ios",
-	);
+	const [pdfHtml, setPdfHtml] = useState<string>("");
+	const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
+	const [epubBase64, setEpubBase64] = useState<string | null>(null);
 
 	const filename = attachmentPath.split("/").pop() ?? attachmentPath;
 
@@ -58,31 +59,91 @@ export function DocumentPanel({
 		const resolved = resolveAttachmentUri(attachmentPath);
 		setFileUri(resolved);
 		loadDocumentPosition(noteId, attachmentPath).then((pos) => {
-			if (pos) setSavedCfi(pos);
+			if (pos) setSavedPosition(pos);
 		});
 	}, [noteId, attachmentPath]);
 
-	// Build viewer HTML once file URI and saved position are ready
+	// Build viewer HTML — for EPUB, embed base64 directly so it auto-opens
+	// without any message passing (avoids file:// origin restrictions in WebView).
 	useEffect(() => {
-		if (!fileUri) return;
 		if (attachmentType === "epub") {
-			setEpubHtml(buildEpubViewerHtml(theme));
+			setEpubHtml(
+				epubBase64
+					? buildEpubViewerHtml(theme, epubBase64, savedPosition)
+					: "",
+			);
+			setPdfHtml("");
+		} else if (attachmentType === "pdf") {
+			setPdfHtml(buildPdfViewerHtml(theme));
+			setEpubHtml("");
 		}
-	}, [fileUri, attachmentType, theme]);
+	}, [attachmentType, theme, epubBase64, savedPosition]);
 
-	// Send init message to epub WebView once it finishes loading
-	const handleEpubLoad = useCallback(() => {
-		if (!fileUri) return;
+	useEffect(() => {
+		let isCancelled = false;
+		if (!fileUri || attachmentType !== "pdf") {
+			setPdfDataUri(null);
+			return;
+		}
+
+		const pdfFile = new File(fileUri);
+		pdfFile
+			.base64()
+			.then((base64) => {
+				if (!isCancelled) {
+					setPdfDataUri(`data:application/pdf;base64,${base64}`);
+				}
+			})
+			.catch(() => {
+				if (!isCancelled) {
+					setPdfDataUri(null);
+				}
+			});
+
+		return () => {
+			isCancelled = true;
+		};
+	}, [attachmentType, fileUri]);
+
+	useEffect(() => {
+		let isCancelled = false;
+		if (!fileUri || attachmentType !== "epub") {
+			setEpubBase64(null);
+			return;
+		}
+
+		const epubFile = new File(fileUri);
+		epubFile
+			.base64()
+			.then((base64) => {
+				if (!isCancelled) {
+					console.log("[DocumentPanel] epub base64 loaded, length:", base64.length);
+					setEpubBase64(base64);
+				}
+			})
+			.catch((err) => {
+				console.log("[DocumentPanel] epub base64 failed:", err);
+				if (!isCancelled) {
+					setEpubBase64(null);
+				}
+			});
+
+		return () => {
+			isCancelled = true;
+		};
+	}, [attachmentType, fileUri]);
+
+	const handlePdfLoad = useCallback(() => {
+		if (!pdfDataUri) return;
 		const msg = JSON.stringify({
 			type: "open",
-			fileUri,
-			cfi: savedCfi ?? undefined,
-			theme,
+			fileUri: pdfDataUri,
+			page: savedPosition ?? undefined,
 		});
 		webViewRef.current?.injectJavaScript(
 			`window.dispatchEvent(new MessageEvent('message', { data: ${JSON.stringify(msg)} })); true;`,
 		);
-	}, [fileUri, savedCfi, theme]);
+	}, [pdfDataUri, savedPosition]);
 
 	const handleMessage = useCallback(
 		(event: WebViewMessageEvent) => {
@@ -90,13 +151,18 @@ export function DocumentPanel({
 				const msg = JSON.parse(event.nativeEvent.data) as {
 					type: string;
 					cfi?: string;
+					page?: string;
 					text?: string;
 					message?: string;
 				};
 				if (msg.type === "cfi" && msg.cfi) {
 					saveDocumentPosition(noteId, attachmentPath, msg.cfi);
+				} else if (msg.type === "page" && msg.page) {
+					saveDocumentPosition(noteId, attachmentPath, msg.page);
 				} else if (msg.type === "textSelected" && msg.text) {
 					onTextSelected?.(msg.text);
+				} else if (msg.type === "error" || msg.type === "debug") {
+					console.log("[DocumentPanel]", msg);
 				}
 			} catch {
 				// ignore parse errors
@@ -143,30 +209,26 @@ export function DocumentPanel({
 						ref={webViewRef}
 						source={{ html: epubHtml, baseUrl: "" }}
 						originWhitelist={["*"]}
-						allowFileAccess
-						allowUniversalAccessFromFileURLs
 						javaScriptEnabled
-						onLoad={handleEpubLoad}
 						onMessage={handleMessage}
 						style={styles.webView}
 					/>
-				) : attachmentType === "pdf" && pdfCanRenderNatively ? (
+				) : attachmentType === "pdf" && pdfHtml && pdfDataUri ? (
 					<WebView
 						ref={webViewRef}
 						source={{
-							html: buildPdfViewerHtml(fileUri, theme),
+							html: pdfHtml,
 							baseUrl: "",
 						}}
 						originWhitelist={["*"]}
 						allowFileAccess
 						allowUniversalAccessFromFileURLs
 						javaScriptEnabled
+						onLoad={handlePdfLoad}
 						onMessage={handleMessage}
-						onError={() => setPdfCanRenderNatively(false)}
 						style={styles.webView}
 					/>
 				) : (
-					// Android fallback (PDF.js support is a follow-up)
 					<View style={styles.fallbackContainer}>
 						<FontAwesome
 							name="file-pdf-o"
@@ -174,7 +236,7 @@ export function DocumentPanel({
 							style={styles.fallbackIcon}
 						/>
 						<Text style={styles.fallbackText}>
-							PDF viewing on Android coming soon.
+							Unable to load this PDF in the reader.
 						</Text>
 						<Pressable
 							style={styles.openExternalButton}

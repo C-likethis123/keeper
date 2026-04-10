@@ -14,6 +14,7 @@ type PersistEditorEntryInput = {
 	status?: Note["status"];
 	createdAt?: Note["createdAt"];
 	completedAt?: Note["completedAt"];
+	attachment?: Note["attachment"];
 	isNewEntry?: boolean;
 };
 
@@ -46,6 +47,10 @@ function buildPayload(
 		status: nextStatus,
 		createdAt,
 		completedAt,
+		attachment:
+			input.attachment !== undefined
+				? input.attachment
+				: (existingNote?.attachment ?? null),
 	};
 }
 
@@ -59,7 +64,8 @@ function isSamePayload(a: NoteSaveInput, b: NoteSaveInput): boolean {
 		a.noteType === b.noteType &&
 		(a.status ?? null) === (b.status ?? null) &&
 		(a.createdAt ?? null) === (b.createdAt ?? null) &&
-		(a.completedAt ?? null) === (b.completedAt ?? null)
+		(a.completedAt ?? null) === (b.completedAt ?? null) &&
+		(a.attachment ?? null) === (b.attachment ?? null)
 	);
 }
 

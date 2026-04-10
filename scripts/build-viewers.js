@@ -40,14 +40,9 @@ function writeBundle(filename, varName, source) {
 	console.log(`[build-viewers] wrote ${outPath} (${kb} KB)`);
 }
 
+const jsZip = readDist("jszip/dist/jszip.min.js") || "";
 const epubJs = readDist("epubjs/dist/epub.min.js");
-writeBundle("epubJsBundle.ts", "EPUB_JS", epubJs);
+writeBundle("epubJsBundle.ts", "EPUB_JS", jsZip + epubJs);
 
-const pdfJs = readDist("pdfjs-dist/build/pdf.min.mjs");
-const pdfJsWorker = readDist("pdfjs-dist/build/pdf.worker.min.mjs");
-// Combine worker and main into one self-contained script by inlining the worker.
-// pdfjs-dist v4 uses ES modules; we concatenate for WebView use.
-if (pdfJs && pdfJsWorker) {
-	const combined = `// pdfjs-dist worker (inlined)\n${pdfJsWorker}\n// pdfjs-dist main\n${pdfJs}`;
-	writeBundle("pdfJsBundle.ts", "PDF_JS", combined);
-}
+const pdfJs = readDist("pdfjs-dist/legacy/build/pdf.min.mjs");
+writeBundle("pdfJsBundle.ts", "PDF_JS", pdfJs);
