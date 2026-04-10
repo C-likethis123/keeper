@@ -179,7 +179,9 @@ export const BlockRow = React.memo(function BlockRow({
 		});
 
 	const showRowChrome =
-		isRowHovered || hasBlockSelection || isFocused || isGapSelected;
+		Platform.OS === "web"
+			? isRowHovered || hasBlockSelection
+			: isFocused || hasBlockSelection;
 
 	return (
 		<Animated.View

@@ -5,7 +5,7 @@ import { NOTES_ROOT } from "@/services/notes/Notes";
 import { Paths } from "expo-file-system";
 import { Image } from "expo-image";
 import React, { useRef } from "react";
-import { Pressable, StyleSheet, TextInput } from "react-native";
+import { Platform, Pressable, StyleSheet, TextInput } from "react-native";
 import type { BlockConfig } from "./BlockRegistry";
 import { useBlockInputHandlers } from "./useBlockInputHandlers";
 
@@ -17,6 +17,21 @@ function resolveImageUri(path: string): string {
 	) {
 		return path;
 	}
+
+	// On Tauri desktop, we need to use convertFileSrc to serve local files
+	if (Platform.OS === "web") {
+		const fullPath = Paths.join(NOTES_ROOT, path);
+		// Dynamically import Tauri to avoid errors on plain web
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			const { convertFileSrc } = require("@tauri-apps/api/core");
+			return convertFileSrc(fullPath);
+		} catch {
+			// Fallback if Tauri is not available
+			return `file://${fullPath}`;
+		}
+	}
+
 	return Paths.join(NOTES_ROOT, path);
 }
 

@@ -49,7 +49,32 @@ export function useToolbarActions(): UseToolbarActions {
 	}, [document, getFocusedBlockIndex, updateBlockType, focusBlock]);
 
 	const handleInsertImage = useCallback(async () => {
-		if (Platform.OS === "web") return;
+		const focusedIndex = getFocusedBlockIndex() ?? 0;
+
+		if (Platform.OS === "web") {
+			// Desktop (Tauri): use native file dialog
+			const [dialogModule, imageStorageModule] = await Promise.all([
+				import("@tauri-apps/plugin-dialog"),
+				import("@/services/notes/imageStorage.web"),
+			]);
+			const selected = await dialogModule.open({
+				title: "Select Image",
+				multiple: false,
+				filters: [
+					{
+						name: "Images",
+						extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico"],
+					},
+				],
+			});
+			if (selected === null || Array.isArray(selected)) return;
+			const path = await imageStorageModule.copyPickedImageToNotes(selected);
+			insertBlockAfter(focusedIndex, createImageBlock(path));
+			focusBlock(focusedIndex + 1);
+			return;
+		}
+
+		// Mobile: use expo-document-picker
 		const [documentPickerModule, imageStorageModule] = await Promise.all([
 			import("expo-document-picker"),
 			import("@/services/notes/imageStorage"),
@@ -61,7 +86,6 @@ export function useToolbarActions(): UseToolbarActions {
 		if (result.canceled) return;
 		const uri = result.assets[0].uri;
 		const path = await imageStorageModule.copyPickedImageToNotes(uri);
-		const focusedIndex = getFocusedBlockIndex() ?? 0;
 		insertBlockAfter(focusedIndex, createImageBlock(path));
 		focusBlock(focusedIndex + 1);
 	}, [getFocusedBlockIndex, insertBlockAfter, focusBlock]);

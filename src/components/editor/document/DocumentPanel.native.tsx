@@ -201,7 +201,7 @@ export function DocumentPanel({
 
 			{/* Viewer */}
 			<View style={styles.viewerContainer}>
-				{!fileUri ? (
+				{!fileUri || (attachmentType === "epub" && !epubHtml) ? (
 					<View style={styles.loadingPlaceholder}>
 						<Text style={styles.loadingText}>Loading…</Text>
 					</View>
@@ -229,15 +229,32 @@ export function DocumentPanel({
 						onMessage={handleMessage}
 						style={styles.webView}
 					/>
-				) : (
+				) : attachmentType === "epub" && fileUri && !epubBase64 ? (
 					<View style={styles.fallbackContainer}>
 						<FontAwesome
-							name="file-pdf-o"
+							name="book"
 							size={40}
 							style={styles.fallbackIcon}
 						/>
 						<Text style={styles.fallbackText}>
-							Unable to load this PDF in the reader.
+							Unable to load this EPUB in the reader.
+						</Text>
+						<Pressable
+							style={styles.openExternalButton}
+							onPress={handleOpenExternally}
+						>
+							<Text style={styles.openExternalText}>Open in external app</Text>
+						</Pressable>
+					</View>
+				) : (
+					<View style={styles.fallbackContainer}>
+						<FontAwesome
+							name={attachmentType === "epub" ? "book" : "file-pdf-o"}
+							size={40}
+							style={styles.fallbackIcon}
+						/>
+						<Text style={styles.fallbackText}>
+							Unable to load this document in the reader.
 						</Text>
 						<Pressable
 							style={styles.openExternalButton}

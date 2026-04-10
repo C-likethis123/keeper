@@ -138,6 +138,7 @@ pub fn run() {
             storage::notes_root_path_command,
             storage::copy_attachment,
             storage::delete_attachment,
+            storage::copy_image,
             storage::wiki_links_upsert,
             storage::wiki_links_delete_for_note,
             storage::wiki_links_get_backlinks,

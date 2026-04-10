@@ -135,6 +135,22 @@ pub fn delete_attachment(app: tauri::AppHandle, relative_path: String) -> Result
     Ok(())
 }
 
+#[tauri::command]
+pub fn copy_image(
+    app: tauri::AppHandle,
+    source_path: String,
+    filename: String,
+) -> Result<String, String> {
+    let notes_root = notes_root_path(&app)?;
+    let assets_dir = notes_root.join("assets");
+    std::fs::create_dir_all(&assets_dir)
+        .map_err(|e| format!("failed to create assets dir: {e}"))?;
+    let dest = assets_dir.join(&filename);
+    std::fs::copy(&source_path, &dest)
+        .map_err(|e| format!("failed to copy image: {e}"))?;
+    Ok(format!("assets/{}", filename))
+}
+
 // ─── Wiki Links Commands ───────────────────────────────────────
 
 #[tauri::command]
