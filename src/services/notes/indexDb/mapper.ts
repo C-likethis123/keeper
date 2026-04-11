@@ -64,13 +64,14 @@ export async function mapMarkdownPathToSqlItem(
 	}
 	const content = await file.text();
 	const parsed = parseFrontmatter(content);
+	const modified = parsed.modified ?? file.modificationTime ?? 0;
 	return {
 		id: parsed.id,
 		title: parsed.title,
 		summary: extractSummary(parsed.content),
 		isPinned: parsed.isPinned ? 1 : 0,
-		updatedAt: file.modificationTime ?? 0,
-		modified: parsed.modified ?? file.modificationTime ?? 0,
+		updatedAt: modified,
+		modified,
 		noteType: parsed.noteType ?? null,
 		status: parsed.noteType === "todo" ? (parsed.status ?? "open") : null,
 		contentHash: computeContentHash(content),
@@ -82,13 +83,14 @@ export async function mapMarkdownFileToSqlItem(
 ): Promise<NoteIndexSqlItem> {
 	const content = await entry.text();
 	const parsed = parseFrontmatter(content);
+	const modified = parsed.modified ?? entry.modificationTime ?? 0;
 	return {
 		id: parsed.id,
 		title: parsed.title,
 		summary: extractSummary(parsed.content),
 		isPinned: parsed.isPinned ? 1 : 0,
-		updatedAt: entry.modificationTime ?? 0,
-		modified: parsed.modified ?? entry.modificationTime ?? 0,
+		updatedAt: modified,
+		modified,
 		noteType: parsed.noteType ?? null,
 		status: parsed.noteType === "todo" ? (parsed.status ?? "open") : null,
 		contentHash: computeContentHash(content),

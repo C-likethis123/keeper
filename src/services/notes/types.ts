@@ -18,6 +18,7 @@ export interface Note {
 	createdAt?: number | null;
 	completedAt?: number | null;
 	attachment?: string | null;
+	modified?: number | null;
 }
 
 export type NoteSaveInput = Omit<Note, "lastUpdated">;

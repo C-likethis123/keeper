@@ -75,6 +75,7 @@ describe("NoteService", () => {
 				status: null,
 				createdAt: undefined,
 				completedAt: undefined,
+				attachment: null,
 			});
 		});
 
@@ -111,6 +112,7 @@ describe("NoteService", () => {
 				status: null,
 				createdAt: undefined,
 				completedAt: undefined,
+				attachment: null,
 			});
 		});
 

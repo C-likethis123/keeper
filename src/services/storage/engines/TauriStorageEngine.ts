@@ -23,6 +23,7 @@ type ReadEntryResult = {
 	createdAt: Note["createdAt"];
 	completedAt: Note["completedAt"];
 	attachment: Note["attachment"];
+	modified: Note["modified"];
 };
 
 type TauriInvoke = NonNullable<ReturnType<typeof getTauriInvoke>>;
@@ -51,6 +52,7 @@ export class TauriStorageEngine implements StorageEngine {
 	}
 
 	async saveNote(note: NoteSaveInput): Promise<Note> {
+		const modified = Date.now();
 		const updatedAt = await this.invoke<number>("write_note", {
 			input: {
 				id: note.id,
@@ -62,12 +64,14 @@ export class TauriStorageEngine implements StorageEngine {
 				createdAt: note.createdAt,
 				completedAt: note.completedAt,
 				attachment: note.attachment ?? null,
+				modified,
 			},
 		});
 		return {
 			...note,
 			isPinned: note.isPinned,
-			lastUpdated: updatedAt || Date.now(),
+			lastUpdated: modified,
+			modified,
 		};
 	}
 

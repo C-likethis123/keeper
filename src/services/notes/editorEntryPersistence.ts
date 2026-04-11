@@ -51,6 +51,7 @@ function buildPayload(
 			input.attachment !== undefined
 				? input.attachment
 				: (existingNote?.attachment ?? null),
+		modified: now,
 	};
 }
 

@@ -82,11 +82,12 @@ export class MobileStorageEngine implements StorageEngine {
 				return null;
 			}
 			const parsed = parseFrontmatter(await file.text());
+			const modified = parsed.modified ?? file.modificationTime ?? 0;
 			return {
 				id,
 				title: parsed.title,
 				content: parsed.content,
-				lastUpdated: file.modificationTime ?? 0,
+				lastUpdated: modified,
 				isPinned: parsed.isPinned,
 				noteType: parsed.noteType,
 				status: parsed.noteType === "todo" ? (parsed.status ?? null) : null,
@@ -95,6 +96,7 @@ export class MobileStorageEngine implements StorageEngine {
 				completedAt:
 					parsed.noteType === "todo" ? (parsed.completedAt ?? null) : null,
 				attachment: parsed.attachment ?? null,
+				modified,
 			};
 		} catch {
 			return null;
@@ -107,13 +109,14 @@ export class MobileStorageEngine implements StorageEngine {
 			dir.create({ intermediates: true });
 		}
 		const file = new File(NOTES_ROOT, `${note.id}.md`);
-		const content = stringifyFrontmatter(note);
+		const modified = Date.now();
+		const content = stringifyFrontmatter({ ...note, modified });
 		await file.write(content);
-		const updatedAt = file.modificationTime ?? Date.now();
 		return {
 			...note,
 			title: (note.title ?? "").trim(),
-			lastUpdated: updatedAt,
+			lastUpdated: modified,
+			modified,
 		};
 	}
 

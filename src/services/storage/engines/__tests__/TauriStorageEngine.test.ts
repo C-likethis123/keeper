@@ -45,24 +45,25 @@ describe("TauriStorageEngine", () => {
 		const { TauriStorageEngine } = await import("../TauriStorageEngine");
 		const engine = new TauriStorageEngine();
 
-		await expect(
-			engine.saveNote({
-				id: "tmpl-1",
-				title: "Template",
-				content: "body",
-				isPinned: true,
-				noteType: "template",
-				status: null,
-			}),
-		).resolves.toEqual({
+		const result = await engine.saveNote({
 			id: "tmpl-1",
 			title: "Template",
 			content: "body",
 			isPinned: true,
-			lastUpdated: 456,
 			noteType: "template",
 			status: null,
 		});
+
+		expect(result).toMatchObject({
+			id: "tmpl-1",
+			title: "Template",
+			content: "body",
+			isPinned: true,
+			noteType: "template",
+			status: null,
+			modified: expect.any(Number),
+		});
+		expect(result.lastUpdated).toBe(result.modified);
 		expect(invoke).toHaveBeenCalledWith("write_note", {
 			input: {
 				id: "tmpl-1",
@@ -72,6 +73,7 @@ describe("TauriStorageEngine", () => {
 				noteType: "template",
 				status: null,
 				attachment: null,
+				modified: result.modified,
 			},
 		});
 	});
