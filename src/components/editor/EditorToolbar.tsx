@@ -40,8 +40,8 @@ export function EditorToolbar({
   showRelatedNotes = false,
   onToggleRelatedNotes,
 }: EditorToolbarProps) {
-  const getCanUndo = useEditorState((s) => s.getCanUndo);
-  const getCanRedo = useEditorState((s) => s.getCanRedo);
+  const canUndo = useEditorState((s) => s.getCanUndo());
+  const canRedo = useEditorState((s) => s.getCanRedo());
   const getFocusedBlock = useEditorState((s) => s.getFocusedBlock);
   const block = getFocusedBlock();
   const blockType = block?.type ?? null;
@@ -65,8 +65,6 @@ export function EditorToolbar({
   const canIndent = isListBlock && listLevel >= 0;
   const canConvertToCheckbox =
     blockType != null && blockType !== BlockType.checkboxList;
-  const canUndo = getCanUndo();
-  const canRedo = getCanRedo();
   const canAttachDocument = onAttachDocument != null;
   const canShowAttachment = onShowAttachment != null;
   const canHideAttachment = onHideAttachment != null;
