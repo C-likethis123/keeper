@@ -41,7 +41,7 @@ export interface EnterCommandContext {
   zone?: "summary" | "body";
   block: BlockNode;
   getBlockAtIndex: (i: number) => BlockNode | null;
-  detectBlockType: (index: number, content: string, opts?: DetectOpts) => boolean;
+  detectBlockType: (index: number, content: string, opts?: { ignoreContentChange?: boolean; preserveFocus?: boolean; onlyIfTypeChanges?: boolean }) => boolean;
   convertTrackedTodo: (index: number, opts?: { insertNextBlock?: boolean }) => boolean;
   updateBlockType: (index: number, type: BlockType) => void;
   focusBlock: (i: number) => void;
@@ -55,11 +55,11 @@ type EnterCommand = (ctx: EnterCommandContext) => boolean;
 
 ```ts
 // backspaceCommands.ts
+// Note: getCollapsibleSummary is imported directly from core/BlockNode — not passed via context
 export interface BackspaceCommandContext {
   index: number;
   block: BlockNode;
   prevBlock: BlockNode | null;
-  getCollapsibleSummary: (block: BlockNode) => string;
   updateBlockType: (index: number, type: BlockType) => void;
   deleteBlock: (index: number) => void;
   mergeWithPrevious: (index: number) => void;
@@ -125,7 +125,6 @@ const handleBackspaceAtStart = useCallback(
       : null;
     runBackspaceChain({
       index, block, prevBlock,
-      getCollapsibleSummary,
       updateBlockType, deleteBlock, mergeWithPrevious, focusBlock,
     });
   },
