@@ -42,8 +42,7 @@ export function EditorToolbar({
 }: EditorToolbarProps) {
   const canUndo = useEditorState((s) => s.getCanUndo());
   const canRedo = useEditorState((s) => s.getCanRedo());
-  const getFocusedBlock = useEditorState((s) => s.getFocusedBlock);
-  const block = getFocusedBlock();
+  const block = useEditorState((s) => s.getFocusedBlock());
   const blockType = block?.type ?? null;
   const listLevel = block ? getListLevel(block) : 0;
   const commandContext = useEditorCommandContext({

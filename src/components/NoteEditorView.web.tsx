@@ -21,6 +21,7 @@ import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { type EditorState, useEditorState } from "@/stores/editorStore";
+import { useTabStore } from "@/stores/tabStore";
 import { useToastStore } from "@/stores/toastStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
@@ -65,6 +66,24 @@ export default function NoteEditorView({
   const [todoStatus, setTodoStatus] = useState<Note["status"]>(
     note.noteType === "todo" ? (note.status ?? "open") : undefined,
   );
+
+  const { updateTabTitle, tabs, closeTab, activeTabId } = useTabStore();
+  const tab = tabs.find((t) => t.noteId === id);
+
+  const handleBack = useCallback(async () => {
+    if (tabs.length === 1 && tab && !tab.isPinned) {
+      closeTab(tab.id);
+      router.replace("/");
+    } else {
+      await leaveEditor();
+    }
+  }, [tabs.length, tab, closeTab, leaveEditor, router]);
+
+  useEffect(() => {
+    if (tab && title && tab.title !== title) {
+      updateTabTitle(tab.id, title);
+    }
+  }, [tab, title, updateTabTitle]);
 
   const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
   const [showRelatedNotes, setShowRelatedNotes] = useState(false);
@@ -411,7 +430,7 @@ export default function NoteEditorView({
         }}
         onSubmitEditing={() => focusBlock(0)}
         onBack={() => {
-          void leaveEditor();
+          void handleBack();
         }}
         onTogglePin={() => {
           void handleTogglePin();

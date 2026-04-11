@@ -37,13 +37,14 @@ function NewNoteEditorContent({
 
 function ExistingNoteEditorContent({ id }: { id: string }) {
 	const note = useSuspenseLoadNote(id);
-	const { activeTabId, updateTabTitle } = useTabStore();
+	const { tabs, updateTabTitle } = useTabStore();
+	const tab = tabs.find((t) => t.noteId === id);
 
 	useEffect(() => {
-		if (activeTabId && note?.title) {
-			updateTabTitle(activeTabId, note.title);
+		if (tab && note?.title && tab.title !== note.title) {
+			updateTabTitle(tab.id, note.title);
 		}
-	}, [activeTabId, note?.title, updateTabTitle]);
+	}, [tab, note?.title, updateTabTitle]);
 
 	if (!note) {
 		return <ErrorScreen errorMessage="Note not found" onRetry={() => {}} />;
@@ -92,8 +93,10 @@ export default function NoteEditorScreen() {
 	const createAndOpenNote = useCreateAndOpenNote();
 
 	const handleCloseActiveTab = useCallback(() => {
-		if (!activeTabId) return;
-		closeTab(activeTabId);
+		const currentActiveId = activeTabId || tabs.find(t => t.noteId === noteId)?.id;
+		if (!currentActiveId) return;
+
+		closeTab(currentActiveId);
 		const { activeTabId: nextId, tabs: remaining } = useTabStore.getState();
 		if (nextId) {
 			const nextTab = remaining.find((t) => t.id === nextId);
@@ -103,7 +106,13 @@ export default function NoteEditorScreen() {
 			}
 		}
 		router.replace("/");
-	}, [activeTabId, closeTab]);
+	}, [activeTabId, tabs, noteId, closeTab]);
+
+	useEffect(() => {
+		if (noteId) {
+			useTabStore.getState().openTab(noteId, initialTitle);
+		}
+	}, [noteId, initialTitle]);
 
 	useAppKeyboardShortcuts({
 		onNewTab: () => void createAndOpenNote(),
