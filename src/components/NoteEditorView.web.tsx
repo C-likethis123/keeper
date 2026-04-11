@@ -1,4 +1,5 @@
 import NoteEditorHeader from "@/components/NoteEditorHeader";
+import NoteRelatedNotes from "@/components/NoteRelatedNotes";
 import TemplatePickerModal from "@/components/TemplatePickerModal";
 import { createParagraphBlock } from "@/components/editor/core/BlockNode";
 import { FilterChip } from "@/components/shared/FilterChip";
@@ -6,6 +7,7 @@ import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { useRelatedNotes } from "@/hooks/useRelatedNotes";
 import { useStyles } from "@/hooks/useStyles";
 import { GitService } from "@/services/git/gitService";
 import {
@@ -65,6 +67,9 @@ export default function NoteEditorView({
   );
 
   const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
+  const [showRelatedNotes, setShowRelatedNotes] = useState(false);
+  const { backlinks, outgoing, loading: relatedNotesLoading } =
+    useRelatedNotes(id);
   const showToast = useToastStore((s) => s.showToast);
   const { width: windowWidth } = useWindowDimensions();
   const isDesktop = Platform.OS === "web";
@@ -377,6 +382,14 @@ export default function NoteEditorView({
     return unsubscribe;
   }, [leaveEditor, navigation]);
 
+  const handleNavigateToNote = useCallback(
+    (noteId: string) => {
+      void leaveEditor();
+      router.push(`/editor?id=${noteId}`);
+    },
+    [leaveEditor, router],
+  );
+
   const hasAttachment = attachmentPath !== null && attachmentType !== null;
   const showSplit = hasAttachment && isAttachmentVisible;
   const splitFlexDir = isDesktop ? "row" : "column";
@@ -459,6 +472,8 @@ export default function NoteEditorView({
               onShowAttachment={handleShowAttachment}
               onHideAttachment={handleHideAttachment}
               onRemoveAttachment={() => void handleRemoveAttachment()}
+              showRelatedNotes={showRelatedNotes}
+              onToggleRelatedNotes={() => setShowRelatedNotes((v) => !v)}
             />
             <EditorScrollProvider>
               <HybridEditor
@@ -468,6 +483,17 @@ export default function NoteEditorView({
               />
             </EditorScrollProvider>
           </View>
+
+          {showRelatedNotes && (
+            <View style={styles.relatedNotesContainer}>
+              <NoteRelatedNotes
+                backlinks={backlinks}
+                outgoing={outgoing}
+                loading={relatedNotesLoading}
+                onNavigate={handleNavigateToNote}
+              />
+            </View>
+          )}
         </View>
       </View>
 
@@ -537,6 +563,11 @@ function createStyles(theme: ExtendedTheme) {
       fontSize: 13,
       fontWeight: "600",
       color: theme.colors.text,
+    },
+    relatedNotesContainer: {
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      maxHeight: 280,
     },
   });
 }

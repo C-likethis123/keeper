@@ -139,6 +139,79 @@ ${EPUB_JS}
         if (text) postMsg({ type: 'textSelected', text: text });
       });
 
+      // Intercept link clicks to prevent black screen on navigation failures.
+      // epub.js renders content in a sub-iframe and adds its own capture-phase
+      // click listener to the sub-iframe's document. Because epub.js registers
+      // that listener before our hook runs, it fires first and calls display()
+      // with a blob:-resolved URL (broken for base64 books). Listening on the
+      // sub-iframe's *window* instead of its document puts us earlier in the
+      // capture chain, so we can stopImmediatePropagation() before epub.js fires.
+      rendition.hooks.content.register(function(contents) {
+        var doc = contents.document;
+        var win = contents.window || (doc && doc.defaultView);
+        if (!win) return;
+
+        win.addEventListener('click', function(e) {
+          var target = e.target;
+          while (target && target !== doc.documentElement) {
+            if (target.tagName === 'A') {
+              var href = target.getAttribute('href');
+              if (!href) break;
+
+              // External links — fall through to browser/epub.js default handling
+              if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
+                break;
+              }
+
+              e.preventDefault();
+              e.stopImmediatePropagation();
+
+              // Bare fragment (e.g. "#section1") — scroll within current content
+              if (href.startsWith('#')) {
+                var id = href.slice(1);
+                var anchor = doc.getElementById(id) || doc.querySelector('[name="' + id + '"]');
+                if (anchor) anchor.scrollIntoView({ behavior: 'smooth' });
+                return;
+              }
+
+              // Separate path and fragment
+              var hashIdx = href.indexOf('#');
+              var path = hashIdx !== -1 ? href.slice(0, hashIdx) : href;
+              var fragment = hashIdx !== -1 ? href.slice(hashIdx + 1) : '';
+
+              function tryDisplay(h) {
+                return rendition.display(h).catch(function() { return Promise.reject(new Error('display failed: ' + h)); });
+              }
+
+              // Resolution strategy: full href → path only → spine filename match
+              tryDisplay(href)
+                .catch(function() { return path && path !== href ? tryDisplay(path) : Promise.reject(new Error('no path')); })
+                .catch(function() {
+                  // Search spine items for a filename match (handles relative paths like ../Text/ch01.xhtml)
+                  var filename = path.split('/').pop();
+                  var spineItems = (book.spine && (book.spine.spineItems || book.spine.items)) || [];
+                  var found = null;
+                  for (var i = 0; i < spineItems.length; i++) {
+                    var item = spineItems[i];
+                    if (item && item.href) {
+                      var itemFile = item.href.split('/').pop().split('?')[0];
+                      if (item.href === path || item.href.endsWith('/' + path) || itemFile === filename) {
+                        found = fragment ? item.href + '#' + fragment : item.href;
+                        break;
+                      }
+                    }
+                  }
+                  return found ? tryDisplay(found) : Promise.reject(new Error('not in spine'));
+                })
+                .catch(function() { /* all strategies exhausted — leave current view intact */ });
+
+              return;
+            }
+            target = target.parentElement;
+          }
+        }, true); // capture phase: fires before epub.js's document-level handler
+      });
+
       var display = initialCfi ? rendition.display(initialCfi) : rendition.display();
       display.then(function() {
         renditionReady = true;

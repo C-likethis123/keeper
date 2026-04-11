@@ -26,6 +26,8 @@ interface EditorToolbarProps {
   onShowAttachment?: () => void;
   onHideAttachment?: () => void;
   onRemoveAttachment?: () => void;
+  showRelatedNotes?: boolean;
+  onToggleRelatedNotes?: () => void;
 }
 
 export function EditorToolbar({
@@ -35,6 +37,8 @@ export function EditorToolbar({
   onShowAttachment,
   onHideAttachment,
   onRemoveAttachment,
+  showRelatedNotes = false,
+  onToggleRelatedNotes,
 }: EditorToolbarProps) {
   const getCanUndo = useEditorState((s) => s.getCanUndo);
   const getCanRedo = useEditorState((s) => s.getCanRedo);
@@ -121,6 +125,14 @@ export function EditorToolbar({
           onPress={onAttachDocument ?? (() => {})}
           disabled={!canAttachDocument}
           label="Attach PDF or ePub"
+        />
+      )}
+      {/* Related Notes toggle */}
+      {onToggleRelatedNotes && (
+        <IconButton
+          name={showRelatedNotes ? "unlink" : "link"}
+          onPress={onToggleRelatedNotes}
+          label={showRelatedNotes ? "Hide related notes" : "Show related notes"}
         />
       )}
     </View>

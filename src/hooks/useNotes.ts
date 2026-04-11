@@ -9,6 +9,7 @@ import {
 import {
 	notesIndexDbGetGraphNeighborhood,
 	notesIndexDbGetMocScores,
+	notesIndexDbGetOrphanedNotes,
 	notesIndexDbGetRecentlyEditedNotes,
 } from "@/services/notes/notesIndexDb";
 import type { Note, NoteListFilters } from "@/services/notes/types";
@@ -42,6 +43,7 @@ function computeSections(
 	pinnedNotes: Note[],
 	recentlyEditedNoteIds: Set<string>,
 	mocNeighborhoods: Map<string, Set<string>>,
+	orphanedNoteIds: Set<string>,
 ): NoteSection[] {
 	const sections: NoteSection[] = [];
 
@@ -81,7 +83,17 @@ function computeSections(
 		}
 	}
 
-	// 4. All Notes (everything not already shown)
+	// 4. Uncategorized (orphaned notes with no links)
+	const uncategorizedNotes = allNotes.filter((n) => orphanedNoteIds.has(n.id));
+	if (uncategorizedNotes.length > 0) {
+		sections.push({
+			id: "uncategorized",
+			title: "Uncategorized",
+			notes: uncategorizedNotes,
+		});
+	}
+
+	// 5. All Notes (everything not already shown)
 	const shownNoteIds = new Set<string>();
 	for (const section of sections) {
 		for (const note of section.notes) {
@@ -150,9 +162,12 @@ async function loadSectionMetadata() {
 		}
 	}
 
+	const orphanedNoteIds = new Set(await notesIndexDbGetOrphanedNotes());
+
 	return {
 		recentlyEditedNoteIds,
 		mocNeighborhoods,
+		orphanedNoteIds,
 	};
 }
 
@@ -184,9 +199,11 @@ export default function useNotes() {
 	const [sectionMetadata, setSectionMetadata] = useState<{
 		recentlyEditedNoteIds: Set<string>;
 		mocNeighborhoods: Map<string, Set<string>>;
+		orphanedNoteIds: Set<string>;
 	}>({
 		recentlyEditedNoteIds: new Set(),
 		mocNeighborhoods: new Map(),
+		orphanedNoteIds: new Set(),
 	});
 	const sectionRequestVersionRef = useRef(0);
 
@@ -338,6 +355,7 @@ export default function useNotes() {
 				setSectionMetadata({
 					recentlyEditedNoteIds: new Set(),
 					mocNeighborhoods: new Map(),
+					orphanedNoteIds: new Set(),
 				});
 			});
 
@@ -354,6 +372,7 @@ export default function useNotes() {
 			pinnedNotes,
 			sectionMetadata.recentlyEditedNoteIds,
 			sectionMetadata.mocNeighborhoods,
+			sectionMetadata.orphanedNoteIds,
 		);
 	}, [allNotes, sectionMetadata]);
 

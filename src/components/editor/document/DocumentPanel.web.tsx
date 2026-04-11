@@ -71,6 +71,32 @@ export function DocumentPanel({
 		}
 	}, [attachmentType, theme, epubBase64, savedPosition]);
 
+	// Fetch EPUB as base64 for the viewer
+	useEffect(() => {
+		let cancelled = false;
+		if (!fileUri || attachmentType !== "epub") {
+			setEpubBase64(null);
+			return;
+		}
+		fetch(fileUri)
+			.then((r) => r.arrayBuffer())
+			.then((buf) => {
+				if (cancelled) return;
+				const bytes = new Uint8Array(buf);
+				let binary = "";
+				for (let i = 0; i < bytes.byteLength; i++) {
+					binary += String.fromCharCode(bytes[i]);
+				}
+				setEpubBase64(btoa(binary));
+			})
+			.catch(() => {
+				if (!cancelled) setEpubBase64(null);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [fileUri, attachmentType]);
+
 	// Fetch PDF as base64 for the custom viewer
 	useEffect(() => {
 		let cancelled = false;
