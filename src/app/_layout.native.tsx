@@ -1,9 +1,11 @@
 import { FilterDrawerContent } from "@/components/FilterDrawerContent";
+import ConflictResolutionModal from "@/components/shared/ConflictResolutionModal";
 import { ToastOverlay } from "@/components/shared/Toast";
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppStartup } from "@/hooks/useAppStartup";
+import { useConflictResolution } from "@/hooks/useConflictResolution";
 import { useStyles } from "@/hooks/useStyles";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { ThemeProvider } from "@react-navigation/native";
@@ -41,6 +43,8 @@ const App = ({
 	initError,
 }: { isHydrated: boolean; initError: string | null }) => {
 	const styles = useStyles(createStyles);
+	const { conflicts, isShowingModal, hideConflictModal, hasUnresolvedConflicts } =
+		useConflictResolution();
 
 	if (!isHydrated) {
 		return (
@@ -74,6 +78,13 @@ const App = ({
 					<Drawer.Screen name="editor" options={{ swipeEnabled: false }} />
 				</Drawer>
 				<ToastOverlay />
+				{hasUnresolvedConflicts && (
+					<ConflictResolutionModal
+						visible={isShowingModal}
+						conflicts={conflicts}
+						onComplete={hideConflictModal}
+					/>
+				)}
 			</GestureHandlerRootView>
 		</SafeAreaProvider>
 	);

@@ -1,4 +1,4 @@
-import type { GitEngine } from "@/services/git/engines/GitEngine";
+import type { GitConflictFile, GitEngine } from "@/services/git/engines/GitEngine";
 import type { NoteSaveInput } from "@/services/notes/types";
 import type { StartupTelemetry } from "@/services/startup/startupTelemetry";
 
@@ -42,6 +42,8 @@ export interface InitializationResult {
 	error?: string;
 	reason?: string;
 	metrics: StartupMetrics;
+	/** Present when merge resulted in conflicts that need manual resolution */
+	conflicts?: GitConflictFile[];
 }
 
 export type RemoteSyncMetrics = Omit<
@@ -53,6 +55,8 @@ export interface SyncWithRemoteResult {
 	success: boolean;
 	error?: string;
 	metrics: RemoteSyncMetrics;
+	/** Present when merge resulted in conflicts that need manual resolution */
+	conflicts?: GitConflictFile[];
 }
 
 export type GitJournalOperation = "add" | "modify" | "delete";

@@ -25,6 +25,14 @@ pub struct GitStatusItem {
     pub status: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GitConflictFile {
+    pub path: String,
+    pub base_content: Option<String>,
+    pub ours_content: Option<String>,
+    pub theirs_content: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GitMergeAuthor {
     pub name: String,
@@ -588,6 +596,108 @@ pub fn changed_markdown_paths(
     Ok(changed)
 }
 
+/// Get all conflicted files with their base, ours, and theirs content
+pub fn get_conflicted_files(repo_path: &str) -> Result<Vec<GitConflictFile>, String> {
+    let repo = open_repo(repo_path)?;
+    let index = repo.index().map_err(format_git_error)?;
+
+    // Collect unique paths from conflict entries
+    let mut path_set = std::collections::BTreeSet::new();
+    for entry in index.iter() {
+        let flags = entry.flags;
+        // Check if this is a conflict entry (stage > 0)
+        let stage = (flags >> 4) & 0x3;
+        if stage != 0 {
+            let path_bytes = String::from_utf8_lossy(&entry.path);
+            path_set.insert(path_bytes.into_owned());
+        }
+    }
+
+    let mut result = Vec::new();
+    for path in path_set {
+        // Stage 1 = base (common ancestor)
+        // Stage 2 = ours (local)
+        // Stage 3 = theirs (remote)
+        let find_stage = |stage: i32| -> Option<String> {
+            let path_ref = &path;
+            index
+                .get_path(std::path::Path::new(path_ref), stage)
+                .and_then(|entry| {
+                    repo.find_blob(entry.id).ok().and_then(|blob| {
+                        String::from_utf8(blob.content().to_vec()).ok()
+                    })
+                })
+        };
+
+        result.push(GitConflictFile {
+            path: path.clone(),
+            base_content: find_stage(1),
+            ours_content: find_stage(2),
+            theirs_content: find_stage(3),
+        });
+    }
+
+    Ok(result)
+}
+
+/// Resolve a conflict by choosing a specific version
+/// strategy: "ours" | "theirs" | "base" | "manual" (with provided content)
+pub fn resolve_conflict(
+    repo_path: &str,
+    path: &str,
+    strategy: &str,
+    manual_content: Option<&str>,
+) -> Result<(), String> {
+    let repo = open_repo(repo_path)?;
+    let mut index = repo.index().map_err(format_git_error)?;
+
+    // Get the blob for the chosen version
+    let chosen_content = match strategy {
+        "ours" | "theirs" | "base" => {
+            let stage = match strategy {
+                "base" => 1,
+                "ours" => 2,
+                "theirs" => 3,
+                _ => unreachable!(),
+            };
+            let entry = index
+                .get_path(std::path::Path::new(path), stage)
+                .ok_or_else(|| format!("No conflict entry found for path: {path}"))?;
+            let blob = repo.find_blob(entry.id).map_err(format_git_error)?;
+            blob.content().to_vec()
+        }
+        "manual" => {
+            manual_content
+                .ok_or_else(|| "RESOLVE_CONFLICT: manual content required but not provided".to_string())?
+                .as_bytes()
+                .to_vec()
+        }
+        _ => return Err(format!("RESOLVE_CONFLICT: unknown strategy '{strategy}'")),
+    };
+
+    // Write the chosen content to the working directory
+    let full_path = std::path::Path::new(repo_path).join(path);
+    std::fs::write(&full_path, chosen_content).map_err(|e| format!("RESOLVE_CONFLICT: {e}"))?;
+
+    // Add the resolved file to the index (removes conflict entries)
+    index
+        .add_path(std::path::Path::new(path))
+        .map_err(format_git_error)?;
+    index.write().map_err(format_git_error)?;
+
+    Ok(())
+}
+
+/// Check if there are any unresolved conflicts
+pub fn has_unresolved_conflicts(repo_path: &str) -> Result<bool, String> {
+    let repo = open_repo(repo_path)?;
+    let index = repo.index().map_err(format_git_error)?;
+    Ok(index.iter().any(|entry| {
+        let stage = (entry.flags >> 4) & 0x3;
+        stage != 0
+    }))
+}
+
 fn open_repo(repo_path: &str) -> Result<Repository, String> {
     Repository::open(repo_path).map_err(format_git_error)
 }
@@ -901,6 +1011,67 @@ pub extern "C" fn git_status(repo_path: *const c_char) -> i32 {
         0
     } else {
         -1
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn git_conflicted_files_json(repo_path: *const c_char) -> *mut c_char {
+    let repo_path = match c_string_arg(repo_path) {
+        Ok(value) => value,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    match get_conflicted_files(&repo_path) {
+        Ok(items) => c_json_result(&items),
+        Err(e) => { set_last_error(e); std::ptr::null_mut() }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn git_resolve_conflict(
+    repo_path: *const c_char,
+    path: *const c_char,
+    strategy: *const c_char,
+    manual_content: *const c_char,
+) -> i32 {
+    let repo_path = match c_string_arg(repo_path) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let path = match c_string_arg(path) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let strategy = match c_string_arg(strategy) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let manual_content = if manual_content.is_null() {
+        None
+    } else {
+        match c_string_arg(manual_content) {
+            Ok(value) => Some(value),
+            Err(code) => return code,
+        }
+    };
+
+    if resolve_conflict(&repo_path, &path, &strategy, manual_content.as_deref()).is_ok() {
+        0
+    } else {
+        -1
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn git_has_unresolved_conflicts(repo_path: *const c_char) -> i32 {
+    let repo_path = match c_string_arg(repo_path) {
+        Ok(value) => value,
+        Err(_) => return -1,
+    };
+
+    match has_unresolved_conflicts(&repo_path) {
+        Ok(has_conflicts) => if has_conflicts { 1 } else { 0 },
+        Err(_) => -1,
     }
 }
 
@@ -1235,4 +1406,89 @@ pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule
         .ok()
         .and_then(|changed| serde_json::to_string(&changed).ok());
     android_json_result(&mut env, payload)
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule_git_1conflicted_1files_1json(
+    env: *mut RawJniEnv,
+    _: jobject,
+    repo_path: jstring,
+) -> jstring {
+    let mut env = match android_env(env) {
+        Ok(value) => value,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let repo_path = match android_jstring_arg(&mut env, repo_path) {
+        Ok(value) => value,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let payload = get_conflicted_files(&repo_path)
+        .ok()
+        .and_then(|items| serde_json::to_string(&items).ok());
+    android_json_result(&mut env, payload)
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule_git_1resolve_1conflict(
+    env: *mut RawJniEnv,
+    _: jobject,
+    repo_path: jstring,
+    path: jstring,
+    strategy: jstring,
+    manual_content: jstring,
+) -> jint {
+    let mut env = match android_env(env) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let repo_path = match android_jstring_arg(&mut env, repo_path) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let path = match android_jstring_arg(&mut env, path) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let strategy = match android_jstring_arg(&mut env, strategy) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let manual_content_value = if manual_content.is_null() {
+        None
+    } else {
+        match android_jstring_arg(&mut env, manual_content) {
+            Ok(value) => Some(value),
+            Err(code) => return code,
+        }
+    };
+
+    if resolve_conflict(&repo_path, &path, &strategy, manual_content_value.as_deref()).is_ok() {
+        0
+    } else {
+        -1
+    }
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule_git_1has_1unresolved_1conflicts(
+    env: *mut RawJniEnv,
+    _: jobject,
+    repo_path: jstring,
+) -> jint {
+    let mut env = match android_env(env) {
+        Ok(value) => value,
+        Err(_) => return -1,
+    };
+    let repo_path = match android_jstring_arg(&mut env, repo_path) {
+        Ok(value) => value,
+        Err(_) => return -1,
+    };
+
+    match has_unresolved_conflicts(&repo_path) {
+        Ok(has_conflicts) => if has_conflicts { 1 } else { 0 },
+        Err(_) => -1,
+    }
 }

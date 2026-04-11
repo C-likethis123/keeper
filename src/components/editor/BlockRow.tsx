@@ -130,6 +130,20 @@ export const BlockRow = React.memo(function BlockRow({
 		};
 	}, [index, theme]);
 
+	const isActive = activeDragIndex.value === index;
+
+	// Conditional styles for the sticky behavior on web video blocks
+	const stickyStyles =
+		Platform.OS === "web" &&
+		config.block.type === BlockType.video &&
+		!isActive // Only apply sticky if not actively being dragged
+			? {
+					position: "sticky" as any,
+					top: 0,
+					zIndex: 20, // Ensure it stays above other blocks when sticky
+				}
+			: {};
+
 	if (!block) {
 		return null;
 	}
@@ -185,7 +199,7 @@ export const BlockRow = React.memo(function BlockRow({
 
 	return (
 		<Animated.View
-			style={[styles.blockWrapper, animatedStyle]}
+			style={[styles.blockWrapper, animatedStyle, stickyStyles]} // Apply stickyStyles here
 			collapsable={false}
 			onPointerEnter={() => setIsRowHovered(true)}
 			onPointerLeave={() => setIsRowHovered(false)}
@@ -202,13 +216,10 @@ export const BlockRow = React.memo(function BlockRow({
 					styles.rowShell,
 					hasBlockSelection && styles.rowShellSelected,
 					{
-						position:
-							Platform.OS === "web" && config.block.type === BlockType.video
-								? // biome-ignore lint/suspicious/noExplicitAny: sticky is web-only
-									("sticky" as any)
-								: "relative",
-						zIndex: config.block.type === BlockType.video ? 20 : 1,
-						top: config.block.type === BlockType.video ? 0 : undefined,
+						// Remove sticky styles from here, make it relative
+						position: "relative",
+						// zIndex: config.block.type === BlockType.video ? 1 : 1, // Keep default zIndex if not sticky
+						top: undefined,
 					},
 				]}
 			>

@@ -1,6 +1,7 @@
 import type {
 	GitChangedPaths,
 	GitCheckoutOptions,
+	GitConflictFile,
 	GitMergeOptions,
 	GitStatusItem,
 } from "@/services/git/engines/GitEngine";
@@ -26,6 +27,14 @@ interface KeeperGitBridgeSpec {
 		fromOid: string,
 		toOid: string,
 	): Promise<GitChangedPaths>;
+	getConflictedFiles(repoPath: string): Promise<GitConflictFile[]>;
+	resolveConflict(
+		repoPath: string,
+		path: string,
+		strategy: string,
+		manualContent: string | null,
+	): Promise<void>;
+	hasUnresolvedConflicts(repoPath: string): Promise<boolean>;
 }
 
 const nativeBridgeRaw = nativeBridgeModule as KeeperGitBridgeSpec | null;
@@ -84,6 +93,15 @@ const nativeBridge: KeeperGitBridgeSpec | undefined = nativeBridgeRaw
 				parseMaybeJson<GitChangedPaths>(
 					await nativeBridgeRaw.changedMarkdownPaths(repoPath, fromOid, toOid),
 				),
+			getConflictedFiles: async (repoPath: string) =>
+				parseMaybeJson<GitConflictFile[]>(
+					await nativeBridgeRaw.getConflictedFiles(repoPath),
+				),
+			resolveConflict: nativeBridgeRaw.resolveConflict.bind(nativeBridgeRaw),
+			hasUnresolvedConflicts: async (repoPath: string) => {
+				const result = await nativeBridgeRaw.hasUnresolvedConflicts(repoPath);
+				return typeof result === "number" ? result === 1 : result;
+			},
 		}
 	: undefined;
 

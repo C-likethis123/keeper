@@ -1,9 +1,11 @@
 import type {
 	GitChangedPaths,
 	GitCheckoutOptions,
+	GitConflictFile,
 	GitEngine,
 	GitMergeOptions,
 	GitStatusItem,
+	ConflictResolutionStrategy,
 } from "@/services/git/engines/GitEngine";
 import {
 	getRustGitNativeBridge,
@@ -35,6 +37,14 @@ interface RustNativeBridge {
 		fromOid: string,
 		toOid: string,
 	): Promise<GitChangedPaths>;
+	getConflictedFiles(repoPath: string): Promise<GitConflictFile[]>;
+	resolveConflict(
+		repoPath: string,
+		path: string,
+		strategy: string,
+		manualContent: string | null,
+	): Promise<void>;
+	hasUnresolvedConflicts(repoPath: string): Promise<boolean>;
 }
 
 type RustBridge =
@@ -218,5 +228,46 @@ export class RustGitEngine implements GitEngine {
 			fromOid,
 			toOid,
 		);
+	}
+
+	getConflictedFiles(dir: string): Promise<GitConflictFile[]> {
+		if (this.bridge.kind === "tauri") {
+			return this.bridge.invoke<GitConflictFile[]>("git_conflicted_files_repo", {
+				repoPath: dir,
+			});
+		}
+		return this.bridge.module.getConflictedFiles(uriToGitPath(dir));
+	}
+
+	resolveConflict(
+		dir: string,
+		path: string,
+		strategy: ConflictResolutionStrategy,
+		manualContent?: string,
+	): Promise<void> {
+		const gitPath = uriToGitPath(dir);
+		if (this.bridge.kind === "tauri") {
+			return this.bridge.invoke("git_resolve_conflict_repo", {
+				repoPath: gitPath,
+				path,
+				strategy,
+				manualContent: manualContent ?? null,
+			});
+		}
+		return this.bridge.module.resolveConflict(
+			gitPath,
+			path,
+			strategy,
+			manualContent ?? null,
+		);
+	}
+
+	hasUnresolvedConflicts(dir: string): Promise<boolean> {
+		if (this.bridge.kind === "tauri") {
+			return this.bridge.invoke<boolean>("git_has_unresolved_conflicts_repo", {
+				repoPath: dir,
+			});
+		}
+		return this.bridge.module.hasUnresolvedConflicts(uriToGitPath(dir));
 	}
 }

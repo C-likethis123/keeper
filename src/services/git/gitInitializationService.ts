@@ -1,3 +1,4 @@
+import type { GitConflictFile } from "@/services/git/engines/GitEngine";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import {
 	type StartupTelemetry,
@@ -226,6 +227,9 @@ export class GitInitializationService {
 			this.applySyncMetrics(metrics, syncResult.metrics);
 
 			if (syncResult.success) {
+				// Check if there are unresolved conflicts from the sync
+				const conflicts = syncResult.conflicts;
+
 				if (hasPendingJournal) {
 					const recoveryResult = await GitService.recoverPendingChanges();
 					if (!recoveryResult.success) {
@@ -247,6 +251,7 @@ export class GitInitializationService {
 					success: true,
 					wasCloned: false,
 					supported: true,
+					conflicts,
 					metrics,
 				};
 			}

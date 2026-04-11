@@ -1,4 +1,4 @@
-use git_core::{GitChangedPaths, GitMergeAuthor, GitMergeOptionsInput, GitStatusItem};
+use git_core::{GitChangedPaths, GitConflictFile, GitMergeAuthor, GitMergeOptionsInput, GitStatusItem};
 mod storage;
 
 #[tauri::command]
@@ -98,6 +98,38 @@ fn git_changed_markdown_paths_repo(
     git_core::changed_markdown_paths(&repo_path, &from_oid, &to_oid)
 }
 
+#[tauri::command]
+fn git_conflicted_files_repo(repo_path: String) -> Result<Vec<GitConflictFile>, String> {
+    let result = git_core::get_conflicted_files(&repo_path);
+    if let Err(ref e) = result {
+        eprintln!("[git_conflicted_files_repo] FAILED: {e}");
+    }
+    result
+}
+
+#[tauri::command]
+fn git_resolve_conflict_repo(
+    repo_path: String,
+    path: String,
+    strategy: String,
+    manual_content: Option<String>,
+) -> Result<(), String> {
+    let result = git_core::resolve_conflict(&repo_path, &path, &strategy, manual_content.as_deref());
+    if let Err(ref e) = result {
+        eprintln!("[git_resolve_conflict_repo] FAILED: {e}");
+    }
+    result
+}
+
+#[tauri::command]
+fn git_has_unresolved_conflicts_repo(repo_path: String) -> Result<bool, String> {
+    let result = git_core::has_unresolved_conflicts(&repo_path);
+    if let Err(ref e) = result {
+        eprintln!("[git_has_unresolved_conflicts_repo] FAILED: {e}");
+    }
+    result
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -124,6 +156,9 @@ pub fn run() {
             git_status_repo,
             git_head_oid_repo,
             git_changed_markdown_paths_repo,
+            git_conflicted_files_repo,
+            git_resolve_conflict_repo,
+            git_has_unresolved_conflicts_repo,
             storage::storage_initialize,
             storage::storage_reset_all_data,
             storage::read_note,

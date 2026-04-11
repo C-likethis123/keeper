@@ -184,6 +184,39 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 							? mergeError.message
 							: String(mergeError);
 					console.error("[GitInitializationService] Merge failed:", errorMsg);
+
+					// Check if this is a merge conflict (not a hard failure)
+					if (errorMsg.startsWith("MERGE_CONFLICT")) {
+						// Detect the conflicted files and return them for UI resolution
+						try {
+							const conflictStatuses = await this.gitEngine.status(NOTES_ROOT);
+							const conflictedPaths = conflictStatuses
+								.filter((s) => s.status.includes("conflicted"))
+								.map((s) => s.path);
+
+							console.log(
+								`[GitInitializationService] Detected ${conflictedPaths.length} conflicted files`,
+							);
+
+							// Get full conflict details (base, ours, theirs content)
+							const conflictedFiles =
+								await this.gitEngine.getConflictedFiles(NOTES_ROOT);
+
+							// Return success=true with conflicts so the UI can handle them
+							return {
+								success: true,
+								metrics,
+								conflicts: conflictedFiles,
+							};
+						} catch (conflictDetectError) {
+							console.error(
+								"[GitInitializationService] Failed to detect conflicts:",
+								conflictDetectError,
+							);
+							// Fall through to error return
+						}
+					}
+
 					return { success: false, error: errorMsg, metrics };
 				}
 			}

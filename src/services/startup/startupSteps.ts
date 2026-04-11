@@ -2,6 +2,7 @@ import { GitInitializationService } from "@/services/git/gitInitializationServic
 import type { GitRuntimeSupport } from "@/services/git/runtime";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { StorageInitializationService } from "@/services/storage/storageInitializationService";
+import { useConflictStore } from "@/stores/conflictStore";
 import { useStorageStore } from "@/stores/storageStore";
 import type { StartupTelemetry } from "./startupTelemetry";
 
@@ -74,6 +75,18 @@ export async function initializeGitStep(
 			console.log("[App] Git initialization succeeded:", {
 				wasCloned: result.wasCloned,
 			});
+
+			// Register conflicts if any were detected during sync
+			if (result.conflicts && result.conflicts.length > 0) {
+				useConflictStore.getState().setConflicts(result.conflicts);
+				const conflictMsg =
+					result.conflicts.length === 1
+						? "1 sync conflict detected"
+						: `${result.conflicts.length} sync conflicts detected`;
+				console.log(`[App] ${conflictMsg}, showing resolution UI`);
+				showToast(`${conflictMsg} - tap to resolve`, 8000);
+			}
+
 			if (result.error) {
 				showToast(result.error, 6000);
 			}

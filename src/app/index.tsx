@@ -1,5 +1,6 @@
 import HomeQuickComposer from "@/components/HomeQuickComposer";
 import HomeScreenHeader from "@/components/HomeScreenHeader";
+import ConflictBanner from "@/components/shared/ConflictBanner";
 import ResetAppDataModal from "@/components/ResetAppDataModal";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
@@ -155,7 +156,10 @@ function IndexContent() {
 					isLoadingMore={isLoading}
 					hasMore={hasMore}
 					listHeaderComponent={
-						<HomeQuickComposer onPress={createAndOpenNote} />
+						<>
+							<ConflictBanner />
+							<HomeQuickComposer onPress={createAndOpenNote} />
+						</>
 					}
 				/>
 			</Suspense>

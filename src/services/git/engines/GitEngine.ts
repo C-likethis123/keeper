@@ -3,6 +3,13 @@ export interface GitStatusItem {
 	status: string;
 }
 
+export interface GitConflictFile {
+	path: string;
+	baseContent: string | null;
+	oursContent: string | null;
+	theirsContent: string | null;
+}
+
 export interface GitCheckoutOptions {
 	force?: boolean;
 	noUpdateHead?: boolean;
@@ -27,6 +34,8 @@ export interface GitChangedPaths {
 	deleted: string[];
 }
 
+export type ConflictResolutionStrategy = "ours" | "theirs" | "base" | "manual";
+
 export interface GitEngine {
 	clone(url: string, dir: string): Promise<void>;
 	fetch(dir: string): Promise<void>;
@@ -47,4 +56,12 @@ export interface GitEngine {
 		fromOid: string,
 		toOid: string,
 	): Promise<GitChangedPaths>;
+	getConflictedFiles(dir: string): Promise<GitConflictFile[]>;
+	resolveConflict(
+		dir: string,
+		path: string,
+		strategy: ConflictResolutionStrategy,
+		manualContent?: string,
+	): Promise<void>;
+	hasUnresolvedConflicts(dir: string): Promise<boolean>;
 }
