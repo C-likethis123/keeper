@@ -29,6 +29,7 @@ const TextInput = forwardRef<NativeTextInput, TextInputProps>(
 			multiline,
 			onChangeText,
 			onContentSizeChange,
+			onFocus,
 			style,
 			...props
 		},
@@ -96,6 +97,14 @@ const TextInput = forwardRef<NativeTextInput, TextInputProps>(
 			[onContentSizeChange, syncHeight],
 		);
 
+		const handleFocus = useCallback<NonNullable<TextInputProps["onFocus"]>>(
+			(event) => {
+				onFocus?.(event);
+				syncHeight();
+			},
+			[onFocus, syncHeight],
+		);
+
 		return (
 			<NativeTextInput
 				ref={inputRef}
@@ -103,6 +112,7 @@ const TextInput = forwardRef<NativeTextInput, TextInputProps>(
 				multiline={multiline}
 				onChangeText={handleChangeText}
 				onContentSizeChange={handleContentSizeChange}
+				onFocus={handleFocus}
 				style={[
 					style,
 					autoGrow && multiline && measuredHeight !== undefined
