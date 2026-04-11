@@ -69,6 +69,66 @@ export default function NoteEditorView({
   const { updateTabTitle, tabs, closeTab, activeTabId } = useTabStore();
   const tab = tabs.find((t) => t.noteId === id);
 
+  const showToast = useToastStore((s) => s.showToast);
+
+  const flushGitAndToastOnFailure = useCallback(
+    async (
+      reason: "note-exit" | "delete",
+      message?: string,
+    ): Promise<boolean> => {
+      const result = await GitService.flushPendingChanges({
+        reason,
+        message,
+        timeoutMs: 8000,
+      });
+      if (!result.success) {
+        showToast("Saved locally. Sync will retry shortly.");
+      }
+      return result.success;
+    },
+    [showToast],
+  );
+
+  const isLeavingRef = useRef(false);
+  const bypassNextBeforeRemoveRef = useRef(false);
+  const isNewEntryRef = useRef(!!isNew);
+
+  const { status, forceSave } = useAutoSave({
+    ...note,
+    title,
+    isPinned,
+    noteType: deriveNoteType(title),
+    status: deriveNoteType(title) === "todo" ? (todoStatus ?? "open") : null,
+    initialNoteType: note.noteType,
+    onPersisted: useCallback(() => {
+      isNewEntryRef.current = false;
+    }, []),
+    isNew,
+  });
+
+  const leaveEditor = useCallback(
+    async (action?: { type: string; payload?: object }) => {
+      if (isLeavingRef.current) {
+        return;
+      }
+
+      isLeavingRef.current = true;
+      try {
+        await forceSave();
+        await flushGitAndToastOnFailure("note-exit");
+        bypassNextBeforeRemoveRef.current = true;
+        if (action) {
+          navigation.dispatch(action);
+          return;
+        }
+        router.back();
+      } finally {
+        isLeavingRef.current = false;
+      }
+    },
+    [flushGitAndToastOnFailure, forceSave, navigation, router],
+  );
+
   const handleBack = useCallback(async () => {
     if (tabs.length === 1 && tab && !tab.isPinned) {
       closeTab(tab.id);
@@ -88,7 +148,6 @@ export default function NoteEditorView({
   const [showRelatedNotes, setShowRelatedNotes] = useState(false);
   const { backlinks, outgoing, loading: relatedNotesLoading } =
     useRelatedNotes(id);
-  const showToast = useToastStore((s) => s.showToast);
   const { width: windowWidth } = useWindowDimensions();
   const isDesktop = Platform.OS === "web";
 
@@ -144,9 +203,6 @@ export default function NoteEditorView({
     noteType,
     todoStatus,
   });
-  const isNewEntryRef = useRef(!!isNew);
-  const isLeavingRef = useRef(false);
-  const bypassNextBeforeRemoveRef = useRef(false);
   latestDraftRef.current = {
     title,
     isPinned,
@@ -202,20 +258,6 @@ export default function NoteEditorView({
     [buildCurrentNotePayload],
   );
 
-  const handlePersisted = useCallback(() => {
-    isNewEntryRef.current = false;
-  }, []);
-
-  const { status, forceSave } = useAutoSave({
-    ...note,
-    title,
-    isPinned,
-    noteType,
-    status: noteType === "todo" ? (todoStatus ?? "open") : null,
-    initialNoteType: note.noteType,
-    onPersisted: handlePersisted,
-    isNew,
-  });
   useAppKeyboardShortcuts({
     onForceSave: forceSave,
   });
@@ -253,47 +295,6 @@ export default function NoteEditorView({
     await persistCurrentEntry({ isPinned: nextIsPinned });
     setIsPinned(nextIsPinned);
   }, [persistCurrentEntry]);
-
-  const flushGitAndToastOnFailure = useCallback(
-    async (
-      reason: "note-exit" | "delete",
-      message?: string,
-    ): Promise<boolean> => {
-      const result = await GitService.flushPendingChanges({
-        reason,
-        message,
-        timeoutMs: 8000,
-      });
-      if (!result.success) {
-        showToast("Saved locally. Sync will retry shortly.");
-      }
-      return result.success;
-    },
-    [showToast],
-  );
-
-  const leaveEditor = useCallback(
-    async (action?: { type: string; payload?: object }) => {
-      if (isLeavingRef.current) {
-        return;
-      }
-
-      isLeavingRef.current = true;
-      try {
-        await forceSave();
-        await flushGitAndToastOnFailure("note-exit");
-        bypassNextBeforeRemoveRef.current = true;
-        if (action) {
-          navigation.dispatch(action);
-          return;
-        }
-        router.back();
-      } finally {
-        isLeavingRef.current = false;
-      }
-    },
-    [flushGitAndToastOnFailure, forceSave, navigation, router],
-  );
 
   const handleDeletePress = useCallback(async () => {
     await NoteService.deleteNote(id);

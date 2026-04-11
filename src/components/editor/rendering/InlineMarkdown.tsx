@@ -7,10 +7,12 @@ import {
 	type TextStyle,
 	View,
 } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface InlineMarkdownProps {
 	text: string;
 	style?: TextStyle;
+	cursorOffset?: number | null;
 	onLinkPress?: (url: string) => void;
 	onWikiLinkPress?: (title: string, event: GestureResponderEvent) => void;
 	onWikiLinkLongPress?: (title: string, event: GestureResponderEvent) => void;
@@ -22,17 +24,40 @@ interface TextSegment {
 	onPress?: (event: GestureResponderEvent) => void;
 	onLongPress?: (event: GestureResponderEvent) => void;
 	isMath?: boolean; // For inline math rendering
+	isCursor?: boolean; // For cursor positioning
 }
 
 /// Renders inline markdown formatting (bold, italic, code, links, wiki links, math)
 export function InlineMarkdown({
 	text,
 	style,
+	cursorOffset,
 	onLinkPress,
 	onWikiLinkPress,
 	onWikiLinkLongPress,
 }: InlineMarkdownProps) {
 	const theme = useExtendedTheme();
+	const [cursorVisible, setCursorVisible] = useState(true);
+	const cursorIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+	// Blink cursor
+	useEffect(() => {
+		if (cursorOffset === null) {
+			setCursorVisible(true);
+			return;
+		}
+
+		cursorIntervalRef.current = setInterval(() => {
+			setCursorVisible((v) => !v);
+		}, 530); // Standard blink interval
+
+		return () => {
+			if (cursorIntervalRef.current) {
+				clearInterval(cursorIntervalRef.current);
+			}
+		};
+	}, [cursorOffset]);
+
 	const segments = parseInlineMarkdown(
 		text,
 		style || {},
@@ -40,6 +65,7 @@ export function InlineMarkdown({
 		onWikiLinkPress,
 		onWikiLinkLongPress,
 		theme,
+		cursorOffset ?? undefined,
 	);
 
 	// Group segments into text runs and math segments
@@ -47,7 +73,51 @@ export function InlineMarkdown({
 	let currentTextRun: TextSegment[] = [];
 
 	segments.forEach((segment, index) => {
-		if (segment.isMath) {
+		if (segment.isCursor) {
+			// Flush current text run
+			if (currentTextRun.length > 0) {
+				elements.push(
+					<Text
+						// biome-ignore lint/suspicious/noArrayIndexKey: segment order stable
+						key={`text-${index}`}
+						style={style}
+					>
+						{currentTextRun.map((s, i) => (
+							<Text
+								// biome-ignore lint/suspicious/noArrayIndexKey: run order stable
+								key={i}
+								style={[style, s.style]}
+								onPress={s.onPress}
+								onLongPress={s.onLongPress}
+							>
+								{s.text}
+							</Text>
+						))}
+					</Text>,
+				);
+				currentTextRun = [];
+			}
+
+			// Render cursor
+			if (cursorVisible) {
+				elements.push(
+					<View
+						// biome-ignore lint/suspicious/noArrayIndexKey: cursor position
+						key={`cursor-${index}`}
+						style={{
+							width: 2,
+							height:
+								typeof style?.lineHeight === "number"
+									? style.lineHeight
+									: style?.fontSize || 16,
+							backgroundColor: style?.color || theme.colors.text,
+							marginHorizontal: 1,
+							alignSelf: "stretch",
+						}}
+					/>,
+				);
+			}
+		} else if (segment.isMath) {
 			// Flush current text run
 			if (currentTextRun.length > 0) {
 				elements.push(
@@ -141,6 +211,7 @@ function parseInlineMarkdown(
 		| ((title: string, event: GestureResponderEvent) => void)
 		| undefined,
 	theme: ReturnType<typeof useExtendedTheme>,
+	cursorOffset?: number,
 ): TextSegment[] {
 	const segments: TextSegment[] = [];
 	let buffer = "";
@@ -148,7 +219,13 @@ function parseInlineMarkdown(
 
 	const flushBuffer = () => {
 		if (buffer.length > 0) {
-			segments.push({ text: buffer, style: baseStyle });
+			// Check if cursor should be inserted at the end of this buffer
+			if (cursorOffset !== undefined && i === cursorOffset) {
+				segments.push({ text: buffer, style: baseStyle });
+				segments.push({ text: "", isCursor: true });
+			} else {
+				segments.push({ text: buffer, style: baseStyle });
+			}
 			buffer = "";
 		}
 	};
@@ -170,6 +247,10 @@ function parseInlineMarkdown(
 						? theme.typography.heading2
 						: theme.typography.heading3;
 			flushBuffer();
+			const nestedCursorOffset =
+				cursorOffset !== undefined && cursorOffset >= i + prefixLen
+					? cursorOffset - (i + prefixLen)
+					: undefined;
 			const nested = parseInlineMarkdown(
 				restOfLine,
 				{ ...baseStyle, ...headingStyle },
@@ -177,6 +258,7 @@ function parseInlineMarkdown(
 				onWikiLinkPress,
 				onWikiLinkLongPress,
 				theme,
+				nestedCursorOffset,
 			);
 			segments.push(...nested);
 			i = end;
@@ -294,6 +376,12 @@ function parseInlineMarkdown(
 				flushBuffer();
 				const boldText = text.substring(i + 2, endIndex);
 				// Recursively parse the bold text for nested formatting
+				const nestedCursorOffset =
+					cursorOffset !== undefined &&
+					cursorOffset >= i + 2 &&
+					cursorOffset < endIndex
+						? cursorOffset - (i + 2)
+						: undefined;
 				const nestedSegments = parseInlineMarkdown(
 					boldText,
 					{ ...baseStyle, fontWeight: "bold" },
@@ -301,6 +389,7 @@ function parseInlineMarkdown(
 					onWikiLinkPress,
 					onWikiLinkLongPress,
 					theme,
+					nestedCursorOffset,
 				);
 				segments.push(...nestedSegments);
 				i = endIndex + 2;
@@ -318,6 +407,12 @@ function parseInlineMarkdown(
 					flushBuffer();
 					const italicText = text.substring(i + 1, endIndex);
 					// Recursively parse the italic text for nested formatting
+					const nestedCursorOffset =
+						cursorOffset !== undefined &&
+						cursorOffset >= i + 1 &&
+						cursorOffset < endIndex
+							? cursorOffset - (i + 1)
+							: undefined;
 					const nestedSegments = parseInlineMarkdown(
 						italicText,
 						{ ...baseStyle, fontStyle: "italic" },
@@ -325,6 +420,7 @@ function parseInlineMarkdown(
 						onWikiLinkPress,
 						onWikiLinkLongPress,
 						theme,
+						nestedCursorOffset,
 					);
 					segments.push(...nestedSegments);
 					i = endIndex + 1;
@@ -357,11 +453,26 @@ function parseInlineMarkdown(
 		}
 
 		// Regular character
+		// Check if cursor should be inserted before this character
+		if (cursorOffset !== undefined && i === cursorOffset && buffer.length === 0) {
+			segments.push({ text: "", isCursor: true });
+		}
 		buffer += text[i];
 		i++;
 	}
 
-	flushBuffer();
+	// Final flush - check if cursor is at the end
+	if (buffer.length > 0) {
+		if (cursorOffset !== undefined && i === cursorOffset) {
+			segments.push({ text: buffer, style: baseStyle });
+			segments.push({ text: "", isCursor: true });
+		} else {
+			segments.push({ text: buffer, style: baseStyle });
+		}
+	} else if (cursorOffset !== undefined && i === cursorOffset) {
+		// Cursor at end with empty buffer
+		segments.push({ text: "", isCursor: true });
+	}
 	return segments;
 }
 

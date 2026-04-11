@@ -5,7 +5,7 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useStyles } from "@/hooks/useStyles";
 import { useEditorBlockSelection, useEditorState } from "@/stores/editorStore";
-import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { GestureResponderEvent } from "react-native";
 import {
 	type NativeMethods,
@@ -117,6 +117,19 @@ export function UnifiedBlock({
 		(e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
 			const { start, end } = e.nativeEvent.selection;
 			onSelectionChange(index, start, end);
+		},
+		[index, onSelectionChange],
+	);
+
+	// Track cursor position for custom cursor rendering
+	const [cursorOffset, setCursorOffset] = useState<number | null>(null);
+
+	const handleSelectionChangeWithCursor = useCallback(
+		(e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
+			const { start, end } = e.nativeEvent.selection;
+			onSelectionChange(index, start, end);
+			// Only show cursor when caret is collapsed (not a selection)
+			setCursorOffset(start === end ? start : null);
 		},
 		[index, onSelectionChange],
 	);
@@ -312,18 +325,26 @@ export function UnifiedBlock({
 		? { minHeight: minimumLineHeight }
 		: { minHeight: minimumLineHeight, maxHeight: Number.MAX_SAFE_INTEGER };
 
-	const showInput = isFocused && !hasBlockSelection;
+	const textInputStyle = [
+		styles.input,
+		inputSizeStyle,
+		textStyle,
+		// When focused: transparent text, keep caret visible
+		isFocused && !hasBlockSelection
+			? { color: "transparent", caretColor: "auto" }
+			: styles.hidden,
+	];
 
 	const textInputProps = {
 		ref: inputRef,
-		style: [styles.input, inputSizeStyle, textStyle, styles.inputVisible],
+		style: textInputStyle,
 		value: block.content,
 		...(selectionProp !== undefined && { selection: selectionProp }),
 		onChangeText: handleContentChange,
 		onFocus: handleFocus,
 		onBlur: handleBlur,
 		onKeyPress: handleKeyPress,
-		onSelectionChange: handleSelectionChange,
+		onSelectionChange: handleSelectionChangeWithCursor,
 		multiline: true,
 		numberOfLines: 1,
 		scrollEnabled: false,
@@ -370,23 +391,23 @@ export function UnifiedBlock({
 					style={[
 						{ flex: 1 },
 						applyListStyles ? styles.overlayContent : styles.overlay,
-						isFocused && !hasBlockSelection ? styles.hidden : null,
+						// InlineMarkdown always visible unless block-selected
+						hasBlockSelection ? styles.hidden : null,
 					]}
 					pointerEvents="box-none"
 				>
 					<InlineMarkdown
 						text={block.content}
 						style={textStyle}
+						cursorOffset={
+							isFocused && !hasBlockSelection ? cursorOffset : null
+						}
 						onWikiLinkPress={handleWikiLinkPress}
 						onWikiLinkLongPress={handleWikiLinkLongPress}
 					/>
 				</View>
 				<TextInput
 					{...textInputProps}
-					style={[
-						textInputProps.style,
-						!isFocused || hasBlockSelection ? styles.hidden : null,
-					]}
 					textAlignVertical={applyListStyles ? undefined : "top"}
 				/>
 			</View>
@@ -420,9 +441,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			paddingHorizontal: 2,
 			color: theme.colors.text,
 			...webMultilineTextInputReset,
-		},
-		inputVisible: {
-			opacity: 1,
 		},
 		hidden: {
 			display: "none",
