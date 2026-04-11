@@ -74,6 +74,9 @@ export async function initializeGitStep(
 			console.log("[App] Git initialization succeeded:", {
 				wasCloned: result.wasCloned,
 			});
+			if (result.error) {
+				showToast(result.error, 6000);
+			}
 			if (result.wasCloned) {
 				console.log("[App] Git repository was cloned, indexing notes...");
 				const rebuildStart = telemetry.stepStarted(

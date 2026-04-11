@@ -261,6 +261,7 @@ export class GitInitializationService {
 				success: true,
 				wasCloned: false,
 				supported: true,
+				error: syncResult.error,
 				metrics,
 			};
 		} catch (error) {

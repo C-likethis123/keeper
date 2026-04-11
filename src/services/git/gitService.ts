@@ -370,7 +370,17 @@ export class GitService {
 				didCommit = true;
 			}
 			await gitEngine.push(NOTES_ROOT);
-			await GitService.stateStore.writePendingJournal([]);
+
+			// Safely clear only the entries we just processed
+			const currentJournal = await GitService.stateStore.readPendingJournal();
+			const snapshotKeys = new Set(
+				snapshot.map((e) => `${e.filePath}:${e.updatedAt}`),
+			);
+			const remaining = currentJournal.filter(
+				(entry) => !snapshotKeys.has(`${entry.filePath}:${entry.updatedAt}`),
+			);
+			await GitService.stateStore.writePendingJournal(remaining);
+
 			return {
 				success: true,
 				didCommit,
