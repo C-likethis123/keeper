@@ -4,7 +4,7 @@ import type {
 	NoteType,
 } from "@/services/notes/types";
 
-export type StorageBackend = "desktop-native" | "mobile-native";
+type StorageBackend = "desktop-native" | "mobile-native";
 export interface NoteIndexPersistenceItem {
 	noteId: string;
 	summary: string;

@@ -17,7 +17,7 @@ import {
 	editorReducer,
 	initialEditorStateSlice,
 } from "@/components/editor/core/EditorState";
-export type { EditorState, EditorStateSlice };
+export type { EditorState };
 import { History } from "@/components/editor/core/History";
 import type { DocumentSelection } from "@/components/editor/core/Selection";
 import { createCollapsedSelection } from "@/components/editor/core/Selection";

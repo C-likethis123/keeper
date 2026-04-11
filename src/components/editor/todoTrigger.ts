@@ -1,4 +1,4 @@
-export interface TodoTriggerMatch {
+interface TodoTriggerMatch {
 	keyword: string;
 	body: string;
 	separator: string;

@@ -1,7 +1,7 @@
 import type { GitChangedPaths } from "@/services/git/engines/GitEngine";
 import { isIndexedNoteMarkdownPath } from "@/services/notes/templatePaths";
 import type { NoteListFilters } from "@/services/notes/types";
-import { getRuntimeStorageBackend } from "@/services/storage/runtime";
+import { Platform } from "react-native";
 import { storageEngine } from "@/services/storage/storageEngine";
 export { extractSummary } from "./indexDb/mapper";
 import { syncChanges } from "./indexDb/syncService";
@@ -59,7 +59,7 @@ export class NotesIndexService {
 			...changedPaths.modified,
 			...changedPaths.deleted,
 		].filter(isIndexedNoteMarkdownPath).length;
-		if (getRuntimeStorageBackend() === "mobile-native") {
+		if (Platform.OS !== "web") {
 			return {
 				mode: "incremental",
 				changedPathCount,

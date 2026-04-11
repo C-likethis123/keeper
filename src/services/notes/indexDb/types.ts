@@ -71,12 +71,12 @@ export interface NoteIndexSqlItem {
 	contentHash?: string | null;
 }
 
-export interface WikiLinkRow {
+interface WikiLinkRow {
 	source_id: string;
 	target_id: string;
 }
 
-export interface ContentHashRow {
+interface ContentHashRow {
 	note_id: string;
 	content_hash: string;
 }

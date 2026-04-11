@@ -2,7 +2,7 @@
 import { nanoid } from "nanoid";
 import { create } from "zustand";
 
-export interface Tab {
+interface Tab {
 	id: string;
 	noteId: string;
 	title: string;

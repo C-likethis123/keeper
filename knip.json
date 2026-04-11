@@ -1,18 +1,21 @@
 {
-	"$schema": "https://unpkg.com/knip@5/schema.json",
-	"ignoreDependencies": [
-		"@welldone-software/why-did-you-render",
-		"babel-plugin-dynamic-import-node",
-		"react-native-svg"
-	],
-	"ignoreBinaries": ["adb"],
-	"ignoreFiles": [
-		"babel.config.js",
-		"metro.config.js",
-		"src/components/editor/code/Strings.ts",
-		"src/services/notes/Notes.android.ts",
-		"src/services/notes/Notes.web.ts",
-		"wdyr.ts"
-	],
-	"tags": ["-lintignore"]
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignoreDependencies": [
+    "@welldone-software/why-did-you-render",
+    "babel-plugin-dynamic-import-node",
+    "react-native-svg",
+    "epubjs",
+    "pdfjs-dist",
+    "jszip"
+  ],
+  "ignoreBinaries": ["adb"],
+  "ignoreFiles": [
+    "babel.config.js",
+    "metro.config.js",
+    "src/components/editor/code/Strings.ts",
+    "wdyr.ts",
+    "**/*.web.ts",
+    "**/*.android.ts"
+  ],
+  "tags": ["-lintignore"]
 }

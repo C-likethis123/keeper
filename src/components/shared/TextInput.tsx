@@ -4,7 +4,7 @@ import {
 	type TextInputProps as NativeTextInputProps,
 } from "react-native";
 
-export type TextInputProps = NativeTextInputProps & {
+type TextInputProps = NativeTextInputProps & {
 	autoGrow?: boolean;
 };
 

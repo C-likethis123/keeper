@@ -4,6 +4,7 @@ import type { Note } from "@/services/notes/types";
 import { useTabStore } from "@/stores/tabStore";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
 	type GestureResponderEvent,
 	Pressable,

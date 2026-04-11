@@ -17,11 +17,3 @@ export function getTauriInvoke(): TauriInvoke | null {
 	}
 	return null;
 }
-
-export function isTauriRuntime(): boolean {
-	return getTauriInvoke() !== null;
-}
-
-export function getRuntimeStorageBackend(): "desktop-native" | "mobile-native" {
-	return isTauriRuntime() ? "desktop-native" : "mobile-native";
-}

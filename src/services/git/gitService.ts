@@ -17,7 +17,7 @@ import type {
 
 type FlushReason = "note-exit" | "delete" | "app-background";
 
-export interface GitFlushResult {
+interface GitFlushResult {
 	success: boolean;
 	didCommit: boolean;
 	didPush: boolean;

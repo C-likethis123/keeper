@@ -2,6 +2,14 @@ import { useEditorScrollView } from "@/components/editor/EditorScrollContext";
 import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
 import { useEditorKeyboardShortcuts } from "@/components/editor/keyboard/useEditorKeyboardShortcuts";
 import {
+	runBackspaceChain,
+	type BackspaceCommandContext,
+} from "@/components/editor/keyboard/backspaceCommands";
+import {
+	runEnterChain,
+	type EnterCommandContext,
+} from "@/components/editor/keyboard/enterCommands";
+import {
 	buildTrackedTodoTitle,
 	extractWikiLinkTitle,
 	resolveOrCreateTrackedTodoNoteId,
@@ -31,7 +39,6 @@ import {
 	BlockType,
 	createCheckboxBlock,
 	createParagraphBlock,
-	getCollapsibleSummary,
 	getListLevel,
 } from "./core/BlockNode";
 import { createCollapsedSelection } from "./core/Selection";
@@ -517,126 +524,46 @@ function HybridEditorContent() {
 	const handleBackspaceAtStart = useCallback(
 		(index: number) => {
 			const block = getBlockAtIndex(index);
-			if (!block) {
-				return;
-			}
-			const doc = useEditorState.getState().document;
-			const prevBlock = index > 0 ? doc.blocks[index - 1] : null;
+			if (!block) return;
+			const prevBlock =
+				index > 0
+					? useEditorState.getState().document.blocks[index - 1]
+					: null;
 
-			// If it's a non-paragraph block (except code block, math block, and collapsible block), convert to paragraph
-			if (
-				![
-					BlockType.paragraph,
-					BlockType.codeBlock,
-					BlockType.mathBlock,
-					BlockType.collapsibleBlock,
-				].includes(block.type ?? BlockType.paragraph)
-			) {
-				updateBlockType(index, BlockType.paragraph);
-				focusBlock(index);
-				return;
-			}
-
-			// If it's an empty block, delete and focus previous/next
-			const isEmpty =
-				block.type === BlockType.collapsibleBlock
-					? block.content === "" && getCollapsibleSummary(block) === ""
-					: block.content === "";
-
-			if (isEmpty) {
-				deleteBlock(index);
-				focusBlock(index > 0 ? index - 1 : 0);
-				return;
-			}
-
-			// Collapsible blocks with content can't be merged into the previous block
-			if (block.type === BlockType.collapsibleBlock) {
-				return;
-			}
-
-			// Merge with previous block if at start, or focus previous when it's non-mergeable (e.g. image, collapsible)
-			if (index > 0) {
-				const prevType = prevBlock?.type;
-				if (
-					prevType &&
-					[
-						BlockType.image,
-						BlockType.video,
-						BlockType.collapsibleBlock,
-					].includes(prevType)
-				) {
-					focusBlock(index - 1);
-					return;
-				}
-				mergeWithPrevious(index);
-				focusBlock(index - 1);
-			}
+			const ctx: BackspaceCommandContext = {
+				index,
+				block,
+				prevBlock,
+				updateBlockType: (i, type) => updateBlockType(i, type),
+				deleteBlock,
+				mergeWithPrevious,
+				focusBlock,
+			};
+			runBackspaceChain(ctx);
 		},
-		[
-			focusBlock,
-			deleteBlock,
-			getBlockAtIndex,
-			mergeWithPrevious,
-			updateBlockType,
-		],
+		[focusBlock, deleteBlock, getBlockAtIndex, mergeWithPrevious, updateBlockType],
 	);
 
 	const handleEnter = useCallback(
 		(index: number, cursorOffset: number, zone?: string) => {
 			const block = getBlockAtIndex(index);
-			if (!block) {
-				return;
-			}
-			if ([BlockType.codeBlock, BlockType.mathBlock].includes(block.type)) {
-				return;
-			}
-			if (block.type === BlockType.collapsibleBlock) {
-				if (zone === "summary") {
-					// Focus is now handled locally in CollapsibleBlock.tsx
-					return;
-				}
+			if (!block) return;
 
-				// Split the body
-				const content = block.content;
-				// If we are at an empty line, cursorOffset is at a position where previous char is \n.
-				// We want to remove that \n to ensure a clean split.
-				const before = content.substring(0, cursorOffset).replace(/\n$/, "");
-				const after = content.substring(cursorOffset).replace(/^\n/, "");
-
-				handleContentChange(index, before);
-				insertBlockAfter(index, createParagraphBlock(after));
-				focusBlock(index + 1);
-				return;
-			}
-			if (
-				handleBlockTypeDetection(index, block.content, {
-					onlyIfTypeChanges: true,
-				})
-			) {
-				return; // Conversion happened, don't split
-			}
-
-			if (maybeConvertTrackedTodo(index, { insertNextBlock: true })) {
-				return;
-			}
-
-			// Convert empty list blocks to paragraphs
-			if (
-				block.content.trim() === "" &&
-				[
-					BlockType.numberedList,
-					BlockType.bulletList,
-					BlockType.checkboxList,
-				].includes(block.type)
-			) {
-				updateBlockType(index, BlockType.paragraph);
-				focusBlock(index);
-				return;
-			}
-
-			ignoreSelectionChangeUntilRef.current = Date.now() + 150;
-			splitBlock(index, cursorOffset);
-			focusBlock(index + 1);
+			const ctx: EnterCommandContext = {
+				index,
+				cursorOffset,
+				zone: zone as "summary" | "body" | undefined,
+				block,
+				getBlockAtIndex,
+				detectBlockType: handleBlockTypeDetection,
+				convertTrackedTodo: maybeConvertTrackedTodo,
+				updateBlockType: (i, type) => updateBlockType(i, type),
+				focusBlock,
+				splitBlock,
+				insertBlockAfter,
+				setBlockContent: handleContentChange,
+			};
+			runEnterChain(ctx);
 		},
 		[
 			handleBlockTypeDetection,
