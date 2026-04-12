@@ -39,8 +39,6 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-app-example
-
 # generated native folders
 /ios
 /android
@@ -58,6 +56,9 @@ src-tauri/git_core/target/
 
 # grove
 .grove/workspace.json
+
+# Agent files
+.qwen/settings.local.json
 
 # python
 mlx-env

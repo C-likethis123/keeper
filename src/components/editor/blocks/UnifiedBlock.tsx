@@ -5,7 +5,13 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useStyles } from "@/hooks/useStyles";
 import { useEditorBlockSelection, useEditorState } from "@/stores/editorStore";
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, {
+	useCallback,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { GestureResponderEvent } from "react-native";
 import {
 	type NativeMethods,
@@ -329,9 +335,14 @@ export function UnifiedBlock({
 		styles.input,
 		inputSizeStyle,
 		textStyle,
-		// When focused: transparent text, keep caret visible
+		// When focused: transparent text and hidden caret (custom cursor is
+		// rendered by InlineMarkdown). caretColor: "transparent" hides the
+		// native caret to avoid duplicates at block start/end positions.
 		isFocused && !hasBlockSelection
-			? { color: "transparent", caretColor: "auto" }
+			? {
+					color: "transparent",
+					caretColor: "transparent",
+				}
 			: styles.hidden,
 	];
 
@@ -399,9 +410,7 @@ export function UnifiedBlock({
 					<InlineMarkdown
 						text={block.content}
 						style={textStyle}
-						cursorOffset={
-							isFocused && !hasBlockSelection ? cursorOffset : null
-						}
+						cursorOffset={isFocused && !hasBlockSelection ? cursorOffset : null}
 						onWikiLinkPress={handleWikiLinkPress}
 						onWikiLinkLongPress={handleWikiLinkLongPress}
 					/>
