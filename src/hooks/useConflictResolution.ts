@@ -2,7 +2,6 @@ import type { GitConflictFile } from "@/services/git/engines/GitEngine";
 import { ConflictDetectionService } from "@/services/git/conflictDetectionService";
 import { getGitEngine } from "@/services/git/gitEngine";
 import { useConflictStore } from "@/stores/conflictStore";
-import { useState } from "react";
 
 interface UseConflictResolutionReturn {
 	conflicts: GitConflictFile[];
@@ -15,14 +14,13 @@ interface UseConflictResolutionReturn {
 
 export function useConflictResolution(): UseConflictResolutionReturn {
 	const conflictStore = useConflictStore();
-	const [isShowingModal, setIsShowingModal] = useState(false);
 
 	return {
 		conflicts: conflictStore.conflicts.filter((c) => !c.resolved).map((c) => c.file),
-		isShowingModal,
+		isShowingModal: conflictStore.isShowingModal,
 		unresolvedCount: conflictStore.getUnresolvedCount(),
-		showConflictModal: () => setIsShowingModal(true),
-		hideConflictModal: () => setIsShowingModal(false),
+		showConflictModal: conflictStore.showConflictModal,
+		hideConflictModal: conflictStore.hideConflictModal,
 		hasUnresolvedConflicts: conflictStore.hasUnresolvedConflicts(),
 	};
 }

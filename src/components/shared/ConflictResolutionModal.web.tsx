@@ -8,7 +8,6 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
 	Alert,
-	Modal,
 	Pressable,
 	ScrollView,
 	StyleSheet,
@@ -107,16 +106,12 @@ export default function ConflictResolutionModal({
 		);
 	};
 
-	if (!currentConflict || conflicts.length === 0) {
+	if (!currentConflict || conflicts.length === 0 || !visible) {
 		return null;
 	}
 
 	return (
-		<Modal
-			visible={visible}
-			animationType="slide"
-			presentationStyle="pageSheet"
-		>
+		<View style={styles.overlay}>
 			<View style={styles.container}>
 				{/* Header */}
 				<View style={styles.header}>
@@ -182,14 +177,32 @@ export default function ConflictResolutionModal({
 					</View>
 				</View>
 			</View>
-		</Modal>
+		</View>
 	);
 }
 
 const styles = StyleSheet.create({
+	overlay: {
+		position: "fixed",
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		zIndex: 9999,
+		backgroundColor: "rgba(0, 0, 0, 0.5)",
+		justifyContent: "center",
+		alignItems: "center",
+	},
 	container: {
-		flex: 1,
+		width: "90%",
+		maxWidth: 800,
+		height: "80%",
+		maxHeight: 600,
 		backgroundColor: "#fff",
+		borderRadius: 12,
+		overflow: "hidden",
+		display: "flex",
+		flexDirection: "column",
 	},
 	header: {
 		flexDirection: "row",

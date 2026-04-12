@@ -12,6 +12,7 @@ interface ConflictState {
 	conflicts: ConflictRecord[];
 	lastDetectedAt: number | null;
 	isResolving: boolean;
+	isShowingModal: boolean;
 
 	// Actions
 	setConflicts: (files: GitConflictFile[]) => void;
@@ -19,6 +20,8 @@ interface ConflictState {
 	markAllResolved: (strategy: string) => void;
 	clearConflicts: () => void;
 	setResolving: (isResolving: boolean) => void;
+	showConflictModal: () => void;
+	hideConflictModal: () => void;
 	hasUnresolvedConflicts: () => boolean;
 	getUnresolvedCount: () => number;
 }
@@ -27,6 +30,7 @@ export const useConflictStore = create<ConflictState>((set, get) => ({
 	conflicts: [],
 	lastDetectedAt: null,
 	isResolving: false,
+	isShowingModal: false,
 
 	setConflicts: (files: GitConflictFile[]) =>
 		set({
@@ -63,6 +67,9 @@ export const useConflictStore = create<ConflictState>((set, get) => ({
 		}),
 
 	setResolving: (isResolving: boolean) => set({ isResolving }),
+
+	showConflictModal: () => set({ isShowingModal: true }),
+	hideConflictModal: () => set({ isShowingModal: false }),
 
 	hasUnresolvedConflicts: () => {
 		const { conflicts } = get();

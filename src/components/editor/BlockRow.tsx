@@ -129,20 +129,7 @@ export const BlockRow = React.memo(function BlockRow({
 			shadowOpacity: 0,
 		};
 	}, [index, theme]);
-
 	const isActive = activeDragIndex.value === index;
-
-	// Conditional styles for the sticky behavior on web video blocks
-	const stickyStyles =
-		Platform.OS === "web" &&
-		config.block.type === BlockType.video &&
-		!isActive // Only apply sticky if not actively being dragged
-			? {
-					position: "sticky" as any,
-					top: 0,
-					zIndex: 20, // Ensure it stays above other blocks when sticky
-				}
-			: {};
 
 	if (!block) {
 		return null;
@@ -158,16 +145,27 @@ export const BlockRow = React.memo(function BlockRow({
 		onBlockTypeChange: handlers.onBlockTypeChange,
 		onAttributesChange: handlers.onAttributesChange,
 		onBackspaceAtStart: handlers.onBackspaceAtStart,
-		onSpace: handlers.onSpace,
 		onEnter: handlers.onEnter,
-		onBlockExit: handlers.onBlockExit,
 		onSelectionChange: handlers.onSelectionChange,
+		onBlockExit: handlers.onBlockExit,
 		onDelete: handlers.onDelete,
 		listItemNumber,
 		onCheckboxToggle: handlers.onCheckboxToggle,
 		onOpenWikiLink: handlers.onOpenWikiLink,
 		clearStructuredSelection: handlers.onClearStructuredSelection,
 	};
+
+	// Conditional styles for the sticky behavior on web video blocks
+	const stickyStyles =
+		Platform.OS === "web" &&
+		config.block.type === BlockType.video &&
+		!isActive // Only apply sticky if not actively being dragged
+			? {
+					position: "sticky",
+					top: 0,
+					zIndex: 20, // Ensure it stays above other blocks when sticky
+				}
+			: {};
 
 	const handleGutterPress = (event: GestureResponderEvent) => {
 		const nativeEvent =

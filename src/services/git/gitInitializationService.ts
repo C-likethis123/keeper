@@ -66,10 +66,17 @@ function createGitInitDependencies(config: GitHubConfig): GitInitDependencies {
 
 export class GitInitializationService {
 	static readonly instance = new GitInitializationService();
-	private readonly config = assertGitHubConfig();
+	private _config: GitHubConfig | null = null;
 	private dependencies: GitInitDependencies | null = null;
 
 	private constructor() {}
+
+	private get config(): GitHubConfig {
+		if (!this._config) {
+			this._config = assertGitHubConfig();
+		}
+		return this._config;
+	}
 
 	private ensureDependencies(): GitInitDependencies {
 		if (this.dependencies) {
