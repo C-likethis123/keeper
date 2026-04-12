@@ -31,6 +31,8 @@ export function EmbeddedVideoPanel({
 	const { height: viewportHeight } = useWindowDimensions();
 
 	const isMinimised = mode === "minimised";
+	const origin = Platform.OS === "web" ? window.location.origin : "https://keeper.app";
+	const embedUrlWithOrigin = `${source.embedUrl}&origin=${encodeURIComponent(origin)}`;
 
 	return (
 		<View
@@ -72,7 +74,7 @@ export function EmbeddedVideoPanel({
 					>
 						{Platform.OS === "web" ? (
 							<iframe
-								src={source.embedUrl}
+								src={embedUrlWithOrigin}
 								title={"Youtube video"}
 								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
 								allowFullScreen
@@ -91,10 +93,7 @@ export function EmbeddedVideoPanel({
 								allowsInlineMediaPlayback
 								mediaPlaybackRequiresUserAction={false}
 								source={{
-									uri: source.embedUrl,
-									headers: {
-										Referer: "https://keeper.app",
-									},
+									uri: embedUrlWithOrigin,
 								}}
 								style={styles.webView}
 							/>

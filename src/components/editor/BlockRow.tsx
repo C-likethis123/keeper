@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+	type SharedValue,
 	useAnimatedStyle,
 	useSharedValue,
 	withSpring,
@@ -56,11 +57,11 @@ interface BlockRowHandlers {
 interface BlockRowProps {
 	index: number;
 	handlers: BlockRowHandlers;
-	activeDragIndex: Animated.SharedValue<number | null>;
-	dropIndex: Animated.SharedValue<number | null>;
-	draggedBlockHeight: Animated.SharedValue<number>;
-	dragAbsoluteY: Animated.SharedValue<number>;
-	dragStartY: Animated.SharedValue<number>;
+	activeDragIndex: SharedValue<number | null>;
+	dropIndex: SharedValue<number | null>;
+	draggedBlockHeight: SharedValue<number>;
+	dragAbsoluteY: SharedValue<number>;
+	dragStartY: SharedValue<number>;
 }
 
 export const BlockRow = React.memo(function BlockRow({
@@ -123,12 +124,17 @@ export const BlockRow = React.memo(function BlockRow({
 			}
 		}
 
+		// Video blocks get a higher zIndex so sticky headers render
+		// above scrolling content
+		const isVideo = block?.type === BlockType.video;
+		const baseZIndex = isVideo ? 10 : 1;
+
 		return {
 			transform: [{ translateY: withSpring(translateY) }],
-			zIndex: 1,
+			zIndex: baseZIndex,
 			shadowOpacity: 0,
 		};
-	}, [index, theme]);
+	}, [index, theme, block?.type]);
 	const isActive = activeDragIndex.value === index;
 
 	if (!block) {
@@ -145,6 +151,7 @@ export const BlockRow = React.memo(function BlockRow({
 		onBlockTypeChange: handlers.onBlockTypeChange,
 		onAttributesChange: handlers.onAttributesChange,
 		onBackspaceAtStart: handlers.onBackspaceAtStart,
+		onSpace: handlers.onSpace,
 		onEnter: handlers.onEnter,
 		onSelectionChange: handlers.onSelectionChange,
 		onBlockExit: handlers.onBlockExit,
@@ -161,7 +168,7 @@ export const BlockRow = React.memo(function BlockRow({
 		config.block.type === BlockType.video &&
 		!isActive // Only apply sticky if not actively being dragged
 			? {
-					position: "sticky",
+					position: "sticky" as const,
 					top: 0,
 					zIndex: 20, // Ensure it stays above other blocks when sticky
 				}
@@ -197,7 +204,7 @@ export const BlockRow = React.memo(function BlockRow({
 
 	return (
 		<Animated.View
-			style={[styles.blockWrapper, animatedStyle, stickyStyles]} // Apply stickyStyles here
+			style={[styles.blockWrapper, animatedStyle, stickyStyles]}
 			collapsable={false}
 			onPointerEnter={() => setIsRowHovered(true)}
 			onPointerLeave={() => setIsRowHovered(false)}
@@ -214,9 +221,7 @@ export const BlockRow = React.memo(function BlockRow({
 					styles.rowShell,
 					hasBlockSelection && styles.rowShellSelected,
 					{
-						// Remove sticky styles from here, make it relative
 						position: "relative",
-						// zIndex: config.block.type === BlockType.video ? 1 : 1, // Keep default zIndex if not sticky
 						top: undefined,
 					},
 				]}
@@ -301,7 +306,7 @@ function makeStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			lineHeight: 18,
 		},
 		dragHandle: {
-			cursor: Platform.OS === "web" ? ("grab" as const) : undefined,
+			...(Platform.OS === "web" ? ({ cursor: "grab" } as any) : {}),
 		},
 		dragHandleDots: {
 			width: 10,

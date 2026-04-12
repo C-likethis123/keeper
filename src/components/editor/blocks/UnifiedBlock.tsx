@@ -406,10 +406,14 @@ export function UnifiedBlock({
 						onWikiLinkLongPress={handleWikiLinkLongPress}
 					/>
 				</View>
-				<TextInput
-					{...textInputProps}
-					textAlignVertical={applyListStyles ? undefined : "top"}
-				/>
+				{/* Absolutely positioned TextInput so it doesn't compete with
+				    InlineMarkdown for flex space (both had flex: 1 → 50/50 split) */}
+				<View style={styles.textInputOverlay} pointerEvents="box-none">
+					<TextInput
+						{...textInputProps}
+						textAlignVertical={applyListStyles ? undefined : "top"}
+					/>
+				</View>
 			</View>
 		</Pressable>
 	);
@@ -428,12 +432,20 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		row: {
 			flexDirection: "row",
 			alignItems: "flex-start",
+			position: "relative",
 		},
 		overlay: {
 			alignItems: "flex-start",
 		},
 		overlayContent: {
 			alignItems: "flex-start",
+		},
+		textInputOverlay: {
+			position: "absolute",
+			top: 0,
+			left: 0,
+			right: 0,
+			bottom: 0,
 		},
 		input: {
 			flex: 1,

@@ -75,6 +75,7 @@ export interface EditorState extends EditorStateSlice {
 	getFocusedBlock: () => BlockNode | null;
 	getHasBlockSelection: () => boolean;
 	getContent: () => string;
+	moveBlock: (fromIndex: number, toIndex: number) => void;
 	resetState: () => void;
 }
 

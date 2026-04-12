@@ -11,6 +11,7 @@ export const darkTheme: ExtendedTheme = {
 		...colors,
 		error: "#f87171",
 		textMuted: withOpacity(colors.text, 0.5),
+		textSecondary: withOpacity(colors.text, 0.6),
 		textFaded: withOpacity(colors.text, 0.375),
 		textDisabled: withOpacity(colors.text, 0.25),
 		primaryPressed: withOpacity(colors.primary, 0.8),

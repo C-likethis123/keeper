@@ -335,7 +335,7 @@ export default function NoteEditorView({
     });
     if (!selected) return;
     pickedUri = Array.isArray(selected) ? selected[0] : selected;
-    pickedName = pickedUri.split(/[\\/]/).pop() ?? pickedUri;
+    pickedName = pickedUri?.split(/[\\/]/).pop() ?? pickedUri;
 
     const type = inferAttachmentType(pickedName ?? pickedUri ?? "");
     if (!type) {

@@ -42,7 +42,7 @@ export function parseEmbeddedVideoUrl(
 	}
 	return {
 		rawUrl: url.toString(),
-		embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?playsinline=1&rel=0&enablejsapi=1&origin=https://keeper.app`,
+		embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?playsinline=1&rel=0&enablejsapi=1`,
 		host: hostname,
 	};
 }

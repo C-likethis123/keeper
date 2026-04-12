@@ -5,7 +5,27 @@ import { useEditorState } from "@/stores/editorStore";
 import { render } from "@testing-library/react-native";
 import React from "react";
 import { Platform, Text, View } from "react-native";
+import { useSharedValue } from "react-native-reanimated";
 import { blockRegistry } from "../blocks/BlockRegistry";
+
+function TestBlockRow(props: { index: number; handlers: typeof handlers }) {
+	const activeDragIndex = useSharedValue<number | null>(null);
+	const dropIndex = useSharedValue<number | null>(null);
+	const draggedBlockHeight = useSharedValue(0);
+	const dragAbsoluteY = useSharedValue(0);
+	const dragStartY = useSharedValue(0);
+
+	return (
+		<BlockRow
+			{...props}
+			activeDragIndex={activeDragIndex}
+			dropIndex={dropIndex}
+			draggedBlockHeight={draggedBlockHeight}
+			dragAbsoluteY={dragAbsoluteY}
+			dragStartY={dragStartY}
+		/>
+	);
+}
 
 jest.mock("@/hooks/useExtendedTheme", () => ({
 	useExtendedTheme: () => ({
@@ -14,6 +34,7 @@ jest.mock("@/hooks/useExtendedTheme", () => ({
 			primary: "#2563eb",
 			text: "#111827",
 			background: "#ffffff",
+			textSecondary: "#6b7280",
 		},
 		typography: {
 			body: { fontSize: 16, lineHeight: 24 },
@@ -50,6 +71,10 @@ const handlers = {
 	onSelectBlock: jest.fn(),
 	onSelectBlockRange: jest.fn(),
 	onClearStructuredSelection: jest.fn(),
+	onDragStart: jest.fn(),
+	onDragUpdate: jest.fn(),
+	onDragEnd: jest.fn(),
+	onLayout: jest.fn(),
 };
 
 describe("BlockRow", () => {
@@ -67,7 +92,7 @@ describe("BlockRow", () => {
 			document: createDocumentFromMarkdown("1. First\n2. Second"),
 		});
 
-		render(<BlockRow index={1} handlers={handlers} />);
+		render(<TestBlockRow index={1} handlers={handlers} />);
 
 		expect(buildSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -89,7 +114,7 @@ describe("BlockRow", () => {
 			gapSelection: { index: 1 },
 		});
 
-		render(<BlockRow index={1} handlers={handlers} />);
+		render(<TestBlockRow index={1} handlers={handlers} />);
 
 		expect(buildSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -112,7 +137,7 @@ describe("BlockRow", () => {
 		});
 
 		const { UNSAFE_getAllByType } = render(
-			<BlockRow index={0} handlers={handlers} />,
+			<TestBlockRow index={0} handlers={handlers} />,
 		);
 
 		expect(buildSpy).toHaveBeenCalledWith(

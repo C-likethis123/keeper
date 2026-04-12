@@ -4,6 +4,7 @@ import type { TextStyle } from "react-native";
 export type ExtendedThemeColors = Theme["colors"] & {
 	error: string;
 	textMuted: string;
+	textSecondary: string;
 	textFaded: string;
 	textDisabled: string;
 	primaryPressed: string;
