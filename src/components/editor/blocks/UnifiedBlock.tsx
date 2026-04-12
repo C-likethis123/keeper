@@ -336,13 +336,14 @@ export function UnifiedBlock({
 		inputSizeStyle,
 		textStyle,
 		// When focused: transparent text and hidden caret (custom cursor is
-		// rendered by InlineMarkdown). caretColor: "transparent" hides the
-		// native caret to avoid duplicates at block start/end positions.
+		// rendered by InlineMarkdown). On web, caret-color is a CSS property.
+		// On mobile, we use TextInput props (cursorColor/selectionColor).
 		isFocused && !hasBlockSelection
-			? {
-					color: "transparent",
-					caretColor: "transparent",
-				}
+			? [
+					{ color: "transparent" },
+					// caretColor is a web-only CSS property, not in RN TextStyle
+					isWeb ? { caretColor: "transparent" as const } : null,
+				]
 			: styles.hidden,
 	];
 
@@ -366,6 +367,9 @@ export function UnifiedBlock({
 		autoComplete: "off" as const,
 		placeholder: "Start typing...",
 		placeholderTextColor: theme.custom.editor.placeholder,
+		// Hide native caret when focused (custom cursor is rendered by
+		// InlineMarkdown). caretHidden works on both iOS and Android.
+		...(isFocused && !hasBlockSelection && { caretHidden: true }),
 	};
 
 	const applyListStyles = isListItem(block.type);
