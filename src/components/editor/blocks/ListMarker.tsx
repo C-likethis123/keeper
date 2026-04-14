@@ -69,7 +69,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			justifyContent: "center",
 			alignItems: "center",
 			height: lineHeight,
-			paddingRight: 8,
+			paddingRight: 12,
 		},
 		number: {
 			color: theme.colors.primary,

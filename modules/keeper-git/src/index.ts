@@ -36,6 +36,14 @@ interface KeeperGitBridgeNativeModule {
 		fromOid: string,
 		toOid: string,
 	): Promise<unknown>;
+	getConflictedFiles(repoPath: string): Promise<unknown>;
+	resolveConflict(
+		repoPath: string,
+		path: string,
+		strategy: string,
+		manualContent: string | null,
+	): Promise<void>;
+	hasUnresolvedConflicts(repoPath: string): Promise<boolean>;
 }
 
 export default requireOptionalNativeModule<KeeperGitBridgeNativeModule>(

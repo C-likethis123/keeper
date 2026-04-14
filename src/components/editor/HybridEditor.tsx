@@ -389,12 +389,19 @@ function HybridEditorContent() {
 				ignoreNextContentChangeRef.current = null;
 				return;
 			}
-			const oldContent =
-				useEditorState.getState().document.blocks[index]?.content ?? "";
+			const state = useEditorState.getState();
+			const oldContent = state.document.blocks[index]?.content ?? "";
 			const delta = content.length - oldContent.length;
+			// Read cursor position directly from store selection instead of
+			// relying on a ref that can become stale when focus moves between blocks
+			const currentSelection = state.selection;
+			const currentOffset =
+				currentSelection?.focus.blockIndex === index
+					? currentSelection.focus.offset
+					: oldContent.length;
 			const newCursor = Math.max(
 				0,
-				Math.min(content.length, lastSelectionOffsetRef.current + delta),
+				Math.min(content.length, currentOffset + delta),
 			);
 			updateBlockContent(index, content, newCursor);
 		},

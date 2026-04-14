@@ -35,6 +35,14 @@ class KeeperGitBridgeModule : Module() {
     fromOid: String,
     toOid: String
   ): String?
+  private external fun git_conflicted_files_json(repoPath: String): String?
+  private external fun git_resolve_conflict(
+    repoPath: String,
+    path: String,
+    strategy: String,
+    manualContent: String?
+  ): Int
+  private external fun git_has_unresolved_conflicts(repoPath: String): Int
 
   override fun definition() = ModuleDefinition {
     Name("KeeperGitBridge")
@@ -117,6 +125,19 @@ class KeeperGitBridgeModule : Module() {
         git_changed_markdown_paths_json(repoPath, fromOid, toOid),
         promise
       )
+    }
+
+    AsyncFunction("getConflictedFiles") { repoPath: String, promise: Promise ->
+      settlePayload("conflicted_files", git_conflicted_files_json(repoPath), promise)
+    }
+
+    AsyncFunction("resolveConflict") { repoPath: String, path: String, strategy: String, manualContent: String?, promise: Promise ->
+      settleCode("resolve_conflict", git_resolve_conflict(repoPath, path, strategy, manualContent), promise)
+    }
+
+    AsyncFunction("hasUnresolvedConflicts") { repoPath: String, promise: Promise ->
+      val result = git_has_unresolved_conflicts(repoPath)
+      promise.resolve(result == 1)
     }
   }
 
