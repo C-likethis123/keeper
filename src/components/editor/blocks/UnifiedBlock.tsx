@@ -9,6 +9,7 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useState,
   useMemo,
   useRef,
 } from "react";
@@ -370,29 +371,25 @@ export function UnifiedBlock({
           };
         })()
       : undefined;
-  const minimumLineHeight =
-    typeof textStyle.lineHeight === "number"
-      ? textStyle.lineHeight
-      : typeof textStyle.fontSize === "number"
-        ? textStyle.fontSize
-        : 0;
-
-  const inputSizeStyle = isWeb
-    ? { minHeight: minimumLineHeight }
-    : { minHeight: minimumLineHeight, maxHeight: Number.MAX_SAFE_INTEGER };
-
-  const textInputStyle = [styles.input, inputSizeStyle, textStyle];
+  const [numberOfLines, setNumberOfLines] = useState(1);
+  const textInputStyle = [styles.input, textStyle];
 
   const textInputProps = {
     ref: inputRef,
     style: textInputStyle,
-    value: block.content,
+    value: block.content, // I get an error on mobile
     ...(selectionProp !== undefined && { selection: selectionProp }),
     onChangeText: handleContentChange,
     onFocus: handleTextInputFocus,
     onBlur: handleBlur,
     onKeyPress: handleKeyPress,
     onSelectionChange: handleSelectionChange,
+    onContentSizeChange: (event) => {
+      setNumberOfLines(
+        event.nativeEvent.contentSize.height / textStyle.lineHeight!,
+      );
+    },
+    numberOfLines,
     multiline: true,
     scrollEnabled: false,
     autoGrow: true,
