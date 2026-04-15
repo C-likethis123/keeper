@@ -372,7 +372,11 @@ export function UnifiedBlock({
         })()
       : undefined;
   const [numberOfLines, setNumberOfLines] = useState(1);
-  const textInputStyle = [styles.input, textStyle];
+  const textInputStyle = [
+    styles.input,
+    textStyle,
+    isFocused ? { opacity: 1 } : { opacity: 0, position: "absolute" },
+  ];
 
   const textInputProps = {
     ref: inputRef,
@@ -440,6 +444,10 @@ export function UnifiedBlock({
           <TextInput
             {...textInputProps}
             textAlignVertical={applyListStyles ? undefined : "top"}
+          />
+          <View
+            style={[styles.overlay, isFocused ? { opacity: 0 } : null]}
+            pointerEvents="box-none"
           >
             <InlineMarkdown
               text={block.content}
@@ -447,7 +455,7 @@ export function UnifiedBlock({
               onWikiLinkPress={handleWikiLinkPress}
               onWikiLinkLongPress={handleWikiLinkLongPress}
             />
-          </TextInput>
+          </View>
         </View>
       </View>
     </Pressable>
@@ -474,8 +482,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
     },
     input: {
       flex: 1,
-      padding: 0,
-      paddingHorizontal: 2,
       color: theme.colors.text,
       ...webMultilineTextInputReset,
     },
