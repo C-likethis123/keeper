@@ -28,6 +28,7 @@ interface EditorToolbarProps {
   onRemoveAttachment?: () => void;
   showRelatedNotes?: boolean;
   onToggleRelatedNotes?: () => void;
+  onToggleActivePanel: () => void;
 }
 
 export function EditorToolbar({
@@ -39,6 +40,7 @@ export function EditorToolbar({
   onRemoveAttachment,
   showRelatedNotes = false,
   onToggleRelatedNotes,
+  onToggleActivePanel,
 }: EditorToolbarProps) {
   const canUndo = useEditorState((s) => s.getCanUndo());
   const canRedo = useEditorState((s) => s.getCanRedo());
@@ -132,6 +134,11 @@ export function EditorToolbar({
           label={showRelatedNotes ? "Hide related notes" : "Show related notes"}
         />
       )}
+      <IconButton
+        name={"exchange"}
+        onPress={onToggleActivePanel}
+        label="Toggle video or document"
+      />
     </View>
   );
 }

@@ -65,7 +65,14 @@ export default function NoteEditorView({
   const [todoStatus, setTodoStatus] = useState<Note["status"]>(
     note.noteType === "todo" ? (note.status ?? "open") : undefined,
   );
-
+  const [attachedVideo, setAttachedVideo] = useState<Note["attachedVideo"]>(
+    note.attachedVideo,
+  );
+  const [isVideoVisible, setIsVideoVisible] =
+    useState<boolean>(!!attachedVideo);
+  const [activePanel, setActivePanel] = useState<"document" | "video">(
+    !!note.attachment ? "document" : "video",
+  );
   const { updateTabTitle, tabs, closeTab, activeTabId } = useTabStore();
   const tab = tabs.find((t) => t.noteId === id);
 
@@ -146,8 +153,11 @@ export default function NoteEditorView({
 
   const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
   const [showRelatedNotes, setShowRelatedNotes] = useState(false);
-  const { backlinks, outgoing, loading: relatedNotesLoading } =
-    useRelatedNotes(id);
+  const {
+    backlinks,
+    outgoing,
+    loading: relatedNotesLoading,
+  } = useRelatedNotes(id);
   const { width: windowWidth } = useWindowDimensions();
   const isDesktop = Platform.OS === "web";
 
@@ -239,6 +249,7 @@ export default function NoteEditorView({
           overrides?.attachment !== undefined
             ? overrides.attachment
             : attachmentPath,
+        attachedVideo: overrides?.attachedVideo ?? attachedVideo,
         ...overrides,
       };
     },
@@ -273,6 +284,7 @@ export default function NoteEditorView({
         note.attachment ? inferAttachmentType(note.attachment) : null,
       );
       setIsAttachmentVisible(!!note.attachment);
+      setAttachedVideo(note.attachedVideo);
 
       if (loadedNoteIdRef.current !== note.id) {
         loadedNoteIdRef.current = note.id;
@@ -405,9 +417,11 @@ export default function NoteEditorView({
     [leaveEditor, router],
   );
 
-  const hasAttachment = attachmentPath !== null && attachmentType !== null;
+  const hasAttachment =
+    (attachmentPath !== null && attachmentType !== null) ||
+    attachedVideo !== null;
   const showSplit = hasAttachment && isAttachmentVisible;
-  const splitFlexDir = isDesktop ? "row" : "column";
+  const splitFlexDir = isDesktop && !attachedVideo ? "row" : "column";
 
   return (
     <View style={styles.screen}>
@@ -489,6 +503,9 @@ export default function NoteEditorView({
               onRemoveAttachment={() => void handleRemoveAttachment()}
               showRelatedNotes={showRelatedNotes}
               onToggleRelatedNotes={() => setShowRelatedNotes((v) => !v)}
+              onToggleActivePanel={() =>
+                setActivePanel(activePanel === "video" ? "document" : "video")
+              }
             />
             <EditorScrollProvider>
               <HybridEditor

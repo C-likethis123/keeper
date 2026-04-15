@@ -123,17 +123,12 @@ export const BlockRow = React.memo(function BlockRow({
       }
     }
 
-    // Video blocks get a higher zIndex so sticky headers render
-    // above scrolling content
-    const isVideo = block?.type === BlockType.video;
-    const baseZIndex = isVideo ? 10 : 1;
-
     return {
       transform: [{ translateY: withSpring(translateY) }],
-      zIndex: baseZIndex,
+      zIndex: 1,
       shadowOpacity: 0,
     };
-  }, [index, theme, block?.type]);
+  }, [index, theme]);
   const isActive = activeDragIndex.value === index;
 
   if (!block) {
@@ -160,16 +155,6 @@ export const BlockRow = React.memo(function BlockRow({
     onOpenWikiLink: handlers.onOpenWikiLink,
     clearStructuredSelection: handlers.onClearStructuredSelection,
   };
-
-  // Conditional styles for the sticky behavior on web video blocks
-  const stickyStyles =
-    Platform.OS === "web" && config.block.type === BlockType.video && !isActive // Only apply sticky if not actively being dragged
-      ? {
-          position: "sticky" as const,
-          top: 0,
-          zIndex: 20, // Ensure it stays above other blocks when sticky
-        }
-      : {};
 
   const handleGutterPress = (event: GestureResponderEvent) => {
     const nativeEvent =
@@ -201,7 +186,7 @@ export const BlockRow = React.memo(function BlockRow({
 
   return (
     <Animated.View
-      style={[styles.blockWrapper, animatedStyle, stickyStyles]}
+      style={[styles.blockWrapper, animatedStyle]}
       collapsable={false}
       onPointerEnter={() => setIsRowHovered(true)}
       onPointerLeave={() => setIsRowHovered(false)}
