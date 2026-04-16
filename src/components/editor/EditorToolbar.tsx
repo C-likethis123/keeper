@@ -28,7 +28,9 @@ interface EditorToolbarProps {
   onRemoveAttachment?: () => void;
   showRelatedNotes?: boolean;
   onToggleRelatedNotes?: () => void;
-  onToggleActivePanel: () => void;
+  onToggleActivePanel?: () => void;
+  onShowVideoModal?: () => void;
+  attachedVideo?: string | null;
 }
 
 export function EditorToolbar({
@@ -41,6 +43,8 @@ export function EditorToolbar({
   showRelatedNotes = false,
   onToggleRelatedNotes,
   onToggleActivePanel,
+  onShowVideoModal,
+  attachedVideo,
 }: EditorToolbarProps) {
   const canUndo = useEditorState((s) => s.getCanUndo());
   const canRedo = useEditorState((s) => s.getCanRedo());
@@ -96,7 +100,7 @@ export function EditorToolbar({
       />
       <IconButton name="angle-down" onPress={handleInsertCollapsible} />
       <IconButton name="image" onPress={handleInsertImage} />
-      {/* Attach PDF/ePub */}
+      {/* Document attachment */}
       {hasAttachment ? (
         <>
           <IconButton
@@ -126,6 +130,14 @@ export function EditorToolbar({
           label="Attach PDF or ePub"
         />
       )}
+      {/* Video */}
+      {onShowVideoModal && (
+        <IconButton
+          name="video-camera"
+          onPress={onShowVideoModal}
+          label={attachedVideo ? "Manage video" : "Attach video"}
+        />
+      )}
       {/* Related Notes toggle */}
       {onToggleRelatedNotes && (
         <IconButton
@@ -134,11 +146,14 @@ export function EditorToolbar({
           label={showRelatedNotes ? "Hide related notes" : "Show related notes"}
         />
       )}
-      <IconButton
-        name={"exchange"}
-        onPress={onToggleActivePanel}
-        label="Toggle video or document"
-      />
+      {/* Panel toggle: only when both PDF and video are present */}
+      {hasAttachment && attachedVideo && onToggleActivePanel && (
+        <IconButton
+          name="exchange"
+          onPress={onToggleActivePanel}
+          label="Switch panel"
+        />
+      )}
     </View>
   );
 }
