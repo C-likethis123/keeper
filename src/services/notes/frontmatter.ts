@@ -10,6 +10,7 @@ interface ParsedFrontmatter {
 	completedAt?: number;
 	modified?: number;
 	attachment?: string;
+	attachedVideo?: string;
 	content: string;
 }
 
@@ -64,6 +65,7 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	let completedAt: number | undefined;
 	let modified: number | undefined;
 	let attachment: string | undefined;
+	let attachedVideo: string | undefined;
 	let id = "";
 	const frontmatter = match[1];
 	const content = markdown.slice(match[0].length);
@@ -94,6 +96,8 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 			modified = parseTimestamp(value);
 		} else if (key === "attachment") {
 			attachment = value;
+		} else if (key === "attachedVideo") {
+			attachedVideo = value;
 		}
 	}
 
@@ -107,6 +111,7 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 		completedAt: noteType === "todo" ? completedAt : undefined,
 		modified,
 		attachment,
+		attachedVideo,
 		content,
 	};
 }
@@ -140,6 +145,9 @@ export function stringifyFrontmatter(
 	}
 	if (note.attachment) {
 		frontmatterLines.push(`attachment: ${JSON.stringify(note.attachment)}`);
+	}
+	if (note.attachedVideo) {
+		frontmatterLines.push(`attachedVideo: ${JSON.stringify(note.attachedVideo)}`);
 	}
 	frontmatterLines.push("---");
 
