@@ -1,10 +1,8 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
-import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import {
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -12,7 +10,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { WebView } from "react-native-webview";
-import type { EmbeddedVideoSource, VideoMode } from "./videoUtils";
+import type { EmbeddedVideoSource } from "./videoUtils";
 
 interface EmbeddedVideoPanelProps {
   source: EmbeddedVideoSource;

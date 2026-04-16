@@ -290,6 +290,7 @@ export default function NoteEditorView({
       );
       setIsAttachmentVisible(!!note.attachment);
       setAttachedVideo(note.attachedVideo);
+      setIsVideoVisible(!!note.attachedVideo);
 
       if (loadedNoteIdRef.current !== note.id) {
         loadedNoteIdRef.current = note.id;

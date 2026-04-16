@@ -2,7 +2,7 @@ import { parseEmbeddedVideoUrl } from "@/components/editor/video/videoUtils";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import { FontAwesome } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -28,6 +28,13 @@ export default function AttachVideoModal({
   const styles = useStyles(createStyles);
   const [value, setValue] = useState(currentVideo ?? "");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (visible) {
+      setValue(currentVideo ?? "");
+      setError(null);
+    }
+  }, [visible, currentVideo]);
 
   if (!visible) return null;
 

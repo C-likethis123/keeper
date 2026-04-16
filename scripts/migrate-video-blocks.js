@@ -8,8 +8,8 @@
  * Usage: node scripts/migrate-video-blocks.js /path/to/notes-repo
  */
 
-const fs = require("fs");
-const path = require("path");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const notesDir = process.argv[2];
 if (!notesDir) {
