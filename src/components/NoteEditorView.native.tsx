@@ -45,7 +45,9 @@ import { EditorScrollProvider } from "./editor/EditorScrollContext";
 import { EditorToolbar } from "./editor/EditorToolbar";
 import { HybridEditor } from "./editor/HybridEditor";
 import { DocumentPanel } from "./editor/document/DocumentPanel";
+import VideoSplitPanel from "./editor/video/VideoSplitPanel";
 import { TODO_STATUS_OPTIONS } from "@/constants/noteTypes";
+import AttachVideoModal from "./AttachVideoModal";
 const SPLIT_RATIO_KEY = "doc-split-ratio";
 
 export default function NoteEditorView({
@@ -71,7 +73,7 @@ export default function NoteEditorView({
   const [isVideoVisible, setIsVideoVisible] =
     useState<boolean>(!!attachedVideo);
   const [activePanel, setActivePanel] = useState<"document" | "video">(
-    !!note.attachment ? "document" : "video",
+    note.attachment ? "document" : "video",
   );
   const { updateTabTitle, tabs, closeTab, activeTabId } = useTabStore();
   const tab = tabs.find((t) => t.noteId === id);
@@ -249,11 +251,14 @@ export default function NoteEditorView({
           overrides?.attachment !== undefined
             ? overrides.attachment
             : attachmentPath,
-        attachedVideo: overrides?.attachedVideo ?? attachedVideo,
+        attachedVideo:
+          overrides?.attachedVideo !== undefined
+            ? overrides.attachedVideo
+            : attachedVideo,
         ...overrides,
       };
     },
-    [attachmentPath, id],
+    [attachmentPath, attachedVideo, id],
   );
   const persistCurrentEntry = useCallback(
     async (overrides?: Partial<NoteSaveInput>) => {
@@ -293,6 +298,7 @@ export default function NoteEditorView({
     }, [
       loadMarkdown,
       note.attachment,
+      note.attachedVideo,
       note.content,
       note.id,
       note.isPinned,
@@ -385,6 +391,26 @@ export default function NoteEditorView({
     await persistCurrentEntry({ attachment: null });
   }, [attachmentPath, persistCurrentEntry]);
 
+  const [isShowVideoModalVisible, setIsShowVideoModalVisible] = useState(false);
+
+  const handleAttachVideo = useCallback(
+    async (url: string) => {
+      await persistCurrentEntry({ attachedVideo: url });
+      setAttachedVideo(url);
+      setIsVideoVisible(true);
+      setActivePanel("video");
+      setIsShowVideoModalVisible(false);
+    },
+    [persistCurrentEntry],
+  );
+
+  const handleRemoveVideo = useCallback(async () => {
+    await persistCurrentEntry({ attachedVideo: null });
+    setAttachedVideo(null);
+    setIsVideoVisible(false);
+    setIsShowVideoModalVisible(false);
+  }, [persistCurrentEntry]);
+
   const applyTitleChange = useCallback((nextTitle: string) => {
     setTitle(nextTitle);
   }, []);
@@ -417,11 +443,13 @@ export default function NoteEditorView({
     [leaveEditor, router],
   );
 
-  const hasAttachment =
-    (attachmentPath !== null && attachmentType !== null) ||
-    attachedVideo !== null;
-  const showSplit = hasAttachment && isAttachmentVisible;
-  const splitFlexDir = isDesktop && !attachedVideo ? "row" : "column";
+  const hasDocAttachment = attachmentPath !== null && attachmentType !== null;
+  const hasAttachment = hasDocAttachment || attachedVideo != null;
+  const showSplit =
+    activePanel === "document"
+      ? hasDocAttachment && isAttachmentVisible
+      : !!attachedVideo && isVideoVisible;
+  const splitFlexDir = activePanel === "video" ? "column" : isDesktop ? "row" : "column";
 
   return (
     <View style={styles.screen}>
@@ -456,21 +484,28 @@ export default function NoteEditorView({
             <View
               style={[
                 styles.documentPane,
-                isDesktop
+                splitFlexDir === "row"
                   ? { width: `${splitRatio * 100}%` as unknown as number }
                   : { height: `${splitRatio * 100}%` as unknown as number },
               ]}
             >
-              <DocumentPanel
-                noteId={id}
-                attachmentPath={attachmentPath}
-                attachmentType={attachmentType}
-                onTextSelected={handleTextSelected}
-                onDismiss={handleHideAttachment}
-              />
+              {activePanel === "document" ? (
+                <DocumentPanel
+                  noteId={id}
+                  attachmentPath={attachmentPath}
+                  attachmentType={attachmentType}
+                  onTextSelected={handleTextSelected}
+                  onDismiss={handleHideAttachment}
+                />
+              ) : (
+                <VideoSplitPanel
+                  url={attachedVideo ?? ""}
+                  onDismiss={() => setIsVideoVisible(false)}
+                />
+              )}
             </View>
             <View
-              style={isDesktop ? styles.dividerV : styles.dividerH}
+              style={splitFlexDir === "row" ? styles.dividerV : styles.dividerH}
               {...panResponder.panHandlers}
             />
           </>
@@ -496,13 +531,15 @@ export default function NoteEditorView({
 
             <EditorToolbar
               onAttachDocument={() => void handleAttachDocument()}
-              hasAttachment={hasAttachment}
-              isAttachmentVisible={showSplit}
+              hasAttachment={hasDocAttachment}
+              isAttachmentVisible={showSplit && activePanel === "document"}
               onShowAttachment={handleShowAttachment}
               onHideAttachment={handleHideAttachment}
               onRemoveAttachment={() => void handleRemoveAttachment()}
               showRelatedNotes={showRelatedNotes}
               onToggleRelatedNotes={() => setShowRelatedNotes((v) => !v)}
+              onShowVideoModal={() => setIsShowVideoModalVisible(true)}
+              attachedVideo={attachedVideo}
               onToggleActivePanel={() =>
                 setActivePanel(activePanel === "video" ? "document" : "video")
               }
@@ -532,6 +569,13 @@ export default function NoteEditorView({
       <TemplatePickerModal
         visible={isTemplateModalVisible}
         onDismiss={() => setIsTemplateModalVisible(false)}
+      />
+      <AttachVideoModal
+        visible={isShowVideoModalVisible}
+        currentVideo={attachedVideo}
+        onDismiss={() => setIsShowVideoModalVisible(false)}
+        onSave={(url) => { void handleAttachVideo(url); }}
+        onRemove={() => { void handleRemoveVideo(); }}
       />
     </View>
   );
