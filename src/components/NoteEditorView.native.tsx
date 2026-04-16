@@ -444,7 +444,6 @@ export default function NoteEditorView({
   );
 
   const hasDocAttachment = attachmentPath !== null && attachmentType !== null;
-  const hasAttachment = hasDocAttachment || attachedVideo != null;
   const showSplit =
     activePanel === "document"
       ? hasDocAttachment && isAttachmentVisible
@@ -492,8 +491,8 @@ export default function NoteEditorView({
               {activePanel === "document" ? (
                 <DocumentPanel
                   noteId={id}
-                  attachmentPath={attachmentPath}
-                  attachmentType={attachmentType}
+                  attachmentPath={attachmentPath as string}
+                  attachmentType={attachmentType as AttachmentType}
                   onTextSelected={handleTextSelected}
                   onDismiss={handleHideAttachment}
                 />
