@@ -1,6 +1,6 @@
 import { EmbeddedVideoPanel } from "@/components/editor/video/EmbeddedVideoPanel";
 import type { EmbeddedVideoSource } from "@/components/editor/video/videoUtils";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { render, screen } from "@testing-library/react-native";
 
 jest.mock("react-native-webview", () => {
 	const React = require("react");
