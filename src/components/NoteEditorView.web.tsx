@@ -45,6 +45,8 @@ import { EditorScrollProvider } from "./editor/EditorScrollContext";
 import { EditorToolbar } from "./editor/EditorToolbar";
 import { HybridEditor } from "./editor/HybridEditor";
 import { DocumentPanel } from "./editor/document/DocumentPanel";
+import AttachVideoModal from "./AttachVideoModal";
+import VideoSplitPanel from "./editor/video/VideoSplitPanel";
 import { TODO_STATUS_OPTIONS } from "@/constants/noteTypes";
 
 const SPLIT_RATIO_KEY = "doc-split-ratio";
@@ -161,6 +163,16 @@ export default function NoteEditorView({
   const [isAttachmentVisible, setIsAttachmentVisible] = useState(
     () => !!note.attachment,
   );
+  const [attachedVideo, setAttachedVideo] = useState<Note["attachedVideo"]>(
+    note.attachedVideo,
+  );
+  const [isVideoVisible, setIsVideoVisible] = useState<boolean>(
+    !!note.attachedVideo,
+  );
+  const [activePanel, setActivePanel] = useState<"document" | "video">(
+    note.attachment ? "document" : "video",
+  );
+  const [isShowVideoModalVisible, setIsShowVideoModalVisible] = useState(false);
   const [splitRatio, setSplitRatio] = useState(isDesktop ? 0.5 : 0.4);
 
   useEffect(() => {
@@ -240,10 +252,14 @@ export default function NoteEditorView({
           overrides?.attachment !== undefined
             ? overrides.attachment
             : attachmentPath,
+        attachedVideo:
+          overrides?.attachedVideo !== undefined
+            ? overrides.attachedVideo
+            : attachedVideo,
         ...overrides,
       };
     },
-    [attachmentPath, id],
+    [attachmentPath, attachedVideo, id],
   );
   const persistCurrentEntry = useCallback(
     async (overrides?: Partial<NoteSaveInput>) => {
@@ -274,6 +290,8 @@ export default function NoteEditorView({
         note.attachment ? inferAttachmentType(note.attachment) : null,
       );
       setIsAttachmentVisible(!!note.attachment);
+      setAttachedVideo(note.attachedVideo);
+      setIsVideoVisible(!!note.attachedVideo);
 
       if (loadedNoteIdRef.current !== note.id) {
         loadedNoteIdRef.current = note.id;
@@ -282,6 +300,7 @@ export default function NoteEditorView({
     }, [
       loadMarkdown,
       note.attachment,
+      note.attachedVideo,
       note.content,
       note.id,
       note.isPinned,
@@ -378,6 +397,24 @@ export default function NoteEditorView({
     await persistCurrentEntry({ attachment: null });
   }, [attachmentPath, persistCurrentEntry]);
 
+  const handleAttachVideo = useCallback(
+    async (url: string) => {
+      await persistCurrentEntry({ attachedVideo: url });
+      setAttachedVideo(url);
+      setIsVideoVisible(true);
+      setActivePanel("video");
+      setIsShowVideoModalVisible(false);
+    },
+    [persistCurrentEntry],
+  );
+
+  const handleRemoveVideo = useCallback(async () => {
+    await persistCurrentEntry({ attachedVideo: null });
+    setAttachedVideo(null);
+    setIsVideoVisible(false);
+    setIsShowVideoModalVisible(false);
+  }, [persistCurrentEntry]);
+
   const applyTitleChange = useCallback((nextTitle: string) => {
     setTitle(nextTitle);
   }, []);
@@ -410,9 +447,12 @@ export default function NoteEditorView({
     [leaveEditor, router],
   );
 
-  const hasAttachment = attachmentPath !== null && attachmentType !== null;
-  const showSplit = hasAttachment && isAttachmentVisible;
-  const splitFlexDir = isDesktop ? "row" : "column";
+  const hasDocAttachment = attachmentPath !== null && attachmentType !== null;
+  const showSplit =
+    activePanel === "document"
+      ? hasDocAttachment && isAttachmentVisible
+      : !!attachedVideo && isVideoVisible;
+  const splitFlexDir = activePanel === "video" ? "column" : isDesktop ? "row" : "column";
 
   return (
     <View style={styles.screen}>
@@ -447,21 +487,28 @@ export default function NoteEditorView({
             <View
               style={[
                 styles.documentPane,
-                isDesktop
+                splitFlexDir === "row"
                   ? { width: `${splitRatio * 100}%` as unknown as number }
                   : { height: `${splitRatio * 100}%` as unknown as number },
               ]}
             >
-              <DocumentPanel
-                noteId={id}
-                attachmentPath={attachmentPath}
-                attachmentType={attachmentType}
-                onTextSelected={handleTextSelected}
-                onDismiss={handleHideAttachment}
-              />
+              {activePanel === "document" ? (
+                <DocumentPanel
+                  noteId={id}
+                  attachmentPath={attachmentPath as string}
+                  attachmentType={attachmentType as AttachmentType}
+                  onTextSelected={handleTextSelected}
+                  onDismiss={handleHideAttachment}
+                />
+              ) : (
+                <VideoSplitPanel
+                  url={attachedVideo ?? ""}
+                  onDismiss={() => setIsVideoVisible(false)}
+                />
+              )}
             </View>
             <View
-              style={isDesktop ? styles.dividerV : styles.dividerH}
+              style={splitFlexDir === "row" ? styles.dividerV : styles.dividerH}
               {...panResponder.panHandlers}
             />
           </>
@@ -487,13 +534,18 @@ export default function NoteEditorView({
 
             <EditorToolbar
               onAttachDocument={() => void handleAttachDocument()}
-              hasAttachment={hasAttachment}
-              isAttachmentVisible={showSplit}
+              hasAttachment={hasDocAttachment}
+              isAttachmentVisible={showSplit && activePanel === "document"}
               onShowAttachment={handleShowAttachment}
               onHideAttachment={handleHideAttachment}
               onRemoveAttachment={() => void handleRemoveAttachment()}
               showRelatedNotes={showRelatedNotes}
               onToggleRelatedNotes={() => setShowRelatedNotes((v) => !v)}
+              onShowVideoModal={() => setIsShowVideoModalVisible(true)}
+              attachedVideo={attachedVideo}
+              onToggleActivePanel={() =>
+                setActivePanel(activePanel === "video" ? "document" : "video")
+              }
             />
             <EditorScrollProvider>
               <HybridEditor
@@ -520,6 +572,13 @@ export default function NoteEditorView({
       <TemplatePickerModal
         visible={isTemplateModalVisible}
         onDismiss={() => setIsTemplateModalVisible(false)}
+      />
+      <AttachVideoModal
+        visible={isShowVideoModalVisible}
+        currentVideo={attachedVideo}
+        onDismiss={() => setIsShowVideoModalVisible(false)}
+        onSave={(url) => { void handleAttachVideo(url); }}
+        onRemove={() => { void handleRemoveVideo(); }}
       />
     </View>
   );
