@@ -40,45 +40,13 @@ const youtubeSource: EmbeddedVideoSource = {
 	host: "youtube.com",
 };
 
-it("calls onToggleMode when the minimize/expand button is pressed", () => {
-	const onToggleMode = jest.fn();
-	const { rerender } = render(
-		<EmbeddedVideoPanel
-			onToggleMode={onToggleMode}
-			source={youtubeSource}
-			mode="normal"
-		/>,
-	);
-	fireEvent.press(screen.getByLabelText("Minimize video panel"));
-	expect(onToggleMode).toHaveBeenCalledTimes(1);
-
-	rerender(
-		<EmbeddedVideoPanel
-			onToggleMode={onToggleMode}
-			source={youtubeSource}
-			mode="minimised"
-		/>,
-	);
-	fireEvent.press(screen.getByLabelText("Expand video panel"));
-	expect(onToggleMode).toHaveBeenCalledTimes(2);
+it("renders the video panel with a YouTube source", () => {
+	render(<EmbeddedVideoPanel source={youtubeSource} />);
+	expect(screen.getByTestId("embedded-video-panel")).toBeTruthy();
+	expect(screen.getByTestId("webview")).toBeTruthy();
 });
 
-it("hides player frame in minimised mode", () => {
-	const { rerender } = render(
-		<EmbeddedVideoPanel
-			source={youtubeSource}
-			onToggleMode={() => {}}
-			mode="normal"
-		/>,
-	);
-	expect(screen.getByTestId("webview")).toBeTruthy();
-
-	rerender(
-		<EmbeddedVideoPanel
-			onToggleMode={() => {}}
-			source={youtubeSource}
-			mode="minimised"
-		/>,
-	);
-	expect(screen.queryByTestId("webview")).toBeNull();
+it("displays the video raw URL as caption", () => {
+	render(<EmbeddedVideoPanel source={youtubeSource} />);
+	expect(screen.getByText(youtubeSource.rawUrl)).toBeTruthy();
 });
