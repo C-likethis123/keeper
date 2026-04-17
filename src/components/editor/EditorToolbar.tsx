@@ -4,16 +4,17 @@ import { IconButton } from "@/components/shared/IconButton";
 import { useToolbarActions } from "@/hooks/useToolbarActions";
 import { useEditorState } from "@/stores/editorStore";
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { BlockType, getListLevel, isListItem } from "./core/BlockNode";
 
 const styles = StyleSheet.create({
   toolbar: {
-    flexDirection: "row",
     borderBottomWidth: 1,
     paddingVertical: 8,
     paddingHorizontal: 16,
-    justifyContent: "flex-start",
+  },
+  toolbarContent: {
+    flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
@@ -76,7 +77,12 @@ export function EditorToolbar({
   const canRemoveAttachment = onRemoveAttachment != null;
 
   return (
-    <View style={styles.toolbar}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.toolbar}
+      contentContainerStyle={styles.toolbarContent}
+    >
       <IconButton
         name="undo"
         onPress={() => executeEditorCommand("undo", commandContext)}
@@ -154,6 +160,6 @@ export function EditorToolbar({
           label="Switch panel"
         />
       )}
-    </View>
+    </ScrollView>
   );
 }
