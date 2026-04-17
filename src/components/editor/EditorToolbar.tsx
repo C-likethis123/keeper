@@ -4,7 +4,7 @@ import { IconButton } from "@/components/shared/IconButton";
 import { useToolbarActions } from "@/hooks/useToolbarActions";
 import { useEditorState } from "@/stores/editorStore";
 import React from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { BlockType, getListLevel, isListItem } from "./core/BlockNode";
 
 const styles = StyleSheet.create({
@@ -77,10 +77,10 @@ export function EditorToolbar({
   const canRemoveAttachment = onRemoveAttachment != null;
 
   return (
+    <View style={styles.toolbar}>
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={styles.toolbar}
       contentContainerStyle={styles.toolbarContent}
     >
       <IconButton
@@ -161,5 +161,6 @@ export function EditorToolbar({
         />
       )}
     </ScrollView>
+    </View>
   );
 }
