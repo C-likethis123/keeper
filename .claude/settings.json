@@ -24,7 +24,7 @@
       "Edit(docs/**)",
       "mcp__ide__getDiagnostics",
       "Bash(npx expo:*)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)"
