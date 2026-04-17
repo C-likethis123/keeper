@@ -440,6 +440,39 @@ Attach a PDF or ePub file to a note and read it side-by-side with the editor —
 
 ---
 
+### Phase 13: Local-First MOC Suggestion Engine
+
+Replace the BFS/wikilink-based MOC categorisation from Phase 11 with a semantic clustering pipeline that suggests proto-MOC clusters for human curation.
+
+**Status**: Planned
+**Replaces**: MOC collection logic in Phase 11 (`wiki_links` BFS neighbourhood + recursive CTEs). The new engine is suggestion-only; the system never auto-creates MOC notes.
+
+**Architecture**:
+- Python indexing pipeline triggered by git changes (content-hash dedup for incremental updates)
+- Embeddings via `sentence-transformers` (e.g. `all-MiniLM-L6-v2`), stored in SQLite `embeddings` table
+- Cosine similarity graph, top-K neighbours (K=5–10), stored in `similarities` table
+- Agglomerative clustering → `clusters` + `cluster_members` tables
+- Candidate MOC titles from TF-IDF keywords or LLM summarisation of note titles
+- Confidence score per cluster (average intra-cluster similarity + density)
+- Single pipeline outputs synced to both mobile and desktop SQLite DBs
+
+**New SQLite tables**:
+- `embeddings(note_id, embedding BLOB)`
+- `similarities(note_id, related_note_id, score FLOAT)`
+- `clusters(id, name, created_at)`
+- `cluster_members(cluster_id, note_id, score FLOAT)`
+
+**User interaction model**:
+- User reviews suggested clusters in UI
+- Accept → generate a real MOC note in Git; Ignore → discard; Rename → override generated title
+- System never promotes a cluster to a MOC note without explicit user approval
+
+**Stack**: Python · sentence-transformers · scikit-learn · SQLite
+**Target scale**: 1k–20k notes, runs locally on M1 Mac, incremental updates only
+**Anti-goals**: no recursive CTEs for hierarchy, no auto-created MOCs, no distributed infra
+
+---
+
 ### Tabs
 
 Use tabs to toggle between different views without leaving the current workspace context.
