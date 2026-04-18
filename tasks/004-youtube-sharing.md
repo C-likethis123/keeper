@@ -2,7 +2,7 @@
 
 ## Status
 
-- 📝 Planned
+- ✅ Completed
 - Roadmap entry: `Phase 14: YouTube Sharing Integration`
 
 ## Summary

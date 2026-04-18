@@ -11,6 +11,9 @@ expo-env.d.ts
 *.apk
 *.so
 
+# Claude
+.claude/settings.local.json
+
 # Native
 .kotlin/
 *.orig.*

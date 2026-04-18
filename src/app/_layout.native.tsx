@@ -6,10 +6,12 @@ import { lightTheme } from "@/constants/themes/lightTheme";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppStartup } from "@/hooks/useAppStartup";
 import { useConflictResolution } from "@/hooks/useConflictResolution";
+import { useShareHandler } from "@/hooks/useShareHandler";
 import { useStyles } from "@/hooks/useStyles";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { ThemeProvider } from "@react-navigation/native";
 import { Drawer } from "expo-router/drawer";
+import { ShareIntentProvider } from "expo-share-intent";
 import { useEffect } from "react";
 import {
 	ActivityIndicator,
@@ -33,7 +35,9 @@ export default function RootLayout() {
 
 	return (
 		<ThemeProvider value={themeMode === "light" ? lightTheme : darkTheme}>
-			<App isHydrated={isHydrated} initError={initError} />
+			<ShareIntentProvider>
+				<App isHydrated={isHydrated} initError={initError} />
+			</ShareIntentProvider>
 		</ThemeProvider>
 	);
 }
@@ -45,6 +49,8 @@ const App = ({
 	const styles = useStyles(createStyles);
 	const { conflicts, isShowingModal, hideConflictModal, hasUnresolvedConflicts } =
 		useConflictResolution();
+
+	useShareHandler(isHydrated);
 
 	if (!isHydrated) {
 		return (
