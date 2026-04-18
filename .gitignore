@@ -62,3 +62,4 @@ src-tauri/git_core/target/
 
 # python
 mlx-env
+.worktrees/
