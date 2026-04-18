@@ -187,7 +187,7 @@ export default function MOCSuggestions() {
 }
 
 const styles = StyleSheet.create({
-	container: { paddingHorizontal: 16, paddingTop: 12, gap: 12 },
+	container: { paddingHorizontal: 4, paddingTop: 12, gap: 12 },
 	sectionHeader: {
 		fontSize: 13,
 		fontWeight: "600",

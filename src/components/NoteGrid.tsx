@@ -96,7 +96,6 @@ export default function NoteGrid({
 
 	return (
 		<View style={styles.root}>
-			{listHeader}
 			<FlatList
 				data={rowData}
 				key={`note-grid-${numColumns}`}
@@ -106,7 +105,7 @@ export default function NoteGrid({
 						: `note-row-${item.notes.map((note) => note.id).join("-")}-${index}`
 				}
 				contentContainerStyle={styles.contentContainer}
-				ListHeaderComponent={null}
+				ListHeaderComponent={listHeader}
 				ListEmptyComponent={
 					isEmpty ? (
 						<EmptyState title={emptyTitle} subtitle={emptySubtitle} />
@@ -179,8 +178,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			maxWidth: 640,
 			width: "100%",
 			alignSelf: "center",
-			paddingHorizontal: 8,
-			paddingTop: 12,
 		},
 		noteRow: {
 			flexDirection: "row",
