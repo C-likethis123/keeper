@@ -29,8 +29,7 @@ interface ClustersJson {
 export async function importClustersFromFile(): Promise<number> {
 	const filePath = `${NOTES_ROOT}/${CLUSTERS_FILENAME}`;
 	const file = new File(filePath);
-	const exists = await file.exists();
-	if (!exists) return 0;
+	if (!file.exists) return 0;
 
 	const raw = await file.text();
 	let parsed: ClustersJson;
