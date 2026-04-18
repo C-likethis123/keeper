@@ -473,6 +473,28 @@ Replace the BFS/wikilink-based MOC categorisation from Phase 11 with a semantic 
 
 ---
 
+### Phase 14: YouTube Sharing Integration
+
+Allow users to share YouTube videos to the app. A shared YouTube video will automatically create a resource note with the link attached.
+
+**Status**: Planned
+**Task file**: `tasks/004-youtube-sharing.md`
+**Objectives**:
+- Handle incoming share intents (Android `SEND`) and Share Extensions (iOS)
+- Detect and validate shared YouTube URLs
+- Automatically create a new note with `noteType: "resource"`
+- Pre-populate note content with the YouTube video block
+- Navigate the user to the editor for the new note
+- Support both background and cold-start sharing
+
+**Key files**:
+- `app.config.js`: Intent filters configuration
+- `src/app/_layout.tsx`: Global share listener
+- `src/services/notes/NoteService.ts`: Automatic note creation
+- `src/components/editor/video/videoUtils.ts`: URL validation
+
+---
+
 ### Tabs
 
 Use tabs to toggle between different views without leaving the current workspace context.
