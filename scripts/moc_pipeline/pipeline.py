@@ -11,10 +11,15 @@ The output file is read by the Keeper app on next load to populate
 cluster suggestion tables.
 """
 from __future__ import annotations
-import json
+
 import sys
-import uuid
 from pathlib import Path
+
+# Ensure the script's directory is on sys.path for sibling module imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+import json
+import uuid
 
 from embeddings import generate_embeddings
 from clustering import (
@@ -65,8 +70,9 @@ def build_output(
         confidence = average_intra_cluster_similarity(embeddings, member_indices)
         if confidence < MIN_CLUSTER_CONFIDENCE:
             continue
+        centroid = embeddings[member_indices].mean(axis=0)
         members = [
-            {"note_id": note_ids[i], "score": float(embeddings[member_indices] @ embeddings[i])}
+            {"note_id": note_ids[i], "score": round(float(centroid @ embeddings[i]), 4)}
             for i in member_indices
         ]
         clusters.append({
