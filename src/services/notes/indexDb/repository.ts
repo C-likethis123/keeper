@@ -436,3 +436,117 @@ export async function getRecentlyEditedNotes(
 	);
 	return rows ?? [];
 }
+
+// ─── Cluster Suggestions ──────────────────────────────────────
+
+export interface ClusterRow {
+	id: string;
+	name: string;
+	confidence: number;
+	created_at: number;
+	dismissed_at: number | null;
+	accepted_at: number | null;
+	accepted_note_id: string | null;
+}
+
+export interface ClusterMemberRow {
+	cluster_id: string;
+	note_id: string;
+	score: number;
+}
+
+export async function getActiveClusters(
+	database: SQLiteDatabase,
+): Promise<ClusterRow[]> {
+	return (
+		(await database.getAllAsync<ClusterRow>(
+			`SELECT id, name, confidence, created_at, dismissed_at, accepted_at, accepted_note_id
+             FROM clusters
+             WHERE dismissed_at IS NULL AND accepted_at IS NULL
+             ORDER BY confidence DESC`,
+		)) ?? []
+	);
+}
+
+export async function getClusterMembers(
+	database: SQLiteDatabase,
+	clusterId: string,
+): Promise<ClusterMemberRow[]> {
+	return (
+		(await database.getAllAsync<ClusterMemberRow>(
+			"SELECT cluster_id, note_id, score FROM cluster_members WHERE cluster_id = ?",
+			clusterId,
+		)) ?? []
+	);
+}
+
+export async function dismissCluster(
+	database: SQLiteDatabase,
+	clusterId: string,
+): Promise<void> {
+	await database.runAsync(
+		"UPDATE clusters SET dismissed_at = ? WHERE id = ?",
+		Date.now(),
+		clusterId,
+	);
+}
+
+export async function acceptCluster(
+	database: SQLiteDatabase,
+	clusterId: string,
+	noteId: string,
+): Promise<void> {
+	await database.runAsync(
+		"UPDATE clusters SET accepted_at = ?, accepted_note_id = ? WHERE id = ?",
+		Date.now(),
+		noteId,
+		clusterId,
+	);
+}
+
+export async function renameCluster(
+	database: SQLiteDatabase,
+	clusterId: string,
+	name: string,
+): Promise<void> {
+	await database.runAsync(
+		"UPDATE clusters SET name = ? WHERE id = ?",
+		name,
+		clusterId,
+	);
+}
+
+export async function upsertClustersFromJson(
+	database: SQLiteDatabase,
+	clusters: Array<{
+		id: string;
+		name: string;
+		confidence: number;
+		members: Array<{ note_id: string; score: number }>;
+	}>,
+): Promise<void> {
+	await database.withTransactionAsync(async () => {
+		for (const cluster of clusters) {
+			await database.runAsync(
+				`INSERT INTO clusters (id, name, confidence, created_at)
+                 VALUES (?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                   name = excluded.name,
+                   confidence = excluded.confidence`,
+				cluster.id,
+				cluster.name,
+				cluster.confidence,
+				Date.now(),
+			);
+			for (const member of cluster.members) {
+				await database.runAsync(
+					`INSERT OR REPLACE INTO cluster_members (cluster_id, note_id, score)
+                     VALUES (?, ?, ?)`,
+					cluster.id,
+					member.note_id,
+					member.score,
+				);
+			}
+		}
+	});
+}
