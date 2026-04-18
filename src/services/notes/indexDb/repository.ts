@@ -399,64 +399,6 @@ export async function getTransitiveBacklinks(
 }
 
 /**
- * Get MOC (Map of Content) scores: count of outgoing links per note.
- * Notes with >= `minLinks` outgoing links are considered MOCs.
- */
-export async function getMocScores(
-	database: SQLiteDatabase,
-	minLinks = 3,
-): Promise<{ noteId: string; outgoingCount: number }[]> {
-	const rows = await database.getAllAsync<{
-		source_id: string;
-		outgoing_count: number;
-	}>(
-		`
-		SELECT source_id, COUNT(*) as outgoing_count
-		FROM wiki_links
-		GROUP BY source_id
-		HAVING outgoing_count >= ?
-		ORDER BY outgoing_count DESC
-		`,
-		minLinks,
-	);
-	return (rows ?? []).map((r) => ({
-		noteId: r.source_id,
-		outgoingCount: r.outgoing_count,
-	}));
-}
-
-/**
- * Get the BFS neighborhood of a MOC note at a given depth.
- * Returns all notes reachable from `noteId` within `maxDepth` hops.
- */
-export async function getGraphNeighborhood(
-	database: SQLiteDatabase,
-	noteId: string,
-	maxDepth = 2,
-): Promise<{ noteId: string; depth: number }[]> {
-	const rows = await database.getAllAsync<{ target_id: string; depth: number }>(
-		`
-		WITH RECURSIVE neighborhood(target_id, depth) AS (
-			SELECT target_id, 1 FROM wiki_links WHERE source_id = ?
-			UNION
-			SELECT wl.target_id, n.depth + 1
-			FROM wiki_links wl
-			JOIN neighborhood n ON wl.source_id = n.target_id
-			WHERE n.depth < ?
-		)
-		SELECT DISTINCT target_id, MIN(depth) as depth
-		FROM neighborhood
-		WHERE target_id != ?
-		GROUP BY target_id
-		`,
-		noteId,
-		maxDepth,
-		noteId,
-	);
-	return (rows ?? []).map((r) => ({ noteId: r.target_id, depth: r.depth }));
-}
-
-/**
  * Get orphaned notes: notes that have no incoming or outgoing wiki links.
  */
 export async function getOrphanedNotes(

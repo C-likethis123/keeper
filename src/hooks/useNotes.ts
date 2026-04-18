@@ -7,8 +7,6 @@ import {
 	NotesIndexService,
 } from "@/services/notes/notesIndex";
 import {
-	notesIndexDbGetGraphNeighborhood,
-	notesIndexDbGetMocScores,
 	notesIndexDbGetOrphanedNotes,
 	notesIndexDbGetRecentlyEditedNotes,
 } from "@/services/notes/notesIndexDb";
@@ -42,58 +40,24 @@ function computeSections(
 	allNotes: Note[],
 	pinnedNotes: Note[],
 	recentlyEditedNoteIds: Set<string>,
-	mocNeighborhoods: Map<string, Set<string>>,
 	orphanedNoteIds: Set<string>,
 ): NoteSection[] {
 	const sections: NoteSection[] = [];
 
-	// 1. Pinned section
 	if (pinnedNotes.length > 0) {
-		sections.push({
-			id: "pinned",
-			title: "Pinned",
-			notes: pinnedNotes,
-		});
+		sections.push({ id: "pinned", title: "Pinned", notes: pinnedNotes });
 	}
 
-	// 2. Recently Edited section
-	const recentlyEditedNotes = allNotes.filter((n) =>
-		recentlyEditedNoteIds.has(n.id),
-	);
+	const recentlyEditedNotes = allNotes.filter((n) => recentlyEditedNoteIds.has(n.id));
 	if (recentlyEditedNotes.length > 0) {
-		sections.push({
-			id: "recently-edited",
-			title: "Recently Edited",
-			notes: recentlyEditedNotes,
-		});
+		sections.push({ id: "recently-edited", title: "Recently Edited", notes: recentlyEditedNotes });
 	}
 
-	// 3. MOC sections
-	for (const [mocNoteId, neighborhoodIds] of mocNeighborhoods) {
-		const mocNote = allNotes.find((n) => n.id === mocNoteId);
-		if (!mocNote) continue;
-
-		const neighborhoodNotes = allNotes.filter((n) => neighborhoodIds.has(n.id));
-		if (neighborhoodNotes.length > 0) {
-			sections.push({
-				id: `moc-${mocNoteId}`,
-				title: mocNote.title,
-				notes: neighborhoodNotes,
-			});
-		}
-	}
-
-	// 4. Uncategorized (orphaned notes with no links)
 	const uncategorizedNotes = allNotes.filter((n) => orphanedNoteIds.has(n.id));
 	if (uncategorizedNotes.length > 0) {
-		sections.push({
-			id: "uncategorized",
-			title: "Uncategorized",
-			notes: uncategorizedNotes,
-		});
+		sections.push({ id: "uncategorized", title: "Uncategorized", notes: uncategorizedNotes });
 	}
 
-	// 5. All Notes (everything not already shown)
 	const shownNoteIds = new Set<string>();
 	for (const section of sections) {
 		for (const note of section.notes) {
@@ -102,11 +66,7 @@ function computeSections(
 	}
 	const allNotesSection = allNotes.filter((n) => !shownNoteIds.has(n.id));
 	if (allNotesSection.length > 0) {
-		sections.push({
-			id: "all-notes",
-			title: "All Notes",
-			notes: allNotesSection,
-		});
+		sections.push({ id: "all-notes", title: "All Notes", notes: allNotesSection });
 	}
 
 	return sections;
@@ -145,30 +105,8 @@ async function loadSectionMetadata() {
 	const recentlyEditedNoteIds = new Set(
 		recentlyEditedRows.map((row) => row.id),
 	);
-
-	const mocScores = await notesIndexDbGetMocScores(3);
-	const mocNeighborhoods = new Map<string, Set<string>>();
-
-	for (const score of mocScores.slice(0, 5)) {
-		const neighborhood = await notesIndexDbGetGraphNeighborhood(
-			score.noteId,
-			2,
-		);
-		const neighborhoodIds = new Set(
-			neighborhood.map((entry) => entry.noteId).slice(0, 8),
-		);
-		if (neighborhoodIds.size > 0) {
-			mocNeighborhoods.set(score.noteId, neighborhoodIds);
-		}
-	}
-
 	const orphanedNoteIds = new Set(await notesIndexDbGetOrphanedNotes());
-
-	return {
-		recentlyEditedNoteIds,
-		mocNeighborhoods,
-		orphanedNoteIds,
-	};
+	return { recentlyEditedNoteIds, orphanedNoteIds };
 }
 
 export default function useNotes() {
@@ -198,11 +136,9 @@ export default function useNotes() {
 	});
 	const [sectionMetadata, setSectionMetadata] = useState<{
 		recentlyEditedNoteIds: Set<string>;
-		mocNeighborhoods: Map<string, Set<string>>;
 		orphanedNoteIds: Set<string>;
 	}>({
 		recentlyEditedNoteIds: new Set(),
-		mocNeighborhoods: new Map(),
 		orphanedNoteIds: new Set(),
 	});
 	const sectionRequestVersionRef = useRef(0);
@@ -354,7 +290,6 @@ export default function useNotes() {
 				}
 				setSectionMetadata({
 					recentlyEditedNoteIds: new Set(),
-					mocNeighborhoods: new Map(),
 					orphanedNoteIds: new Set(),
 				});
 			});
@@ -371,7 +306,6 @@ export default function useNotes() {
 			allNotes,
 			pinnedNotes,
 			sectionMetadata.recentlyEditedNoteIds,
-			sectionMetadata.mocNeighborhoods,
 			sectionMetadata.orphanedNoteIds,
 		);
 	}, [allNotes, sectionMetadata]);
