@@ -3,6 +3,7 @@ import { getNotesIndexDb } from "./indexDb/db";
 import {
 	deleteById,
 	getBacklinks,
+	getById,
 	getOrphanedNotes,
 	getOutgoingLinks,
 	getRecentlyEditedNotes,
@@ -39,6 +40,11 @@ export async function notesIndexDbUpsert(item: NoteIndexItem): Promise<void> {
 export async function notesIndexDbDelete(noteId: string): Promise<void> {
 	const database = await getNotesIndexDb();
 	await deleteById(database, noteId);
+}
+
+export async function notesIndexDbGetById(noteId: string): Promise<NoteIndexItem | null> {
+	const database = await getNotesIndexDb();
+	return getById(database, noteId);
 }
 
 export async function notesIndexDbListAll(

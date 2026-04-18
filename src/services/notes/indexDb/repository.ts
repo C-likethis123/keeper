@@ -76,6 +76,17 @@ export async function deleteById(
 	await database.runAsync(`DELETE FROM ${TABLE} WHERE id = ?`, noteId);
 }
 
+export async function getById(
+	database: SQLiteDatabase,
+	noteId: string,
+): Promise<NoteIndexItem | null> {
+	const row = await database.getFirstAsync<NoteIndexRow>(
+		`SELECT id, title, summary, is_pinned, updated_at, note_type, status FROM ${TABLE} WHERE id = ?`,
+		noteId,
+	);
+	return row ? mapDbRowToIndexItem(row) : null;
+}
+
 export async function listAll(
 	database: SQLiteDatabase,
 	query: string,

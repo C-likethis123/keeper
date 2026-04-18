@@ -8,6 +8,7 @@ import {
 	listClusterMembers,
 	type ClusterRow,
 } from "@/services/notes/clusterService";
+import { notesIndexDbGetById } from "@/services/notes/notesIndexDb";
 import { useStorageStore } from "@/stores/storageStore";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -22,6 +23,7 @@ import {
 interface ClusterCard {
 	cluster: ClusterRow;
 	memberNoteIds: string[];
+	memberNoteTitles: Map<string, string>;
 }
 
 export default function MOCSuggestions() {
@@ -34,9 +36,18 @@ export default function MOCSuggestions() {
 		const loaded: ClusterCard[] = await Promise.all(
 			clusters.map(async (cluster) => {
 				const members = await listClusterMembers(cluster.id);
+				const memberIds = members.map((m) => m.note_id).slice(0, 5);
+				
+				const memberTitles = new Map<string, string>();
+				for (const id of memberIds) {
+					const note = await notesIndexDbGetById(id);
+					memberTitles.set(id, note?.title ?? id);
+				}
+
 				return {
 					cluster,
-					memberNoteIds: members.map((m) => m.note_id).slice(0, 5),
+					memberNoteIds: memberIds,
+					memberNoteTitles: memberTitles,
 				};
 			}),
 		);
@@ -130,7 +141,7 @@ export default function MOCSuggestions() {
 						style={[styles.members, { color: colors.textSecondary }]}
 						numberOfLines={2}
 					>
-						{card.memberNoteIds.join(" · ")}
+						{card.memberNoteIds.map(id => card.memberNoteTitles.get(id) || id).join(" · ")}
 					</Text>
 					<Text style={[styles.confidence, { color: colors.textSecondary }]}>
 						{Math.round(card.cluster.confidence * 100)}% confidence

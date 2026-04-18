@@ -50,6 +50,31 @@ export async function notesIndexDbDelete(_noteId: string): Promise<void> {
 	// On desktop, deletes go through TauriStorageEngine.indexDelete — this path is unreachable.
 }
 
+export async function notesIndexDbGetById(
+	noteId: string,
+): Promise<NoteIndexItem | null> {
+	type ReadNoteResult = {
+		id: string;
+		title: string;
+		summary: string;
+		isPinned: boolean;
+		lastUpdated: number;
+		noteType: string;
+		status: string | null;
+	};
+	const r = await invoke<ReadNoteResult | null>("read_note", { id: noteId });
+	if (!r) return null;
+	return {
+		noteId: r.id,
+		title: r.title,
+		summary: r.summary,
+		isPinned: r.isPinned,
+		updatedAt: r.lastUpdated,
+		noteType: r.noteType as NoteIndexItem["noteType"],
+		status: r.status as NoteIndexItem["status"],
+	};
+}
+
 export async function notesIndexDbListAll(
 	query: string,
 	limit: number,

@@ -481,7 +481,23 @@ Replace the BFS/wikilink-based MOC categorisation from Phase 11 with a semantic 
 
 ---
 
-### Phase 14: YouTube Sharing Integration
+### Phase 15: Automate MOC Cluster Generation (Github Actions)
+
+Integrate the local Python clustering pipeline into the repository's continuous integration flow so that the MOC cluster index stays updated automatically as notes are pushed to the main branch.
+
+**Status**: Planned
+**Objectives**:
+- Create a Github Action that runs `scripts/moc_pipeline/pipeline.py` on push/merge to `main`.
+- Ensure the pipeline can access the note repository (via checkout).
+- Automate the generation/update of cluster metadata.
+- Store pipeline artifacts (e.g., SQLite migration updates, clustered metadata) so they can be integrated back into the repository or distributed via OTA-like flows.
+**Key files**:
+- `.github/workflows/moc-clustering.yml`
+- `scripts/moc_pipeline/pipeline.py`
+
+---
+
+### Phase 16: YouTube Sharing Integration
 
 Allow users to share YouTube videos to the app. A shared YouTube video will automatically create a resource note with the link attached.
 
