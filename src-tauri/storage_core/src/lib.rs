@@ -754,20 +754,6 @@ pub fn wiki_links_delete_all(index_db_path: &Path) -> Result<(), String> {
 
 // ─── Graph Queries ──────────────────────────────────────────────
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MocScore {
-    pub note_id: String,
-    pub outgoing_count: i64,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GraphNeighbor {
-    pub note_id: String,
-    pub depth: i64,
-}
-
 pub fn wiki_links_get_backlinks(
     index_db_path: &Path,
     note_id: String,
@@ -800,73 +786,6 @@ pub fn wiki_links_get_outgoing(
     let mut result = Vec::new();
     for row in rows {
         result.push(row.map_err(|e| format!("wiki_links_get_outgoing row failed: {e}"))?);
-    }
-    Ok(result)
-}
-
-pub fn wiki_links_get_moc_scores(
-    index_db_path: &Path,
-    min_links: i64,
-) -> Result<Vec<MocScore>, String> {
-    let conn = open_index_db(index_db_path)?;
-    let mut stmt = conn
-        .prepare(
-            "SELECT source_id, COUNT(*) as outgoing_count
-             FROM wiki_links
-             GROUP BY source_id
-             HAVING outgoing_count >= ?
-             ORDER BY outgoing_count DESC",
-        )
-        .map_err(|e| format!("wiki_links_get_moc_scores prepare failed: {e}"))?;
-    let rows = stmt
-        .query_map(params![min_links], |row| {
-            Ok(MocScore {
-                note_id: row.get(0)?,
-                outgoing_count: row.get(1)?,
-            })
-        })
-        .map_err(|e| format!("wiki_links_get_moc_scores query failed: {e}"))?;
-    let mut result = Vec::new();
-    for row in rows {
-        result.push(row.map_err(|e| format!("wiki_links_get_moc_scores row failed: {e}"))?);
-    }
-    Ok(result)
-}
-
-pub fn wiki_links_get_neighborhood(
-    index_db_path: &Path,
-    note_id: String,
-    max_depth: i64,
-) -> Result<Vec<GraphNeighbor>, String> {
-    let conn = open_index_db(index_db_path)?;
-    let sql = format!(
-        "WITH RECURSIVE neighborhood(target_id, depth) AS (
-            SELECT target_id, 1 FROM wiki_links WHERE source_id = ?
-            UNION
-            SELECT wl.target_id, n.depth + 1
-            FROM wiki_links wl
-            JOIN neighborhood n ON wl.source_id = n.target_id
-            WHERE n.depth < ?
-        )
-        SELECT DISTINCT target_id, MIN(depth) as depth
-        FROM neighborhood
-        WHERE target_id != ?
-        GROUP BY target_id"
-    );
-    let mut stmt = conn
-        .prepare(&sql)
-        .map_err(|e| format!("wiki_links_get_neighborhood prepare failed: {e}"))?;
-    let rows = stmt
-        .query_map(params![note_id, max_depth, note_id], |row| {
-            Ok(GraphNeighbor {
-                note_id: row.get(0)?,
-                depth: row.get(1)?,
-            })
-        })
-        .map_err(|e| format!("wiki_links_get_neighborhood query failed: {e}"))?;
-    let mut result = Vec::new();
-    for row in rows {
-        result.push(row.map_err(|e| format!("wiki_links_get_neighborhood row failed: {e}"))?);
     }
     Ok(result)
 }
@@ -928,4 +847,180 @@ pub fn wiki_links_get_recently_edited(
         result.push(row.map_err(|e| format!("wiki_links_get_recently_edited row failed: {e}"))?);
     }
     Ok(result)
+}
+
+// ─── Cluster Suggestions ────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusterRow {
+    pub id: String,
+    pub name: String,
+    pub confidence: f64,
+    pub created_at: i64,
+    pub dismissed_at: Option<i64>,
+    pub accepted_at: Option<i64>,
+    pub accepted_note_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusterMemberRow {
+    pub cluster_id: String,
+    pub note_id: String,
+    pub score: f64,
+}
+
+pub fn clusters_get_active(index_db_path: &Path) -> Result<Vec<ClusterRow>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, name, confidence, created_at, dismissed_at, accepted_at, accepted_note_id
+             FROM clusters
+             WHERE dismissed_at IS NULL AND accepted_at IS NULL
+             ORDER BY confidence DESC",
+        )
+        .map_err(|e| format!("clusters_get_active prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(ClusterRow {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                confidence: row.get(2)?,
+                created_at: row.get(3)?,
+                dismissed_at: row.get(4)?,
+                accepted_at: row.get(5)?,
+                accepted_note_id: row.get(6)?,
+            })
+        })
+        .map_err(|e| format!("clusters_get_active query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("clusters_get_active row failed: {e}"))?);
+    }
+    Ok(result)
+}
+
+pub fn clusters_get_members(
+    index_db_path: &Path,
+    cluster_id: String,
+) -> Result<Vec<ClusterMemberRow>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT cluster_id, note_id, score FROM cluster_members WHERE cluster_id = ?",
+        )
+        .map_err(|e| format!("clusters_get_members prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map([&cluster_id], |row| {
+            Ok(ClusterMemberRow {
+                cluster_id: row.get(0)?,
+                note_id: row.get(1)?,
+                score: row.get(2)?,
+            })
+        })
+        .map_err(|e| format!("clusters_get_members query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("clusters_get_members row failed: {e}"))?);
+    }
+    Ok(result)
+}
+
+pub fn clusters_dismiss(index_db_path: &Path, cluster_id: String) -> Result<(), String> {
+    let conn = open_index_db(index_db_path)?;
+    conn.execute(
+        "UPDATE clusters SET dismissed_at = ?1 WHERE id = ?2",
+        rusqlite::params![
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis() as i64,
+            cluster_id
+        ],
+    )
+    .map_err(|e| format!("clusters_dismiss failed: {e}"))?;
+    Ok(())
+}
+
+pub fn clusters_accept(
+    index_db_path: &Path,
+    cluster_id: String,
+    note_id: String,
+) -> Result<(), String> {
+    let conn = open_index_db(index_db_path)?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64;
+    conn.execute(
+        "UPDATE clusters SET accepted_at = ?1, accepted_note_id = ?2 WHERE id = ?3",
+        rusqlite::params![now, note_id, cluster_id],
+    )
+    .map_err(|e| format!("clusters_accept failed: {e}"))?;
+    Ok(())
+}
+
+pub fn clusters_rename(
+    index_db_path: &Path,
+    cluster_id: String,
+    name: String,
+) -> Result<(), String> {
+    let conn = open_index_db(index_db_path)?;
+    conn.execute(
+        "UPDATE clusters SET name = ?1 WHERE id = ?2",
+        rusqlite::params![name, cluster_id],
+    )
+    .map_err(|e| format!("clusters_rename failed: {e}"))?;
+    Ok(())
+}
+
+pub fn clusters_import_from_json(
+    index_db_path: &Path,
+    notes_root: &Path,
+) -> Result<usize, String> {
+    use std::fs;
+    let json_path = notes_root.join(".moc_clusters.json");
+    if !json_path.exists() {
+        return Ok(0);
+    }
+    let raw = fs::read_to_string(&json_path)
+        .map_err(|e| format!("clusters_import_from_json read failed: {e}"))?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&raw).map_err(|e| format!("clusters JSON parse failed: {e}"))?;
+    let clusters = parsed["clusters"]
+        .as_array()
+        .ok_or("clusters field missing or not array")?;
+
+    let conn = open_index_db(index_db_path)?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64;
+
+    for cluster in clusters {
+        let id = cluster["id"].as_str().ok_or("cluster missing id")?;
+        let name = cluster["name"].as_str().ok_or("cluster missing name")?;
+        let confidence = cluster["confidence"].as_f64().unwrap_or(0.0);
+        conn.execute(
+            "INSERT INTO clusters (id, name, confidence, created_at)
+             VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(id) DO UPDATE SET name = excluded.name, confidence = excluded.confidence",
+            rusqlite::params![id, name, confidence, now],
+        )
+        .map_err(|e| format!("clusters_import insert failed: {e}"))?;
+
+        if let Some(members) = cluster["members"].as_array() {
+            for member in members {
+                let note_id = member["note_id"].as_str().ok_or("member missing note_id")?;
+                let score = member["score"].as_f64().unwrap_or(0.0);
+                conn.execute(
+                    "INSERT OR REPLACE INTO cluster_members (cluster_id, note_id, score) VALUES (?1, ?2, ?3)",
+                    rusqlite::params![id, note_id, score],
+                )
+                .map_err(|e| format!("clusters_import member insert failed: {e}"))?;
+            }
+        }
+    }
+    Ok(clusters.len())
 }

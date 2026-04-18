@@ -3,8 +3,6 @@ import { getNotesIndexDb } from "./indexDb/db";
 import {
 	deleteById,
 	getBacklinks,
-	getGraphNeighborhood,
-	getMocScores,
 	getOrphanedNotes,
 	getOutgoingLinks,
 	getRecentlyEditedNotes,
@@ -75,21 +73,6 @@ export async function notesIndexDbGetTransitiveBacklinks(
 ): Promise<{ noteId: string; depth: number }[]> {
 	const database = await getNotesIndexDb();
 	return getTransitiveBacklinks(database, noteId, maxDepth);
-}
-
-export async function notesIndexDbGetMocScores(
-	minLinks = 3,
-): Promise<{ noteId: string; outgoingCount: number }[]> {
-	const database = await getNotesIndexDb();
-	return getMocScores(database, minLinks);
-}
-
-export async function notesIndexDbGetGraphNeighborhood(
-	noteId: string,
-	maxDepth = 2,
-): Promise<{ noteId: string; depth: number }[]> {
-	const database = await getNotesIndexDb();
-	return getGraphNeighborhood(database, noteId, maxDepth);
 }
 
 export async function notesIndexDbGetOrphanedNotes(): Promise<string[]> {

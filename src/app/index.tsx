@@ -1,5 +1,6 @@
 import HomeQuickComposer from "@/components/HomeQuickComposer";
 import HomeScreenHeader from "@/components/HomeScreenHeader";
+import MOCSuggestions from "@/components/MOCSuggestions";
 import ConflictBanner from "@/components/shared/ConflictBanner";
 import ResetAppDataModal from "@/components/ResetAppDataModal";
 import ErrorScreen from "@/components/shared/ErrorScreen";
@@ -10,6 +11,7 @@ import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
+import { importClustersFromFile } from "@/services/notes/clusterService";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
@@ -18,7 +20,7 @@ import { useToastStore } from "@/stores/toastStore";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
 import { useFocusEffect, useNavigation } from "expo-router";
-import React, { Suspense, useCallback, useRef, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, type TextInput, View } from "react-native";
 
 const LazyNoteGrid = React.lazy(() => import("@/components/NoteGrid"));
@@ -113,6 +115,10 @@ function IndexContent() {
 		[handleRefresh],
 	);
 
+	useEffect(() => {
+		void importClustersFromFile();
+	}, []);
+
 	const searchInputRef = useRef<TextInput>(null);
 	useAppKeyboardShortcuts({
 		onFocusSearch: () => {
@@ -159,6 +165,7 @@ function IndexContent() {
 						<>
 							<ConflictBanner />
 							<HomeQuickComposer onPress={createAndOpenNote} />
+							<MOCSuggestions />
 						</>
 					}
 				/>

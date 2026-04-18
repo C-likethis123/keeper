@@ -399,64 +399,6 @@ export async function getTransitiveBacklinks(
 }
 
 /**
- * Get MOC (Map of Content) scores: count of outgoing links per note.
- * Notes with >= `minLinks` outgoing links are considered MOCs.
- */
-export async function getMocScores(
-	database: SQLiteDatabase,
-	minLinks = 3,
-): Promise<{ noteId: string; outgoingCount: number }[]> {
-	const rows = await database.getAllAsync<{
-		source_id: string;
-		outgoing_count: number;
-	}>(
-		`
-		SELECT source_id, COUNT(*) as outgoing_count
-		FROM wiki_links
-		GROUP BY source_id
-		HAVING outgoing_count >= ?
-		ORDER BY outgoing_count DESC
-		`,
-		minLinks,
-	);
-	return (rows ?? []).map((r) => ({
-		noteId: r.source_id,
-		outgoingCount: r.outgoing_count,
-	}));
-}
-
-/**
- * Get the BFS neighborhood of a MOC note at a given depth.
- * Returns all notes reachable from `noteId` within `maxDepth` hops.
- */
-export async function getGraphNeighborhood(
-	database: SQLiteDatabase,
-	noteId: string,
-	maxDepth = 2,
-): Promise<{ noteId: string; depth: number }[]> {
-	const rows = await database.getAllAsync<{ target_id: string; depth: number }>(
-		`
-		WITH RECURSIVE neighborhood(target_id, depth) AS (
-			SELECT target_id, 1 FROM wiki_links WHERE source_id = ?
-			UNION
-			SELECT wl.target_id, n.depth + 1
-			FROM wiki_links wl
-			JOIN neighborhood n ON wl.source_id = n.target_id
-			WHERE n.depth < ?
-		)
-		SELECT DISTINCT target_id, MIN(depth) as depth
-		FROM neighborhood
-		WHERE target_id != ?
-		GROUP BY target_id
-		`,
-		noteId,
-		maxDepth,
-		noteId,
-	);
-	return (rows ?? []).map((r) => ({ noteId: r.target_id, depth: r.depth }));
-}
-
-/**
  * Get orphaned notes: notes that have no incoming or outgoing wiki links.
  */
 export async function getOrphanedNotes(
@@ -493,4 +435,118 @@ export async function getRecentlyEditedNotes(
 		limit,
 	);
 	return rows ?? [];
+}
+
+// ─── Cluster Suggestions ──────────────────────────────────────
+
+export interface ClusterRow {
+	id: string;
+	name: string;
+	confidence: number;
+	created_at: number;
+	dismissed_at: number | null;
+	accepted_at: number | null;
+	accepted_note_id: string | null;
+}
+
+export interface ClusterMemberRow {
+	cluster_id: string;
+	note_id: string;
+	score: number;
+}
+
+export async function getActiveClusters(
+	database: SQLiteDatabase,
+): Promise<ClusterRow[]> {
+	return (
+		(await database.getAllAsync<ClusterRow>(
+			`SELECT id, name, confidence, created_at, dismissed_at, accepted_at, accepted_note_id
+             FROM clusters
+             WHERE dismissed_at IS NULL AND accepted_at IS NULL
+             ORDER BY confidence DESC`,
+		)) ?? []
+	);
+}
+
+export async function getClusterMembers(
+	database: SQLiteDatabase,
+	clusterId: string,
+): Promise<ClusterMemberRow[]> {
+	return (
+		(await database.getAllAsync<ClusterMemberRow>(
+			"SELECT cluster_id, note_id, score FROM cluster_members WHERE cluster_id = ?",
+			clusterId,
+		)) ?? []
+	);
+}
+
+export async function dismissCluster(
+	database: SQLiteDatabase,
+	clusterId: string,
+): Promise<void> {
+	await database.runAsync(
+		"UPDATE clusters SET dismissed_at = ? WHERE id = ?",
+		Date.now(),
+		clusterId,
+	);
+}
+
+export async function acceptCluster(
+	database: SQLiteDatabase,
+	clusterId: string,
+	noteId: string,
+): Promise<void> {
+	await database.runAsync(
+		"UPDATE clusters SET accepted_at = ?, accepted_note_id = ? WHERE id = ?",
+		Date.now(),
+		noteId,
+		clusterId,
+	);
+}
+
+export async function renameCluster(
+	database: SQLiteDatabase,
+	clusterId: string,
+	name: string,
+): Promise<void> {
+	await database.runAsync(
+		"UPDATE clusters SET name = ? WHERE id = ?",
+		name,
+		clusterId,
+	);
+}
+
+export async function upsertClustersFromJson(
+	database: SQLiteDatabase,
+	clusters: Array<{
+		id: string;
+		name: string;
+		confidence: number;
+		members: Array<{ note_id: string; score: number }>;
+	}>,
+): Promise<void> {
+	await database.withTransactionAsync(async () => {
+		for (const cluster of clusters) {
+			await database.runAsync(
+				`INSERT INTO clusters (id, name, confidence, created_at)
+                 VALUES (?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                   name = excluded.name,
+                   confidence = excluded.confidence`,
+				cluster.id,
+				cluster.name,
+				cluster.confidence,
+				Date.now(),
+			);
+			for (const member of cluster.members) {
+				await database.runAsync(
+					`INSERT OR REPLACE INTO cluster_members (cluster_id, note_id, score)
+                     VALUES (?, ?, ?)`,
+					cluster.id,
+					member.note_id,
+					member.score,
+				);
+			}
+		}
+	});
 }

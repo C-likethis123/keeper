@@ -444,7 +444,15 @@ Attach a PDF or ePub file to a note and read it side-by-side with the editor —
 
 Replace the BFS/wikilink-based MOC categorisation from Phase 11 with a semantic clustering pipeline that suggests proto-MOC clusters for human curation.
 
-**Status**: Planned
+**Status**: Implemented
+**Key files**:
+- `scripts/moc_pipeline/pipeline.py` — CLI pipeline entry point
+- `scripts/moc_pipeline/clustering.py` — agglomerative clustering + TF-IDF
+- `src/services/notes/clusterService.ts` — JSON import + cluster CRUD
+- `src/components/MOCSuggestions.tsx` — cluster review UI
+- `src/migrations/006_add_clusters.ts` — mobile SQLite schema
+- `src-tauri/storage_core/src/migrations/v6_add_clusters.rs` — desktop schema
+
 **Replaces**: MOC collection logic in Phase 11 (`wiki_links` BFS neighbourhood + recursive CTEs). The new engine is suggestion-only; the system never auto-creates MOC notes.
 
 **Architecture**:
