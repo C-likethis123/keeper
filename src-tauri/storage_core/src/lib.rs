@@ -38,6 +38,7 @@ pub struct ReadNoteResult {
     pub created_at: Option<i64>,
     pub completed_at: Option<i64>,
     pub attachment: Option<String>,
+    pub attached_video: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -52,6 +53,7 @@ pub struct WriteNoteInput {
     pub created_at: Option<i64>,
     pub completed_at: Option<i64>,
     pub attachment: Option<String>,
+    pub attached_video: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -195,6 +197,8 @@ struct NoteFrontmatter {
     #[serde(rename = "completedAt")]
     completed_at: Option<i64>,
     attachment: Option<String>,
+    #[serde(rename = "attachedVideo")]
+    attached_video: Option<String>,
 }
 
 pub fn parse_frontmatter(
@@ -207,6 +211,7 @@ pub fn parse_frontmatter(
     Option<i64>,
     Option<i64>,
     Option<String>,
+    Option<String>,
     String,
 ) {
     let matter = Matter::<YAML>::new();
@@ -217,6 +222,7 @@ pub fn parse_frontmatter(
                 String::new(),
                 false,
                 "note".to_string(),
+                None,
                 None,
                 None,
                 None,
@@ -235,6 +241,7 @@ pub fn parse_frontmatter(
         frontmatter.created_at,
         frontmatter.completed_at,
         frontmatter.attachment,
+        frontmatter.attached_video,
         parsed.content,
     )
 }
@@ -253,6 +260,7 @@ fn serialize_entry(
     completed_at: Option<i64>,
     is_pinned: Option<bool>,
     attachment: Option<&str>,
+    attached_video: Option<&str>,
 ) -> Result<String, String> {
     let matter = Matter::<YAML>::new();
     let delimiter = matter.delimiter;
@@ -264,7 +272,7 @@ fn serialize_entry(
     });
 
     Ok(format!(
-        "{delimiter}{pinned}\ntitle: {title}\nid: {id}{note_type}{status}{created_at}{completed_at}{attachment}\n{close_delimiter}\n{content}",
+        "{delimiter}{pinned}\ntitle: {title}\nid: {id}{note_type}{status}{created_at}{completed_at}{attachment}{attached_video}\n{close_delimiter}\n{content}",
         pinned = pinned.unwrap_or_default(),
         note_type = format!(
             "\ntype: {}",
@@ -299,6 +307,13 @@ fn serialize_entry(
                     .map(|v| format!("\nattachment: {v}"))
                     .unwrap_or_default()
             })
+            .unwrap_or_default(),
+        attached_video = attached_video
+            .map(|value| {
+                stringify_yaml_string(value)
+                    .map(|v| format!("\nattachedVideo: {v}"))
+                    .unwrap_or_default()
+            })
             .unwrap_or_default()
     ))
 }
@@ -318,6 +333,7 @@ pub fn serialize_note(input: &WriteNoteInput) -> Result<String, String> {
             Some(input.is_pinned)
         },
         input.attachment.as_deref(),
+        input.attached_video.as_deref(),
     )
 }
 
@@ -379,7 +395,7 @@ pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>
         return Ok(None);
     }
     let markdown = fs::read_to_string(&path).map_err(|e| format!("failed to read note: {e}"))?;
-    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, attached_video, content) =
         parse_frontmatter(&markdown);
     Ok(Some(ReadNoteResult {
         id,
@@ -392,6 +408,7 @@ pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>
         created_at,
         completed_at,
         attachment,
+        attached_video,
     }))
 }
 
@@ -641,7 +658,7 @@ pub fn index_rebuild_from_disk(
         };
         let markdown =
             fs::read_to_string(&path).map_err(|e| format!("failed to read markdown: {e}"))?;
-        let (title, is_pinned, note_type, status, _, _, _, content) =
+        let (title, is_pinned, note_type, status, _, _, _, _, content) =
             parse_frontmatter(&markdown);
         let summary = extract_summary(&content, 6);
         let status = if note_type == "todo" {

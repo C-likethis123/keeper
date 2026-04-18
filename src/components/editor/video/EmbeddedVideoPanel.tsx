@@ -7,7 +7,6 @@ import {
   Text,
   View,
   type ViewStyle,
-  useWindowDimensions,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import type { EmbeddedVideoSource } from "./videoUtils";
@@ -19,7 +18,6 @@ interface EmbeddedVideoPanelProps {
 
 export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
   const styles = useStyles(createStyles);
-  const { height: viewportHeight } = useWindowDimensions();
 
   const origin =
     Platform.OS === "web" ? window.location.origin : "https://keeper.app";
@@ -32,47 +30,37 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
           <Text style={styles.eyebrow}>Video</Text>
         </View>
       </View>
-      <>
-        <View
-          style={[
-            styles.playerFrame,
-            {
-              height: viewportHeight * (Platform.OS === "web" ? 0.5 : 1 / 3),
-            },
-          ]}
-        >
-          {Platform.OS === "web" ? (
-            <iframe
-              src={embedUrlWithOrigin}
-              title={"Youtube video"}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-              style={{
-                border: "0",
-                width: "100%",
-                height: "100%",
-                borderRadius: 12,
-                backgroundColor: "#000",
-              }}
-            />
-          ) : (
-            <WebView
-              allowsFullscreenVideo
-              allowsInlineMediaPlayback
-              mediaPlaybackRequiresUserAction={false}
-              source={{
-                uri: embedUrlWithOrigin,
-              }}
-              style={styles.webView}
-            />
-          )}
-        </View>
-        <Text numberOfLines={1} style={styles.caption}>
-          {source.rawUrl}
-        </Text>
-      </>
-      )
+      <View style={styles.playerFrame}>
+        {Platform.OS === "web" ? (
+          <iframe
+            src={embedUrlWithOrigin}
+            title={"Youtube video"}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            style={{
+              border: "0",
+              width: "100%",
+              height: "100%",
+              borderRadius: 12,
+              backgroundColor: "#000",
+            }}
+          />
+        ) : (
+          <WebView
+            allowsFullscreenVideo
+            allowsInlineMediaPlayback
+            mediaPlaybackRequiresUserAction={false}
+            source={{
+              uri: embedUrlWithOrigin,
+            }}
+            style={styles.webView}
+          />
+        )}
+      </View>
+      <Text numberOfLines={1} style={styles.caption}>
+        {source.rawUrl}
+      </Text>
     </View>
   );
 }
@@ -132,6 +120,7 @@ function createStyles(theme: ExtendedTheme) {
       color: theme.colors.text,
     },
     playerFrame: {
+      flex: 1,
       overflow: "hidden",
       borderRadius: isWeb ? 12 : 0,
       backgroundColor: "#000000",
