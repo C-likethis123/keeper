@@ -2,8 +2,9 @@ use std::path::PathBuf;
 use tauri::Manager;
 
 pub use storage_core::{
-    IndexItem, IndexListInput, IndexListResult, IndexUpsertInput, NoteFileEntry, ReadNoteResult,
-    RebuildMetrics, StorageInitResult, WriteNoteInput, WikiLinksUpsertInput,
+    ClusterMemberRow, ClusterRow, IndexItem, IndexListInput, IndexListResult, IndexUpsertInput,
+    NoteFileEntry, ReadNoteResult, RebuildMetrics, StorageInitResult, WikiLinksUpsertInput,
+    WriteNoteInput,
 };
 
 const NOTES_DIR: &str = "notes";
@@ -202,4 +203,54 @@ pub fn wiki_links_get_recently_edited(
 ) -> Result<Vec<IndexItem>, String> {
     let index_db = index_db_path(&app)?;
     storage_core::wiki_links_get_recently_edited(&index_db, limit, days_back)
+}
+
+// ─── Cluster Commands ─────────────────────────────────────────
+
+#[tauri::command]
+pub fn clusters_get_active(app: tauri::AppHandle) -> Result<Vec<ClusterRow>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::clusters_get_active(&index_db)
+}
+
+#[tauri::command]
+pub fn clusters_get_members(
+    app: tauri::AppHandle,
+    cluster_id: String,
+) -> Result<Vec<ClusterMemberRow>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::clusters_get_members(&index_db, cluster_id)
+}
+
+#[tauri::command]
+pub fn clusters_dismiss(app: tauri::AppHandle, cluster_id: String) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::clusters_dismiss(&index_db, cluster_id)
+}
+
+#[tauri::command]
+pub fn clusters_accept(
+    app: tauri::AppHandle,
+    cluster_id: String,
+    note_id: String,
+) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::clusters_accept(&index_db, cluster_id, note_id)
+}
+
+#[tauri::command]
+pub fn clusters_rename(
+    app: tauri::AppHandle,
+    cluster_id: String,
+    name: String,
+) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::clusters_rename(&index_db, cluster_id, name)
+}
+
+#[tauri::command]
+pub fn clusters_import(app: tauri::AppHandle) -> Result<usize, String> {
+    let index_db = index_db_path(&app)?;
+    let notes_root = notes_root_path(&app)?;
+    storage_core::clusters_import_from_json(&index_db, &notes_root)
 }

@@ -179,7 +179,13 @@ pub fn run() {
             storage::wiki_links_get_backlinks,
             storage::wiki_links_get_outgoing,
             storage::wiki_links_get_orphaned_notes,
-            storage::wiki_links_get_recently_edited
+            storage::wiki_links_get_recently_edited,
+            storage::clusters_get_active,
+            storage::clusters_get_members,
+            storage::clusters_dismiss,
+            storage::clusters_accept,
+            storage::clusters_rename,
+            storage::clusters_import
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
