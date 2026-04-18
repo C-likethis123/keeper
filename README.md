@@ -75,6 +75,54 @@ Unsupported runtimes fall back to local-only mode:
 - Web
 - Expo Go
 
+## MOC Suggestions (semantic clustering)
+
+Keeper can surface suggested Maps of Content (MOCs) by clustering your notes semantically. This requires a one-time Python setup and a manual pipeline run whenever you want fresh suggestions.
+
+### First-time setup
+
+```bash
+cd scripts/moc_pipeline
+pip install -r requirements.txt
+```
+
+The pipeline uses `sentence-transformers` and `scikit-learn`. A virtual environment is recommended:
+
+```bash
+python -m venv ../../mlx-env
+source ../../mlx-env/bin/activate
+pip install -r requirements.txt
+```
+
+### Running the pipeline
+
+Point the script at your local notes directory (the root of your cloned git repo):
+
+```bash
+python scripts/moc_pipeline/pipeline.py /path/to/your/notes
+```
+
+This reads all `*.md` files, generates embeddings, clusters them, and writes `.moc_clusters.json` to your notes root. The next time you open the app, it imports the clusters automatically and shows a **Suggested MOCs** section on the home screen.
+
+### How often to re-run
+
+Re-run the pipeline whenever your notes have changed enough to warrant fresh suggestions — there is no automatic trigger. A reasonable cadence is after a significant batch of new or edited notes (e.g. weekly, or after adding 10+ notes). Each run recomputes embeddings for all notes from scratch.
+
+```bash
+python scripts/moc_pipeline/pipeline.py /path/to/your/notes
+```
+
+Then reopen (or background/foreground) the app to pick up the new `.moc_clusters.json`.
+
+### Reviewing suggestions
+
+On the home screen, each cluster card shows an auto-generated name and its member notes. You can:
+- **Accept** — creates a real MOC note pre-populated with wiki links to all cluster members
+- **Rename** — edit the suggested name before accepting (iOS/desktop; Android support is limited)
+- **Dismiss** — hides the suggestion permanently
+
+---
+
 ## Tooling
 - Install the Biome VS Code extension and enable it for linting/formatting.
 - In CI, run `npm run lint` to use Biome.

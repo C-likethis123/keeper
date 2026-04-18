@@ -14,6 +14,9 @@ expo-env.d.ts
 # Claude
 .claude/settings.local.json
 
+# Python
+__pycache__
+
 # Native
 .kotlin/
 *.orig.*
