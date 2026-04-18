@@ -754,20 +754,6 @@ pub fn wiki_links_delete_all(index_db_path: &Path) -> Result<(), String> {
 
 // ─── Graph Queries ──────────────────────────────────────────────
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MocScore {
-    pub note_id: String,
-    pub outgoing_count: i64,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GraphNeighbor {
-    pub note_id: String,
-    pub depth: i64,
-}
-
 pub fn wiki_links_get_backlinks(
     index_db_path: &Path,
     note_id: String,
@@ -800,73 +786,6 @@ pub fn wiki_links_get_outgoing(
     let mut result = Vec::new();
     for row in rows {
         result.push(row.map_err(|e| format!("wiki_links_get_outgoing row failed: {e}"))?);
-    }
-    Ok(result)
-}
-
-pub fn wiki_links_get_moc_scores(
-    index_db_path: &Path,
-    min_links: i64,
-) -> Result<Vec<MocScore>, String> {
-    let conn = open_index_db(index_db_path)?;
-    let mut stmt = conn
-        .prepare(
-            "SELECT source_id, COUNT(*) as outgoing_count
-             FROM wiki_links
-             GROUP BY source_id
-             HAVING outgoing_count >= ?
-             ORDER BY outgoing_count DESC",
-        )
-        .map_err(|e| format!("wiki_links_get_moc_scores prepare failed: {e}"))?;
-    let rows = stmt
-        .query_map(params![min_links], |row| {
-            Ok(MocScore {
-                note_id: row.get(0)?,
-                outgoing_count: row.get(1)?,
-            })
-        })
-        .map_err(|e| format!("wiki_links_get_moc_scores query failed: {e}"))?;
-    let mut result = Vec::new();
-    for row in rows {
-        result.push(row.map_err(|e| format!("wiki_links_get_moc_scores row failed: {e}"))?);
-    }
-    Ok(result)
-}
-
-pub fn wiki_links_get_neighborhood(
-    index_db_path: &Path,
-    note_id: String,
-    max_depth: i64,
-) -> Result<Vec<GraphNeighbor>, String> {
-    let conn = open_index_db(index_db_path)?;
-    let sql = format!(
-        "WITH RECURSIVE neighborhood(target_id, depth) AS (
-            SELECT target_id, 1 FROM wiki_links WHERE source_id = ?
-            UNION
-            SELECT wl.target_id, n.depth + 1
-            FROM wiki_links wl
-            JOIN neighborhood n ON wl.source_id = n.target_id
-            WHERE n.depth < ?
-        )
-        SELECT DISTINCT target_id, MIN(depth) as depth
-        FROM neighborhood
-        WHERE target_id != ?
-        GROUP BY target_id"
-    );
-    let mut stmt = conn
-        .prepare(&sql)
-        .map_err(|e| format!("wiki_links_get_neighborhood prepare failed: {e}"))?;
-    let rows = stmt
-        .query_map(params![note_id, max_depth, note_id], |row| {
-            Ok(GraphNeighbor {
-                note_id: row.get(0)?,
-                depth: row.get(1)?,
-            })
-        })
-        .map_err(|e| format!("wiki_links_get_neighborhood query failed: {e}"))?;
-    let mut result = Vec::new();
-    for row in rows {
-        result.push(row.map_err(|e| format!("wiki_links_get_neighborhood row failed: {e}"))?);
     }
     Ok(result)
 }

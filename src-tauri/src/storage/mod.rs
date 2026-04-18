@@ -3,8 +3,7 @@ use tauri::Manager;
 
 pub use storage_core::{
     IndexItem, IndexListInput, IndexListResult, IndexUpsertInput, NoteFileEntry, ReadNoteResult,
-    RebuildMetrics, StorageInitResult, WriteNoteInput, WikiLinksUpsertInput, MocScore,
-    GraphNeighbor,
+    RebuildMetrics, StorageInitResult, WriteNoteInput, WikiLinksUpsertInput,
 };
 
 const NOTES_DIR: &str = "notes";
@@ -187,25 +186,6 @@ pub fn wiki_links_get_outgoing(
 ) -> Result<Vec<String>, String> {
     let index_db = index_db_path(&app)?;
     storage_core::wiki_links_get_outgoing(&index_db, note_id)
-}
-
-#[tauri::command]
-pub fn wiki_links_get_moc_scores(
-    app: tauri::AppHandle,
-    min_links: i64,
-) -> Result<Vec<MocScore>, String> {
-    let index_db = index_db_path(&app)?;
-    storage_core::wiki_links_get_moc_scores(&index_db, min_links)
-}
-
-#[tauri::command]
-pub fn wiki_links_get_neighborhood(
-    app: tauri::AppHandle,
-    note_id: String,
-    max_depth: i64,
-) -> Result<Vec<GraphNeighbor>, String> {
-    let index_db = index_db_path(&app)?;
-    storage_core::wiki_links_get_neighborhood(&index_db, note_id, max_depth)
 }
 
 #[tauri::command]
