@@ -30,6 +30,10 @@ from feedback import (
 	get_rename_examples,
 	get_dismissed_cluster_ids,
 )
+from learning import (
+	adjust_distance_weights,
+	apply_pairwise_constraints,
+)
 
 # Dimension weights — must sum to 1.0
 WEIGHT_SEMANTIC = 0.50
@@ -214,12 +218,48 @@ def main(notes_root_arg: str) -> None:
     graph_D      = graph_distance_matrix(note_ids, metas)
     tag_D        = tag_distance_matrix(metas)
 
-    composite_D = (
-        WEIGHT_SEMANTIC * semantic_D
-        + WEIGHT_TEMPORAL * temporal_D
-        + WEIGHT_GRAPH    * graph_D
-        + WEIGHT_TAGS     * tag_D
-    )
+    # Apply feedback learning
+    print("Applying feedback learning...")
+    note_id_to_index = {note_id: i for i, note_id in enumerate(note_ids)}
+
+    if feedback:
+		weights = adjust_distance_weights(
+			positive_pairs,
+			negative_pairs,
+			note_id_to_index,
+			semantic_D,
+			temporal_D,
+			graph_D,
+			tag_D,
+			{
+				"semantic": WEIGHT_SEMANTIC,
+				"temporal": WEIGHT_TEMPORAL,
+				"graph": WEIGHT_GRAPH,
+				"tags": WEIGHT_TAGS,
+			},
+		)
+		print(f"Adjusted weights: {weights}")
+		composite_D = (
+			weights["semantic"] * semantic_D
+			+ weights["temporal"] * temporal_D
+			+ weights["graph"] * graph_D
+			+ weights["tags"] * tag_D
+		)
+
+		# Apply pairwise constraints
+		composite_D = apply_pairwise_constraints(
+			composite_D,
+			positive_pairs,
+			negative_pairs,
+			note_id_to_index,
+		)
+    else:
+		composite_D = (
+			WEIGHT_SEMANTIC * semantic_D
+			+ WEIGHT_TEMPORAL * temporal_D
+			+ WEIGHT_GRAPH    * graph_D
+			+ WEIGHT_TAGS     * tag_D
+		)
 
     print("Clustering...")
     labels = cluster_notes(composite_D)
