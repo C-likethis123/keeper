@@ -10,6 +10,15 @@ No currently confirmed P1 issues.
 
 ### Recently resolved
 
+**YouTube Sharing Integration**: Implemented. Users can now share YouTube videos from other apps to Keeper. A new "resource" note is automatically created with the video embedded.
+**Key files**: `src/app/_layout.tsx`, `src/hooks/useShareHandler.ts`, `app.config.js`
+
+**Block and Gap Selection**: Implemented. Added structured selection primitives (block + gap) for structured editing. Users can select block ranges via gutters or keyboard (`Ctrl+A`), and insert blocks at gaps between existing ones.
+**Key files**: `src/components/editor/core/EditorState.ts`, `src/components/editor/BlockRow.tsx`, `src/stores/editorStore.ts`
+
+**Automated MOC Clustering**: Implemented. A Github Action now runs the Python clustering pipeline on every push to `main`, updating the semantic MOC suggestions for human review in the app.
+**Key files**: `docs/notes-repo-setup/moc-pipeline.yml`, `scripts/moc_pipeline/pipeline.py`
+
 **Collapsible Section Support**: Implemented in this workspace. Users can now insert collapsible `<details>` sections via the toolbar or by typing `<details></details>` and pressing Enter. The feature includes a chevron indicator and dedicated summary/body zones in the editor.
 **Key files**: `src/components/editor/blocks/LazyCollapsibleBlock.tsx`, `src/hooks/useToolbarActions.ts`, `src/components/editor/EditorToolbar.tsx`, `src/components/editor/blocks/BlockRegistry.tsx`
 
@@ -481,27 +490,49 @@ Replace the BFS/wikilink-based MOC categorisation from Phase 11 with a semantic 
 
 ---
 
-### Phase 15: Automate MOC Cluster Generation (Github Actions)
+### Phase 14: Block and Gap Selection ✅
+
+Deliver structured selection primitives (block + gap) on top of the existing character selection model, allowing keyboard and gutter interactions through the store while keeping text inputs untouched.
+
+**Status**: Implemented
+**Task file**: `tasks/block-selection-plan.md`
+**Features**:
+- Structured selection primitives: `blockSelection` (range) and `gapSelection` (insertion points between blocks)
+- Gutter hit targets for block selection and gap hit targets for insertion
+- Keyboard support: `Ctrl/Meta+A` to select all, arrows to move selection, `Shift`+arrows to extend range
+- `Enter` at a gap inserts a new paragraph; `Backspace/Delete` deletes the selection
+- Mutually exclusive with inline caret focus; clicking text clears structured selection
+
+**Key files**:
+- `src/components/editor/core/EditorState.ts`: Selection state and logic
+- `src/stores/editorStore.ts`: Action helpers and selection tracking
+- `src/components/editor/BlockRow.tsx`: UI for selection highlighting and hit targets
+- `src/components/editor/keyboard/useEditorKeyboardShortcuts.ts`: Selection commands
+
+---
+
+### Phase 15: Automate MOC Cluster Generation (Github Actions) ✅
 
 Integrate the local Python clustering pipeline into the repository's continuous integration flow so that the MOC cluster index stays updated automatically as notes are pushed to the main branch.
 
-**Status**: Planned
+**Status**: Implemented
 **Objectives**:
 - Create a Github Action that runs `scripts/moc_pipeline/pipeline.py` on push/merge to `main`.
 - Ensure the pipeline can access the note repository (via checkout).
 - Automate the generation/update of cluster metadata.
 - Store pipeline artifacts (e.g., SQLite migration updates, clustered metadata) so they can be integrated back into the repository or distributed via OTA-like flows.
 **Key files**:
-- `.github/workflows/moc-clustering.yml`
-- `scripts/moc_pipeline/pipeline.py`
+- `docs/notes-repo-setup/moc-pipeline.yml`: Github Action workflow
+- `scripts/moc_pipeline/pipeline.py`: Pipeline script
+- `scripts/moc_pipeline/cache.py`: Incremental update cache
 
 ---
 
-### Phase 16: YouTube Sharing Integration
+### Phase 16: YouTube Sharing Integration ✅
 
 Allow users to share YouTube videos to the app. A shared YouTube video will automatically create a resource note with the link attached.
 
-**Status**: Planned
+**Status**: Implemented
 **Task file**: `tasks/004-youtube-sharing.md`
 **Objectives**:
 - Handle incoming share intents (Android `SEND`) and Share Extensions (iOS)
@@ -512,8 +543,9 @@ Allow users to share YouTube videos to the app. A shared YouTube video will auto
 - Support both background and cold-start sharing
 
 **Key files**:
-- `app.config.js`: Intent filters configuration
-- `src/app/_layout.tsx`: Global share listener
+- `app.config.js`: `expo-share-intent` plugin configuration
+- `src/app/_layout.tsx`: Share intent listener and navigation logic
+- `src/hooks/useShareHandler.ts`: Processing shared URLs
 - `src/services/notes/NoteService.ts`: Automatic note creation
 - `src/components/editor/video/videoUtils.ts`: URL validation
 

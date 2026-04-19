@@ -14,7 +14,10 @@ See `ROADMAP.md` for the development roadmap, critical issues, and planned phase
 - **Phase 8**: Shared UI components and refactors complete; extracted `FilterChip`, `IconButton`, and `useBlockInputHandlers` with full test coverage
 - **Phase 9**: Collapsible blocks complete; live `<details>` conversion, toolbar insertion, summary/body editing flows, and automated coverage are in place; next is device validation and polish
 - **Phase 12**: PDF/ePub split-screen viewer complete; attachments stored in `_attachments/`, rendered via PDF.js/epub.js in WebView, split-screen shell in `NoteEditorView`, toolbar attachment button, and position persistence; next is device validation and annotation UX polish
-- **Phase 14**: YouTube sharing integration planned; handle incoming share intents (Android) and extensions (iOS) to automatically create resource notes
+- **Phase 13**: MOC suggestion engine complete; Python indexing pipeline, semantic clustering, and UI for review/accepting suggestions implemented
+- **Phase 14**: Block and Gap Selection complete; structured selection primitives (block + gap), gutter/gap hit targets, and keyboard shortcuts (`Ctrl+A`, arrows, `Enter`, `Delete`) implemented
+- **Phase 15**: Automate MOC cluster generation complete; Github Action workflow (`moc-pipeline.yml`) integrated for automatic indexing and clustering on push
+- **Phase 16**: YouTube sharing integration complete; handle incoming share intents (Android) and extensions (iOS) to automatically create resource notes; `expo-share-intent` configured and navigation flow implemented
 - **Next keyboard work**: better code-block vertical navigation, cursor selection fixes, code-block brace auto-completion fixes; app-level shortcuts (`Cmd+K/N/S`) shipped
 - **Critical issues**: No currently confirmed P1 items; desktop hydration was fixed in the storage-init follow-up
 - **Wikilinks**: exact-title resolution and create-from-`[[...]]` helpers are implemented, and `HybridEditor` now has platform tests for rendered-link activation; next checks are clickable desktop/web validation, broader editor-flow coverage, UX polish, and device validation

@@ -65,8 +65,9 @@ Keeper cross-platform block-based markdown editor (iOS/Android/web/desktop via T
 4. **Hooks** (`hooks/`) — Business logic: `useAutoSave` (2s debounce), `useNotes` (paginated listing), `useLoadNote`, `useToolbarActions`, `useFocusBlock`. Wiki link autocomplete state: `WikiLinkProvider` / `useWikiLinkContext` (editor/wikilinks).
 
 5. **Services** (`services/`) — Persistence:
-   - `services/notes/` — `noteService.ts` (CRUD), `notesIndex.ts` (SQLite full-text search), `Notes.ts`/`Notes.web.ts` (platform FS abstraction)
+   - `services/notes/` — `noteService.ts` (CRUD), `notesIndex.ts` (SQLite full-text search), `Notes.ts`/`Notes.web.ts` (platform FS abstraction), `clusterService.ts` (MOC suggestions)
    - `services/git/` — `gitService.ts` (batched commit queue), `gitInitializationService.ts` (clone/validate on launch), `gitApi.ts` (Octokit GitHub API)
+   - `hooks/` — `useShareHandler.ts` (YouTube/URL share intent processing)
 
 ### Editor Model (`components/editor/core/`)
 
