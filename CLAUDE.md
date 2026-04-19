@@ -1,52 +1,8 @@
 # CLAUDE.md
 
-## Planning & Roadmap
-
-**Check `ROADMAP.md` before new work:**
-- Critical issues (P1, P2) requiring fixes
-- Development phases, shipped feature status
-- Known issues, improvements
-- Feature backlog
-
-Summaries also `TODO.md`, `BUGS.md`.
-
 ## Commands
 
-```bash
-npm install           # Install dependencies
-npm start             # Start Expo/metro dev server
-
-# Mobile
-npm run android       # Prod Android: prebuild → Rust bridge → release APK → install
-npm run android:dev   # Dev Android: prebuild (dev variant) → Rust bridge → debug APK → install → metro
-npm run ios           # Run iOS via Expo CLI
-
-# Desktop (requires Rust + Xcode CLT)
-npm run desktop       # Start Tauri desktop window
-npm run build:desktop # Build prod desktop app → src-tauri/target/release/
-
-# Utilities
-npm run build:mobile-git  # Rebuild Rust git bridge (all platforms)
-npm test                  # Jest suite (pure modules + UI/routes)
-npm run lint              # Biome linter
-npm run lint:fix          # Auto-fix lint issues
-```
-
-Tests cover pure modules, selected UI/routes. `npm run lint` for CI; `npm test` when touching covered areas.
-
-### Android Build Variants
-
-Two apps, distinct bundle IDs, coexist same device:
-
-| | Dev | Prod |
-|--|-----|------|
-| **Script** | `npm run android:dev` | `npm run android` |
-| **App name** | Keeper (Dev) | Keeper |
-| **Bundle ID** | `com.clikethis123.keeper.dev` | `com.clikethis123.keeper` |
-| **JS source** | Metro server (hot reload) | Bundled in APK |
-
-`APP_VARIANT=development` env var `app.config.js` controls variant.
-After `android:dev` once, daily dev: `npm start`.
+See [package.json](./package.json) for a list of available commands.
 
 ## Architecture
 
@@ -108,35 +64,16 @@ Mobile native bridge — Expo module source of truth:
 - `modules/keeper-git/ios/KeeperGitBridgeModule.swift`
 - `modules/keeper-git/scripts/build-rust.sh`
 
-Generated `ios/`, `android/` folders disposable; recreate with Expo prebuild/autolinking.
-
-Runtime support:
-- Supported: Tauri desktop, Android native build, iOS native build
-- Unsupported (startup failure by design): web, Expo Go
 
 ## Scroll Management
 
 Editor scrolling via `EditorScrollContext`.
 
-### Environment Variables
-
-```
-EXPO_PUBLIC_GITHUB_OWNER=<owner>
-EXPO_PUBLIC_GITHUB_REPO=<repo>
-EXPO_PUBLIC_GITHUB_TOKEN=<token>
-EXPO_PUBLIC_GIT_API_URL=<backend-url>   # optional remote backend
-```
-
 ## Key Conventions
 
-- **Expo CLI**: Before suggesting flags/options, verify Expo docs or `npx expo <command> --help`. Prefer idiomatic solutions (e.g., `BROWSER=none` suppress browser auto-open) over unverified flags.
+- **Expo CLI**: Verify Expo docs or `npx expo <command> --help`. Prefer idiomatic solutions.
 - **Immutability**: `Document`, `BlockNode`, `Transaction` frozen. Never mutate directly.
 - **Editor state**: All changes through `editorStore` actions — don't modify document state outside store.
-- **Linting**: Biome (not ESLint/Prettier). Install Biome VS Code extension.
 - **Platform splits**: `.web.ts` files override `.ts` counterpart on web (e.g., `Notes.web.ts`).
 - **Testing**: `npm test` Jest suite (pure TS modules + selected RN UI routes/components); `npm run lint` Biome checks.
-- **Startup profiling**: Use `[StartupTrace]` logs `docs/Startup telemetry.md` when investigating launch performance.
 
-## Commit Conventions
-
-Refer to @COMMIT_CONVENTIONS.md

@@ -232,10 +232,16 @@ pub fn clusters_dismiss(app: tauri::AppHandle, cluster_id: String) -> Result<(),
 pub fn clusters_accept(
     app: tauri::AppHandle,
     cluster_id: String,
-    note_id: String,
+    note_id: Option<String>,
 ) -> Result<(), String> {
     let index_db = index_db_path(&app)?;
     storage_core::clusters_accept(&index_db, cluster_id, note_id)
+}
+
+#[tauri::command]
+pub fn clusters_get_accepted(app: tauri::AppHandle) -> Result<Vec<ClusterRow>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::clusters_get_accepted(&index_db)
 }
 
 #[tauri::command]
@@ -253,4 +259,30 @@ pub fn clusters_import(app: tauri::AppHandle) -> Result<usize, String> {
     let index_db = index_db_path(&app)?;
     let notes_root = notes_root_path(&app)?;
     storage_core::clusters_import_from_json(&index_db, &notes_root)
+}
+
+#[tauri::command]
+pub fn clusters_add_note(
+    app: tauri::AppHandle,
+    cluster_id: String,
+    note_id: String,
+) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::clusters_add_note(&index_db, cluster_id, note_id)
+}
+
+#[tauri::command]
+pub fn clusters_remove_note(
+    app: tauri::AppHandle,
+    cluster_id: String,
+    note_id: String,
+) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::clusters_remove_note(&index_db, cluster_id, note_id)
+}
+
+#[tauri::command]
+pub fn clusters_delete(app: tauri::AppHandle, cluster_id: String) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::clusters_delete(&index_db, cluster_id)
 }

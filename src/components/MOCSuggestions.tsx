@@ -27,6 +27,7 @@ interface ClusterCard {
 export default function MOCSuggestions() {
 	const { colors } = useExtendedTheme();
 	const contentVersion = useStorageStore((s) => s.contentVersion);
+	const bumpContentVersion = useStorageStore((s) => s.bumpContentVersion);
 	const [cards, setCards] = useState<ClusterCard[]>([]);
 	const [renameCard, setRenameCard] = useState<ClusterCard | null>(null);
 
@@ -61,17 +62,19 @@ export default function MOCSuggestions() {
 	const handleDismiss = useCallback(
 		async (clusterId: string) => {
 			await clusterDismiss(clusterId);
+			bumpContentVersion();
 			await loadClusters();
 		},
-		[loadClusters],
+		[loadClusters, bumpContentVersion],
 	);
 
 	const handleAccept = useCallback(
 		async (card: ClusterCard) => {
 			await clusterAccept(card.cluster.id);
+			bumpContentVersion();
 			await loadClusters();
 		},
-		[loadClusters],
+		[loadClusters, bumpContentVersion],
 	);
 
 	const handleRename = useCallback((card: ClusterCard) => {

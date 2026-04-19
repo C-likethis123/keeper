@@ -946,7 +946,7 @@ pub fn clusters_dismiss(index_db_path: &Path, cluster_id: String) -> Result<(), 
 pub fn clusters_accept(
     index_db_path: &Path,
     cluster_id: String,
-    note_id: String,
+    note_id: Option<String>,
 ) -> Result<(), String> {
     let conn = open_index_db(index_db_path)?;
     let now = std::time::SystemTime::now()
@@ -959,6 +959,36 @@ pub fn clusters_accept(
     )
     .map_err(|e| format!("clusters_accept failed: {e}"))?;
     Ok(())
+}
+
+pub fn clusters_get_accepted(index_db_path: &Path) -> Result<Vec<ClusterRow>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, name, confidence, created_at, dismissed_at, accepted_at, accepted_note_id
+             FROM clusters
+             WHERE accepted_at IS NOT NULL AND dismissed_at IS NULL
+             ORDER BY accepted_at ASC",
+        )
+        .map_err(|e| format!("clusters_get_accepted prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(ClusterRow {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                confidence: row.get(2)?,
+                created_at: row.get(3)?,
+                dismissed_at: row.get(4)?,
+                accepted_at: row.get(5)?,
+                accepted_note_id: row.get(6)?,
+            })
+        })
+        .map_err(|e| format!("clusters_get_accepted query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("clusters_get_accepted row failed: {e}"))?);
+    }
+    Ok(result)
 }
 
 pub fn clusters_rename(
@@ -998,6 +1028,12 @@ pub fn clusters_import_from_json(
         .unwrap_or_default()
         .as_millis() as i64;
 
+    conn.execute(
+        "DELETE FROM clusters WHERE dismissed_at IS NULL AND accepted_at IS NULL",
+        [],
+    )
+    .map_err(|e| format!("clusters_import delete pending failed: {e}"))?;
+
     for cluster in clusters {
         let id = cluster["id"].as_str().ok_or("cluster missing id")?;
         let name = cluster["name"].as_str().ok_or("cluster missing name")?;
@@ -1023,4 +1059,42 @@ pub fn clusters_import_from_json(
         }
     }
     Ok(clusters.len())
+}
+
+pub fn clusters_add_note(
+    index_db_path: &Path,
+    cluster_id: String,
+    note_id: String,
+) -> Result<(), String> {
+    let conn = open_index_db(index_db_path)?;
+    conn.execute(
+        "INSERT OR IGNORE INTO cluster_members (cluster_id, note_id, score) VALUES (?1, ?2, ?3)",
+        rusqlite::params![cluster_id, note_id, 0.0],
+    )
+    .map_err(|e| format!("clusters_add_note failed: {e}"))?;
+    Ok(())
+}
+
+pub fn clusters_remove_note(
+    index_db_path: &Path,
+    cluster_id: String,
+    note_id: String,
+) -> Result<(), String> {
+    let conn = open_index_db(index_db_path)?;
+    conn.execute(
+        "DELETE FROM cluster_members WHERE cluster_id = ?1 AND note_id = ?2",
+        rusqlite::params![cluster_id, note_id],
+    )
+    .map_err(|e| format!("clusters_remove_note failed: {e}"))?;
+    Ok(())
+}
+
+pub fn clusters_delete(index_db_path: &Path, cluster_id: String) -> Result<(), String> {
+    let conn = open_index_db(index_db_path)?;
+    conn.execute(
+        "DELETE FROM clusters WHERE id = ?1",
+        rusqlite::params![cluster_id],
+    )
+    .map_err(|e| format!("clusters_delete failed: {e}"))?;
+    Ok(())
 }
