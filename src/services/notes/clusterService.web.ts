@@ -57,3 +57,21 @@ export async function clusterRename(
 ): Promise<void> {
 	await invoke("clusters_rename", { clusterId, name });
 }
+
+export async function clusterAddNote(
+	clusterId: string,
+	noteId: string,
+): Promise<void> {
+	await invoke("clusters_add_note", { clusterId, noteId });
+}
+
+export async function clusterRemoveNote(
+	clusterId: string,
+	noteId: string,
+): Promise<void> {
+	await invoke("clusters_remove_note", { clusterId, noteId });
+}
+
+export async function clusterDelete(clusterId: string): Promise<void> {
+	await invoke("clusters_delete", { clusterId });
+}

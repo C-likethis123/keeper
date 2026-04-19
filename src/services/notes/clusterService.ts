@@ -2,10 +2,13 @@ import { NOTES_ROOT } from "@/services/notes/Notes";
 import { File } from "expo-file-system";
 import {
 	acceptCluster,
+	addNoteToCluster,
+	deleteCluster,
 	dismissCluster,
 	getAcceptedClusters,
 	getActiveClusters,
 	getClusterMembers,
+	removeNoteFromCluster,
 	renameCluster,
 	upsertClustersFromJson,
 	type ClusterMemberRow,
@@ -80,4 +83,25 @@ export async function clusterRename(
 ): Promise<void> {
 	const database = await getNotesIndexDb();
 	await renameCluster(database, clusterId, name);
+}
+
+export async function clusterAddNote(
+	clusterId: string,
+	noteId: string,
+): Promise<void> {
+	const database = await getNotesIndexDb();
+	await addNoteToCluster(database, clusterId, noteId);
+}
+
+export async function clusterRemoveNote(
+	clusterId: string,
+	noteId: string,
+): Promise<void> {
+	const database = await getNotesIndexDb();
+	await removeNoteFromCluster(database, clusterId, noteId);
+}
+
+export async function clusterDelete(clusterId: string): Promise<void> {
+	const database = await getNotesIndexDb();
+	await deleteCluster(database, clusterId);
 }
