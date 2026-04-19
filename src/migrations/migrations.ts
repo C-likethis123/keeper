@@ -4,6 +4,7 @@ import { migrate as migrate003 } from "./003_add_note_metadata";
 import { migrate as migrate004 } from "./004_add_wiki_links";
 import { migrate as migrate005 } from "./005_add_modified_column";
 import { migrate as migrate006 } from "./006_add_clusters";
+import { migrate as migrate007 } from "./007_add_cluster_feedback";
 
 export const MIGRATIONS = [
 	{ version: 1, migrate: migrate001 },
@@ -12,4 +13,5 @@ export const MIGRATIONS = [
 	{ version: 4, migrate: migrate004 },
 	{ version: 5, migrate: migrate005 },
 	{ version: 6, migrate: migrate006 },
+	{ version: 7, migrate: migrate007 },
 ];
