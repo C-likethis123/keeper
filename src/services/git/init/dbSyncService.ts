@@ -1,3 +1,4 @@
+import { importClustersFromFile } from "@/services/notes/clusterService";
 import type {
 	GitChangedPaths,
 	GitEngine,
@@ -45,12 +46,14 @@ export class DefaultDbSyncService implements DbSyncService {
 		}
 	}
 
+
 	async syncDbAfterPull(
 		currentOid: string | undefined,
 		telemetry: StartupTelemetry,
 	): Promise<SyncDbAfterPullResult> {
 		const tSync = performance.now();
 		let didDbSync = false;
+		let didImportClusters = false;
 		let readLastSyncedOidMs = 0;
 		let writeLastSyncedOidMs = 0;
 		let changedPathsMs = 0;
@@ -75,6 +78,7 @@ export class DefaultDbSyncService implements DbSyncService {
 				const indexSyncStart = performance.now();
 				const syncResult = await NotesIndexService.rebuildFromDisk();
 				indexSyncMs = Math.round(performance.now() - indexSyncStart);
+				didImportClusters = (await importClustersFromFile()) > 0;
 				telemetry.trace("git.db_sync_completed", {
 					syncMode: "full_rebuild",
 					reason: "missing_last_synced_oid",
@@ -84,10 +88,10 @@ export class DefaultDbSyncService implements DbSyncService {
 				didDbSync = true;
 			} else if (lastSyncedOid !== resolvedCurrentOid) {
 				const changedPathsStart = performance.now();
-				const changedPaths = await this.getChangedMarkdownPaths(
+				const changedPaths = await this.gitEngine.changedPaths(
+					NOTES_ROOT,
 					lastSyncedOid,
 					resolvedCurrentOid,
-					telemetry,
 				);
 				changedPathsMs = Math.round(performance.now() - changedPathsStart);
 				const changedPathCount =
@@ -98,13 +102,16 @@ export class DefaultDbSyncService implements DbSyncService {
 					`[GitInitializationService] Head changed from ${lastSyncedOid.slice(0, 7)} to ${resolvedCurrentOid.slice(0, 7)}, syncing index`,
 					changedPaths,
 				);
-				telemetry.trace("git.changed_paths_computed", {
-					durationMs: changedPathsMs,
-					addedCount: changedPaths.added.length,
-					modifiedCount: changedPaths.modified.length,
-					deletedCount: changedPaths.deleted.length,
-					changedPathCount,
-				});
+
+				const allChanged = [
+					...changedPaths.added,
+					...changedPaths.modified,
+				];
+				if (allChanged.includes(".moc_clusters.json")) {
+					console.log("[GitInitializationService] MOC clusters changed, importing...");
+					didImportClusters = (await importClustersFromFile()) > 0;
+				}
+
 				const indexSyncStart = performance.now();
 				const syncResult =
 					await NotesIndexService.syncChangedPaths(changedPaths);
@@ -127,6 +134,7 @@ export class DefaultDbSyncService implements DbSyncService {
 				});
 				return {
 					didDbSync: false,
+					didImportClusters: false,
 					dbSyncMs: 0,
 					readLastSyncedOidMs,
 					writeLastSyncedOidMs,
@@ -151,6 +159,7 @@ export class DefaultDbSyncService implements DbSyncService {
 
 		return {
 			didDbSync,
+			didImportClusters,
 			dbSyncMs: Math.round(performance.now() - tSync),
 			readLastSyncedOidMs,
 			writeLastSyncedOidMs,

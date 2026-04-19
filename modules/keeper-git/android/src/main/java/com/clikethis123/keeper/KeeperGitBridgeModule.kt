@@ -30,7 +30,13 @@ class KeeperGitBridgeModule : Module() {
   private external fun git_push(repoPath: String): Int
   private external fun git_status_json(repoPath: String): String?
   private external fun git_head_oid_json(repoPath: String): String?
+
   private external fun git_changed_markdown_paths_json(
+    repoPath: String,
+    fromOid: String,
+    toOid: String
+  ): String?
+  private external fun git_changed_paths_json(
     repoPath: String,
     fromOid: String,
     toOid: String
@@ -119,10 +125,19 @@ class KeeperGitBridgeModule : Module() {
       settlePayload("head_oid", git_head_oid_json(repoPath), promise)
     }
 
+
     AsyncFunction("changedMarkdownPaths") { repoPath: String, fromOid: String, toOid: String, promise: Promise ->
       settlePayload(
         "changed_markdown_paths",
         git_changed_markdown_paths_json(repoPath, fromOid, toOid),
+        promise
+      )
+    }
+
+    AsyncFunction("changedPaths") { repoPath: String, fromOid: String, toOid: String, promise: Promise ->
+      settlePayload(
+        "changed_paths",
+        git_changed_paths_json(repoPath, fromOid, toOid),
         promise
       )
     }

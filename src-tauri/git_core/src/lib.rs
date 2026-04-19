@@ -995,6 +995,7 @@ pub extern "C" fn git_head_oid_json(repo_path: *const c_char) -> *mut c_char {
     }
 }
 
+
 #[no_mangle]
 pub extern "C" fn git_changed_markdown_paths_json(
     repo_path: *const c_char,
@@ -1015,6 +1016,31 @@ pub extern "C" fn git_changed_markdown_paths_json(
     };
 
     match changed_markdown_paths(&repo_path, &from_oid, &to_oid) {
+        Ok(changed) => c_json_result(&changed),
+        Err(e) => { set_last_error(e); std::ptr::null_mut() }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn git_changed_paths_json(
+    repo_path: *const c_char,
+    from_oid: *const c_char,
+    to_oid: *const c_char,
+) -> *mut c_char {
+    let repo_path = match c_string_arg(repo_path) {
+        Ok(value) => value,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let from_oid = match c_string_arg(from_oid) {
+        Ok(value) => value,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let to_oid = match c_string_arg(to_oid) {
+        Ok(value) => value,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    match changed_paths(&repo_path, &from_oid, &to_oid) {
         Ok(changed) => c_json_result(&changed),
         Err(e) => { set_last_error(e); std::ptr::null_mut() }
     }

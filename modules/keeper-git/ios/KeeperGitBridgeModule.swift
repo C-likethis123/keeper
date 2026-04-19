@@ -43,8 +43,16 @@ public final class KeeperGitBridgeModule: Module {
   @_silgen_name("git_head_oid_json")
   private func git_head_oid_json(_ repoPath: UnsafePointer<CChar>) -> UnsafeMutablePointer<CChar>?
 
+
   @_silgen_name("git_changed_markdown_paths_json")
   private func git_changed_markdown_paths_json(
+    _ repoPath: UnsafePointer<CChar>,
+    _ fromOid: UnsafePointer<CChar>,
+    _ toOid: UnsafePointer<CChar>
+  ) -> UnsafeMutablePointer<CChar>?
+
+  @_silgen_name("git_changed_paths_json")
+  private func git_changed_paths_json(
     _ repoPath: UnsafePointer<CChar>,
     _ fromOid: UnsafePointer<CChar>,
     _ toOid: UnsafePointer<CChar>
@@ -164,6 +172,7 @@ public final class KeeperGitBridgeModule: Module {
       decodeJsonPayload(payloadPtr: payloadPtr, op: "head_oid", promise: promise)
     }
 
+
     AsyncFunction("changedMarkdownPaths") { (repoPath: String, fromOid: String, toOid: String, promise: Promise) in
       let payloadPtr = repoPath.withCString { repoPtr in
         fromOid.withCString { fromOidPtr in
@@ -173,6 +182,17 @@ public final class KeeperGitBridgeModule: Module {
         }
       }
       decodeJsonPayload(payloadPtr: payloadPtr, op: "changed_markdown_paths", promise: promise)
+    }
+
+    AsyncFunction("changedPaths") { (repoPath: String, fromOid: String, toOid: String, promise: Promise) in
+      let payloadPtr = repoPath.withCString { repoPtr in
+        fromOid.withCString { fromOidPtr in
+          toOid.withCString { toOidPtr in
+            git_changed_paths_json(repoPtr, fromOidPtr, toOidPtr)
+          }
+        }
+      }
+      decodeJsonPayload(payloadPtr: payloadPtr, op: "changed_paths", promise: promise)
     }
   }
 

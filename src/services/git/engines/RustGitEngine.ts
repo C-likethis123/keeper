@@ -32,7 +32,13 @@ interface RustNativeBridge {
 	push(repoPath: string): Promise<void>;
 	status(repoPath: string): Promise<GitStatusItem[]>;
 	resolveHeadOid(repoPath: string): Promise<string>;
+
 	changedMarkdownPaths(
+		repoPath: string,
+		fromOid: string,
+		toOid: string,
+	): Promise<GitChangedPaths>;
+	changedPaths(
 		repoPath: string,
 		fromOid: string,
 		toOid: string,
@@ -208,6 +214,7 @@ export class RustGitEngine implements GitEngine {
 		return this.bridge.module.resolveHeadOid(uriToGitPath(dir));
 	}
 
+
 	changedMarkdownPaths(
 		dir: string,
 		fromOid: string,
@@ -224,6 +231,28 @@ export class RustGitEngine implements GitEngine {
 			);
 		}
 		return this.bridge.module.changedMarkdownPaths(
+			uriToGitPath(dir),
+			fromOid,
+			toOid,
+		);
+	}
+
+	changedPaths(
+		dir: string,
+		fromOid: string,
+		toOid: string,
+	): Promise<GitChangedPaths> {
+		if (this.bridge.kind === "tauri") {
+			return this.bridge.invoke<GitChangedPaths>(
+				"git_changed_paths_repo",
+				{
+					repoPath: dir,
+					fromOid,
+					toOid,
+				},
+			);
+		}
+		return this.bridge.module.changedPaths(
 			uriToGitPath(dir),
 			fromOid,
 			toOid,

@@ -1,0 +1,44 @@
+name: MOC Pipeline
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+
+jobs:
+  cluster:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache embeddings
+        uses: actions/cache@v4
+        with:
+          path: .moc_cache
+          key: ${{ runner.os }}-moc-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-moc-
+
+      - name: Install dependencies
+        run: pip install -r scripts/moc_pipeline/requirements.txt
+
+      - name: Run Pipeline
+        run: python scripts/moc_pipeline/pipeline.py .
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .moc_cache .moc_clusters.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore(moc): update clusters [skip ci]"
+            git push
+          fi

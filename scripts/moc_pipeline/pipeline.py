@@ -85,6 +85,7 @@ def _parse_frontmatter_meta(markdown: str) -> dict:
     return meta
 
 
+
 def load_notes(notes_root: Path) -> tuple[list[str], list[str], list[dict]]:
     """Return (note_ids, texts, metas). Excludes journals and todos."""
     note_ids: list[str] = []
@@ -102,10 +103,12 @@ def load_notes(notes_root: Path) -> tuple[list[str], list[str], list[dict]]:
         if meta["type"] in _EXCLUDED_TYPES:
             continue
         rel = md_file.relative_to(notes_root)
+        meta["path"] = str(rel) # Relative path WITH extension for cache key
         note_ids.append(str(rel.with_suffix("")))
         texts.append(content)
         metas.append(meta)
     return note_ids, texts, metas
+
 
 
 def _lazy_imports():
@@ -117,6 +120,10 @@ def _lazy_imports():
         extract_cluster_names as _ecn,
     )
     return _gen, _aic, _cn, _ecn
+
+def _current_head(notes_root: Path) -> str:
+    import subprocess
+    return subprocess.check_output(["git", "-C", str(notes_root), "rev-parse", "HEAD"], text=True).strip()
 
 
 def build_output(
@@ -155,6 +162,7 @@ def build_output(
     return {"version": 1, "clusters": clusters}
 
 
+
 def main(notes_root_arg: str) -> None:
     notes_root = Path(notes_root_arg).resolve()
     if not notes_root.is_dir():
@@ -171,10 +179,14 @@ def main(notes_root_arg: str) -> None:
     print(f"Found {len(note_ids)} notes.")
 
     print("Generating embeddings...")
-    embeddings = generate_embeddings(texts)
+    from cache import cached_embeddings
+    import numpy as np
+    notes_dict = {meta["path"]: text for meta, text in zip(metas, texts)}
+    current_head = _current_head(notes_root)
+    emb_cache = cached_embeddings(notes_dict, notes_root, current_head, generate_embeddings)
+    embeddings = np.array([emb_cache[meta["path"]] for meta in metas])
 
     print("Building distance matrices...")
-    import numpy as np
     from sklearn.metrics.pairwise import cosine_distances
     semantic_D   = cosine_distances(embeddings)
     temporal_D   = temporal_distance_matrix(metas)

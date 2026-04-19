@@ -79,8 +79,10 @@ export interface GitJournalEntry {
 	exitLog?: GitExitLog;
 }
 
+
 export interface SyncDbAfterPullResult {
 	didDbSync: boolean;
+	didImportClusters: boolean;
 	dbSyncMs: number;
 	readLastSyncedOidMs: number;
 	writeLastSyncedOidMs: number;

@@ -89,6 +89,7 @@ fn git_status_repo(repo_path: String) -> Result<Vec<GitStatusItem>, String> {
     git_core::status(&repo_path)
 }
 
+
 #[tauri::command]
 fn git_changed_markdown_paths_repo(
     repo_path: String,
@@ -96,6 +97,15 @@ fn git_changed_markdown_paths_repo(
     to_oid: String,
 ) -> Result<GitChangedPaths, String> {
     git_core::changed_markdown_paths(&repo_path, &from_oid, &to_oid)
+}
+
+#[tauri::command]
+fn git_changed_paths_repo(
+    repo_path: String,
+    from_oid: String,
+    to_oid: String,
+) -> Result<GitChangedPaths, String> {
+    git_core::changed_paths(&repo_path, &from_oid, &to_oid)
 }
 
 #[tauri::command]
@@ -155,7 +165,9 @@ pub fn run() {
             git_push_repo,
             git_status_repo,
             git_head_oid_repo,
+
             git_changed_markdown_paths_repo,
+            git_changed_paths_repo,
             git_conflicted_files_repo,
             git_resolve_conflict_repo,
             git_has_unresolved_conflicts_repo,

@@ -51,7 +51,13 @@ export interface GitEngine {
 	push(dir: string): Promise<void>;
 	status(dir: string): Promise<GitStatusItem[]>;
 	resolveHeadOid(dir: string): Promise<string>;
+
 	changedMarkdownPaths(
+		dir: string,
+		fromOid: string,
+		toOid: string,
+	): Promise<GitChangedPaths>;
+	changedPaths(
 		dir: string,
 		fromOid: string,
 		toOid: string,

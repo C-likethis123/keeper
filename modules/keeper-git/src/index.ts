@@ -31,7 +31,13 @@ interface KeeperGitBridgeNativeModule {
 	push(repoPath: string): Promise<void>;
 	status(repoPath: string): Promise<unknown>;
 	resolveHeadOid(repoPath: string): Promise<string>;
+
 	changedMarkdownPaths(
+		repoPath: string,
+		fromOid: string,
+		toOid: string,
+	): Promise<unknown>;
+	changedPaths(
 		repoPath: string,
 		fromOid: string,
 		toOid: string,
