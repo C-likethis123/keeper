@@ -23,6 +23,13 @@ import json
 import uuid
 
 from features import temporal_distance_matrix, graph_distance_matrix, tag_distance_matrix
+from feedback import (
+	load_feedback,
+	get_positive_pairs,
+	get_negative_pairs,
+	get_rename_examples,
+	get_dismissed_cluster_ids,
+)
 
 # Dimension weights — must sum to 1.0
 WEIGHT_SEMANTIC = 0.50
@@ -177,6 +184,20 @@ def main(notes_root_arg: str) -> None:
         print(f"Only {len(note_ids)} notes found — need at least 3 to cluster.")
         sys.exit(0)
     print(f"Found {len(note_ids)} notes.")
+
+    print("Loading feedback...")
+    feedback = load_feedback(notes_root)
+    print(f"Found {len(feedback)} feedback events")
+
+    positive_pairs = get_positive_pairs(feedback)
+    negative_pairs = get_negative_pairs(feedback)
+    rename_examples = get_rename_examples(feedback)
+    dismissed_ids = get_dismissed_cluster_ids(feedback)
+
+    print(f"  Positive pairs: {len(positive_pairs)}")
+    print(f"  Negative pairs: {len(negative_pairs)}")
+    print(f"  Rename examples: {len(rename_examples)}")
+    print(f"  Dismissed clusters: {len(dismissed_ids)}")
 
     print("Generating embeddings...")
     from cache import cached_embeddings
