@@ -1,19 +1,19 @@
+import AddNoteToClusterModal from "@/components/AddNoteToClusterModal";
+import type { useExtendedTheme as ThemeHook } from "@/hooks/useExtendedTheme";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import {
+	type ClusterRow,
 	clusterAddNote,
 	clusterDelete,
 	clusterRemoveNote,
 	listAcceptedClusters,
 	listClusterMembers,
-	type ClusterRow,
 } from "@/services/notes/clusterService";
 import { notesIndexDbGetById } from "@/services/notes/notesIndexDb";
 import { useStorageStore } from "@/stores/storageStore";
-import AddNoteToClusterModal from "@/components/AddNoteToClusterModal";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import type { useExtendedTheme as ThemeHook } from "@/hooks/useExtendedTheme";
 
 interface MemberEntry {
 	noteId: string;
@@ -32,7 +32,8 @@ export default function AcceptedClusters() {
 	const bumpContentVersion = useStorageStore((s) => s.bumpContentVersion);
 
 	const [cards, setCards] = useState<AcceptedClusterCard[]>([]);
-	const [addNoteTarget, setAddNoteTarget] = useState<AcceptedClusterCard | null>(null);
+	const [addNoteTarget, setAddNoteTarget] =
+		useState<AcceptedClusterCard | null>(null);
 
 	const loadClusters = useCallback(async () => {
 		const clusters = await listAcceptedClusters();
@@ -67,6 +68,7 @@ export default function AcceptedClusters() {
 
 	const handleDeleteCluster = useCallback(
 		(card: AcceptedClusterCard) => {
+			console.log("handleDeleteCluster called for cluster:", card.cluster.id);
 			Alert.alert(
 				"Delete Cluster",
 				`Delete "${card.cluster.name}"? This cannot be undone.`,
@@ -76,9 +78,15 @@ export default function AcceptedClusters() {
 						text: "Delete",
 						style: "destructive",
 						onPress: async () => {
-							await clusterDelete(card.cluster.id);
-							bumpContentVersion();
-							await loadClusters();
+							console.log("Delete confirmed for cluster:", card.cluster.id);
+							try {
+								await clusterDelete(card.cluster.id);
+								console.log("Cluster deleted successfully");
+								bumpContentVersion();
+								await loadClusters();
+							} catch (error) {
+								console.error("Failed to delete cluster:", error);
+							}
 						},
 					},
 				],
@@ -123,16 +131,11 @@ export default function AcceptedClusters() {
 
 					{card.members.map((member) => (
 						<View key={member.noteId} style={styles.memberRow}>
-							<Text
-								style={styles.memberTitle}
-								numberOfLines={1}
-							>
+							<Text style={styles.memberTitle} numberOfLines={1}>
 								{member.title}
 							</Text>
 							<Pressable
-								onPress={() =>
-									handleRemoveNote(card.cluster.id, member.noteId)
-								}
+								onPress={() => handleRemoveNote(card.cluster.id, member.noteId)}
 								hitSlop={8}
 								accessibilityLabel={`Remove ${member.title} from cluster`}
 							>
@@ -168,12 +171,7 @@ export default function AcceptedClusters() {
 								},
 							]}
 						>
-							<Text
-								style={[
-									styles.actionBtnText,
-									{ color: colors.textSecondary },
-								]}
-							>
+							<Text style={[styles.actionBtnText, { color: colors.text }]}>
 								Delete
 							</Text>
 						</Pressable>
