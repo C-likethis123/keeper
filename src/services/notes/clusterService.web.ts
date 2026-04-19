@@ -43,11 +43,12 @@ export async function clusterDismiss(clusterId: string): Promise<void> {
 	await invoke("clusters_dismiss", { clusterId });
 }
 
-export async function clusterAccept(
-	clusterId: string,
-	noteId: string,
-): Promise<void> {
-	await invoke("clusters_accept", { clusterId, noteId });
+export async function clusterAccept(clusterId: string): Promise<void> {
+	await invoke("clusters_accept", { clusterId });
+}
+
+export async function listAcceptedClusters(): Promise<ClusterRow[]> {
+	return invoke<ClusterRow[]>("clusters_get_accepted");
 }
 
 export async function clusterRename(

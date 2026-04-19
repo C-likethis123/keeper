@@ -3,6 +3,7 @@ import { File } from "expo-file-system";
 import {
 	acceptCluster,
 	dismissCluster,
+	getAcceptedClusters,
 	getActiveClusters,
 	getClusterMembers,
 	renameCluster,
@@ -63,12 +64,14 @@ export async function clusterDismiss(clusterId: string): Promise<void> {
 	await dismissCluster(database, clusterId);
 }
 
-export async function clusterAccept(
-	clusterId: string,
-	noteId: string,
-): Promise<void> {
+export async function clusterAccept(clusterId: string): Promise<void> {
 	const database = await getNotesIndexDb();
-	await acceptCluster(database, clusterId, noteId);
+	await acceptCluster(database, clusterId);
+}
+
+export async function listAcceptedClusters(): Promise<ClusterRow[]> {
+	const database = await getNotesIndexDb();
+	return getAcceptedClusters(database);
 }
 
 export async function clusterRename(

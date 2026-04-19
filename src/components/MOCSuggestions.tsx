@@ -1,5 +1,4 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { NoteService } from "@/services/notes/noteService";
 import {
 	clusterAccept,
 	clusterDismiss,
@@ -69,23 +68,7 @@ export default function MOCSuggestions() {
 
 	const handleAccept = useCallback(
 		async (card: ClusterCard) => {
-			const wikiLinks = card.memberNoteIds.map((id) => `[[${id}]]`).join("\n");
-			const body = `# ${card.cluster.name}\n\n${wikiLinks}\n`;
-			const slug = card.cluster.name
-				.toLowerCase()
-				.replace(/[^a-z0-9]+/g, "-")
-				.replace(/^-|-$/g, "");
-			const created = await NoteService.saveNote(
-				{
-					id: slug,
-					title: card.cluster.name,
-					content: body,
-					isPinned: false,
-					noteType: "note",
-				},
-				true,
-			);
-			await clusterAccept(card.cluster.id, created.id);
+			await clusterAccept(card.cluster.id);
 			await loadClusters();
 		},
 		[loadClusters],

@@ -3,10 +3,15 @@ import { useDebounce } from "@/hooks/useDebounce";
 import type { NoteSection } from "@/services/notes/indexDb/types";
 import { getCachedQueryPromise } from "@/services/notes/noteQueryCache";
 import {
+	listAcceptedClusters,
+	listClusterMembers,
+} from "@/services/notes/clusterService";
+import {
 	type NoteIndexItem,
 	NotesIndexService,
 } from "@/services/notes/notesIndex";
 import {
+	notesIndexDbGetById,
 	notesIndexDbGetOrphanedNotes,
 	notesIndexDbGetRecentlyEditedNotes,
 } from "@/services/notes/notesIndexDb";
@@ -41,11 +46,18 @@ function computeSections(
 	pinnedNotes: Note[],
 	recentlyEditedNoteIds: Set<string>,
 	orphanedNoteIds: Set<string>,
+	acceptedClusterSections: NoteSection[],
 ): NoteSection[] {
 	const sections: NoteSection[] = [];
 
 	if (pinnedNotes.length > 0) {
 		sections.push({ id: "pinned", title: "Pinned", notes: pinnedNotes });
+	}
+
+	for (const cs of acceptedClusterSections) {
+		if (cs.notes.length > 0) {
+			sections.push(cs);
+		}
 	}
 
 	const recentlyEditedNotes = allNotes.filter((n) => recentlyEditedNoteIds.has(n.id));
@@ -101,12 +113,40 @@ async function loadNotesPage(args: {
 }
 
 async function loadSectionMetadata() {
-	const recentlyEditedRows = await notesIndexDbGetRecentlyEditedNotes(10, 7);
-	const recentlyEditedNoteIds = new Set(
-		recentlyEditedRows.map((row) => row.id),
-	);
-	const orphanedNoteIds = new Set(await notesIndexDbGetOrphanedNotes());
-	return { recentlyEditedNoteIds, orphanedNoteIds };
+	const [recentlyEditedRows, orphanedIds, acceptedClusters] = await Promise.all([
+		notesIndexDbGetRecentlyEditedNotes(10, 7),
+		notesIndexDbGetOrphanedNotes(),
+		listAcceptedClusters(),
+	]);
+
+	const acceptedClusterSections: NoteSection[] = [];
+	for (const cluster of acceptedClusters) {
+		const members = await listClusterMembers(cluster.id);
+		const notes: Note[] = [];
+		for (const member of members) {
+			const item = await notesIndexDbGetById(member.note_id);
+			if (item) {
+				notes.push({
+					id: item.noteId,
+					title: item.title,
+					content: item.summary,
+					lastUpdated: item.updatedAt,
+					isPinned: item.isPinned,
+					noteType: item.noteType ?? "note",
+					status: item.status,
+				});
+			}
+		}
+		if (notes.length > 0) {
+			acceptedClusterSections.push({ id: cluster.id, title: cluster.name, notes });
+		}
+	}
+
+	return {
+		recentlyEditedNoteIds: new Set(recentlyEditedRows.map((row) => row.id)),
+		orphanedNoteIds: new Set(orphanedIds),
+		acceptedClusterSections,
+	};
 }
 
 export default function useNotes() {
@@ -137,9 +177,11 @@ export default function useNotes() {
 	const [sectionMetadata, setSectionMetadata] = useState<{
 		recentlyEditedNoteIds: Set<string>;
 		orphanedNoteIds: Set<string>;
+		acceptedClusterSections: NoteSection[];
 	}>({
 		recentlyEditedNoteIds: new Set(),
 		orphanedNoteIds: new Set(),
+		acceptedClusterSections: [],
 	});
 	const sectionRequestVersionRef = useRef(0);
 
@@ -291,6 +333,7 @@ export default function useNotes() {
 				setSectionMetadata({
 					recentlyEditedNoteIds: new Set(),
 					orphanedNoteIds: new Set(),
+					acceptedClusterSections: [],
 				});
 			});
 
@@ -307,6 +350,7 @@ export default function useNotes() {
 			pinnedNotes,
 			sectionMetadata.recentlyEditedNoteIds,
 			sectionMetadata.orphanedNoteIds,
+			sectionMetadata.acceptedClusterSections,
 		);
 	}, [allNotes, sectionMetadata]);
 

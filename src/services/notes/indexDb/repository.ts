@@ -505,12 +505,12 @@ export async function dismissCluster(
 export async function acceptCluster(
 	database: SQLiteDatabase,
 	clusterId: string,
-	noteId: string,
+	noteId?: string,
 ): Promise<void> {
 	await database.runAsync(
 		"UPDATE clusters SET accepted_at = ?, accepted_note_id = ? WHERE id = ?",
 		Date.now(),
-		noteId,
+		noteId ?? null,
 		clusterId,
 	);
 }
@@ -527,6 +527,19 @@ export async function renameCluster(
 	);
 }
 
+export async function getAcceptedClusters(
+	database: SQLiteDatabase,
+): Promise<ClusterRow[]> {
+	return (
+		(await database.getAllAsync<ClusterRow>(
+			`SELECT id, name, confidence, created_at, dismissed_at, accepted_at, accepted_note_id
+             FROM clusters
+             WHERE accepted_at IS NOT NULL AND dismissed_at IS NULL
+             ORDER BY accepted_at ASC`,
+		)) ?? []
+	);
+}
+
 export async function upsertClustersFromJson(
 	database: SQLiteDatabase,
 	clusters: Array<{
@@ -537,6 +550,10 @@ export async function upsertClustersFromJson(
 	}>,
 ): Promise<void> {
 	await database.withTransactionAsync(async () => {
+		// Replace all pending suggestions with the fresh batch from the pipeline
+		await database.runAsync(
+			"DELETE FROM clusters WHERE dismissed_at IS NULL AND accepted_at IS NULL",
+		);
 		for (const cluster of clusters) {
 			await database.runAsync(
 				`INSERT INTO clusters (id, name, confidence, created_at)
