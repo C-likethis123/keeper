@@ -101,9 +101,9 @@ def build_output(
     labels,
     cluster_names: dict[int, str],
     embeddings,
-    average_intra_cluster_similarity_fn,
 ) -> dict:
     from collections import defaultdict
+    from clustering import average_intra_cluster_similarity
 
     member_map: dict[int, list[int]] = defaultdict(list)
     for i, label in enumerate(labels.tolist()):
@@ -112,7 +112,7 @@ def build_output(
 
     clusters = []
     for label, member_indices in member_map.items():
-        confidence = average_intra_cluster_similarity_fn(embeddings, member_indices)
+        confidence = average_intra_cluster_similarity(embeddings, member_indices)
         if confidence < MIN_CLUSTER_CONFIDENCE:
             continue
         centroid = embeddings[member_indices].mean(axis=0)
@@ -154,7 +154,7 @@ def main(notes_root_arg: str) -> None:
     labels = cluster_notes(embeddings)
     cluster_names = extract_cluster_names(labels, texts)
 
-    output = build_output(note_ids, labels, cluster_names, embeddings, average_intra_cluster_similarity)
+    output = build_output(note_ids, labels, cluster_names, embeddings)
     out_path = notes_root / OUTPUT_FILENAME
     out_path.write_text(json.dumps(output, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Wrote {len(output['clusters'])} clusters to {out_path}")
