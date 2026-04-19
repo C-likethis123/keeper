@@ -1,6 +1,5 @@
 import NoteEditorView from "@/components/NoteEditorView";
 import { TabBar } from "@/components/TabBar";
-import { TOOLBAR_HEIGHT } from "@/components/editor/editorConstants";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
@@ -37,14 +36,6 @@ function NewNoteEditorContent({
 
 function ExistingNoteEditorContent({ id }: { id: string }) {
 	const note = useSuspenseLoadNote(id);
-	const { tabs, updateTabTitle } = useTabStore();
-	const tab = tabs.find((t) => t.noteId === id);
-
-	useEffect(() => {
-		if (tab && note?.title && tab.title !== note.title) {
-			updateTabTitle(tab.id, note.title);
-		}
-	}, [tab, note?.title, updateTabTitle]);
 
 	if (!note) {
 		return <ErrorScreen errorMessage="Note not found" onRetry={() => {}} />;

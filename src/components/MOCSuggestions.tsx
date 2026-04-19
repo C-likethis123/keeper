@@ -10,10 +10,9 @@ import {
 } from "@/services/notes/clusterService";
 import { notesIndexDbGetById } from "@/services/notes/notesIndexDb";
 import { useStorageStore } from "@/stores/storageStore";
+import RenameClusterModal from "@/components/RenameClusterModal";
 import { useCallback, useEffect, useState } from "react";
 import {
-	Alert,
-	Platform,
 	Pressable,
 	StyleSheet,
 	Text,
@@ -30,6 +29,7 @@ export default function MOCSuggestions() {
 	const { colors } = useExtendedTheme();
 	const contentVersion = useStorageStore((s) => s.contentVersion);
 	const [cards, setCards] = useState<ClusterCard[]>([]);
+	const [renameCard, setRenameCard] = useState<ClusterCard | null>(null);
 
 	const loadClusters = useCallback(async () => {
 		const clusters = await listActiveClusters();
@@ -91,35 +91,30 @@ export default function MOCSuggestions() {
 		[loadClusters],
 	);
 
-	const handleRename = useCallback(
-		async (card: ClusterCard) => {
-			if (Platform.OS === "ios" || Platform.OS === "web") {
-				Alert.prompt(
-					"Rename Cluster",
-					"Enter a new name",
-					async (newName) => {
-						if (newName?.trim()) {
-							await clusterRename(card.cluster.id, newName.trim());
-							await loadClusters();
-						}
-					},
-					"plain-text",
-					card.cluster.name,
-				);
-			} else {
-				Alert.alert(
-					"Rename",
-					"Use the Rename feature on desktop or iOS to rename this cluster.",
-				);
-			}
+	const handleRename = useCallback((card: ClusterCard) => {
+		setRenameCard(card);
+	}, []);
+
+	const handleRenameConfirm = useCallback(
+		async (newName: string) => {
+			if (!renameCard) return;
+			await clusterRename(renameCard.cluster.id, newName);
+			setRenameCard(null);
+			await loadClusters();
 		},
-		[loadClusters],
+		[renameCard, loadClusters],
 	);
 
 	if (cards.length === 0) return null;
 
 	return (
 		<View style={styles.container}>
+			<RenameClusterModal
+				visible={renameCard !== null}
+				initialName={renameCard?.cluster.name ?? ""}
+				onClose={() => setRenameCard(null)}
+				onConfirm={handleRenameConfirm}
+			/>
 			<Text style={[styles.sectionHeader, { color: colors.text }]}>
 				Suggested MOCs
 			</Text>
