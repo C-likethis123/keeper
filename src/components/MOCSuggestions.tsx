@@ -1,22 +1,18 @@
+import RenameClusterModal from "@/components/RenameClusterModal";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { logFeedback } from "@/services/notes/clusterFeedbackService";
 import {
+	type ClusterRow,
 	clusterAccept,
 	clusterDismiss,
 	clusterRename,
 	listActiveClusters,
 	listClusterMembers,
-	type ClusterRow,
 } from "@/services/notes/clusterService";
 import { notesIndexDbGetById } from "@/services/notes/notesIndexDb";
 import { useStorageStore } from "@/stores/storageStore";
-import RenameClusterModal from "@/components/RenameClusterModal";
 import { useCallback, useEffect, useState } from "react";
-import {
-	Pressable,
-	StyleSheet,
-	Text,
-	View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 interface ClusterCard {
 	cluster: ClusterRow;
@@ -37,7 +33,7 @@ export default function MOCSuggestions() {
 			clusters.map(async (cluster) => {
 				const members = await listClusterMembers(cluster.id);
 				const memberIds = members.map((m) => m.note_id).slice(0, 5);
-				
+
 				const memberTitles = new Map<string, string>();
 				for (const id of memberIds) {
 					const note = await notesIndexDbGetById(id);
@@ -60,8 +56,13 @@ export default function MOCSuggestions() {
 	}, [loadClusters, contentVersion]);
 
 	const handleDismiss = useCallback(
-		async (clusterId: string) => {
-			await clusterDismiss(clusterId);
+		async (card: ClusterCard) => {
+			await clusterDismiss(card.cluster.id);
+			await logFeedback(card.cluster.id, "dismiss", {
+				originalName: card.cluster.name,
+				confidence: card.cluster.confidence,
+				memberCount: card.memberNoteIds.length,
+			});
 			bumpContentVersion();
 			await loadClusters();
 		},
@@ -71,6 +72,12 @@ export default function MOCSuggestions() {
 	const handleAccept = useCallback(
 		async (card: ClusterCard) => {
 			await clusterAccept(card.cluster.id);
+			await logFeedback(card.cluster.id, "accept", {
+				originalName: card.cluster.name,
+				confidence: card.cluster.confidence,
+				memberCount: card.memberNoteIds.length,
+				memberIds: card.memberNoteIds,
+			});
 			bumpContentVersion();
 			await loadClusters();
 		},
@@ -85,6 +92,10 @@ export default function MOCSuggestions() {
 		async (newName: string) => {
 			if (!renameCard) return;
 			await clusterRename(renameCard.cluster.id, newName);
+			await logFeedback(renameCard.cluster.id, "rename", {
+				originalName: renameCard.cluster.name,
+				newName,
+			});
 			setRenameCard(null);
 			await loadClusters();
 		},
@@ -122,7 +133,9 @@ export default function MOCSuggestions() {
 						style={[styles.members, { color: colors.textSecondary }]}
 						numberOfLines={2}
 					>
-						{card.memberNoteIds.map(id => card.memberNoteTitles.get(id) || id).join(" · ")}
+						{card.memberNoteIds
+							.map((id) => card.memberNoteTitles.get(id) || id)
+							.join(" · ")}
 					</Text>
 					<Text style={[styles.confidence, { color: colors.textSecondary }]}>
 						{Math.round(card.cluster.confidence * 100)}% confidence
@@ -132,7 +145,12 @@ export default function MOCSuggestions() {
 							onPress={() => handleAccept(card)}
 							style={[styles.actionBtn, { backgroundColor: colors.primary }]}
 						>
-							<Text style={[styles.actionBtnText, { color: colors.primaryContrast }]}>
+							<Text
+								style={[
+									styles.actionBtnText,
+									{ color: colors.primaryContrast },
+								]}
+							>
 								Accept
 							</Text>
 						</Pressable>
@@ -152,7 +170,7 @@ export default function MOCSuggestions() {
 							</Text>
 						</Pressable>
 						<Pressable
-							onPress={() => handleDismiss(card.cluster.id)}
+							onPress={() => handleDismiss(card)}
 							style={[
 								styles.actionBtn,
 								{
@@ -163,10 +181,7 @@ export default function MOCSuggestions() {
 							]}
 						>
 							<Text
-								style={[
-									styles.actionBtnText,
-									{ color: colors.textSecondary },
-								]}
+								style={[styles.actionBtnText, { color: colors.textSecondary }]}
 							>
 								Dismiss
 							</Text>

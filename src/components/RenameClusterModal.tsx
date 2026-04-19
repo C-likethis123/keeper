@@ -1,13 +1,21 @@
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+	Modal,
+	Pressable,
+	StyleSheet,
+	Text,
+	TextInput,
+	View,
+} from "react-native";
 
 type RenameClusterModalProps = {
 	visible: boolean;
 	initialName: string;
 	onClose: () => void;
 	onConfirm: (newName: string) => void;
+	onRename?: (newName: string) => void;
 };
 
 export default function RenameClusterModal({
@@ -15,13 +23,17 @@ export default function RenameClusterModal({
 	initialName,
 	onClose,
 	onConfirm,
+	onRename,
 }: RenameClusterModalProps) {
 	const styles = useStyles(createStyles);
 	const [name, setName] = useState(initialName);
 
 	const handleConfirm = () => {
 		const trimmed = name.trim();
-		if (trimmed) onConfirm(trimmed);
+		if (trimmed) {
+			onConfirm(trimmed);
+			onRename?.(trimmed);
+		}
 	};
 
 	return (
