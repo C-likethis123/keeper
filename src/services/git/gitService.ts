@@ -1,4 +1,5 @@
 import { NOTES_ROOT } from "@/services/notes/Notes";
+import { exportFeedbackToFile } from "@/services/notes/clusterFeedbackService";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { storageEngine } from "@/services/storage/storageEngine";
 import {
@@ -352,6 +353,13 @@ export class GitService {
 			const gitEngine = GitService.ensureGitEngine();
 			const status = await gitEngine.status(NOTES_ROOT);
 			if (status.length > 0) {
+				// Export feedback before committing
+				try {
+					await exportFeedbackToFile();
+				} catch (error) {
+					console.warn("[GitService] Failed to export feedback:", error);
+				}
+
 				let commitMessage = message;
 				if (!commitMessage) {
 					if (recovery) {
