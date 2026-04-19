@@ -612,3 +612,67 @@ export async function deleteCluster(
 	// cluster_members rows are removed automatically via ON DELETE CASCADE
 	await database.runAsync("DELETE FROM clusters WHERE id = ?", clusterId);
 }
+
+// ─── Cluster Feedback ───────────────────────────────────────
+
+export interface ClusterFeedbackRow {
+	id: number;
+	cluster_id: string;
+	event_type: string;
+	event_data: string | null;
+	created_at: number;
+}
+
+export async function recordClusterFeedback(
+	database: SQLiteDatabase,
+	clusterId: string,
+	eventType:
+		| "accept"
+		| "dismiss"
+		| "rename"
+		| "add_note"
+		| "remove_note"
+		| "delete",
+	eventData: Record<string, unknown> = {},
+): Promise<void> {
+	await database.runAsync(
+		`INSERT INTO cluster_feedback (cluster_id, event_type, event_data, created_at)
+         VALUES (?, ?, ?, ?)`,
+		clusterId,
+		eventType,
+		JSON.stringify(eventData),
+		Date.now(),
+	);
+}
+
+export async function getAllClusterFeedback(
+	database: SQLiteDatabase,
+): Promise<ClusterFeedbackRow[]> {
+	return (
+		(await database.getAllAsync<ClusterFeedbackRow>(
+			`SELECT id, cluster_id, event_type, event_data, created_at
+             FROM cluster_feedback
+             ORDER BY created_at DESC`,
+		)) ?? []
+	);
+}
+
+export async function exportFeedbackToJson(
+	database: SQLiteDatabase,
+): Promise<string> {
+	const feedback = await getAllClusterFeedback(database);
+	return JSON.stringify(
+		{
+			version: 1,
+			exported_at: Date.now(),
+			events: feedback.map((f) => ({
+				clusterId: f.cluster_id,
+				eventType: f.event_type,
+				eventData: f.event_data ? JSON.parse(f.event_data) : null,
+				createdAt: f.created_at,
+			})),
+		},
+		null,
+		2,
+	);
+}
