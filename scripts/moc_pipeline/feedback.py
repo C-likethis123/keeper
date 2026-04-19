@@ -79,6 +79,7 @@ def get_negative_pairs(feedback: list[FeedbackEvent]) -> set[tuple[str, str]]:
 		elif event.event_type == "remove_note":
 			# Removed note is negatively paired with cluster
 			# Requires cluster members lookup
+			pass
 
 	return negative_pairs
 
