@@ -1,8 +1,9 @@
+import AcceptedClusters from "@/components/AcceptedClusters";
 import HomeQuickComposer from "@/components/HomeQuickComposer";
 import HomeScreenHeader from "@/components/HomeScreenHeader";
 import MOCSuggestions from "@/components/MOCSuggestions";
-import ConflictBanner from "@/components/shared/ConflictBanner";
 import ResetAppDataModal from "@/components/ResetAppDataModal";
+import ConflictBanner from "@/components/shared/ConflictBanner";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
@@ -20,7 +21,13 @@ import { useToastStore } from "@/stores/toastStore";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
 import { useFocusEffect, useNavigation } from "expo-router";
-import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import React, {
+	Suspense,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { StyleSheet, type TextInput, View } from "react-native";
 
 const LazyNoteGrid = React.lazy(() => import("@/components/NoteGrid"));
@@ -165,6 +172,7 @@ function IndexContent() {
 						<>
 							<ConflictBanner />
 							<HomeQuickComposer onPress={createAndOpenNote} />
+							<AcceptedClusters />
 							<MOCSuggestions />
 						</>
 					}
