@@ -578,3 +578,37 @@ export async function upsertClustersFromJson(
 		}
 	});
 }
+
+export async function addNoteToCluster(
+	database: SQLiteDatabase,
+	clusterId: string,
+	noteId: string,
+): Promise<void> {
+	await database.runAsync(
+		`INSERT OR IGNORE INTO cluster_members (cluster_id, note_id, score)
+         VALUES (?, ?, ?)`,
+		clusterId,
+		noteId,
+		0,
+	);
+}
+
+export async function removeNoteFromCluster(
+	database: SQLiteDatabase,
+	clusterId: string,
+	noteId: string,
+): Promise<void> {
+	await database.runAsync(
+		"DELETE FROM cluster_members WHERE cluster_id = ? AND note_id = ?",
+		clusterId,
+		noteId,
+	);
+}
+
+export async function deleteCluster(
+	database: SQLiteDatabase,
+	clusterId: string,
+): Promise<void> {
+	// cluster_members rows are removed automatically via ON DELETE CASCADE
+	await database.runAsync("DELETE FROM clusters WHERE id = ?", clusterId);
+}
