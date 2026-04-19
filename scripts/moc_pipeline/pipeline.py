@@ -33,23 +33,38 @@ MIN_CLUSTER_CONFIDENCE = 0.30
 def _parse_frontmatter_meta(markdown: str) -> dict:
     """Extract type, title, tags, modified, and wikilinks from note."""
     meta: dict = {"type": "note", "title": "", "tags": [], "modified": None, "wikilinks": []}
+    # Strip BOM and leading blank lines
+    markdown = markdown.lstrip('\ufeff').lstrip('\r\n')
     m = _FRONTMATTER_RE.match(markdown)
     if m:
+        in_tags_block = False
         for line in m.group(1).splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                in_tags_block = False
                 continue
-            sep = line.find(":")
+            # YAML list item inside tags block
+            if in_tags_block and stripped.startswith("- "):
+                tag = stripped[2:].strip()
+                if tag:
+                    meta["tags"].append(tag)
+                continue
+            sep = stripped.find(":")
             if sep < 0:
+                in_tags_block = False
                 continue
-            key = line[:sep].strip()
-            val = line[sep + 1:].strip().strip('"').strip("'")
+            key = stripped[:sep].strip()
+            val = stripped[sep + 1:].strip().strip('"').strip("'")
+            in_tags_block = False
             if key == "type":
                 meta["type"] = val
             elif key == "title":
                 meta["title"] = val
             elif key == "tags":
-                meta["tags"] = [t.strip() for t in val.split(",") if t.strip()]
+                if val:
+                    meta["tags"] = [t.strip() for t in val.split(",") if t.strip()]
+                else:
+                    in_tags_block = True  # block-style tags follow
             elif key == "modified":
                 try:
                     meta["modified"] = int(val)

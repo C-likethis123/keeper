@@ -37,3 +37,20 @@ def test_load_notes_returns_metadata():
         assert m["tags"] == ["foo", "bar"]
         assert m["modified"] == 1713000000000
         assert "Other Note" in m["wikilinks"]
+
+
+def test_load_notes_block_style_tags():
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        _write(root, "note.md", "---\ntype: note\ntitle: Tagged\ntags:\n  - python\n  - ml\n---\nBody text")
+        ids, texts, metas = load_notes(root)
+        assert metas[0]["tags"] == ["python", "ml"]
+
+
+def test_load_notes_excludes_journal_with_bom():
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        content = "\ufeff---\ntype: journal\ntitle: Daily\n---\nToday..."
+        _write(root, "journal.md", content)
+        ids, texts, metas = load_notes(root)
+        assert len(ids) == 0
