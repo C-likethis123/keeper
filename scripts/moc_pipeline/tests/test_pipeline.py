@@ -54,3 +54,27 @@ def test_load_notes_excludes_journal_with_bom():
         _write(root, "journal.md", content)
         ids, texts, metas = load_notes(root)
         assert len(ids) == 0
+
+
+def test_main_end_to_end():
+    """Full pipeline with 5 notes: 3 clustered, 2 filtered."""
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        # Two semantically similar Python notes
+        _write(root, "python1.md", "---\ntype: note\ntitle: Python Basics\ntags: python\nmodified: 1713000000000\n---\nPython is a programming language.")
+        _write(root, "python2.md", "---\ntype: note\ntitle: Python Advanced\ntags: python\nmodified: 1713000100000\n---\nAdvanced Python topics include decorators and generators.")
+        _write(root, "python3.md", "---\ntype: note\ntitle: Python Libraries\ntags: python\nmodified: 1713000200000\n---\nNumPy and Pandas are popular Python libraries.")
+        # Should be excluded
+        _write(root, "journal1.md", "---\ntype: journal\ntitle: My Day\n---\nToday was fine.")
+        _write(root, "todo1.md", "---\ntype: todo\ntitle: Buy groceries\n---\n- [ ] milk")
+        import json, sys
+        # Run the pipeline
+        sys.argv = ["pipeline.py", str(root)]
+        import pipeline
+        pipeline.main(str(root))
+        out = json.loads((root / ".moc_clusters.json").read_text())
+        assert out["version"] == 1
+        # All member note_ids must exclude journal1 and todo1
+        all_member_ids = {m["note_id"] for c in out["clusters"] for m in c["members"]}
+        assert "journal1" not in all_member_ids
+        assert "todo1" not in all_member_ids

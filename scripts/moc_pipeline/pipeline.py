@@ -22,6 +22,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 import json
 import uuid
 
+from features import temporal_distance_matrix, graph_distance_matrix, tag_distance_matrix
+
+# Dimension weights — must sum to 1.0
+WEIGHT_SEMANTIC = 0.50
+WEIGHT_TEMPORAL = 0.20
+WEIGHT_GRAPH    = 0.20
+WEIGHT_TAGS     = 0.10
+
 _FRONTMATTER_RE = _re.compile(r"^---\r?\n([\s\S]*?)\r?\n---\r?\n?")
 _WIKILINK_RE = _re.compile(r"\[\[(.+?)\]\]")
 _EXCLUDED_TYPES = {"journal", "todo"}
@@ -165,8 +173,23 @@ def main(notes_root_arg: str) -> None:
     print("Generating embeddings...")
     embeddings = generate_embeddings(texts)
 
+    print("Building distance matrices...")
+    import numpy as np
+    from sklearn.metrics.pairwise import cosine_distances
+    semantic_D   = cosine_distances(embeddings)
+    temporal_D   = temporal_distance_matrix(metas)
+    graph_D      = graph_distance_matrix(note_ids, metas)
+    tag_D        = tag_distance_matrix(metas)
+
+    composite_D = (
+        WEIGHT_SEMANTIC * semantic_D
+        + WEIGHT_TEMPORAL * temporal_D
+        + WEIGHT_GRAPH    * graph_D
+        + WEIGHT_TAGS     * tag_D
+    )
+
     print("Clustering...")
-    labels = cluster_notes(embeddings)
+    labels = cluster_notes(composite_D)
     cluster_names = extract_cluster_names(labels, texts)
 
     output = build_output(note_ids, labels, cluster_names, embeddings)
