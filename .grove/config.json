@@ -1,7 +1,0 @@
-{
-	"warmup_command": "npm install; cargo check --manifest-path src-tauri/Cargo.toml",
-	"workspace_dir": "/Users/chowjiaying/grove-workspaces/keeper",
-	"max_workspaces": 10,
-	"exclude": [],
-	"clone_backend": "cp"
-}

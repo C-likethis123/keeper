@@ -518,10 +518,28 @@ pub fn head_oid(repo_path: &str) -> Result<String, String> {
     Ok(target.to_string())
 }
 
+
 pub fn changed_markdown_paths(
     repo_path: &str,
     from_oid: &str,
     to_oid: &str,
+) -> Result<GitChangedPaths, String> {
+    changed_paths_internal(repo_path, from_oid, to_oid, true)
+}
+
+pub fn changed_paths(
+    repo_path: &str,
+    from_oid: &str,
+    to_oid: &str,
+) -> Result<GitChangedPaths, String> {
+    changed_paths_internal(repo_path, from_oid, to_oid, false)
+}
+
+fn changed_paths_internal(
+    repo_path: &str,
+    from_oid: &str,
+    to_oid: &str,
+    filter_md: bool,
 ) -> Result<GitChangedPaths, String> {
     let repo = open_repo(repo_path)?;
     let from = Oid::from_str(from_oid).map_err(format_git_error)?;
@@ -559,27 +577,29 @@ pub fn changed_markdown_paths(
             .and_then(|p| p.to_str())
             .map(str::to_string);
 
+        let filter = |path: String| !filter_md || path.ends_with(".md");
+
         match delta.status() {
             Delta::Added => {
-                if let Some(path) = new_path.filter(|path| path.ends_with(".md")) {
+                if let Some(path) = new_path.filter(|p| filter(p.clone())) {
                     changed.added.push(path);
                 }
             }
             Delta::Deleted => {
-                if let Some(path) = old_path.filter(|path| path.ends_with(".md")) {
+                if let Some(path) = old_path.filter(|p| filter(p.clone())) {
                     changed.deleted.push(path);
                 }
             }
             Delta::Modified | Delta::Copied | Delta::Typechange => {
-                if let Some(path) = new_path.filter(|path| path.ends_with(".md")) {
+                if let Some(path) = new_path.filter(|p| filter(p.clone())) {
                     changed.modified.push(path);
                 }
             }
             Delta::Renamed => {
-                if let Some(path) = old_path.filter(|path| path.ends_with(".md")) {
+                if let Some(path) = old_path.filter(|p| filter(p.clone())) {
                     changed.deleted.push(path);
                 }
-                if let Some(path) = new_path.filter(|path| path.ends_with(".md")) {
+                if let Some(path) = new_path.filter(|p| filter(p.clone())) {
                     changed.added.push(path);
                 }
             }

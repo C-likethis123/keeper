@@ -61,9 +61,6 @@ src-tauri/git_core/target/
 # cursor debug
 .cursor/debug*.log
 
-# grove
-.grove/workspace.json
-
 # Agent files
 .qwen/settings.local.json
 
