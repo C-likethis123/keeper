@@ -148,9 +148,9 @@ function IndexContent() {
 
 	const handleRenameConfirm = useCallback(
 		async (newName: string) => {
-			if (!renameTarget) return;
-			await clusterRename(renameTarget.clusterId!, newName);
-			logFeedback(renameTarget.clusterId!, "rename", {
+			if (!renameTarget?.clusterId) return;
+			await clusterRename(renameTarget.clusterId, newName);
+			logFeedback(renameTarget.clusterId, "rename", {
 				originalName: renameTarget.title,
 				newName,
 			}).catch(() => {});
@@ -163,9 +163,9 @@ function IndexContent() {
 
 	const handleAddNoteConfirm = useCallback(
 		async (noteId: string) => {
-			if (!addNoteTarget) return;
-			await clusterAddNote(addNoteTarget.clusterId!, noteId);
-			logFeedback(addNoteTarget.clusterId!, "add_note", { noteId }).catch(() => {});
+			if (!addNoteTarget?.clusterId) return;
+			await clusterAddNote(addNoteTarget.clusterId, noteId);
+			logFeedback(addNoteTarget.clusterId, "add_note", { noteId }).catch(() => {});
 			setAddNoteTarget(null);
 			bumpContentVersion();
 			await handleRefresh();
@@ -175,9 +175,11 @@ function IndexContent() {
 
 	const handleDeleteCluster = useCallback(
 		(section: NoteSection) => {
+			const clusterId = section.clusterId;
+			if (!clusterId) return;
 			const confirmDelete = async () => {
-				await clusterDelete(section.clusterId!);
-				logFeedback(section.clusterId!, "delete", {
+				await clusterDelete(clusterId);
+				logFeedback(clusterId, "delete", {
 					clusterName: section.title,
 				}).catch(() => {});
 				bumpContentVersion();

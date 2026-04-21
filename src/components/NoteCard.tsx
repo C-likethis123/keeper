@@ -77,7 +77,7 @@ export default function NoteCard({
 			accessible={true}
 			accessibilityRole="button"
 			accessibilityLabel={`Open note ${note.title || "Untitled"}`}
-			accessibilityHint="Opens the note"
+			accessibilityHint={onRemoveFromCluster ? "Long press to remove from cluster" : "Opens the note"}
 		>
 			<View style={styles.titleRow}>
 				<Text style={styles.title} numberOfLines={2}>

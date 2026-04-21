@@ -141,13 +141,13 @@ export default function NoteGrid({
 								</Text>
 								{item.section.clusterActions && (
 									<View style={styles.sectionHeaderActions}>
-										<Pressable onPress={item.section.clusterActions.onRename} hitSlop={8}>
+										<Pressable onPress={item.section.clusterActions.onRename} hitSlop={8} accessibilityRole="button" accessibilityLabel="Rename cluster">
 											<FontAwesome name="pencil" size={14} color={theme.colors.textSecondary} />
 										</Pressable>
-										<Pressable onPress={item.section.clusterActions.onAddNote} hitSlop={8}>
+										<Pressable onPress={item.section.clusterActions.onAddNote} hitSlop={8} accessibilityRole="button" accessibilityLabel="Add note to cluster">
 											<FontAwesome name="plus" size={14} color={theme.colors.textSecondary} />
 										</Pressable>
-										<Pressable onPress={item.section.clusterActions.onDelete} hitSlop={8}>
+										<Pressable onPress={item.section.clusterActions.onDelete} hitSlop={8} accessibilityRole="button" accessibilityLabel="Delete cluster">
 											<FontAwesome name="trash" size={14} color={theme.colors.textSecondary} />
 										</Pressable>
 									</View>
@@ -166,7 +166,7 @@ export default function NoteGrid({
 										onPinToggle={onPinToggle}
 										onRemoveFromCluster={
 											item.clusterActions
-												? () => item.clusterActions!.onRemoveNote(note.id)
+												? () => item.clusterActions?.onRemoveNote(note.id)
 												: undefined
 										}
 									/>
