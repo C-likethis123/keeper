@@ -129,31 +129,71 @@ async function loadNotesPage(args: {
   );
 }
 
+function noteFromIndexItem(item: {
+  noteId: string;
+  title: string;
+  summary: string;
+  updatedAt: number;
+  isPinned: boolean;
+  noteType: Note["noteType"] | null;
+  status?: Note["status"] | null;
+}): Note {
+  return {
+    id: item.noteId,
+    title: item.title,
+    content: item.summary,
+    lastUpdated: item.updatedAt,
+    isPinned: item.isPinned,
+    noteType: item.noteType ?? "note",
+    status: item.status,
+  };
+}
+
 async function loadSectionMetadata() {
-  const [recentlyEditedRows, orphanedIds, acceptedClusters] = await Promise.all(
-    [
+  const [recentlyEditedRows, orphanedIds, acceptedSuperClusters, standaloneClusters] =
+    await Promise.all([
       notesIndexDbGetRecentlyEditedNotes(10, 7),
       notesIndexDbGetOrphanedNotes(),
-      listAcceptedClusters(),
-    ],
-  );
+      listAcceptedSuperClusters(),
+      listStandaloneAcceptedClusters(),
+    ]);
 
   const acceptedClusterSections: NoteSection[] = [];
-  for (const cluster of acceptedClusters) {
+
+  // Super-cluster sections: notes from all accepted child sub-clusters combined
+  for (const superCluster of acceptedSuperClusters) {
+    const subClusters = await listAcceptedSubClusters(superCluster.id);
+    const seenNoteIds = new Set<string>();
+    const notes: Note[] = [];
+    for (const subCluster of subClusters) {
+      const members = await listClusterMembers(subCluster.id);
+      for (const member of members) {
+        if (seenNoteIds.has(member.note_id)) continue;
+        const item = await notesIndexDbGetById(member.note_id);
+        if (item) {
+          notes.push(noteFromIndexItem(item));
+          seenNoteIds.add(member.note_id);
+        }
+      }
+    }
+    if (notes.length > 0) {
+      acceptedClusterSections.push({
+        id: superCluster.id,
+        title: superCluster.name,
+        notes,
+        superClusterId: superCluster.id,
+      });
+    }
+  }
+
+  // Standalone cluster sections (no super-cluster parent)
+  for (const cluster of standaloneClusters) {
     const members = await listClusterMembers(cluster.id);
     const notes: Note[] = [];
     for (const member of members) {
       const item = await notesIndexDbGetById(member.note_id);
       if (item) {
-        notes.push({
-          id: item.noteId,
-          title: item.title,
-          content: item.summary,
-          lastUpdated: item.updatedAt,
-          isPinned: item.isPinned,
-          noteType: item.noteType ?? "note",
-          status: item.status,
-        });
+        notes.push(noteFromIndexItem(item));
       }
     }
     if (notes.length > 0) {
