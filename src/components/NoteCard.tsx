@@ -6,7 +6,9 @@ import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+	Alert,
 	type GestureResponderEvent,
+	Platform,
 	Pressable,
 	StyleSheet,
 	Text,
@@ -28,10 +30,12 @@ export default function NoteCard({
 	note,
 	onDelete,
 	onPinToggle,
+	onRemoveFromCluster,
 }: {
 	note: Note;
 	onDelete: (note: Note) => void;
 	onPinToggle: (updated: Note) => void;
+	onRemoveFromCluster?: () => void;
 }) {
 	const router = useRouter();
 	const styles = useStyles(createStyles);
@@ -51,10 +55,25 @@ export default function NoteCard({
 		event?.stopPropagation?.();
 	};
 
+	const handleLongPress = () => {
+		if (!onRemoveFromCluster) return;
+		if (Platform.OS === "web") {
+			if (window.confirm("Remove this note from the cluster?")) {
+				onRemoveFromCluster();
+			}
+		} else {
+			Alert.alert("Remove from cluster", "Remove this note from the cluster?", [
+				{ text: "Cancel", style: "cancel" },
+				{ text: "Remove", style: "destructive", onPress: onRemoveFromCluster },
+			]);
+		}
+	};
+
 	return (
 		<Pressable
 			style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
 			onPress={openNote}
+			onLongPress={onRemoveFromCluster ? handleLongPress : undefined}
 			accessible={true}
 			accessibilityRole="button"
 			accessibilityLabel={`Open note ${note.title || "Untitled"}`}
