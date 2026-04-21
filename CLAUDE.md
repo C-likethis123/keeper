@@ -61,7 +61,7 @@ Immutable, transaction-based document model:
 
 ### Key Features
 
-- **MOC suggestions** — Python semantic clustering pipeline (sentence-transformers, scikit-learn) with GitHub Actions automation
+- **MOC suggestions** — Python semantic clustering pipeline (sentence-transformers, scikit-learn) with GitHub Actions automation. Semantic clustering is handled in the repository that hosts the notes, while the Keeper app displays and manages the suggested semantic clusters
 - **PDF/ePub split-screen** — attachments in `_attachments/`, resizable split panel
 - **Video blocks** — YouTube and generic video with stacked/side layouts
 - **YouTube sharing** — Android share intents + iOS extensions
@@ -90,4 +90,3 @@ TS abstraction: `GitEngine`, `RustGitEngine`
 - **Platform splits**: `.web.ts` overrides `.ts` on web
 - **Testing**: `npm test` (Jest + React Native Testing Library), `npm run lint` (Biome)
 - **Linting**: Biome (not ESLint/Prettier)
-
