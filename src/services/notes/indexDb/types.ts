@@ -85,6 +85,13 @@ export interface NoteSection {
 	id: string;
 	title: string;
 	notes: Note[];
+	clusterId?: string;
+	clusterActions?: {
+		onRename: () => void;
+		onAddNote: () => void;
+		onDelete: () => void;
+		onRemoveNote: (noteId: string) => void;
+	};
 }
 
 type NoteIndexFilters = NoteListFilters;
