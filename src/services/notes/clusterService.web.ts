@@ -1,7 +1,11 @@
 import { getTauriInvoke } from "@/services/storage/runtime";
-import type { ClusterMemberRow, ClusterRow } from "./indexDb/repository";
+import type {
+	ClusterMemberRow,
+	ClusterRow,
+	SuperClusterRow,
+} from "./indexDb/repository";
 
-export type { ClusterRow, ClusterMemberRow };
+export type { ClusterRow, ClusterMemberRow, SuperClusterRow };
 
 type TauriClusterMemberRow = {
 	clusterId: string;
@@ -74,4 +78,41 @@ export async function clusterRemoveNote(
 
 export async function clusterDelete(clusterId: string): Promise<void> {
 	await invoke("clusters_delete", { clusterId });
+}
+
+// ─── Super-Cluster Service (Tauri stubs — pending Rust backend support) ──────
+
+export async function listActiveSuperClusters(): Promise<SuperClusterRow[]> {
+	return invoke<SuperClusterRow[]>("super_clusters_get_active");
+}
+
+export async function listAcceptedSuperClusters(): Promise<SuperClusterRow[]> {
+	return invoke<SuperClusterRow[]>("super_clusters_get_accepted");
+}
+
+export async function superClusterAccept(superClusterId: string): Promise<void> {
+	await invoke("super_clusters_accept", { superClusterId });
+}
+
+export async function superClusterDismiss(superClusterId: string): Promise<void> {
+	await invoke("super_clusters_dismiss", { superClusterId });
+}
+
+export async function superClusterRename(
+	superClusterId: string,
+	name: string,
+): Promise<void> {
+	await invoke("super_clusters_rename", { superClusterId, name });
+}
+
+export async function listAcceptedSubClusters(
+	superClusterId: string,
+): Promise<ClusterRow[]> {
+	return invoke<ClusterRow[]>("super_clusters_get_sub_clusters", {
+		superClusterId,
+	});
+}
+
+export async function listStandaloneAcceptedClusters(): Promise<ClusterRow[]> {
+	return invoke<ClusterRow[]>("clusters_get_standalone_accepted");
 }

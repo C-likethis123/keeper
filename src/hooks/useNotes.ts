@@ -3,8 +3,10 @@ import { useDebounce } from "@/hooks/useDebounce";
 import type { NoteSection } from "@/services/notes/indexDb/types";
 import { getCachedQueryPromise } from "@/services/notes/noteQueryCache";
 import {
-  listAcceptedClusters,
+  listAcceptedSubClusters,
+  listAcceptedSuperClusters,
   listClusterMembers,
+  listStandaloneAcceptedClusters,
 } from "@/services/notes/clusterService";
 import {
   type NoteIndexItem,
@@ -56,13 +58,6 @@ function computeSections(
     for (const note of pinnedNotes) shownNoteIds.add(note.id);
   }
 
-  for (const cs of acceptedClusterSections) {
-    if (cs.notes.length > 0) {
-      sections.push(cs);
-      for (const note of cs.notes) shownNoteIds.add(note.id);
-    }
-  }
-
   const recentlyEditedNotes = allNotes.filter(
     (n) => recentlyEditedNoteIds.has(n.id) && !shownNoteIds.has(n.id),
   );
@@ -73,6 +68,13 @@ function computeSections(
       notes: recentlyEditedNotes,
     });
     for (const note of recentlyEditedNotes) shownNoteIds.add(note.id);
+  }
+
+  for (const cs of acceptedClusterSections) {
+    if (cs.notes.length > 0) {
+      sections.push(cs);
+      for (const note of cs.notes) shownNoteIds.add(note.id);
+    }
   }
 
   const uncategorizedNotes = allNotes.filter(

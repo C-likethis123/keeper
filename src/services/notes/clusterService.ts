@@ -2,21 +2,30 @@ import { NOTES_ROOT } from "@/services/notes/Notes";
 import { File } from "expo-file-system";
 import {
 	acceptCluster,
+	acceptSuperCluster,
 	addNoteToCluster,
 	deleteCluster,
 	dismissCluster,
+	dismissSuperCluster,
 	getAcceptedClusters,
+	getAcceptedSubClusters,
+	getAcceptedSuperClusters,
 	getActiveClusters,
+	getActiveSuperClusters,
 	getClusterMembers,
+	getStandaloneAcceptedClusters,
 	removeNoteFromCluster,
 	renameCluster,
+	renameSuperCluster,
 	upsertClustersFromJson,
+	upsertSuperClustersFromJson,
 	type ClusterMemberRow,
 	type ClusterRow,
+	type SuperClusterRow,
 } from "./indexDb/repository";
 import { getNotesIndexDb } from "./indexDb/db";
 
-export type { ClusterRow, ClusterMemberRow };
+export type { ClusterRow, ClusterMemberRow, SuperClusterRow };
 
 const CLUSTERS_FILENAME = ".moc_clusters.json";
 
@@ -26,7 +35,14 @@ interface ClustersJson {
 		id: string;
 		name: string;
 		confidence: number;
+		parent_id?: string | null;
 		members: Array<{ note_id: string; score: number }>;
+	}>;
+	super_clusters?: Array<{
+		id: string;
+		name: string;
+		confidence: number;
+		child_cluster_ids: string[];
 	}>;
 }
 
@@ -46,6 +62,11 @@ export async function importClustersFromFile(): Promise<number> {
 	if (!Array.isArray(parsed.clusters)) return 0;
 
 	const database = await getNotesIndexDb();
+
+	if (parsed.version === 2 && Array.isArray(parsed.super_clusters)) {
+		await upsertSuperClustersFromJson(database, parsed.super_clusters);
+	}
+
 	await upsertClustersFromJson(database, parsed.clusters);
 	return parsed.clusters.length;
 }
@@ -104,4 +125,46 @@ export async function clusterRemoveNote(
 export async function clusterDelete(clusterId: string): Promise<void> {
 	const database = await getNotesIndexDb();
 	await deleteCluster(database, clusterId);
+}
+
+// ─── Super-Cluster Service ────────────────────────────────────────────────────
+
+export async function listActiveSuperClusters(): Promise<SuperClusterRow[]> {
+	const database = await getNotesIndexDb();
+	return getActiveSuperClusters(database);
+}
+
+export async function listAcceptedSuperClusters(): Promise<SuperClusterRow[]> {
+	const database = await getNotesIndexDb();
+	return getAcceptedSuperClusters(database);
+}
+
+export async function superClusterAccept(superClusterId: string): Promise<void> {
+	const database = await getNotesIndexDb();
+	await acceptSuperCluster(database, superClusterId);
+}
+
+export async function superClusterDismiss(superClusterId: string): Promise<void> {
+	const database = await getNotesIndexDb();
+	await dismissSuperCluster(database, superClusterId);
+}
+
+export async function superClusterRename(
+	superClusterId: string,
+	name: string,
+): Promise<void> {
+	const database = await getNotesIndexDb();
+	await renameSuperCluster(database, superClusterId, name);
+}
+
+export async function listAcceptedSubClusters(
+	superClusterId: string,
+): Promise<ClusterRow[]> {
+	const database = await getNotesIndexDb();
+	return getAcceptedSubClusters(database, superClusterId);
+}
+
+export async function listStandaloneAcceptedClusters(): Promise<ClusterRow[]> {
+	const database = await getNotesIndexDb();
+	return getStandaloneAcceptedClusters(database);
 }

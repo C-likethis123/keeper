@@ -450,6 +450,15 @@ export async function getRecentlyEditedNotes(
 
 // ─── Cluster Suggestions ──────────────────────────────────────
 
+export interface SuperClusterRow {
+	id: string;
+	name: string;
+	confidence: number;
+	created_at: number;
+	dismissed_at: number | null;
+	accepted_at: number | null;
+}
+
 export interface ClusterRow {
 	id: string;
 	name: string;
@@ -458,6 +467,7 @@ export interface ClusterRow {
 	dismissed_at: number | null;
 	accepted_at: number | null;
 	accepted_note_id: string | null;
+	parent_id: string | null;
 }
 
 export interface ClusterMemberRow {
@@ -546,6 +556,7 @@ export async function upsertClustersFromJson(
 		id: string;
 		name: string;
 		confidence: number;
+		parent_id?: string | null;
 		members: Array<{ note_id: string; score: number }>;
 	}>,
 ): Promise<void> {
@@ -556,15 +567,17 @@ export async function upsertClustersFromJson(
 		);
 		for (const cluster of clusters) {
 			await database.runAsync(
-				`INSERT INTO clusters (id, name, confidence, created_at)
-                 VALUES (?, ?, ?, ?)
+				`INSERT INTO clusters (id, name, confidence, created_at, parent_id)
+                 VALUES (?, ?, ?, ?, ?)
                  ON CONFLICT(id) DO UPDATE SET
                    name = CASE WHEN clusters.accepted_at IS NOT NULL THEN clusters.name ELSE excluded.name END,
-                   confidence = excluded.confidence`,
+                   confidence = excluded.confidence,
+                   parent_id = excluded.parent_id`,
 				cluster.id,
 				cluster.name,
 				cluster.confidence,
 				Date.now(),
+				cluster.parent_id ?? null,
 			);
 			for (const member of cluster.members) {
 				await database.runAsync(
@@ -577,6 +590,122 @@ export async function upsertClustersFromJson(
 			}
 		}
 	});
+}
+
+export async function upsertSuperClustersFromJson(
+	database: SQLiteDatabase,
+	superClusters: Array<{
+		id: string;
+		name: string;
+		confidence: number;
+	}>,
+): Promise<void> {
+	await database.withTransactionAsync(async () => {
+		await database.runAsync(
+			"DELETE FROM super_clusters WHERE dismissed_at IS NULL AND accepted_at IS NULL",
+		);
+		for (const sc of superClusters) {
+			await database.runAsync(
+				`INSERT INTO super_clusters (id, name, confidence, created_at)
+                 VALUES (?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                   name = CASE WHEN super_clusters.accepted_at IS NOT NULL THEN super_clusters.name ELSE excluded.name END,
+                   confidence = excluded.confidence`,
+				sc.id,
+				sc.name,
+				sc.confidence,
+				Date.now(),
+			);
+		}
+	});
+}
+
+export async function getActiveSuperClusters(
+	database: SQLiteDatabase,
+): Promise<SuperClusterRow[]> {
+	return (
+		(await database.getAllAsync<SuperClusterRow>(
+			`SELECT id, name, confidence, created_at, dismissed_at, accepted_at
+             FROM super_clusters
+             WHERE dismissed_at IS NULL AND accepted_at IS NULL
+             ORDER BY confidence DESC`,
+		)) ?? []
+	);
+}
+
+export async function getAcceptedSuperClusters(
+	database: SQLiteDatabase,
+): Promise<SuperClusterRow[]> {
+	return (
+		(await database.getAllAsync<SuperClusterRow>(
+			`SELECT id, name, confidence, created_at, dismissed_at, accepted_at
+             FROM super_clusters
+             WHERE accepted_at IS NOT NULL AND dismissed_at IS NULL
+             ORDER BY accepted_at ASC`,
+		)) ?? []
+	);
+}
+
+export async function acceptSuperCluster(
+	database: SQLiteDatabase,
+	superClusterId: string,
+): Promise<void> {
+	await database.runAsync(
+		"UPDATE super_clusters SET accepted_at = ? WHERE id = ?",
+		Date.now(),
+		superClusterId,
+	);
+}
+
+export async function dismissSuperCluster(
+	database: SQLiteDatabase,
+	superClusterId: string,
+): Promise<void> {
+	await database.runAsync(
+		"UPDATE super_clusters SET dismissed_at = ? WHERE id = ?",
+		Date.now(),
+		superClusterId,
+	);
+}
+
+export async function renameSuperCluster(
+	database: SQLiteDatabase,
+	superClusterId: string,
+	name: string,
+): Promise<void> {
+	await database.runAsync(
+		"UPDATE super_clusters SET name = ? WHERE id = ?",
+		name,
+		superClusterId,
+	);
+}
+
+export async function getAcceptedSubClusters(
+	database: SQLiteDatabase,
+	superClusterId: string,
+): Promise<ClusterRow[]> {
+	return (
+		(await database.getAllAsync<ClusterRow>(
+			`SELECT id, name, confidence, created_at, dismissed_at, accepted_at, accepted_note_id, parent_id
+             FROM clusters
+             WHERE parent_id = ? AND accepted_at IS NOT NULL AND dismissed_at IS NULL
+             ORDER BY accepted_at ASC`,
+			superClusterId,
+		)) ?? []
+	);
+}
+
+export async function getStandaloneAcceptedClusters(
+	database: SQLiteDatabase,
+): Promise<ClusterRow[]> {
+	return (
+		(await database.getAllAsync<ClusterRow>(
+			`SELECT id, name, confidence, created_at, dismissed_at, accepted_at, accepted_note_id, parent_id
+             FROM clusters
+             WHERE (parent_id IS NULL) AND accepted_at IS NOT NULL AND dismissed_at IS NULL
+             ORDER BY accepted_at ASC`,
+		)) ?? []
+	);
 }
 
 export async function addNoteToCluster(

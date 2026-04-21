@@ -86,6 +86,7 @@ export interface NoteSection {
 	title: string;
 	notes: Note[];
 	clusterId?: string;
+	superClusterId?: string;
 	clusterActions?: {
 		onRename: () => void;
 		onAddNote: () => void;

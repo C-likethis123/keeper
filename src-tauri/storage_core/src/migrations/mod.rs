@@ -5,6 +5,7 @@ mod v4_add_wiki_links;
 mod v5_add_modified_column;
 mod v6_add_clusters;
 mod v7_add_cluster_feedback;
+mod v8_add_super_clusters;
 
 use rusqlite::Connection;
 
@@ -41,6 +42,10 @@ const MIGRATIONS: &[Migration] = &[
     Migration {
         version: 7,
         apply: v7_add_cluster_feedback::apply,
+    },
+    Migration {
+        version: 8,
+        apply: v8_add_super_clusters::apply,
     },
 ];
 
