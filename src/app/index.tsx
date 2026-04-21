@@ -1,7 +1,8 @@
-import AcceptedClusters from "@/components/AcceptedClusters";
+import AddNoteToClusterModal from "@/components/AddNoteToClusterModal";
 import HomeQuickComposer from "@/components/HomeQuickComposer";
 import HomeScreenHeader from "@/components/HomeScreenHeader";
 import MOCSuggestions from "@/components/MOCSuggestions";
+import RenameClusterModal from "@/components/RenameClusterModal";
 import ResetAppDataModal from "@/components/ResetAppDataModal";
 import ConflictBanner from "@/components/shared/ConflictBanner";
 import ErrorScreen from "@/components/shared/ErrorScreen";
@@ -12,11 +13,20 @@ import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
-import { importClustersFromFile } from "@/services/notes/clusterService";
+import { logFeedback } from "@/services/notes/clusterFeedbackService";
+import {
+	clusterAddNote,
+	clusterDelete,
+	clusterRemoveNote,
+	clusterRename,
+	importClustersFromFile,
+} from "@/services/notes/clusterService";
+import type { NoteSection } from "@/services/notes/indexDb/types";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useFilterStore } from "@/stores/filterStore";
+import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
@@ -25,10 +35,11 @@ import React, {
 	Suspense,
 	useCallback,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
-import { StyleSheet, type TextInput, View } from "react-native";
+import { Alert, Platform, StyleSheet, type TextInput, View } from "react-native";
 
 const LazyNoteGrid = React.lazy(() => import("@/components/NoteGrid"));
 
@@ -46,8 +57,11 @@ function IndexContent() {
 	} = useNotes();
 	const reset = useFilterStore((s) => s.reset);
 	const showToast = useToastStore((state) => state.showToast);
+	const bumpContentVersion = useStorageStore((s) => s.bumpContentVersion);
 	const [isResetting, setIsResetting] = React.useState(false);
 	const [isResetModalVisible, setIsResetModalVisible] = useState(false);
+	const [renameTarget, setRenameTarget] = useState<NoteSection | null>(null);
+	const [addNoteTarget, setAddNoteTarget] = useState<NoteSection | null>(null);
 	const createAndOpenNote = useCreateAndOpenNote();
 	const navigation = useNavigation<DrawerNavigationProp<ParamListBase>>();
 
@@ -122,6 +136,90 @@ function IndexContent() {
 		[handleRefresh],
 	);
 
+	const handleRemoveNote = useCallback(
+		async (clusterId: string, noteId: string) => {
+			await clusterRemoveNote(clusterId, noteId);
+			logFeedback(clusterId, "remove_note", { noteId }).catch(() => {});
+			bumpContentVersion();
+			await handleRefresh();
+		},
+		[bumpContentVersion, handleRefresh],
+	);
+
+	const handleRenameConfirm = useCallback(
+		async (newName: string) => {
+			if (!renameTarget) return;
+			await clusterRename(renameTarget.clusterId!, newName);
+			logFeedback(renameTarget.clusterId!, "rename", {
+				originalName: renameTarget.title,
+				newName,
+			}).catch(() => {});
+			setRenameTarget(null);
+			bumpContentVersion();
+			await handleRefresh();
+		},
+		[renameTarget, bumpContentVersion, handleRefresh],
+	);
+
+	const handleAddNoteConfirm = useCallback(
+		async (noteId: string) => {
+			if (!addNoteTarget) return;
+			await clusterAddNote(addNoteTarget.clusterId!, noteId);
+			logFeedback(addNoteTarget.clusterId!, "add_note", { noteId }).catch(() => {});
+			setAddNoteTarget(null);
+			bumpContentVersion();
+			await handleRefresh();
+		},
+		[addNoteTarget, bumpContentVersion, handleRefresh],
+	);
+
+	const handleDeleteCluster = useCallback(
+		(section: NoteSection) => {
+			const confirmDelete = async () => {
+				await clusterDelete(section.clusterId!);
+				logFeedback(section.clusterId!, "delete", {
+					clusterName: section.title,
+				}).catch(() => {});
+				bumpContentVersion();
+				await handleRefresh();
+			};
+			if (Platform.OS === "web") {
+				if (window.confirm(`Delete "${section.title}"? This cannot be undone.`)) {
+					void confirmDelete();
+				}
+			} else {
+				Alert.alert(
+					"Delete Cluster",
+					`Delete "${section.title}"? This cannot be undone.`,
+					[
+						{ text: "Cancel", style: "cancel" },
+						{ text: "Delete", style: "destructive", onPress: confirmDelete },
+					],
+				);
+			}
+		},
+		[bumpContentVersion, handleRefresh],
+	);
+
+	const enhancedSections = useMemo(
+		() =>
+			sections.map((section) =>
+				section.clusterId
+					? {
+							...section,
+							clusterActions: {
+								onRename: () => setRenameTarget(section),
+								onAddNote: () => setAddNoteTarget(section),
+								onDelete: () => handleDeleteCluster(section),
+								onRemoveNote: (noteId: string) =>
+									void handleRemoveNote(section.clusterId!, noteId),
+							},
+						}
+					: section,
+			),
+		[sections, handleDeleteCluster, handleRemoveNote],
+	);
+
 	useEffect(() => {
 		void importClustersFromFile();
 	}, []);
@@ -159,7 +257,7 @@ function IndexContent() {
 			<Suspense fallback={<Loader />}>
 				<LazyNoteGrid
 					notes={notes}
-					sections={sections}
+					sections={enhancedSections}
 					emptySubtitle={emptySubtitle}
 					onDelete={handleDeleteNote}
 					onPinToggle={handlePinToggle}
@@ -172,7 +270,6 @@ function IndexContent() {
 						<>
 							<ConflictBanner />
 							<HomeQuickComposer onPress={createAndOpenNote} />
-							<AcceptedClusters />
 							<MOCSuggestions />
 						</>
 					}
@@ -183,6 +280,18 @@ function IndexContent() {
 				isResetting={isResetting}
 				onClose={closeResetModal}
 				onConfirm={handleConfirmReset}
+			/>
+			<RenameClusterModal
+				visible={renameTarget !== null}
+				initialName={renameTarget?.title ?? ""}
+				onClose={() => setRenameTarget(null)}
+				onConfirm={handleRenameConfirm}
+			/>
+			<AddNoteToClusterModal
+				visible={addNoteTarget !== null}
+				onClose={() => setAddNoteTarget(null)}
+				onConfirm={handleAddNoteConfirm}
+				excludeNoteIds={addNoteTarget?.notes.map((n) => n.id) ?? []}
 			/>
 			{error ? (
 				<ErrorScreen errorMessage={error} onRetry={handleRefresh} />
