@@ -138,7 +138,7 @@ async function loadSectionMetadata() {
 			}
 		}
 		if (notes.length > 0) {
-			acceptedClusterSections.push({ id: cluster.id, title: cluster.name, notes });
+			acceptedClusterSections.push({ id: cluster.id, title: cluster.name, notes, clusterId: cluster.id });
 		}
 	}
 
