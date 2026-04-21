@@ -5,9 +5,11 @@ import type { NoteSection } from "@/services/notes/indexDb/types";
 import type { Note } from "@/services/notes/types";
 import type React from "react";
 import { useCallback, useMemo } from "react";
+import { FontAwesome } from "@expo/vector-icons";
 import {
 	ActivityIndicator,
 	FlatList,
+	Pressable,
 	RefreshControl,
 	StyleSheet,
 	Text,
@@ -70,12 +72,12 @@ export default function NoteGrid({
 		if (sections && sections.length > 0) {
 			const items: Array<
 				| { type: "header"; section: NoteSection }
-				| { type: "note-row"; notes: Note[] }
+				| { type: "note-row"; notes: Note[]; clusterActions?: NoteSection["clusterActions"] }
 			> = [];
 			for (const section of sections) {
 				items.push({ type: "header", section });
 				for (const row of chunkNotes(section.notes)) {
-					items.push({ type: "note-row", notes: row });
+					items.push({ type: "note-row", notes: row, clusterActions: section.clusterActions });
 				}
 			}
 			return items;
@@ -84,6 +86,7 @@ export default function NoteGrid({
 		return chunkNotes(notes).map((row) => ({
 			type: "note-row" as const,
 			notes: row,
+			clusterActions: undefined,
 		}));
 	}, [notes, numColumns, sections]);
 
@@ -136,6 +139,19 @@ export default function NoteGrid({
 								<Text style={styles.sectionHeaderText}>
 									{item.section.title}
 								</Text>
+								{item.section.clusterActions && (
+									<View style={styles.sectionHeaderActions}>
+										<Pressable onPress={item.section.clusterActions.onRename} hitSlop={8}>
+											<FontAwesome name="pencil" size={14} color={theme.colors.textSecondary} />
+										</Pressable>
+										<Pressable onPress={item.section.clusterActions.onAddNote} hitSlop={8}>
+											<FontAwesome name="plus" size={14} color={theme.colors.textSecondary} />
+										</Pressable>
+										<Pressable onPress={item.section.clusterActions.onDelete} hitSlop={8}>
+											<FontAwesome name="trash" size={14} color={theme.colors.textSecondary} />
+										</Pressable>
+									</View>
+								)}
 							</View>
 						);
 					}
@@ -148,6 +164,11 @@ export default function NoteGrid({
 										note={note}
 										onDelete={onDelete}
 										onPinToggle={onPinToggle}
+										onRemoveFromCluster={
+											item.clusterActions
+												? () => item.clusterActions!.onRemoveNote(note.id)
+												: undefined
+										}
 									/>
 								</View>
 							))}
@@ -199,6 +220,13 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			paddingHorizontal: 8,
 			paddingVertical: 12,
 			marginTop: 8,
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "space-between",
+		},
+		sectionHeaderActions: {
+			flexDirection: "row",
+			gap: 12,
 		},
 		sectionHeaderText: {
 			fontSize: 18,
