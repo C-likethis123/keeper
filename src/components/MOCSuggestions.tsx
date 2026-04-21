@@ -1,11 +1,14 @@
+import MergeClusterModal from "@/components/MergeClusterModal";
 import RenameClusterModal from "@/components/RenameClusterModal";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { logFeedback } from "@/services/notes/clusterFeedbackService";
 import {
 	type ClusterRow,
 	clusterAccept,
+	clusterAddNote,
 	clusterDismiss,
 	clusterRename,
+	listAcceptedClusters,
 	listActiveClusters,
 	listClusterMembers,
 } from "@/services/notes/clusterService";
@@ -25,14 +28,21 @@ export default function MOCSuggestions() {
 	const contentVersion = useStorageStore((s) => s.contentVersion);
 	const bumpContentVersion = useStorageStore((s) => s.bumpContentVersion);
 	const [cards, setCards] = useState<ClusterCard[]>([]);
+	const [acceptedClusters, setAcceptedClusters] = useState<ClusterRow[]>([]);
 	const [renameCard, setRenameCard] = useState<ClusterCard | null>(null);
+	const [mergeCard, setMergeCard] = useState<ClusterCard | null>(null);
 
 	const loadClusters = useCallback(async () => {
-		const clusters = await listActiveClusters();
+		const [clusters, accepted] = await Promise.all([
+			listActiveClusters(),
+			listAcceptedClusters(),
+		]);
+		setAcceptedClusters(accepted);
+
 		const loaded: ClusterCard[] = await Promise.all(
 			clusters.map(async (cluster) => {
 				const members = await listClusterMembers(cluster.id);
-				const memberIds = members.map((m) => m.note_id).slice(0, 5);
+				const memberIds = members.map((m) => m.note_id);
 
 				const memberTitles = new Map<string, string>();
 				for (const id of memberIds) {
@@ -58,11 +68,11 @@ export default function MOCSuggestions() {
 	const handleDismiss = useCallback(
 		async (card: ClusterCard) => {
 			await clusterDismiss(card.cluster.id);
-			await logFeedback(card.cluster.id, "dismiss", {
+			logFeedback(card.cluster.id, "dismiss", {
 				originalName: card.cluster.name,
 				confidence: card.cluster.confidence,
 				memberCount: card.memberNoteIds.length,
-			});
+			}).catch((e) => console.warn("[MOCSuggestions] logFeedback dismiss failed:", e));
 			bumpContentVersion();
 			await loadClusters();
 		},
@@ -72,12 +82,12 @@ export default function MOCSuggestions() {
 	const handleAccept = useCallback(
 		async (card: ClusterCard) => {
 			await clusterAccept(card.cluster.id);
-			await logFeedback(card.cluster.id, "accept", {
+			logFeedback(card.cluster.id, "accept", {
 				originalName: card.cluster.name,
 				confidence: card.cluster.confidence,
 				memberCount: card.memberNoteIds.length,
 				memberIds: card.memberNoteIds,
-			});
+			}).catch((e) => console.warn("[MOCSuggestions] logFeedback accept failed:", e));
 			bumpContentVersion();
 			await loadClusters();
 		},
@@ -92,14 +102,38 @@ export default function MOCSuggestions() {
 		async (newName: string) => {
 			if (!renameCard) return;
 			await clusterRename(renameCard.cluster.id, newName);
-			await logFeedback(renameCard.cluster.id, "rename", {
+			logFeedback(renameCard.cluster.id, "rename", {
 				originalName: renameCard.cluster.name,
 				newName,
-			});
+			}).catch((e) => console.warn("[MOCSuggestions] logFeedback rename failed:", e));
 			setRenameCard(null);
 			await loadClusters();
 		},
 		[renameCard, loadClusters],
+	);
+
+	const handleMerge = useCallback((card: ClusterCard) => {
+		setMergeCard(card);
+	}, []);
+
+	const handleMergeConfirm = useCallback(
+		async (targetClusterId: string, selectedNoteIds: string[]) => {
+			if (!mergeCard) return;
+			await Promise.all(
+				selectedNoteIds.map((id) => clusterAddNote(targetClusterId, id)),
+			);
+			await clusterDismiss(mergeCard.cluster.id);
+			logFeedback(mergeCard.cluster.id, "merge", {
+				originalName: mergeCard.cluster.name,
+				targetClusterId,
+				mergedNoteIds: selectedNoteIds,
+				confidence: mergeCard.cluster.confidence,
+			}).catch((e) => console.warn("[MOCSuggestions] logFeedback merge failed:", e));
+			setMergeCard(null);
+			bumpContentVersion();
+			await loadClusters();
+		},
+		[mergeCard, loadClusters, bumpContentVersion],
 	);
 
 	if (cards.length === 0) return null;
@@ -111,6 +145,14 @@ export default function MOCSuggestions() {
 				initialName={renameCard?.cluster.name ?? ""}
 				onClose={() => setRenameCard(null)}
 				onConfirm={handleRenameConfirm}
+			/>
+			<MergeClusterModal
+				visible={mergeCard !== null}
+				memberNoteIds={mergeCard?.memberNoteIds ?? []}
+				memberNoteTitles={mergeCard?.memberNoteTitles ?? new Map()}
+				acceptedClusters={acceptedClusters}
+				onClose={() => setMergeCard(null)}
+				onConfirm={handleMergeConfirm}
 			/>
 			<Text style={[styles.sectionHeader, { color: colors.text }]}>
 				Suggested MOCs
@@ -134,6 +176,7 @@ export default function MOCSuggestions() {
 						numberOfLines={2}
 					>
 						{card.memberNoteIds
+							.slice(0, 5)
 							.map((id) => card.memberNoteTitles.get(id) || id)
 							.join(" · ")}
 					</Text>
@@ -167,6 +210,21 @@ export default function MOCSuggestions() {
 						>
 							<Text style={[styles.actionBtnText, { color: colors.text }]}>
 								Rename
+							</Text>
+						</Pressable>
+						<Pressable
+							onPress={() => handleMerge(card)}
+							style={[
+								styles.actionBtn,
+								{
+									backgroundColor: colors.card,
+									borderWidth: 1,
+									borderColor: colors.border,
+								},
+							]}
+						>
+							<Text style={[styles.actionBtnText, { color: colors.text }]}>
+								Merge
 							</Text>
 						</Pressable>
 						<Pressable
@@ -206,7 +264,7 @@ const styles = StyleSheet.create({
 	clusterName: { fontSize: 16, fontWeight: "600" },
 	members: { fontSize: 13 },
 	confidence: { fontSize: 12 },
-	actions: { flexDirection: "row", gap: 8, marginTop: 6 },
+	actions: { flexDirection: "row", gap: 8, marginTop: 6, flexWrap: "wrap" },
 	actionBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
 	actionBtnText: { fontSize: 13, fontWeight: "500" },
 });

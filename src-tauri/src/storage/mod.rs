@@ -2,9 +2,9 @@ use std::path::PathBuf;
 use tauri::Manager;
 
 pub use storage_core::{
-    ClusterMemberRow, ClusterRow, IndexItem, IndexListInput, IndexListResult, IndexUpsertInput,
-    NoteFileEntry, ReadNoteResult, RebuildMetrics, StorageInitResult, WikiLinksUpsertInput,
-    WriteNoteInput,
+    ClusterFeedbackRow, ClusterMemberRow, ClusterRow, IndexItem, IndexListInput, IndexListResult,
+    IndexUpsertInput, NoteFileEntry, ReadNoteResult, RebuildMetrics, StorageInitResult,
+    WikiLinksUpsertInput, WriteNoteInput,
 };
 
 const NOTES_DIR: &str = "notes";
@@ -285,4 +285,30 @@ pub fn clusters_remove_note(
 pub fn clusters_delete(app: tauri::AppHandle, cluster_id: String) -> Result<(), String> {
     let index_db = index_db_path(&app)?;
     storage_core::clusters_delete(&index_db, cluster_id)
+}
+
+#[tauri::command]
+pub fn clusters_record_feedback(
+    app: tauri::AppHandle,
+    cluster_id: String,
+    event_type: String,
+    event_data: Option<String>,
+) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::clusters_record_feedback(&index_db, cluster_id, event_type, event_data)
+}
+
+#[tauri::command]
+pub fn clusters_get_all_feedback(
+    app: tauri::AppHandle,
+) -> Result<Vec<ClusterFeedbackRow>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::clusters_get_all_feedback(&index_db)
+}
+
+#[tauri::command]
+pub fn clusters_export_feedback_file(app: tauri::AppHandle) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    let notes_root = notes_root_path(&app)?;
+    storage_core::clusters_export_feedback_file(&index_db, &notes_root)
 }

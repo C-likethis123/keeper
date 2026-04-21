@@ -1098,3 +1098,83 @@ pub fn clusters_delete(index_db_path: &Path, cluster_id: String) -> Result<(), S
     .map_err(|e| format!("clusters_delete failed: {e}"))?;
     Ok(())
 }
+
+// ─── Cluster Feedback ────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusterFeedbackRow {
+    pub cluster_id: String,
+    pub event_type: String,
+    pub event_data: Option<serde_json::Value>,
+    pub created_at: i64,
+}
+
+pub fn clusters_record_feedback(
+    index_db_path: &Path,
+    cluster_id: String,
+    event_type: String,
+    event_data: Option<String>,
+) -> Result<(), String> {
+    let conn = open_index_db(index_db_path)?;
+    let now = std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64;
+    conn.execute(
+        "INSERT INTO cluster_feedback (cluster_id, event_type, event_data, created_at) VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![cluster_id, event_type, event_data, now],
+    )
+    .map_err(|e| format!("clusters_record_feedback failed: {e}"))?;
+    Ok(())
+}
+
+pub fn clusters_get_all_feedback(
+    index_db_path: &Path,
+) -> Result<Vec<ClusterFeedbackRow>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT cluster_id, event_type, event_data, created_at
+             FROM cluster_feedback ORDER BY created_at DESC",
+        )
+        .map_err(|e| format!("clusters_get_all_feedback prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map([], |row| {
+            let event_data_str: Option<String> = row.get(2)?;
+            Ok(ClusterFeedbackRow {
+                cluster_id: row.get(0)?,
+                event_type: row.get(1)?,
+                event_data: event_data_str
+                    .and_then(|s| serde_json::from_str(&s).ok()),
+                created_at: row.get(3)?,
+            })
+        })
+        .map_err(|e| format!("clusters_get_all_feedback query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("clusters_get_all_feedback row failed: {e}"))?);
+    }
+    Ok(result)
+}
+
+pub fn clusters_export_feedback_file(
+    index_db_path: &Path,
+    notes_root: &Path,
+) -> Result<(), String> {
+    let feedback = clusters_get_all_feedback(index_db_path)?;
+    let now = std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64;
+    let json = serde_json::json!({
+        "version": 1,
+        "exported_at": now,
+        "events": feedback,
+    });
+    let json_str = serde_json::to_string_pretty(&json)
+        .map_err(|e| format!("clusters_export_feedback_file serialize failed: {e}"))?;
+    fs::write(notes_root.join(".moc_feedback.json"), json_str)
+        .map_err(|e| format!("clusters_export_feedback_file write failed: {e}"))?;
+    Ok(())
+}

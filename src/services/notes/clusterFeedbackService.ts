@@ -22,6 +22,7 @@ export async function logFeedback(
 		| "accept"
 		| "dismiss"
 		| "rename"
+		| "merge"
 		| "add_note"
 		| "remove_note"
 		| "delete",

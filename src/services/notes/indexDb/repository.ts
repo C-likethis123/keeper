@@ -630,6 +630,7 @@ export async function recordClusterFeedback(
 		| "accept"
 		| "dismiss"
 		| "rename"
+		| "merge"
 		| "add_note"
 		| "remove_note"
 		| "delete",
