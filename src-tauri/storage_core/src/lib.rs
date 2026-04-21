@@ -1041,7 +1041,7 @@ pub fn clusters_import_from_json(
         conn.execute(
             "INSERT INTO clusters (id, name, confidence, created_at)
              VALUES (?1, ?2, ?3, ?4)
-             ON CONFLICT(id) DO UPDATE SET name = excluded.name, confidence = excluded.confidence",
+             ON CONFLICT(id) DO UPDATE SET name = CASE WHEN clusters.accepted_at IS NOT NULL THEN clusters.name ELSE excluded.name END, confidence = excluded.confidence",
             rusqlite::params![id, name, confidence, now],
         )
         .map_err(|e| format!("clusters_import insert failed: {e}"))?;

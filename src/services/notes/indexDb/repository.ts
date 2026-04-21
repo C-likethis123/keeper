@@ -559,7 +559,7 @@ export async function upsertClustersFromJson(
 				`INSERT INTO clusters (id, name, confidence, created_at)
                  VALUES (?, ?, ?, ?)
                  ON CONFLICT(id) DO UPDATE SET
-                   name = excluded.name,
+                   name = CASE WHEN clusters.accepted_at IS NOT NULL THEN clusters.name ELSE excluded.name END,
                    confidence = excluded.confidence`,
 				cluster.id,
 				cluster.name,
