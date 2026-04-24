@@ -49,9 +49,11 @@ function computeSections(
   recentlyEditedNoteIds: Set<string>,
   orphanedNoteIds: Set<string>,
   acceptedClusterSections: NoteSection[],
+  isFiltered: boolean,
 ): NoteSection[] {
   const sections: NoteSection[] = [];
   const shownNoteIds = new Set<string>();
+  const allNoteIds = isFiltered ? new Set(allNotes.map((n) => n.id)) : null;
 
   if (pinnedNotes.length > 0) {
     sections.push({ id: "pinned", title: "Pinned", notes: pinnedNotes });
@@ -71,9 +73,12 @@ function computeSections(
   }
 
   for (const cs of acceptedClusterSections) {
-    if (cs.notes.length > 0) {
-      sections.push(cs);
-      for (const note of cs.notes) shownNoteIds.add(note.id);
+    const clusterNotes = allNoteIds
+      ? cs.notes.filter((n) => allNoteIds.has(n.id) && !shownNoteIds.has(n.id))
+      : cs.notes.filter((n) => !shownNoteIds.has(n.id));
+    if (clusterNotes.length > 0) {
+      sections.push({ ...cs, notes: clusterNotes });
+      for (const note of clusterNotes) shownNoteIds.add(note.id);
     }
   }
 
@@ -387,7 +392,8 @@ export default function useNotes() {
         }
         setSectionMetadata(metadata);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.warn("[useNotes] loadSectionMetadata failed:", err);
         if (cancelled) {
           return;
         }
@@ -408,6 +414,11 @@ export default function useNotes() {
 
   const sections = useMemo(() => {
     const pinnedNotes = allNotes.filter((n) => n.isPinned);
+    const isFiltered =
+      debouncedQuery.trim().length > 0 ||
+      (filters.noteTypes != null && filters.noteTypes.length > 0) ||
+      filters.status != null ||
+      (filters.hideDone ?? false);
 
     return computeSections(
       allNotes,
@@ -415,8 +426,9 @@ export default function useNotes() {
       sectionMetadata.recentlyEditedNoteIds,
       sectionMetadata.orphanedNoteIds,
       sectionMetadata.acceptedClusterSections,
+      isFiltered,
     );
-  }, [allNotes, sectionMetadata]);
+  }, [allNotes, sectionMetadata, debouncedQuery, filters]);
 
   return {
     notes: allNotes,

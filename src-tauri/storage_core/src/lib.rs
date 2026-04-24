@@ -1028,6 +1028,30 @@ pub fn clusters_import_from_json(
         .unwrap_or_default()
         .as_millis() as i64;
 
+    if parsed["version"].as_u64() == Some(2) {
+        if let Some(super_clusters) = parsed["super_clusters"].as_array() {
+            conn.execute(
+                "DELETE FROM super_clusters WHERE dismissed_at IS NULL AND accepted_at IS NULL",
+                [],
+            )
+            .map_err(|e| format!("clusters_import delete pending super_clusters failed: {e}"))?;
+            for sc in super_clusters {
+                let id = sc["id"].as_str().ok_or("super_cluster missing id")?;
+                let name = sc["name"].as_str().ok_or("super_cluster missing name")?;
+                let confidence = sc["confidence"].as_f64().unwrap_or(0.0);
+                conn.execute(
+                    "INSERT INTO super_clusters (id, name, confidence, created_at)
+                     VALUES (?1, ?2, ?3, ?4)
+                     ON CONFLICT(id) DO UPDATE SET
+                       name = CASE WHEN super_clusters.accepted_at IS NOT NULL THEN super_clusters.name ELSE excluded.name END,
+                       confidence = excluded.confidence",
+                    rusqlite::params![id, name, confidence, now],
+                )
+                .map_err(|e| format!("clusters_import super_cluster insert failed: {e}"))?;
+            }
+        }
+    }
+
     conn.execute(
         "DELETE FROM clusters WHERE dismissed_at IS NULL AND accepted_at IS NULL",
         [],
@@ -1038,11 +1062,15 @@ pub fn clusters_import_from_json(
         let id = cluster["id"].as_str().ok_or("cluster missing id")?;
         let name = cluster["name"].as_str().ok_or("cluster missing name")?;
         let confidence = cluster["confidence"].as_f64().unwrap_or(0.0);
+        let parent_id: Option<&str> = cluster["parent_id"].as_str();
         conn.execute(
-            "INSERT INTO clusters (id, name, confidence, created_at)
-             VALUES (?1, ?2, ?3, ?4)
-             ON CONFLICT(id) DO UPDATE SET name = CASE WHEN clusters.accepted_at IS NOT NULL THEN clusters.name ELSE excluded.name END, confidence = excluded.confidence",
-            rusqlite::params![id, name, confidence, now],
+            "INSERT INTO clusters (id, name, confidence, created_at, parent_id)
+             VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(id) DO UPDATE SET
+               name = CASE WHEN clusters.accepted_at IS NOT NULL THEN clusters.name ELSE excluded.name END,
+               confidence = excluded.confidence,
+               parent_id = excluded.parent_id",
+            rusqlite::params![id, name, confidence, now, parent_id],
         )
         .map_err(|e| format!("clusters_import insert failed: {e}"))?;
 
@@ -1097,6 +1125,200 @@ pub fn clusters_delete(index_db_path: &Path, cluster_id: String) -> Result<(), S
     )
     .map_err(|e| format!("clusters_delete failed: {e}"))?;
     Ok(())
+}
+
+pub fn clusters_get_standalone_accepted(
+    index_db_path: &Path,
+) -> Result<Vec<ClusterRow>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, name, confidence, created_at, dismissed_at, accepted_at, accepted_note_id
+             FROM clusters
+             WHERE accepted_at IS NOT NULL AND dismissed_at IS NULL
+               AND (
+                 parent_id IS NULL
+                 OR parent_id NOT IN (
+                   SELECT id FROM super_clusters WHERE accepted_at IS NOT NULL AND dismissed_at IS NULL
+                 )
+               )
+             ORDER BY accepted_at ASC",
+        )
+        .map_err(|e| format!("clusters_get_standalone_accepted prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(ClusterRow {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                confidence: row.get(2)?,
+                created_at: row.get(3)?,
+                dismissed_at: row.get(4)?,
+                accepted_at: row.get(5)?,
+                accepted_note_id: row.get(6)?,
+            })
+        })
+        .map_err(|e| format!("clusters_get_standalone_accepted query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("clusters_get_standalone_accepted row failed: {e}"))?);
+    }
+    Ok(result)
+}
+
+// ─── Super-Cluster ────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SuperClusterRow {
+    pub id: String,
+    pub name: String,
+    pub confidence: f64,
+    pub created_at: i64,
+    pub dismissed_at: Option<i64>,
+    pub accepted_at: Option<i64>,
+}
+
+pub fn super_clusters_get_active(
+    index_db_path: &Path,
+) -> Result<Vec<SuperClusterRow>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, name, confidence, created_at, dismissed_at, accepted_at
+             FROM super_clusters
+             WHERE dismissed_at IS NULL AND accepted_at IS NULL
+             ORDER BY confidence DESC",
+        )
+        .map_err(|e| format!("super_clusters_get_active prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(SuperClusterRow {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                confidence: row.get(2)?,
+                created_at: row.get(3)?,
+                dismissed_at: row.get(4)?,
+                accepted_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| format!("super_clusters_get_active query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("super_clusters_get_active row failed: {e}"))?);
+    }
+    Ok(result)
+}
+
+pub fn super_clusters_get_accepted(
+    index_db_path: &Path,
+) -> Result<Vec<SuperClusterRow>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, name, confidence, created_at, dismissed_at, accepted_at
+             FROM super_clusters
+             WHERE accepted_at IS NOT NULL AND dismissed_at IS NULL
+             ORDER BY accepted_at ASC",
+        )
+        .map_err(|e| format!("super_clusters_get_accepted prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(SuperClusterRow {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                confidence: row.get(2)?,
+                created_at: row.get(3)?,
+                dismissed_at: row.get(4)?,
+                accepted_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| format!("super_clusters_get_accepted query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("super_clusters_get_accepted row failed: {e}"))?);
+    }
+    Ok(result)
+}
+
+pub fn super_clusters_accept(
+    index_db_path: &Path,
+    super_cluster_id: String,
+) -> Result<(), String> {
+    let conn = open_index_db(index_db_path)?;
+    let now = std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64;
+    conn.execute(
+        "UPDATE super_clusters SET accepted_at = ?1 WHERE id = ?2",
+        rusqlite::params![now, super_cluster_id],
+    )
+    .map_err(|e| format!("super_clusters_accept failed: {e}"))?;
+    Ok(())
+}
+
+pub fn super_clusters_dismiss(
+    index_db_path: &Path,
+    super_cluster_id: String,
+) -> Result<(), String> {
+    let conn = open_index_db(index_db_path)?;
+    let now = std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64;
+    conn.execute(
+        "UPDATE super_clusters SET dismissed_at = ?1 WHERE id = ?2",
+        rusqlite::params![now, super_cluster_id],
+    )
+    .map_err(|e| format!("super_clusters_dismiss failed: {e}"))?;
+    Ok(())
+}
+
+pub fn super_clusters_rename(
+    index_db_path: &Path,
+    super_cluster_id: String,
+    name: String,
+) -> Result<(), String> {
+    let conn = open_index_db(index_db_path)?;
+    conn.execute(
+        "UPDATE super_clusters SET name = ?1 WHERE id = ?2",
+        rusqlite::params![name, super_cluster_id],
+    )
+    .map_err(|e| format!("super_clusters_rename failed: {e}"))?;
+    Ok(())
+}
+
+pub fn super_clusters_get_sub_clusters(
+    index_db_path: &Path,
+    super_cluster_id: String,
+) -> Result<Vec<ClusterRow>, String> {
+    let conn = open_index_db(index_db_path)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, name, confidence, created_at, dismissed_at, accepted_at, accepted_note_id
+             FROM clusters
+             WHERE parent_id = ?1 AND accepted_at IS NOT NULL AND dismissed_at IS NULL
+             ORDER BY accepted_at ASC",
+        )
+        .map_err(|e| format!("super_clusters_get_sub_clusters prepare failed: {e}"))?;
+    let rows = stmt
+        .query_map([&super_cluster_id], |row| {
+            Ok(ClusterRow {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                confidence: row.get(2)?,
+                created_at: row.get(3)?,
+                dismissed_at: row.get(4)?,
+                accepted_at: row.get(5)?,
+                accepted_note_id: row.get(6)?,
+            })
+        })
+        .map_err(|e| format!("super_clusters_get_sub_clusters query failed: {e}"))?;
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| format!("super_clusters_get_sub_clusters row failed: {e}"))?);
+    }
+    Ok(result)
 }
 
 // ─── Cluster Feedback ────────────────────────────────────────────

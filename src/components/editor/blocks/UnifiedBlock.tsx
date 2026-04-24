@@ -437,7 +437,7 @@ export function UnifiedBlock({
         <View
           style={[
             { flex: 1 },
-            applyListStyles && { left: (getListLevel(block) + 1) * 16 },
+            applyListStyles && { marginLeft: (getListLevel(block) + 1) * 16 },
           ]}
           pointerEvents="box-none"
         >

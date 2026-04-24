@@ -4,7 +4,7 @@ use tauri::Manager;
 pub use storage_core::{
     ClusterFeedbackRow, ClusterMemberRow, ClusterRow, IndexItem, IndexListInput, IndexListResult,
     IndexUpsertInput, NoteFileEntry, ReadNoteResult, RebuildMetrics, StorageInitResult,
-    WikiLinksUpsertInput, WriteNoteInput,
+    SuperClusterRow, WikiLinksUpsertInput, WriteNoteInput,
 };
 
 const NOTES_DIR: &str = "notes";
@@ -311,4 +311,67 @@ pub fn clusters_export_feedback_file(app: tauri::AppHandle) -> Result<(), String
     let index_db = index_db_path(&app)?;
     let notes_root = notes_root_path(&app)?;
     storage_core::clusters_export_feedback_file(&index_db, &notes_root)
+}
+
+#[tauri::command]
+pub fn clusters_get_standalone_accepted(
+    app: tauri::AppHandle,
+) -> Result<Vec<ClusterRow>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::clusters_get_standalone_accepted(&index_db)
+}
+
+// ─── Super-Cluster Commands ───────────────────────────────────────
+
+#[tauri::command]
+pub fn super_clusters_get_active(
+    app: tauri::AppHandle,
+) -> Result<Vec<SuperClusterRow>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::super_clusters_get_active(&index_db)
+}
+
+#[tauri::command]
+pub fn super_clusters_get_accepted(
+    app: tauri::AppHandle,
+) -> Result<Vec<SuperClusterRow>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::super_clusters_get_accepted(&index_db)
+}
+
+#[tauri::command]
+pub fn super_clusters_accept(
+    app: tauri::AppHandle,
+    super_cluster_id: String,
+) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::super_clusters_accept(&index_db, super_cluster_id)
+}
+
+#[tauri::command]
+pub fn super_clusters_dismiss(
+    app: tauri::AppHandle,
+    super_cluster_id: String,
+) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::super_clusters_dismiss(&index_db, super_cluster_id)
+}
+
+#[tauri::command]
+pub fn super_clusters_rename(
+    app: tauri::AppHandle,
+    super_cluster_id: String,
+    name: String,
+) -> Result<(), String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::super_clusters_rename(&index_db, super_cluster_id, name)
+}
+
+#[tauri::command]
+pub fn super_clusters_get_sub_clusters(
+    app: tauri::AppHandle,
+    super_cluster_id: String,
+) -> Result<Vec<ClusterRow>, String> {
+    let index_db = index_db_path(&app)?;
+    storage_core::super_clusters_get_sub_clusters(&index_db, super_cluster_id)
 }

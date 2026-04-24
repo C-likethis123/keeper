@@ -204,7 +204,14 @@ pub fn run() {
             storage::clusters_delete,
             storage::clusters_record_feedback,
             storage::clusters_get_all_feedback,
-            storage::clusters_export_feedback_file
+            storage::clusters_export_feedback_file,
+            storage::clusters_get_standalone_accepted,
+            storage::super_clusters_get_active,
+            storage::super_clusters_get_accepted,
+            storage::super_clusters_accept,
+            storage::super_clusters_dismiss,
+            storage::super_clusters_rename,
+            storage::super_clusters_get_sub_clusters
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

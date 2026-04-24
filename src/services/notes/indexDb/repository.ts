@@ -702,7 +702,13 @@ export async function getStandaloneAcceptedClusters(
 		(await database.getAllAsync<ClusterRow>(
 			`SELECT id, name, confidence, created_at, dismissed_at, accepted_at, accepted_note_id, parent_id
              FROM clusters
-             WHERE (parent_id IS NULL) AND accepted_at IS NOT NULL AND dismissed_at IS NULL
+             WHERE accepted_at IS NOT NULL AND dismissed_at IS NULL
+               AND (
+                 parent_id IS NULL
+                 OR parent_id NOT IN (
+                   SELECT id FROM super_clusters WHERE accepted_at IS NOT NULL AND dismissed_at IS NULL
+                 )
+               )
              ORDER BY accepted_at ASC`,
 		)) ?? []
 	);
