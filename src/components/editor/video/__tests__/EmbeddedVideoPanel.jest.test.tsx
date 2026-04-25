@@ -6,8 +6,17 @@ jest.mock("react-native-webview", () => {
 	const React = require("react");
 	const { View } = require("react-native");
 	return {
-		WebView: ({ testID }: { testID?: string }) =>
-			React.createElement(View, { testID: testID ?? "webview" }),
+		WebView: ({
+			testID,
+			source,
+		}: {
+			testID?: string;
+			source?: { uri?: string; headers?: Record<string, string> };
+		}) =>
+			React.createElement(View, {
+				testID: testID ?? "webview",
+				accessibilityLabel: source ? JSON.stringify(source) : undefined,
+			}),
 	};
 });
 
@@ -49,4 +58,14 @@ it("renders the video panel with a YouTube source", () => {
 it("displays the video raw URL as caption", () => {
 	render(<EmbeddedVideoPanel source={youtubeSource} />);
 	expect(screen.getByText(youtubeSource.rawUrl)).toBeTruthy();
+});
+
+it("passes referer identity headers to the native webview request", () => {
+	render(<EmbeddedVideoPanel source={youtubeSource} />);
+	expect(screen.getByTestId("webview").props.accessibilityLabel).toContain(
+		'"Referer":"https://keeper.app"',
+	);
+	expect(screen.getByTestId("webview").props.accessibilityLabel).toContain(
+		'"Origin":"https://keeper.app"',
+	);
 });

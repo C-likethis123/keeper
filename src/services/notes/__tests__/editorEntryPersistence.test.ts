@@ -134,6 +134,71 @@ describe("persistEditorEntry", () => {
 		);
 	});
 
+	it("preserves an existing attached video when autosave omits video metadata", async () => {
+		mockLoadNote.mockResolvedValue({
+			id: "note-1",
+			title: "Draft note",
+			content: "Initial body",
+			lastUpdated: 1710000000000,
+			isPinned: false,
+			noteType: "note",
+			status: null,
+			createdAt: null,
+			completedAt: null,
+			attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		});
+
+		await persistEditorEntry({
+			id: "note-1",
+			title: "Draft note",
+			content: "Updated body",
+			isPinned: false,
+			noteType: "note",
+			status: null,
+		});
+
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "note-1",
+				attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+			}),
+			false,
+		);
+	});
+
+	it("saves when attached video metadata changes", async () => {
+		mockLoadNote.mockResolvedValue({
+			id: "note-1",
+			title: "Draft note",
+			content: "Initial body",
+			lastUpdated: 1710000000000,
+			isPinned: false,
+			noteType: "note",
+			status: null,
+			createdAt: null,
+			completedAt: null,
+			attachedVideo: "https://www.youtube.com/watch?v=oldVideo",
+		});
+
+		await persistEditorEntry({
+			id: "note-1",
+			title: "Draft note",
+			content: "Initial body",
+			isPinned: false,
+			noteType: "note",
+			status: null,
+			attachedVideo: "https://www.youtube.com/watch?v=newVideo",
+		});
+
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "note-1",
+				attachedVideo: "https://www.youtube.com/watch?v=newVideo",
+			}),
+			false,
+		);
+	});
+
 	it("saves templates through NoteService", async () => {
 		mockLoadNote.mockResolvedValue(null);
 

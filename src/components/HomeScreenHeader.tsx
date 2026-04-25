@@ -2,7 +2,6 @@ import { IconButton } from "@/components/shared/IconButton";
 import { SearchBar } from "@/components/shared/SearchBar";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
-import { FontAwesome } from "@expo/vector-icons";
 import type React from "react";
 import { StyleSheet, type TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,6 +11,7 @@ export default function HomeScreenHeader({
 	setSearchQuery,
 	searchInputRef,
 	onMenuPress,
+	onOpenSuggestedMocs,
 	onReset,
 	resetDisabled = false,
 }: {
@@ -19,6 +19,7 @@ export default function HomeScreenHeader({
 	setSearchQuery: (query: string) => void;
 	searchInputRef?: React.Ref<TextInput>;
 	onMenuPress: () => void;
+	onOpenSuggestedMocs: () => void;
 	onReset: () => void;
 	resetDisabled?: boolean;
 }) {
@@ -41,6 +42,12 @@ export default function HomeScreenHeader({
 					compact
 				/>
 				<View style={styles.actions}>
+					<IconButton
+						label="Open suggested MOCs"
+						name="sitemap"
+						variant="flat"
+						onPress={onOpenSuggestedMocs}
+					/>
 					<IconButton
 						label="Clear filters"
 						name="trash"

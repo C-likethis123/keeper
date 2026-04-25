@@ -1,5 +1,6 @@
 import MergeClusterModal from "@/components/MergeClusterModal";
 import RenameClusterModal from "@/components/RenameClusterModal";
+import EmptyState from "@/components/shared/EmptyState";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { logFeedback } from "@/services/notes/clusterFeedbackService";
 import {
@@ -15,7 +16,7 @@ import {
 import { notesIndexDbGetById } from "@/services/notes/notesIndexDb";
 import { useStorageStore } from "@/stores/storageStore";
 import { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 interface ClusterCard {
 	cluster: ClusterRow;
@@ -23,7 +24,13 @@ interface ClusterCard {
 	memberNoteTitles: Map<string, string>;
 }
 
-export default function MOCSuggestions() {
+export default function MOCSuggestions({
+	variant = "inline",
+	onPressViewAll,
+}: {
+	variant?: "inline" | "screen";
+	onPressViewAll?: () => void;
+}) {
 	const { colors } = useExtendedTheme();
 	const contentVersion = useStorageStore((s) => s.contentVersion);
 	const bumpContentVersion = useStorageStore((s) => s.bumpContentVersion);
@@ -136,27 +143,43 @@ export default function MOCSuggestions() {
 		[mergeCard, loadClusters, bumpContentVersion],
 	);
 
-	if (cards.length === 0) return null;
+	if (cards.length === 0) {
+		if (variant === "inline") {
+			return null;
+		}
+		return (
+			<View style={styles.screenEmptyState}>
+				<EmptyState
+					title="No suggested MOCs"
+					subtitle="New note clusters will appear here after the suggestion pipeline has generated them."
+				/>
+			</View>
+		);
+	}
 
-	return (
-		<View style={styles.container}>
-			<RenameClusterModal
-				visible={renameCard !== null}
-				initialName={renameCard?.cluster.name ?? ""}
-				onClose={() => setRenameCard(null)}
-				onConfirm={handleRenameConfirm}
-			/>
-			<MergeClusterModal
-				visible={mergeCard !== null}
-				memberNoteIds={mergeCard?.memberNoteIds ?? []}
-				memberNoteTitles={mergeCard?.memberNoteTitles ?? new Map()}
-				acceptedClusters={acceptedClusters}
-				onClose={() => setMergeCard(null)}
-				onConfirm={handleMergeConfirm}
-			/>
-			<Text style={[styles.sectionHeader, { color: colors.text }]}>
-				Suggested MOCs
-			</Text>
+	const content = (
+		<View
+			style={[
+				styles.container,
+				variant === "screen" ? styles.screenContainer : null,
+			]}
+		>
+			<View style={styles.sectionHeaderRow}>
+				<Text style={[styles.sectionHeader, { color: colors.text }]}>
+					Suggested MOCs
+				</Text>
+				{variant === "inline" && onPressViewAll ? (
+					<Pressable
+						accessibilityRole="button"
+						accessibilityLabel="View all suggested MOCs"
+						onPress={onPressViewAll}
+					>
+						<Text style={[styles.viewAllText, { color: colors.primary }]}>
+							View all
+						</Text>
+					</Pressable>
+				) : null}
+			</View>
 			{cards.map((card) => (
 				<View
 					key={card.cluster.id}
@@ -249,16 +272,84 @@ export default function MOCSuggestions() {
 			))}
 		</View>
 	);
+
+	if (variant === "screen") {
+		return (
+			<View style={styles.screenRoot}>
+				<RenameClusterModal
+					visible={renameCard !== null}
+					initialName={renameCard?.cluster.name ?? ""}
+					onClose={() => setRenameCard(null)}
+					onConfirm={handleRenameConfirm}
+				/>
+				<MergeClusterModal
+					visible={mergeCard !== null}
+					memberNoteIds={mergeCard?.memberNoteIds ?? []}
+					memberNoteTitles={mergeCard?.memberNoteTitles ?? new Map()}
+					acceptedClusters={acceptedClusters}
+					onClose={() => setMergeCard(null)}
+					onConfirm={handleMergeConfirm}
+				/>
+				<ScrollView
+					contentContainerStyle={styles.screenScrollContent}
+					showsVerticalScrollIndicator
+				>
+					{content}
+				</ScrollView>
+			</View>
+		);
+	}
+
+	return (
+		<View>
+			<RenameClusterModal
+				visible={renameCard !== null}
+				initialName={renameCard?.cluster.name ?? ""}
+				onClose={() => setRenameCard(null)}
+				onConfirm={handleRenameConfirm}
+			/>
+			<MergeClusterModal
+				visible={mergeCard !== null}
+				memberNoteIds={mergeCard?.memberNoteIds ?? []}
+				memberNoteTitles={mergeCard?.memberNoteTitles ?? new Map()}
+				acceptedClusters={acceptedClusters}
+				onClose={() => setMergeCard(null)}
+				onConfirm={handleMergeConfirm}
+			/>
+			{content}
+		</View>
+	);
 }
 
 const styles = StyleSheet.create({
 	container: { paddingHorizontal: 4, paddingTop: 12, gap: 12 },
+	screenRoot: { flex: 1 },
+	screenContainer: {
+		width: "100%",
+		maxWidth: 760,
+		alignSelf: "center",
+		paddingHorizontal: 16,
+		paddingTop: 20,
+		paddingBottom: 32,
+	},
+	screenScrollContent: { paddingBottom: 32 },
+	screenEmptyState: { flex: 1 },
+	sectionHeaderRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		gap: 12,
+	},
 	sectionHeader: {
 		fontSize: 13,
 		fontWeight: "600",
 		textTransform: "uppercase",
 		letterSpacing: 0.5,
 		marginBottom: 4,
+	},
+	viewAllText: {
+		fontSize: 13,
+		fontWeight: "600",
 	},
 	card: { borderRadius: 10, borderWidth: 1, padding: 14, gap: 6 },
 	clusterName: { fontSize: 16, fontWeight: "600" },

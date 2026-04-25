@@ -51,6 +51,19 @@ import { TODO_STATUS_OPTIONS } from "@/constants/noteTypes";
 
 const SPLIT_RATIO_KEY = "doc-split-ratio";
 
+function getInitialActivePanel(
+  attachment: Note["attachment"],
+  attachedVideo: Note["attachedVideo"],
+): "document" | "video" {
+  if (attachedVideo) {
+    return "video";
+  }
+  if (attachment) {
+    return "document";
+  }
+  return "video";
+}
+
 export default function NoteEditorView({
   note,
   isNew,
@@ -170,7 +183,7 @@ export default function NoteEditorView({
     !!note.attachedVideo,
   );
   const [activePanel, setActivePanel] = useState<"document" | "video">(
-    note.attachment ? "document" : "video",
+    getInitialActivePanel(note.attachment, note.attachedVideo),
   );
   const [isShowVideoModalVisible, setIsShowVideoModalVisible] = useState(false);
   const [splitRatio, setSplitRatio] = useState(isDesktop ? 0.5 : 0.4);
@@ -292,6 +305,7 @@ export default function NoteEditorView({
       setIsAttachmentVisible(!!note.attachment);
       setAttachedVideo(note.attachedVideo);
       setIsVideoVisible(!!note.attachedVideo);
+      setActivePanel(getInitialActivePanel(note.attachment, note.attachedVideo));
 
       if (loadedNoteIdRef.current !== note.id) {
         loadedNoteIdRef.current = note.id;

@@ -178,6 +178,23 @@ jest.mock("@/components/editor/HybridEditor", () => {
 	};
 });
 
+jest.mock("@/components/editor/document/DocumentPanel", () => {
+	const React = require("react");
+	const { Text } = require("react-native");
+	return {
+		DocumentPanel: () => React.createElement(Text, null, "Mock document panel"),
+	};
+});
+
+jest.mock("@/components/editor/video/VideoSplitPanel", () => {
+	const React = require("react");
+	const { Text } = require("react-native");
+	return {
+		__esModule: true,
+		default: () => React.createElement(Text, null, "Mock video panel"),
+	};
+});
+
 function makeNote(overrides?: Partial<Note>): Note {
 	return {
 		id: "note-1",
@@ -306,6 +323,18 @@ describe("NoteEditorView", () => {
 			expect(useEditorState.getState().getContent()).toBe("# Heading");
 		});
 		expect(result.getPathname()).toBe("/editor");
+	});
+
+	it("shows the saved video panel on mount when a note has both a document and attached video", async () => {
+		const note = makeNote({
+			attachment: "_attachments/paper.pdf",
+			attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		});
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock video panel");
+		expect(screen.queryByText("Mock document panel")).toBeNull();
 	});
 
 	it("registers the force-save shortcut in the editor view", async () => {

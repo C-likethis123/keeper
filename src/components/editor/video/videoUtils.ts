@@ -4,6 +4,8 @@ export interface EmbeddedVideoSource {
 	host: string;
 }
 
+export const VIDEO_EMBED_FALLBACK_ORIGIN = "https://keeper.app";
+
 function extractYouTubeVideoId(url: URL): string | null {
 	const hostname = url.hostname.replace(/^www\./, "").toLowerCase();
 
@@ -45,6 +47,24 @@ export function parseEmbeddedVideoUrl(
 		embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?playsinline=1&rel=0&enablejsapi=1`,
 		host: hostname,
 	};
+}
+
+export function resolveVideoEmbedOrigin(): string {
+	if (
+		typeof window === "undefined" ||
+		!window.location ||
+		typeof window.location.origin !== "string" ||
+		typeof window.location.protocol !== "string"
+	) {
+		return VIDEO_EMBED_FALLBACK_ORIGIN;
+	}
+
+	const { origin, protocol } = window.location;
+	if (protocol === "http:" || protocol === "https:") {
+		return origin;
+	}
+
+	return VIDEO_EMBED_FALLBACK_ORIGIN;
 }
 
 export type VideoMode = "minimised" | "normal";

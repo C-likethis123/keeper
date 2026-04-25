@@ -87,6 +87,18 @@ jest.mock("@/services/notes/noteService", () => ({
 	},
 }));
 
+jest.mock("@/services/notes/clusterService", () => ({
+	clusterAddNote: jest.fn(),
+	clusterDelete: jest.fn(),
+	clusterRemoveNote: jest.fn(),
+	clusterRename: jest.fn(),
+	importClustersFromFile: jest.fn().mockResolvedValue(0),
+}));
+
+jest.mock("@/services/notes/clusterFeedbackService", () => ({
+	logFeedback: jest.fn(),
+}));
+
 jest.mock("@/components/NoteGrid", () => {
 	const React = require("react");
 	const { View, Text } = require("react-native");
@@ -107,6 +119,22 @@ jest.mock("@/components/NoteGrid", () => {
 				),
 				React.createElement(Text, { key: "count" }, `Notes: ${notes.length}`),
 			]),
+	};
+});
+
+jest.mock("@/components/AddNoteToClusterModal", () => {
+	const React = require("react");
+	return {
+		__esModule: true,
+		default: () => React.createElement(React.Fragment, null),
+	};
+});
+
+jest.mock("@/components/RenameClusterModal", () => {
+	const React = require("react");
+	return {
+		__esModule: true,
+		default: () => React.createElement(React.Fragment, null),
 	};
 });
 
@@ -151,6 +179,7 @@ function makeUseNotesResult(
 ) {
 	return {
 		notes: [{ id: "note-1", title: "First note" }],
+		sections: [],
 		query: "",
 		noteTypeFilter: undefined,
 		statusFilter: undefined,
@@ -201,6 +230,9 @@ describe("Index", () => {
 		expect(
 			screen.getByRole("button", { name: "Open filters" }),
 		).toBeOnTheScreen();
+		expect(
+			screen.getByRole("button", { name: "Open suggested MOCs" }),
+		).toBeOnTheScreen();
 		expect(handleRefresh).toHaveBeenCalledTimes(1);
 	});
 
@@ -230,6 +262,20 @@ describe("Index", () => {
 		await user.press(screen.getByRole("button", { name: "Open filters" }));
 
 		expect(mockOpenDrawer).toHaveBeenCalled();
+	});
+
+	it("opens the dedicated suggested MOCs page from the header", async () => {
+		const user = userEvent.setup();
+		mockUseFocusEffect.mockImplementation(() => {});
+		mockUseNotes.mockReturnValue(makeUseNotesResult());
+
+		render(<Index />);
+
+		await user.press(
+			screen.getByRole("button", { name: "Open suggested MOCs" }),
+		);
+
+		expect(mockRouterPush).toHaveBeenCalledWith("/suggested-mocs");
 	});
 
 	it("creates a blank note and routes into the editor from the quick composer", async () => {

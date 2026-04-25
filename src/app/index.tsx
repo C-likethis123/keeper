@@ -1,7 +1,6 @@
 import AddNoteToClusterModal from "@/components/AddNoteToClusterModal";
 import HomeQuickComposer from "@/components/HomeQuickComposer";
 import HomeScreenHeader from "@/components/HomeScreenHeader";
-import MOCSuggestions from "@/components/MOCSuggestions";
 import RenameClusterModal from "@/components/RenameClusterModal";
 import ResetAppDataModal from "@/components/ResetAppDataModal";
 import ConflictBanner from "@/components/shared/ConflictBanner";
@@ -30,7 +29,7 @@ import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
-import { useFocusEffect, useNavigation } from "expo-router";
+import { router, useFocusEffect, useNavigation } from "expo-router";
 import React, {
 	Suspense,
 	useCallback,
@@ -209,12 +208,13 @@ function IndexContent() {
 				section.clusterId
 					? {
 							...section,
+							clusterId: section.clusterId,
 							clusterActions: {
 								onRename: () => setRenameTarget(section),
 								onAddNote: () => setAddNoteTarget(section),
 								onDelete: () => handleDeleteCluster(section),
 								onRemoveNote: (noteId: string) =>
-									void handleRemoveNote(section.clusterId!, noteId),
+									void handleRemoveNote(section.clusterId, noteId),
 							},
 						}
 					: section,
@@ -253,6 +253,7 @@ function IndexContent() {
 				setSearchQuery={setQuery}
 				searchInputRef={searchInputRef}
 				onMenuPress={handleMenuPress}
+				onOpenSuggestedMocs={() => router.push("/suggested-mocs")}
 				onReset={confirmReset}
 				resetDisabled={isResetting}
 			/>
@@ -272,7 +273,6 @@ function IndexContent() {
 						<>
 							<ConflictBanner />
 							<HomeQuickComposer onPress={createAndOpenNote} />
-							<MOCSuggestions />
 						</>
 					}
 				/>

@@ -1,15 +1,12 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import React from "react";
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-  type ViewStyle,
-} from "react-native";
+import { Platform, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { WebView } from "react-native-webview";
-import type { EmbeddedVideoSource } from "./videoUtils";
+import {
+	resolveVideoEmbedOrigin,
+	type EmbeddedVideoSource,
+} from "./videoUtils";
 
 interface EmbeddedVideoPanelProps {
   source: EmbeddedVideoSource;
@@ -18,9 +15,7 @@ interface EmbeddedVideoPanelProps {
 
 export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
   const styles = useStyles(createStyles);
-
-  const origin =
-    Platform.OS === "web" ? window.location.origin : "https://keeper.app";
+  const origin = resolveVideoEmbedOrigin();
   const embedUrlWithOrigin = `${source.embedUrl}&origin=${encodeURIComponent(origin)}`;
 
   return (
@@ -53,6 +48,10 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
             mediaPlaybackRequiresUserAction={false}
             source={{
               uri: embedUrlWithOrigin,
+              headers: {
+                Referer: origin,
+                Origin: origin,
+              },
             }}
             style={styles.webView}
           />

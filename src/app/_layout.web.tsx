@@ -76,6 +76,10 @@ const App = ({
 				>
 					<Drawer.Screen name="index" />
 					<Drawer.Screen name="editor" options={{ swipeEnabled: false }} />
+					<Drawer.Screen
+						name="suggested-mocs"
+						options={{ swipeEnabled: false }}
+					/>
 				</Drawer>
 				<ToastOverlay />
 				{hasUnresolvedConflicts && (
