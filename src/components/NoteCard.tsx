@@ -4,7 +4,6 @@ import type { Note } from "@/services/notes/types";
 import { useTabStore } from "@/stores/tabStore";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
 import {
 	Alert,
 	type GestureResponderEvent,
@@ -40,8 +39,6 @@ export default function NoteCard({
 	const router = useRouter();
 	const styles = useStyles(createStyles);
 	const typeLabel = formatNoteType(note);
-	const [isPressed, setIsPressed] = useState(false);
-
 	const openNote = () => {
 		useTabStore.getState().openTab(note.id, note.title);
 		router.push(`/editor?id=${note.id}`);
@@ -57,27 +54,21 @@ export default function NoteCard({
 
 	const handleLongPress = () => {
 		if (!onRemoveFromCluster) return;
-		if (Platform.OS === "web") {
-			if (window.confirm("Remove this note from the cluster?")) {
-				onRemoveFromCluster();
-			}
-		} else {
-			Alert.alert("Remove from cluster", "Remove this note from the cluster?", [
-				{ text: "Cancel", style: "cancel" },
-				{ text: "Remove", style: "destructive", onPress: onRemoveFromCluster },
-			]);
-		}
+		Alert.alert("Remove from cluster", "Remove this note from the cluster?", [
+			{ text: "Cancel", style: "cancel" },
+			{ text: "Remove", style: "destructive", onPress: onRemoveFromCluster },
+		]);
 	};
 
 	return (
 		<Pressable
 			style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
 			onPress={openNote}
-			onLongPress={onRemoveFromCluster ? handleLongPress : undefined}
+			onLongPress={onRemoveFromCluster && Platform.OS !== "web" ? handleLongPress : undefined}
 			accessible={true}
-			accessibilityRole="button"
+			accessibilityRole={Platform.OS !== "web" ? "button" : undefined}
 			accessibilityLabel={`Open note ${note.title || "Untitled"}`}
-			accessibilityHint={onRemoveFromCluster ? "Long press to remove from cluster" : "Opens the note"}
+			accessibilityHint={onRemoveFromCluster && Platform.OS !== "web" ? "Long press to remove from cluster" : undefined}
 		>
 			<View style={styles.titleRow}>
 				<Text style={styles.title} numberOfLines={2}>
@@ -123,6 +114,18 @@ export default function NoteCard({
 				</Text>
 
 				<View style={styles.actions}>
+					{onRemoveFromCluster && (
+						<Pressable
+							onPress={(event) => {
+								stopCardPress(event);
+								onRemoveFromCluster();
+							}}
+							accessibilityRole="button"
+							accessibilityLabel="Remove from cluster"
+						>
+							<FontAwesome name="times" size={18} style={styles.iconButton} />
+						</Pressable>
+					)}
 					{!note.isPinned && (
 						<Pressable
 							onPress={(event) => {

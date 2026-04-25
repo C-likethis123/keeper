@@ -73,9 +73,13 @@ function computeSections(
   }
 
   for (const cs of acceptedClusterSections) {
+    // When filtered, intersect with the matching note set and deduplicate.
+    // When not filtered, show ALL cluster members so that pinned/recently-edited
+    // notes are still visible in their cluster section, and excludeNoteIds in
+    // the AddNoteToClusterModal correctly reflects the full membership.
     const clusterNotes = allNoteIds
       ? cs.notes.filter((n) => allNoteIds.has(n.id) && !shownNoteIds.has(n.id))
-      : cs.notes.filter((n) => !shownNoteIds.has(n.id));
+      : cs.notes;
     if (clusterNotes.length > 0) {
       sections.push({ ...cs, notes: clusterNotes });
       for (const note of clusterNotes) shownNoteIds.add(note.id);

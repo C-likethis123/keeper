@@ -446,7 +446,7 @@ export function UnifiedBlock({
             textAlignVertical={applyListStyles ? undefined : "top"}
           />
           <View
-            style={[styles.overlay, isFocused ? { opacity: 0 } : null]}
+            style={[styles.overlay, isFocused ? { opacity: 0, position: "absolute" } : null]}
             pointerEvents="box-none"
           >
             <InlineMarkdown
