@@ -375,7 +375,7 @@ export function UnifiedBlock({
   const textInputStyle = [
     styles.input,
     textStyle,
-    isFocused ? { opacity: 1 } : { opacity: 0, position: "absolute" },
+    { opacity: isFocused ? 1 : 0, position: "absolute" as const, top: 0, left: 0, right: 0, bottom: 0 },
   ];
 
   const textInputProps = {
@@ -446,7 +446,7 @@ export function UnifiedBlock({
             textAlignVertical={applyListStyles ? undefined : "top"}
           />
           <View
-            style={[styles.overlay, isFocused ? { opacity: 0, position: "absolute" } : null]}
+            style={[styles.overlay, isFocused ? { opacity: 0 } : null]}
             pointerEvents="box-none"
           >
             <InlineMarkdown
