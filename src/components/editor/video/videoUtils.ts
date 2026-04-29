@@ -4,7 +4,6 @@ export interface EmbeddedVideoSource {
 	host: string;
 }
 
-export const VIDEO_EMBED_FALLBACK_ORIGIN = "https://keeper.app";
 
 function extractYouTubeVideoId(url: URL): string | null {
 	const hostname = url.hostname.replace(/^www\./, "").toLowerCase();
@@ -42,21 +41,26 @@ export function parseEmbeddedVideoUrl(
 	if (!videoId) {
 		return null;
 	}
+	const origin = resolveVideoEmbedOrigin();
+	const originParam = origin != null ? `&origin=${encodeURIComponent(origin)}` : "";
 	return {
 		rawUrl: url.toString(),
-		embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?playsinline=1&rel=0&enablejsapi=1`,
+		embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?playsinline=1&rel=0${originParam}`,
 		host: hostname,
 	};
 }
 
-export function resolveVideoEmbedOrigin(): string {
+// Returns the page origin for YouTube's postMessage API, or null when the
+// runtime protocol isn't a real web origin (e.g. tauri:// in production).
+// Passing a wrong origin to YouTube's ?origin= param causes error 153.
+export function resolveVideoEmbedOrigin(): string | null {
 	if (
 		typeof window === "undefined" ||
 		!window.location ||
 		typeof window.location.origin !== "string" ||
 		typeof window.location.protocol !== "string"
 	) {
-		return VIDEO_EMBED_FALLBACK_ORIGIN;
+		return null;
 	}
 
 	const { origin, protocol } = window.location;
@@ -64,7 +68,7 @@ export function resolveVideoEmbedOrigin(): string {
 		return origin;
 	}
 
-	return VIDEO_EMBED_FALLBACK_ORIGIN;
+	return null;
 }
 
 export type VideoMode = "minimised" | "normal";

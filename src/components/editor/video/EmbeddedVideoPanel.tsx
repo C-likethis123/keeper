@@ -3,10 +3,8 @@ import { useStyles } from "@/hooks/useStyles";
 import React from "react";
 import { Platform, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { WebView } from "react-native-webview";
-import {
-	resolveVideoEmbedOrigin,
-	type EmbeddedVideoSource,
-} from "./videoUtils";
+import type { EmbeddedVideoSource } from "./videoUtils";
+import { resolveVideoEmbedOrigin } from "./videoUtils";
 
 interface EmbeddedVideoPanelProps {
   source: EmbeddedVideoSource;
@@ -15,8 +13,7 @@ interface EmbeddedVideoPanelProps {
 
 export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
   const styles = useStyles(createStyles);
-  const origin = resolveVideoEmbedOrigin();
-  const embedUrlWithOrigin = `${source.embedUrl}&origin=${encodeURIComponent(origin)}`;
+  const embedOrigin = resolveVideoEmbedOrigin();
 
   return (
     <View style={[styles.panel, style]} testID={"embedded-video-panel"}>
@@ -28,7 +25,7 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
       <View style={styles.playerFrame}>
         {Platform.OS === "web" ? (
           <iframe
-            src={embedUrlWithOrigin}
+            src={source.embedUrl}
             title={"Youtube video"}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
@@ -47,11 +44,10 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
             allowsInlineMediaPlayback
             mediaPlaybackRequiresUserAction={false}
             source={{
-              uri: embedUrlWithOrigin,
-              headers: {
-                Referer: origin,
-                Origin: origin,
-              },
+              uri: source.embedUrl,
+              headers: embedOrigin != null
+                ? { Referer: embedOrigin, Origin: embedOrigin }
+                : {},
             }}
             style={styles.webView}
           />
