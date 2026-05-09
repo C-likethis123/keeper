@@ -26,4 +26,8 @@ Keeper is a cross-platform block-based markdown editor (iOS/Android/web/desktop 
    - `useShareHandler` — YouTube/URL share
 
 **Common Mistakes & Troubleshooting:**
-* **Error 153: Video player configuration error:** This is a common mistake when embedding YouTube videos. Ensure that the video ID is correctly formatted and that the embedding parameters are valid. Double-check the source URL for any typos or missing characters.
+* **Error 153: Video player configuration error:** This error is often caused by YouTube's strict security checks. 
+    - **Avoid `youtube-nocookie.com`**: It is more prone to Error 153 than `www.youtube.com`.
+    - **Remove `Origin` header**: Sending an `Origin` header to YouTube embeds (especially if it doesn't match a public web domain) often triggers this error. Use only the `Referer` header for domain restrictions.
+    - **Check parameters**: Ensure `enablejsapi=1` is only used if you are actually using the IFrame API, as it requires a valid `origin` parameter.
+    - **Video ID**: Ensure the video ID is correctly extracted from the URL.

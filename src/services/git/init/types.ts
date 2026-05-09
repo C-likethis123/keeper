@@ -108,11 +108,28 @@ export interface GitSyncStateStore {
 	clearForceRepoResetFlag(): Promise<void>;
 	readPendingJournal(): Promise<GitJournalEntry[]>;
 	writePendingJournal(entries: GitJournalEntry[]): Promise<void>;
+	readDeviceId(): Promise<string | undefined>;
+	writeDeviceId(id: string): Promise<void>;
+	readDeviceBranch(): Promise<string | undefined>;
+	writeDeviceBranch(branch: string): Promise<void>;
+	readLastReconciledMainOid(): Promise<string | undefined>;
+	writeLastReconciledMainOid(oid: string): Promise<void>;
 }
 
 export interface RepoBootstrapper {
 	validateRepository(): Promise<RepositoryValidationResult>;
 	cloneRepository(): Promise<CloneRepositoryResult>;
+}
+
+export interface MainReconcileResult {
+	success: boolean;
+	error?: string;
+	conflicts?: GitConflictFile[];
+	usedFastForward: boolean;
+}
+
+export interface MainReconcileService {
+	reconcile(telemetry: StartupTelemetry): Promise<MainReconcileResult>;
 }
 
 export interface RemoteSyncService {
@@ -165,4 +182,5 @@ export interface GitInitDependencies {
 	repoBootstrapper: RepoBootstrapper;
 	dbSyncService: DbSyncService;
 	remoteSyncService: RemoteSyncService;
+	mainReconcileService: MainReconcileService;
 }

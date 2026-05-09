@@ -4,7 +4,6 @@ import { ConflictDetectionService } from "@/services/git/conflictDetectionServic
 import { getGitEngine } from "@/services/git/gitEngine";
 import { useConflictStore } from "@/stores/conflictStore";
 import { useToastStore } from "@/stores/toastStore";
-import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
 	Alert,
@@ -27,7 +26,6 @@ export default function ConflictResolutionModal({
 	conflicts,
 	onComplete,
 }: ConflictResolutionModalProps) {
-	const router = useRouter();
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [isResolving, setIsResolving] = useState(false);
 	const conflictStore = useConflictStore();
@@ -127,7 +125,6 @@ export default function ConflictResolutionModal({
 					<Pressable
 						style={styles.closeButton}
 						onPress={() => {
-							router.back();
 							onComplete();
 						}}
 					>

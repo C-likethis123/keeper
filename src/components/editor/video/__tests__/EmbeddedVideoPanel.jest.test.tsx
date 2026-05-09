@@ -45,27 +45,45 @@ jest.mock("@/hooks/useExtendedTheme", () => ({
 const youtubeSource: EmbeddedVideoSource = {
 	rawUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 	embedUrl:
-		"https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0",
+		"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0",
 	host: "youtube.com",
 };
 
-it("renders the video panel with a YouTube source", () => {
-	render(<EmbeddedVideoPanel source={youtubeSource} />);
-	expect(screen.getByTestId("embedded-video-panel")).toBeTruthy();
-	expect(screen.getByTestId("webview")).toBeTruthy();
-});
+describe("EmbeddedVideoPanel", () => {
+	const originalLocation = window.location;
 
-it("displays the video raw URL as caption", () => {
-	render(<EmbeddedVideoPanel source={youtubeSource} />);
-	expect(screen.getByText(youtubeSource.rawUrl)).toBeTruthy();
-});
+	beforeAll(() => {
+		// @ts-ignore
+		delete window.location;
+		// @ts-ignore
+		window.location = {
+			origin: "https://keeper.app",
+			protocol: "https:",
+		};
+	});
 
-it("passes referer identity headers to the native webview request", () => {
-	render(<EmbeddedVideoPanel source={youtubeSource} />);
-	expect(screen.getByTestId("webview").props.accessibilityLabel).toContain(
-		'"Referer":"https://keeper.app"',
-	);
-	expect(screen.getByTestId("webview").props.accessibilityLabel).toContain(
-		'"Origin":"https://keeper.app"',
-	);
+	afterAll(() => {
+		window.location = originalLocation;
+	});
+
+	it("renders the video panel with a YouTube source", () => {
+		render(<EmbeddedVideoPanel source={youtubeSource} />);
+		expect(screen.getByTestId("embedded-video-panel")).toBeTruthy();
+		expect(screen.getByTestId("webview")).toBeTruthy();
+	});
+
+	it("displays the video raw URL as caption", () => {
+		render(<EmbeddedVideoPanel source={youtubeSource} />);
+		expect(screen.getByText(youtubeSource.rawUrl)).toBeTruthy();
+	});
+
+	it("passes referer identity headers to the native webview request", () => {
+		render(<EmbeddedVideoPanel source={youtubeSource} />);
+		expect(screen.getByTestId("webview").props.accessibilityLabel).toContain(
+			'"Referer":"https://keeper.app"',
+		);
+		expect(screen.getByTestId("webview").props.accessibilityLabel).not.toContain(
+			'"Origin":"https://keeper.app"',
+		);
+	});
 });

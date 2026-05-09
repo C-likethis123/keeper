@@ -1,4 +1,5 @@
 import { FilterDrawerContent } from "@/components/FilterDrawerContent";
+import ConflictBanner from "@/components/shared/ConflictBanner";
 import ConflictResolutionModal from "@/components/shared/ConflictResolutionModal";
 import { ToastOverlay } from "@/components/shared/Toast";
 import { darkTheme } from "@/constants/themes/darkTheme";
@@ -100,6 +101,7 @@ const App = ({
 					/>
 				</Drawer>
 				<ToastOverlay />
+				{hasUnresolvedConflicts && <ConflictBanner />}
 				{hasUnresolvedConflicts && (
 					<ConflictResolutionModal
 						visible={isShowingModal}

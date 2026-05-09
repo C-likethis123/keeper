@@ -46,6 +46,7 @@ export interface GitEngine {
 	): Promise<void>;
 	currentBranch(dir: string): Promise<string | undefined>;
 	listBranches(dir: string, remote?: string): Promise<string[]>;
+	createBranch(dir: string, name: string, fromRef?: string): Promise<void>;
 	merge(dir: string, options: GitMergeOptions): Promise<void>;
 	commit(dir: string, message: string): Promise<void>;
 	push(dir: string): Promise<void>;

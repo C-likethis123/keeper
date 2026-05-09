@@ -78,13 +78,15 @@ export async function initializeGitStep(
 
 			// Register conflicts if any were detected during sync
 			if (result.conflicts && result.conflicts.length > 0) {
-				useConflictStore.getState().setConflicts(result.conflicts);
+				const store = useConflictStore.getState();
+				store.setConflicts(result.conflicts);
+				store.showConflictModal();
 				const conflictMsg =
 					result.conflicts.length === 1
 						? "1 sync conflict detected"
 						: `${result.conflicts.length} sync conflicts detected`;
 				console.log(`[App] ${conflictMsg}, showing resolution UI`);
-				showToast(`${conflictMsg} - tap to resolve`, 8000);
+				showToast(conflictMsg, 8000);
 			}
 
 			if (result.error) {

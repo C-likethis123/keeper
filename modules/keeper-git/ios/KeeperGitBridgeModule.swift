@@ -25,6 +25,13 @@ public final class KeeperGitBridgeModule: Module {
     _ remote: UnsafePointer<CChar>?
   ) -> UnsafeMutablePointer<CChar>?
 
+  @_silgen_name("git_create_branch")
+  private func git_create_branch(
+    _ repoPath: UnsafePointer<CChar>,
+    _ name: UnsafePointer<CChar>,
+    _ fromRef: UnsafePointer<CChar>?
+  ) -> Int32
+
   @_silgen_name("git_merge_json")
   private func git_merge_json(
     _ repoPath: UnsafePointer<CChar>,
@@ -107,6 +114,20 @@ public final class KeeperGitBridgeModule: Module {
         return git_list_branches_json(repoPtr, nil)
       }
       decodeJsonPayload(payloadPtr: payloadPtr, op: "list_branches", promise: promise)
+    }
+
+    AsyncFunction("createBranch") { (repoPath: String, name: String, fromRef: String?, promise: Promise) in
+      let code = repoPath.withCString { repoPtr in
+        name.withCString { namePtr in
+          if let fromRef = fromRef {
+            return fromRef.withCString { fromRefPtr in
+              git_create_branch(repoPtr, namePtr, fromRefPtr)
+            }
+          }
+          return git_create_branch(repoPtr, namePtr, nil)
+        }
+      }
+      settle(code: code, op: "create_branch", promise: promise)
     }
 
     AsyncFunction("merge") { (repoPath: String, options: [String: Any], promise: Promise) in

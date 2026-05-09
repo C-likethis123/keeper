@@ -1,4 +1,3 @@
-import type { GitConflictFile } from "@/services/git/engines/GitEngine";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import {
 	type StartupTelemetry,
@@ -9,6 +8,7 @@ import { getGitEngine } from "./gitEngine";
 import { GitService } from "./gitService";
 import { DefaultDbSyncService } from "./init/dbSyncService";
 import { DefaultGitInitErrorMapper } from "./init/errorMapper";
+import { DefaultMainReconcileService } from "./init/mainReconcileService";
 import { DefaultRemoteSyncService } from "./init/remoteSyncService";
 import { DefaultRepoBootstrapper } from "./init/repoBootstrapper";
 import { AsyncGitSyncStateStore } from "./init/stateStore";
@@ -49,10 +49,15 @@ function createGitInitDependencies(config: GitHubConfig): GitInitDependencies {
 		errorMapper,
 	);
 	const dbSyncService = new DefaultDbSyncService(gitEngine, stateStore);
+	const mainReconcileService = new DefaultMainReconcileService(
+		gitEngine,
+		stateStore,
+	);
 	const remoteSyncService = new DefaultRemoteSyncService(
 		gitEngine,
 		dbSyncService,
 		stateStore,
+		mainReconcileService,
 	);
 
 	return {
@@ -61,6 +66,7 @@ function createGitInitDependencies(config: GitHubConfig): GitInitDependencies {
 		repoBootstrapper,
 		dbSyncService,
 		remoteSyncService,
+		mainReconcileService,
 	};
 }
 
@@ -234,6 +240,13 @@ export class GitInitializationService {
 			this.applySyncMetrics(metrics, syncResult.metrics);
 
 			if (syncResult.success) {
+				// Register the reconciler so every subsequent push folds device branches into main
+				GitService.registerReconcileHandler(() =>
+					dependencies.mainReconcileService
+						.reconcile(createNoopStartupTelemetry("reconcile"))
+						.then(() => undefined),
+				);
+
 				// Check if there are unresolved conflicts from the sync
 				const conflicts = syncResult.conflicts;
 

@@ -43,6 +43,7 @@ export class GitService {
 	private static inFlightFlush: Promise<GitFlushResult> | null = null;
 	private static backgroundSaveHandler: (() => Promise<void>) | null = null;
 	private static backgroundCommitPromise: Promise<void> | null = null;
+	private static reconcileHandler: (() => Promise<void>) | null = null;
 
 	private appStateSubscription: NativeEventSubscription | null = null;
 
@@ -152,6 +153,12 @@ export class GitService {
 		handler: (() => Promise<void>) | null,
 	): void {
 		GitService.backgroundSaveHandler = handler;
+	}
+
+	static registerReconcileHandler(
+		handler: (() => Promise<void>) | null,
+	): void {
+		GitService.reconcileHandler = handler;
 	}
 
 	private static async persistQueue(
@@ -377,7 +384,23 @@ export class GitService {
 				await gitEngine.commit(NOTES_ROOT, commitMessage);
 				didCommit = true;
 			}
+			// Ensure HEAD is on the device branch before pushing
+			const deviceBranch = await GitService.stateStore.readDeviceBranch();
+			if (deviceBranch) {
+				const currentBranch = await gitEngine.currentBranch(NOTES_ROOT);
+				if (currentBranch !== deviceBranch) {
+					await gitEngine.checkout(NOTES_ROOT, deviceBranch);
+				}
+			}
+
 			await gitEngine.push(NOTES_ROOT);
+
+			// Fire-and-forget reconcile after a successful push
+			if (GitService.reconcileHandler) {
+				void GitService.reconcileHandler().catch((err) =>
+					console.warn("[GitService] Reconcile failed:", err),
+				);
+			}
 
 			// Safely clear only the entries we just processed
 			const currentJournal = await GitService.stateStore.readPendingJournal();

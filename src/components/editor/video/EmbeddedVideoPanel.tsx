@@ -29,7 +29,7 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
             title={"Youtube video"}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
+            referrerPolicy={embedOrigin != null ? "strict-origin-when-cross-origin" : "no-referrer"}
             style={{
               border: "0",
               width: "100%",
@@ -46,7 +46,7 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
             source={{
               uri: source.embedUrl,
               headers: embedOrigin != null
-                ? { Referer: embedOrigin, Origin: embedOrigin }
+                ? { Referer: embedOrigin }
                 : {},
             }}
             style={styles.webView}

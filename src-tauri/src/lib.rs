@@ -48,6 +48,19 @@ fn git_list_branches_repo(
 }
 
 #[tauri::command]
+fn git_create_branch_repo(
+    repo_path: String,
+    name: String,
+    from_ref: Option<String>,
+) -> Result<(), String> {
+    let result = git_core::create_branch(&repo_path, &name, from_ref.as_deref());
+    if let Err(ref e) = result {
+        eprintln!("[git_create_branch_repo] FAILED: {e}");
+    }
+    result
+}
+
+#[tauri::command]
 fn git_merge_repo(
     repo_path: String,
     ours: String,
@@ -160,6 +173,7 @@ pub fn run() {
             git_checkout_repo,
             git_current_branch_repo,
             git_list_branches_repo,
+            git_create_branch_repo,
             git_merge_repo,
             git_commit_repo,
             git_push_repo,

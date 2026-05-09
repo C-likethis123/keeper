@@ -350,6 +350,31 @@ pub fn list_branches(repo_path: &str, remote: Option<&str>) -> Result<Vec<String
     Ok(names)
 }
 
+pub fn create_branch(repo_path: &str, name: &str, from_ref: Option<&str>) -> Result<(), String> {
+    with_last_error("CREATE_BRANCH", || {
+        let repo = open_repo(repo_path)?;
+
+        let target_commit = match from_ref {
+            Some(ref_name) => {
+                let (obj, _) = repo.revparse_ext(ref_name).map_err(format_git_error)?;
+                obj.peel_to_commit().map_err(format_git_error)?
+            }
+            None => {
+                let head = repo.head().map_err(format_git_error)?;
+                let oid = head
+                    .target()
+                    .ok_or_else(|| "CREATE_BRANCH: HEAD has no target".to_string())?;
+                repo.find_commit(oid).map_err(format_git_error)?
+            }
+        };
+
+        // force=false so we error if the branch already exists
+        repo.branch(name, &target_commit, false)
+            .map(|_| ())
+            .map_err(format_git_error)
+    })
+}
+
 pub fn merge(repo_path: &str, options: GitMergeOptionsInput) -> Result<(), String> {
     let repo = open_repo(repo_path)?;
     let ours_ref_name = format!("refs/heads/{}", options.ours);
@@ -915,6 +940,36 @@ pub extern "C" fn git_list_branches_json(
     match list_branches(&repo_path, remote_value.as_deref()) {
         Ok(branches) => c_json_result(&branches),
         Err(e) => { set_last_error(e); std::ptr::null_mut() }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn git_create_branch(
+    repo_path: *const c_char,
+    name: *const c_char,
+    from_ref: *const c_char,
+) -> i32 {
+    let repo_path = match c_string_arg(repo_path) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let name = match c_string_arg(name) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let from_ref_value = if from_ref.is_null() {
+        None
+    } else {
+        match c_string_arg(from_ref) {
+            Ok(value) => Some(value),
+            Err(code) => return code,
+        }
+    };
+
+    if create_branch(&repo_path, &name, from_ref_value.as_deref()).is_ok() {
+        0
+    } else {
+        -1
     }
 }
 
@@ -1511,6 +1566,42 @@ pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule
     };
 
     if resolve_conflict(&repo_path, &path, &strategy, manual_content_value.as_deref()).is_ok() {
+        0
+    } else {
+        -1
+    }
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule_git_1create_1branch(
+    env: *mut RawJniEnv,
+    _: jobject,
+    repo_path: jstring,
+    name: jstring,
+    from_ref: jstring,
+) -> jint {
+    let mut env = match android_env(env) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let repo_path = match android_jstring_arg(&mut env, repo_path) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let name = match android_jstring_arg(&mut env, name) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let from_ref_value = if from_ref.is_null() {
+        None
+    } else {
+        match android_jstring_arg(&mut env, from_ref) {
+            Ok(value) => Some(value),
+            Err(code) => return code,
+        }
+    };
+    if create_branch(&repo_path, &name, from_ref_value.as_deref()).is_ok() {
         0
     } else {
         -1

@@ -4,6 +4,9 @@ import type { GitJournalEntry, GitSyncStateStore } from "./types";
 
 const LAST_SYNCED_OID_KEY = "git:lastSyncedOid";
 const PENDING_JOURNAL_KEY = "git:pendingJournal";
+const DEVICE_ID_KEY = "git:deviceId";
+const DEVICE_BRANCH_KEY = "git:deviceBranch";
+const LAST_RECONCILED_MAIN_OID_KEY = "git:lastReconciledMainOid";
 
 export class AsyncGitSyncStateStore implements GitSyncStateStore {
 	async readLastSyncedOid(): Promise<string | undefined> {
@@ -83,6 +86,63 @@ export class AsyncGitSyncStateStore implements GitSyncStateStore {
 		} catch (err) {
 			console.warn(
 				"[GitInitializationService] Failed to persist journal:",
+				err,
+			);
+		}
+	}
+
+	async readDeviceId(): Promise<string | undefined> {
+		try {
+			const val = await AsyncStorage.getItem(DEVICE_ID_KEY);
+			return val ?? undefined;
+		} catch {
+			return undefined;
+		}
+	}
+
+	async writeDeviceId(id: string): Promise<void> {
+		try {
+			await AsyncStorage.setItem(DEVICE_ID_KEY, id);
+		} catch (err) {
+			console.warn("[GitInitializationService] Failed to persist deviceId:", err);
+		}
+	}
+
+	async readDeviceBranch(): Promise<string | undefined> {
+		try {
+			const val = await AsyncStorage.getItem(DEVICE_BRANCH_KEY);
+			return val ?? undefined;
+		} catch {
+			return undefined;
+		}
+	}
+
+	async writeDeviceBranch(branch: string): Promise<void> {
+		try {
+			await AsyncStorage.setItem(DEVICE_BRANCH_KEY, branch);
+		} catch (err) {
+			console.warn(
+				"[GitInitializationService] Failed to persist deviceBranch:",
+				err,
+			);
+		}
+	}
+
+	async readLastReconciledMainOid(): Promise<string | undefined> {
+		try {
+			const val = await AsyncStorage.getItem(LAST_RECONCILED_MAIN_OID_KEY);
+			return val ?? undefined;
+		} catch {
+			return undefined;
+		}
+	}
+
+	async writeLastReconciledMainOid(oid: string): Promise<void> {
+		try {
+			await AsyncStorage.setItem(LAST_RECONCILED_MAIN_OID_KEY, oid);
+		} catch (err) {
+			console.warn(
+				"[GitInitializationService] Failed to persist lastReconciledMainOid:",
 				err,
 			);
 		}

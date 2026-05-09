@@ -1,9 +1,11 @@
 import type { GitEngine } from "@/services/git/engines/GitEngine";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import type { StartupTelemetry } from "@/services/startup/startupTelemetry";
+import { getGitRuntimeSupport } from "../runtime";
 import type {
 	DbSyncService,
 	GitSyncStateStore,
+	MainReconcileService,
 	RemoteSyncMetrics,
 	RemoteSyncService,
 	SyncWithRemoteResult,
@@ -37,19 +39,40 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 		private readonly gitEngine: GitEngine,
 		private readonly dbSyncService: DbSyncService,
 		private readonly stateStore: GitSyncStateStore,
+		private readonly mainReconcileService: MainReconcileService,
 	) {}
+
+	private async ensureDeviceBranch(): Promise<string> {
+		const existing = await this.stateStore.readDeviceBranch();
+		if (existing) return existing;
+
+		let deviceId = await this.stateStore.readDeviceId();
+		if (!deviceId) {
+			deviceId = Math.random().toString(16).slice(2, 10);
+			await this.stateStore.writeDeviceId(deviceId);
+		}
+
+		const runtime = getGitRuntimeSupport().runtime;
+		const platform = runtime === "desktop-tauri" ? "desktop" : "mobile";
+		const branchName = `device/${platform}-${deviceId}`;
+
+		try {
+			await this.gitEngine.createBranch(NOTES_ROOT, branchName, "main");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			if (!msg.toLowerCase().includes("already exists")) {
+				throw err;
+			}
+		}
+
+		await this.stateStore.writeDeviceBranch(branchName);
+		return branchName;
+	}
 
 	private pickPreferredBranch(branches: string[]): string | undefined {
 		if (branches.includes("main")) return "main";
 		if (branches.includes("master")) return "master";
 		return branches[0];
-	}
-
-	private async resolveCurrentBranch(): Promise<string | undefined> {
-		const current = await this.gitEngine.currentBranch(NOTES_ROOT);
-		if (current) return current;
-		const localBranches = await this.gitEngine.listBranches(NOTES_ROOT);
-		return this.pickPreferredBranch(localBranches);
 	}
 
 	async syncWithRemote(
@@ -97,11 +120,9 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 				};
 			}
 
+			// Resolve or create the per-device branch
 			const tCurrentBranchResolve = performance.now();
-			let currentBranch =
-				(await this.resolveCurrentBranch()) ??
-				this.pickPreferredBranch(remoteBranches) ??
-				"main";
+			const currentBranch = await this.ensureDeviceBranch();
 			metrics.currentBranchResolveMs = Math.round(
 				performance.now() - tCurrentBranchResolve,
 			);
@@ -110,32 +131,29 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 				currentBranch,
 			});
 
-			if (!remoteBranches.includes(currentBranch)) {
-				const fallbackBranch = this.pickPreferredBranch(remoteBranches);
-				if (fallbackBranch) {
-					console.log(
-						`[GitInitializationService] Local branch '${currentBranch}' not found on remote; switching to '${fallbackBranch}'`,
-					);
-					currentBranch = fallbackBranch;
-					const tCheckout = performance.now();
-					await this.gitEngine.checkout(NOTES_ROOT, currentBranch);
-					metrics.checkoutMs += Math.round(performance.now() - tCheckout);
-					telemetry.trace("git.branch_checkout_completed", {
-						durationMs: metrics.checkoutMs,
-						branch: currentBranch,
-						reason: "missing_remote_branch",
-					});
-				}
+			// Ensure HEAD is on the device branch
+			const headBranch = await this.gitEngine.currentBranch(NOTES_ROOT);
+			if (headBranch !== currentBranch) {
+				const tCheckout = performance.now();
+				await this.gitEngine.checkout(NOTES_ROOT, currentBranch);
+				metrics.checkoutMs += Math.round(performance.now() - tCheckout);
+				telemetry.trace("git.branch_checkout_completed", {
+					durationMs: metrics.checkoutMs,
+					branch: currentBranch,
+					reason: "switch_to_device_branch",
+				});
 			}
 
 			metrics.branchResolveMs = Math.round(performance.now() - tBranchResolve);
+
+			// Always pull from origin/main so we pick up all devices' changes
+			const mainBranch = remoteBranches.includes("main") ? "main" : (this.pickPreferredBranch(remoteBranches) ?? "main");
+			const remoteBranch = `origin/${mainBranch}`;
 			telemetry.trace("git.branch_resolution_completed", {
 				durationMs: metrics.branchResolveMs,
 				currentBranch,
-				remoteBranch: `origin/${currentBranch}`,
+				remoteBranch,
 			});
-
-			const remoteBranch = `origin/${currentBranch}`;
 			console.log(
 				`[GitInitializationService] Attempting to merge from ${remoteBranch}...`,
 			);
@@ -276,6 +294,14 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 			metrics.changedPathsMs = dbResult.changedPathsMs;
 			metrics.indexSyncMs = dbResult.indexSyncMs;
 			metrics.didDbSync = dbResult.didDbSync;
+
+			// Fold all device branches into main after a successful pull
+			const reconcileResult =
+				await this.mainReconcileService.reconcile(telemetry);
+			if (reconcileResult.conflicts && reconcileResult.conflicts.length > 0) {
+				return { success: true, metrics, conflicts: reconcileResult.conflicts };
+			}
+
 			return { success: true, metrics };
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);

@@ -4,6 +4,7 @@ import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import {
 	Alert,
+	Platform,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -38,6 +39,14 @@ export default function ConflictComparisonView({
 	};
 
 	const handleCancelEdit = () => {
+		if (Platform.OS === "web") {
+			if (window.confirm("Discard Changes? Your edits will be lost. Continue anyway?")) {
+				setViewMode("comparison");
+				setIsEditing(false);
+			}
+			return;
+		}
+
 		Alert.alert(
 			"Discard Changes?",
 			"Your edits will be lost. Continue anyway?",
@@ -57,6 +66,13 @@ export default function ConflictComparisonView({
 
 	const handleSaveAndResolve = () => {
 		if (!editedContent.trim()) {
+			if (Platform.OS === "web") {
+				if (window.confirm("Empty Content: The file will be empty. Are you sure?")) {
+					onResolve("manual", editedContent);
+				}
+				return;
+			}
+
 			Alert.alert(
 				"Empty Content",
 				"The file will be empty. Are you sure?",

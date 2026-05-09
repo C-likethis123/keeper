@@ -4,10 +4,8 @@ import { ConflictDetectionService } from "@/services/git/conflictDetectionServic
 import { getGitEngine } from "@/services/git/gitEngine";
 import { useConflictStore } from "@/stores/conflictStore";
 import { useToastStore } from "@/stores/toastStore";
-import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-	Alert,
 	Pressable,
 	ScrollView,
 	StyleSheet,
@@ -26,7 +24,6 @@ export default function ConflictResolutionModal({
 	conflicts,
 	onComplete,
 }: ConflictResolutionModalProps) {
-	const router = useRouter();
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [isResolving, setIsResolving] = useState(false);
 	const conflictStore = useConflictStore();
@@ -64,46 +61,37 @@ export default function ConflictResolutionModal({
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			Alert.alert("Resolution Failed", `Could not resolve conflict: ${message}`);
+			window.alert(`Resolution Failed: Could not resolve conflict: ${message}`);
 		}
 	};
 
 	const handleResolveAll = async (strategy: "ours" | "theirs" | "base") => {
-		Alert.alert(
-			"Resolve All Conflicts",
-			`This will keep the ${strategy === "ours" ? "local" : strategy === "theirs" ? "remote" : "common ancestor"} version for all ${conflicts.length} conflicts. Continue?`,
-			[
-				{ text: "Cancel", style: "cancel" },
-				{
-					text: "Resolve All",
-					style: "destructive",
-					onPress: async () => {
-						setIsResolving(true);
-						try {
-							const engine = getGitEngine();
-							const detectionService = new ConflictDetectionService(engine);
+		const message = `This will keep the ${strategy === "ours" ? "local" : strategy === "theirs" ? "remote" : "common ancestor"} version for all ${conflicts.length} conflicts. Continue?`;
+		
+		if (window.confirm(message)) {
+			setIsResolving(true);
+			try {
+				const engine = getGitEngine();
+				const detectionService = new ConflictDetectionService(engine);
 
-							const resolvedCount =
-								await detectionService.resolveAllConflicts(strategy);
+				const resolvedCount =
+					await detectionService.resolveAllConflicts(strategy);
 
-							conflictStore.markAllResolved(strategy);
+				conflictStore.markAllResolved(strategy);
 
-							useToastStore.getState().showToast(
-								`${resolvedCount} conflicts resolved`,
-								3000,
-							);
-							onComplete();
-						} catch (error) {
-							const message =
-								error instanceof Error ? error.message : String(error);
-							Alert.alert("Failed", `Could not resolve conflicts: ${message}`);
-						} finally {
-							setIsResolving(false);
-						}
-					},
-				},
-			],
-		);
+				useToastStore.getState().showToast(
+					`${resolvedCount} conflicts resolved`,
+					3000,
+				);
+				onComplete();
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : String(error);
+				window.alert(`Could not resolve conflicts: ${message}`);
+			} finally {
+				setIsResolving(false);
+			}
+		}
 	};
 
 	if (!currentConflict || conflicts.length === 0 || !visible) {
@@ -122,7 +110,6 @@ export default function ConflictResolutionModal({
 					<Pressable
 						style={styles.closeButton}
 						onPress={() => {
-							router.back();
 							onComplete();
 						}}
 					>

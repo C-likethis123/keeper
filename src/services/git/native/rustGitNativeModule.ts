@@ -17,12 +17,18 @@ interface KeeperGitBridgeSpec {
 	): Promise<void>;
 	currentBranch(repoPath: string): Promise<string | undefined>;
 	listBranches(repoPath: string, remote?: string): Promise<string[]>;
+	createBranch(repoPath: string, name: string, fromRef?: string): Promise<void>;
 	merge(repoPath: string, options: GitMergeOptions): Promise<void>;
 	commit(repoPath: string, message: string): Promise<void>;
 	push(repoPath: string): Promise<void>;
 	status(repoPath: string): Promise<GitStatusItem[]>;
 	resolveHeadOid(repoPath: string): Promise<string>;
 	changedMarkdownPaths(
+		repoPath: string,
+		fromOid: string,
+		toOid: string,
+	): Promise<GitChangedPaths>;
+	changedPaths(
 		repoPath: string,
 		fromOid: string,
 		toOid: string,
@@ -78,6 +84,7 @@ const nativeBridge: KeeperGitBridgeSpec | undefined = nativeBridgeRaw
 				parseMaybeJson<string[]>(
 					await nativeBridgeRaw.listBranches(repoPath, remote),
 				),
+			createBranch: nativeBridgeRaw.createBranch.bind(nativeBridgeRaw),
 			merge: nativeBridgeRaw.merge.bind(nativeBridgeRaw),
 			commit: nativeBridgeRaw.commit.bind(nativeBridgeRaw),
 			push: nativeBridgeRaw.push.bind(nativeBridgeRaw),
@@ -92,6 +99,14 @@ const nativeBridge: KeeperGitBridgeSpec | undefined = nativeBridgeRaw
 			) =>
 				parseMaybeJson<GitChangedPaths>(
 					await nativeBridgeRaw.changedMarkdownPaths(repoPath, fromOid, toOid),
+				),
+			changedPaths: async (
+				repoPath: string,
+				fromOid: string,
+				toOid: string,
+			) =>
+				parseMaybeJson<GitChangedPaths>(
+					await nativeBridgeRaw.changedPaths(repoPath, fromOid, toOid),
 				),
 			getConflictedFiles: async (repoPath: string) =>
 				parseMaybeJson<GitConflictFile[]>(

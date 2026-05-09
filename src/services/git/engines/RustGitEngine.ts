@@ -27,6 +27,7 @@ interface RustNativeBridge {
 	): Promise<void>;
 	currentBranch(repoPath: string): Promise<string | undefined>;
 	listBranches(repoPath: string, remote?: string): Promise<string[]>;
+	createBranch(repoPath: string, name: string, fromRef?: string): Promise<void>;
 	merge(repoPath: string, options: GitMergeOptions): Promise<void>;
 	commit(repoPath: string, message: string): Promise<void>;
 	push(repoPath: string): Promise<void>;
@@ -165,6 +166,17 @@ export class RustGitEngine implements GitEngine {
 			});
 		}
 		return this.bridge.module.listBranches(uriToGitPath(dir), remote);
+	}
+
+	createBranch(dir: string, name: string, fromRef?: string): Promise<void> {
+		if (this.bridge.kind === "tauri") {
+			return this.bridge.invoke("git_create_branch_repo", {
+				repoPath: dir,
+				name,
+				fromRef: fromRef ?? null,
+			});
+		}
+		return this.bridge.module.createBranch(uriToGitPath(dir), name, fromRef);
 	}
 
 	merge(dir: string, options: GitMergeOptions): Promise<void> {

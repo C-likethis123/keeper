@@ -12,7 +12,7 @@ describe("videoUtils", () => {
 				host: "youtube.com",
 				rawUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 				embedUrl:
-					"https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0",
+					"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0",
 			}),
 		);
 	});

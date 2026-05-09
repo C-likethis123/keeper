@@ -25,6 +25,7 @@ class KeeperGitBridgeModule : Module() {
   ): Int
   private external fun git_current_branch_json(repoPath: String): String?
   private external fun git_list_branches_json(repoPath: String, remote: String?): String?
+  private external fun git_create_branch(repoPath: String, name: String, fromRef: String?): Int
   private external fun git_merge_json(repoPath: String, optionsJson: String): Int
   private external fun git_commit(repoPath: String, message: String): Int
   private external fun git_push(repoPath: String): Int
@@ -77,6 +78,10 @@ class KeeperGitBridgeModule : Module() {
 
     AsyncFunction("listBranches") { repoPath: String, remote: String?, promise: Promise ->
       settlePayload("list_branches", git_list_branches_json(repoPath, remote), promise)
+    }
+
+    AsyncFunction("createBranch") { repoPath: String, name: String, fromRef: String?, promise: Promise ->
+      settleCode("create_branch", git_create_branch(repoPath, name, fromRef), promise)
     }
 
     AsyncFunction("merge") { repoPath: String, options: Map<String, Any?>, promise: Promise ->
