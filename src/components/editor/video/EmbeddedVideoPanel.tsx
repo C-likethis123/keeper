@@ -13,7 +13,6 @@ interface EmbeddedVideoPanelProps {
 
 export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
   const styles = useStyles(createStyles);
-  const embedOrigin = resolveVideoEmbedOrigin();
 
   return (
     <View style={[styles.panel, style]} testID={"embedded-video-panel"}>
@@ -29,7 +28,7 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
             title={"Youtube video"}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
-            referrerPolicy={embedOrigin != null ? "strict-origin-when-cross-origin" : "no-referrer"}
+            referrerPolicy="strict-origin-when-cross-origin"
             style={{
               border: "0",
               width: "100%",
@@ -44,10 +43,22 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
             allowsInlineMediaPlayback
             mediaPlaybackRequiresUserAction={false}
             source={{
-              uri: source.embedUrl,
-              headers: embedOrigin != null
-                ? { Referer: embedOrigin }
-                : {},
+              html: `
+                <!DOCTYPE html>
+                <html>
+                  <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  </head>
+                  <body style="margin:0; padding:0; background:#000; display:flex; justify-content:center; align-items:center; height:100vh;">
+                    <iframe 
+                      src="${source.embedUrl}" 
+                      style="width:100%; height:100%; border:0;" 
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                      allowfullscreen>
+                    </iframe>
+                  </body>
+                </html>
+              `
             }}
             style={styles.webView}
           />
