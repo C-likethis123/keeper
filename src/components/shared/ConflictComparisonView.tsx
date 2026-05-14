@@ -27,22 +27,17 @@ export default function ConflictComparisonView({
 	const styles = useStyles(createStyles);
 	const [viewMode, setViewMode] = useState<ViewMode>("comparison");
 	const [editedContent, setEditedContent] = useState("");
-	const [isEditing, setIsEditing] = useState(false);
 	const textInputRef = useRef<TextInput>(null);
 
-	// Initialize edited content when entering edit mode
 	const handleEnterEditMode = () => {
-		// Start with local content as the base for editing
 		setEditedContent(conflict.oursContent ?? conflict.theirsContent ?? "");
 		setViewMode("edit");
-		setIsEditing(true);
 	};
 
 	const handleCancelEdit = () => {
 		if (Platform.OS === "web") {
 			if (window.confirm("Discard Changes? Your edits will be lost. Continue anyway?")) {
 				setViewMode("comparison");
-				setIsEditing(false);
 			}
 			return;
 		}
@@ -55,10 +50,7 @@ export default function ConflictComparisonView({
 				{
 					text: "Discard",
 					style: "destructive",
-					onPress: () => {
-						setViewMode("comparison");
-						setIsEditing(false);
-					},
+					onPress: () => setViewMode("comparison"),
 				},
 			],
 		);
@@ -101,11 +93,9 @@ export default function ConflictComparisonView({
 		);
 	}
 
-	// Comparison mode: side-by-side view
 	if (viewMode === "comparison") {
 		return (
 			<View style={styles.container}>
-				{/* View Mode Toggle */}
 				<View style={styles.toolbar}>
 					<TouchableOpacity
 						style={[styles.toolbarButton, styles.toolbarButtonActive]}
@@ -122,9 +112,7 @@ export default function ConflictComparisonView({
 					</TouchableOpacity>
 				</View>
 
-				{/* Side-by-Side Content */}
 				<View style={styles.comparisonContainer}>
-					{/* Local Version */}
 					{conflict.oursContent && (
 						<View style={styles.column}>
 							<View style={[styles.columnHeader, { borderLeftColor: "#3b82f6" }]}>
@@ -137,12 +125,10 @@ export default function ConflictComparisonView({
 						</View>
 					)}
 
-					{/* Divider */}
 					{conflict.oursContent && conflict.theirsContent && (
 						<View style={styles.divider} />
 					)}
 
-					{/* Remote Version */}
 					{conflict.theirsContent && (
 						<View style={styles.column}>
 							<View style={[styles.columnHeader, { borderLeftColor: "#10b981" }]}>
@@ -169,7 +155,6 @@ export default function ConflictComparisonView({
 					)}
 				</View>
 
-				{/* Resolution Actions */}
 				<View style={styles.actionsContainer}>
 					<Text style={styles.actionsTitle}>Resolve by keeping:</Text>
 					<View style={styles.actionButtons}>
@@ -204,17 +189,12 @@ export default function ConflictComparisonView({
 		);
 	}
 
-	// Edit mode: full editor
 	return (
 		<View style={styles.container}>
-			{/* View Mode Toggle */}
 			<View style={styles.toolbar}>
 				<TouchableOpacity
 					style={styles.toolbarButton}
-					onPress={() => {
-						setViewMode("comparison");
-						setIsEditing(false);
-					}}
+					onPress={() => setViewMode("comparison")}
 					activeOpacity={0.7}
 				>
 					<Text style={styles.toolbarButtonText}>Compare</Text>
@@ -227,7 +207,6 @@ export default function ConflictComparisonView({
 				</TouchableOpacity>
 			</View>
 
-			{/* Editor */}
 			<View style={styles.editorContainer}>
 				<View style={styles.editorHeader}>
 					<Text style={styles.editorHeaderTitle}>Manual Edit</Text>
@@ -247,11 +226,10 @@ export default function ConflictComparisonView({
 					textAlignVertical="top"
 					autoCorrect={false}
 					autoCapitalize="none"
-					editable={isEditing}
+					editable={viewMode === "edit"}
 				/>
 			</View>
 
-			{/* Editor Actions */}
 			<View style={styles.editorActions}>
 				<TouchableOpacity
 					style={styles.cancelButton}

@@ -10,28 +10,11 @@ import type {
 	RemoteSyncService,
 	SyncWithRemoteResult,
 } from "./types";
+import { createEmptyStartupMetrics } from "./types";
 
 function createEmptyRemoteSyncMetrics(): RemoteSyncMetrics {
-	return {
-		fetchMs: 0,
-		resolveHeadBeforeMs: 0,
-		resolveHeadAfterMs: 0,
-		branchResolveMs: 0,
-		remoteBranchListMs: 0,
-		currentBranchResolveMs: 0,
-		mergeMs: 0,
-		fastForwardMergeMs: 0,
-		regularMergeMs: 0,
-		checkoutMs: 0,
-		dbSyncMs: 0,
-		readLastSyncedOidMs: 0,
-		writeLastSyncedOidMs: 0,
-		changedPathsMs: 0,
-		indexSyncMs: 0,
-		usedFastForward: false,
-		didHeadChange: false,
-		didDbSync: false,
-	};
+	const { validateRepoMs: _, totalMs: __, ...empty } = createEmptyStartupMetrics();
+	return empty;
 }
 
 export class DefaultRemoteSyncService implements RemoteSyncService {
@@ -91,25 +74,20 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 				durationMs: metrics.fetchMs,
 			});
 
-			const tHeadBefore = performance.now();
-			const headBeforeSync = await this.gitEngine.resolveHeadOid(NOTES_ROOT);
-			metrics.resolveHeadBeforeMs = Math.round(performance.now() - tHeadBefore);
+			const tBeforeSync = performance.now();
+			const [headBeforeSync, remoteBranches] = await Promise.all([
+				this.gitEngine.resolveHeadOid(NOTES_ROOT),
+				this.gitEngine.listBranches(NOTES_ROOT, "origin"),
+			]);
+			const beforeSyncMs = Math.round(performance.now() - tBeforeSync);
+			metrics.resolveHeadBeforeMs = beforeSyncMs;
+			metrics.remoteBranchListMs = beforeSyncMs;
 			telemetry.trace("git.resolve_head_before_sync_completed", {
-				durationMs: metrics.resolveHeadBeforeMs,
+				durationMs: beforeSyncMs,
 				headOidPrefix: headBeforeSync.slice(0, 7),
 			});
-
-			const tBranchResolve = performance.now();
-			const tRemoteBranches = performance.now();
-			const remoteBranches = await this.gitEngine.listBranches(
-				NOTES_ROOT,
-				"origin",
-			);
-			metrics.remoteBranchListMs = Math.round(
-				performance.now() - tRemoteBranches,
-			);
 			telemetry.trace("git.remote_branches_listed", {
-				durationMs: metrics.remoteBranchListMs,
+				durationMs: beforeSyncMs,
 				remoteBranchCount: remoteBranches.length,
 			});
 			if (remoteBranches.length === 0) {
@@ -120,7 +98,7 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 				};
 			}
 
-			// Resolve or create the per-device branch
+			const tBranchResolve = performance.now();
 			const tCurrentBranchResolve = performance.now();
 			const currentBranch = await this.ensureDeviceBranch();
 			metrics.currentBranchResolveMs = Math.round(
@@ -131,7 +109,6 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 				currentBranch,
 			});
 
-			// Ensure HEAD is on the device branch
 			const headBranch = await this.gitEngine.currentBranch(NOTES_ROOT);
 			if (headBranch !== currentBranch) {
 				const tCheckout = performance.now();
@@ -203,9 +180,7 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 							: String(mergeError);
 					console.error("[GitInitializationService] Merge failed:", errorMsg);
 
-					// Check if this is a merge conflict (not a hard failure)
 					if (errorMsg.startsWith("MERGE_CONFLICT")) {
-						// Detect the conflicted files and return them for UI resolution
 						try {
 							const conflictStatuses = await this.gitEngine.status(NOTES_ROOT);
 							const conflictedPaths = conflictStatuses
@@ -216,11 +191,9 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 								`[GitInitializationService] Detected ${conflictedPaths.length} conflicted files`,
 							);
 
-							// Get full conflict details (base, ours, theirs content)
 							const conflictedFiles =
 								await this.gitEngine.getConflictedFiles(NOTES_ROOT);
 
-							// Return success=true with conflicts so the UI can handle them
 							return {
 								success: true,
 								metrics,

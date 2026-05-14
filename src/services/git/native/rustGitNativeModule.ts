@@ -45,11 +45,13 @@ interface KeeperGitBridgeSpec {
 
 const nativeBridgeRaw = nativeBridgeModule as KeeperGitBridgeSpec | null;
 
+const LOOKS_LIKE_NUMBER = /^-?\d/;
+
+// Some native bridge methods return plain strings (e.g. branch name "main").
+// Only attempt JSON parsing when the payload looks like JSON.
 function parseMaybeJson<T>(payload: unknown): T {
 	if (typeof payload === "string") {
 		const trimmed = payload.trim();
-		// Some native bridge methods return plain strings (e.g. branch name "main").
-		// Only attempt JSON parsing when the payload looks like JSON.
 		const looksLikeJson =
 			trimmed.startsWith("{") ||
 			trimmed.startsWith("[") ||
@@ -58,7 +60,7 @@ function parseMaybeJson<T>(payload: unknown): T {
 			trimmed === "false" ||
 			trimmed === "null" ||
 			trimmed === "" ||
-			/^-?\d/.test(trimmed);
+			LOOKS_LIKE_NUMBER.test(trimmed);
 		if (looksLikeJson) {
 			try {
 				return JSON.parse(trimmed) as T;

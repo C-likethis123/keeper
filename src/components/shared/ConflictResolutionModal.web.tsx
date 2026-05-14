@@ -4,10 +4,9 @@ import { ConflictDetectionService } from "@/services/git/conflictDetectionServic
 import { getGitEngine } from "@/services/git/gitEngine";
 import { useConflictStore } from "@/stores/conflictStore";
 import { useToastStore } from "@/stores/toastStore";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
 	Pressable,
-	ScrollView,
 	StyleSheet,
 	Text,
 	View,
@@ -27,6 +26,7 @@ export default function ConflictResolutionModal({
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [isResolving, setIsResolving] = useState(false);
 	const conflictStore = useConflictStore();
+	const detectionService = useMemo(() => new ConflictDetectionService(getGitEngine()), []);
 
 	const currentConflict = conflicts[currentIndex];
 	const progressText = `${currentIndex + 1} of ${conflicts.length}`;
@@ -35,12 +35,9 @@ export default function ConflictResolutionModal({
 		strategy: "ours" | "theirs" | "base" | "manual",
 		manualContent?: string,
 	) => {
-		if (!currentConflict) return;
+		if (!currentConflict || isResolving) return;
 
 		try {
-			const engine = getGitEngine();
-			const detectionService = new ConflictDetectionService(engine);
-
 			await detectionService.resolveConflict(
 				currentConflict.path,
 				strategy,
@@ -52,7 +49,6 @@ export default function ConflictResolutionModal({
 			if (currentIndex < conflicts.length - 1) {
 				setCurrentIndex((prev) => prev + 1);
 			} else {
-				// All conflicts resolved
 				useToastStore.getState().showToast(
 					`All ${conflicts.length} conflicts resolved successfully`,
 					3000,
@@ -71,9 +67,6 @@ export default function ConflictResolutionModal({
 		if (window.confirm(message)) {
 			setIsResolving(true);
 			try {
-				const engine = getGitEngine();
-				const detectionService = new ConflictDetectionService(engine);
-
 				const resolvedCount =
 					await detectionService.resolveAllConflicts(strategy);
 
@@ -101,7 +94,6 @@ export default function ConflictResolutionModal({
 	return (
 		<View style={styles.overlay}>
 			<View style={styles.container}>
-				{/* Header */}
 				<View style={styles.header}>
 					<View style={styles.headerLeft}>
 						<Text style={styles.headerTitle}>Sync Conflicts</Text>
@@ -109,15 +101,12 @@ export default function ConflictResolutionModal({
 					</View>
 					<Pressable
 						style={styles.closeButton}
-						onPress={() => {
-							onComplete();
-						}}
+						onPress={onComplete}
 					>
 						<Text style={styles.closeButtonText}>Done</Text>
 					</Pressable>
 				</View>
 
-				{/* Conflict Info */}
 				<View style={styles.conflictInfo}>
 					<Text style={styles.fileName}>
 						{ConflictDetectionService.getPathDisplayName(currentConflict.path)}
@@ -125,14 +114,12 @@ export default function ConflictResolutionModal({
 					<Text style={styles.filePath}>{currentConflict.path}</Text>
 				</View>
 
-				{/* Comparison View */}
 				<ConflictComparisonView
 					key={currentConflict.path}
 					conflict={currentConflict}
 					onResolve={handleResolve}
 				/>
 
-				{/* Footer Actions */}
 				<View style={styles.footer}>
 					{currentIndex > 0 && (
 						<Pressable

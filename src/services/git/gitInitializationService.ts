@@ -96,24 +96,7 @@ export class GitInitializationService {
 		target: InitializationResult["metrics"],
 		source: RemoteSyncMetrics,
 	): void {
-		target.fetchMs = source.fetchMs;
-		target.resolveHeadBeforeMs = source.resolveHeadBeforeMs;
-		target.resolveHeadAfterMs = source.resolveHeadAfterMs;
-		target.branchResolveMs = source.branchResolveMs;
-		target.remoteBranchListMs = source.remoteBranchListMs;
-		target.currentBranchResolveMs = source.currentBranchResolveMs;
-		target.mergeMs = source.mergeMs;
-		target.fastForwardMergeMs = source.fastForwardMergeMs;
-		target.regularMergeMs = source.regularMergeMs;
-		target.checkoutMs = source.checkoutMs;
-		target.dbSyncMs = source.dbSyncMs;
-		target.readLastSyncedOidMs = source.readLastSyncedOidMs;
-		target.writeLastSyncedOidMs = source.writeLastSyncedOidMs;
-		target.changedPathsMs = source.changedPathsMs;
-		target.indexSyncMs = source.indexSyncMs;
-		target.usedFastForward = source.usedFastForward;
-		target.didHeadChange = source.didHeadChange;
-		target.didDbSync = source.didDbSync;
+		Object.assign(target, source);
 	}
 
 	async initialize(
