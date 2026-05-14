@@ -5,7 +5,15 @@ import { getGitEngine } from "@/services/git/gitEngine";
 import { useConflictStore } from "@/stores/conflictStore";
 import { showToast } from "@/services/toast";
 import { useMemo, useState } from "react";
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+	Alert,
+	Modal,
+	Platform,
+	Pressable,
+	StyleSheet,
+	Text,
+	View,
+} from "react-native";
 
 interface ConflictResolutionModalProps {
   visible: boolean;
@@ -55,121 +63,139 @@ export default function ConflictResolutionModal({
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      Alert.alert(
-        "Resolution Failed",
-        `Could not resolve conflict: ${message}`,
-      );
+      if (Platform.OS === "web") {
+        window.alert(`Resolution Failed: Could not resolve conflict: ${message}`);
+      } else {
+        Alert.alert("Resolution Failed", `Could not resolve conflict: ${message}`);
+      }
     }
   };
 
-  const handleResolveAll = async (strategy: "ours" | "theirs" | "base") => {
-    Alert.alert(
-      "Resolve All Conflicts",
-      `This will keep the ${strategy === "ours" ? "local" : strategy === "theirs" ? "remote" : "common ancestor"} version for all ${conflicts.length} conflicts. Continue?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Resolve All",
-          style: "destructive",
-          onPress: async () => {
-            setIsResolving(true);
-            try {
-              const resolvedCount =
-                await detectionService.resolveAllConflicts(strategy);
-
-              conflictStore.markAllResolved(strategy);
-
-              showToast(`${resolvedCount} conflicts resolved`, 3000);
-              onComplete();
-            } catch (error) {
-              const message =
-                error instanceof Error ? error.message : String(error);
-              Alert.alert("Failed", `Could not resolve conflicts: ${message}`);
-            } finally {
-              setIsResolving(false);
-            }
-          },
-        },
-      ],
-    );
+  const doResolveAll = async (strategy: "ours" | "theirs" | "base") => {
+    setIsResolving(true);
+    try {
+      const resolvedCount = await detectionService.resolveAllConflicts(strategy);
+      conflictStore.markAllResolved(strategy);
+      showToast(`${resolvedCount} conflicts resolved`, 3000);
+      onComplete();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (Platform.OS === "web") {
+        window.alert(`Could not resolve conflicts: ${message}`);
+      } else {
+        Alert.alert("Failed", `Could not resolve conflicts: ${message}`);
+      }
+    } finally {
+      setIsResolving(false);
+    }
   };
 
-  if (!currentConflict || conflicts.length === 0) {
-    return null;
+  const handleResolveAll = (strategy: "ours" | "theirs" | "base") => {
+    const strategyLabel =
+      strategy === "ours" ? "local" : strategy === "theirs" ? "remote" : "common ancestor";
+    const message = `This will keep the ${strategyLabel} version for all ${conflicts.length} conflicts. Continue?`;
+    if (Platform.OS === "web") {
+      if (window.confirm(message)) void doResolveAll(strategy);
+    } else {
+      Alert.alert("Resolve All Conflicts", message, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Resolve All", style: "destructive", onPress: () => { void doResolveAll(strategy); } },
+      ]);
+    }
+  };
+
+  if (!currentConflict || conflicts.length === 0) return null;
+
+  const body = (
+    <View style={Platform.OS === "web" ? styles.webContainer : styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Sync Conflicts</Text>
+          <Text style={styles.progressText}>{progressText}</Text>
+        </View>
+        <Pressable style={styles.closeButton} onPress={onComplete}>
+          <Text style={styles.closeButtonText}>Done</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.conflictInfo}>
+        <Text style={styles.fileName}>
+          {ConflictDetectionService.getPathDisplayName(currentConflict.path)}
+        </Text>
+        <Text style={styles.filePath}>{currentConflict.path}</Text>
+      </View>
+
+      <ConflictComparisonView
+        key={currentConflict.path}
+        conflict={currentConflict}
+        onResolve={handleResolve}
+      />
+
+      <View style={styles.footer}>
+        {currentIndex > 0 && (
+          <Pressable
+            style={styles.navButton}
+            onPress={() => setCurrentIndex((prev) => prev - 1)}
+          >
+            <Text style={styles.navButtonText}>Previous</Text>
+          </Pressable>
+        )}
+        <View style={styles.resolveAllButtons}>
+          <Pressable
+            style={[styles.resolveAllButton, styles.resolveAllButtonSecondary]}
+            onPress={() => handleResolveAll("theirs")}
+            disabled={isResolving}
+          >
+            <Text style={styles.resolveAllButtonSecondaryText}>Keep All Remote</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.resolveAllButton, styles.resolveAllButtonPrimary]}
+            onPress={() => handleResolveAll("ours")}
+            disabled={isResolving}
+          >
+            <Text style={styles.resolveAllButtonPrimaryText}>Keep All Local</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+
+  if (Platform.OS === "web") {
+    if (!visible) return null;
+    return <View style={styles.overlay}>{body}</View>;
   }
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-    >
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>Sync Conflicts</Text>
-            <Text style={styles.progressText}>{progressText}</Text>
-          </View>
-          <Pressable style={styles.closeButton} onPress={onComplete}>
-            <Text style={styles.closeButtonText}>Done</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.conflictInfo}>
-          <Text style={styles.fileName}>
-            {ConflictDetectionService.getPathDisplayName(currentConflict.path)}
-          </Text>
-          <Text style={styles.filePath}>{currentConflict.path}</Text>
-        </View>
-
-        <ConflictComparisonView
-          key={currentConflict.path}
-          conflict={currentConflict}
-          onResolve={handleResolve}
-        />
-
-        <View style={styles.footer}>
-          {currentIndex > 0 && (
-            <Pressable
-              style={styles.navButton}
-              onPress={() => setCurrentIndex((prev) => prev - 1)}
-            >
-              <Text style={styles.navButtonText}>Previous</Text>
-            </Pressable>
-          )}
-          <View style={styles.resolveAllButtons}>
-            <Pressable
-              style={[
-                styles.resolveAllButton,
-                styles.resolveAllButtonSecondary,
-              ]}
-              onPress={() => handleResolveAll("theirs")}
-              disabled={isResolving}
-            >
-              <Text style={styles.resolveAllButtonSecondaryText}>
-                Keep All Remote
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.resolveAllButton, styles.resolveAllButtonPrimary]}
-              onPress={() => handleResolveAll("ours")}
-              disabled={isResolving}
-            >
-              <Text style={styles.resolveAllButtonPrimaryText}>
-                Keep All Local
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      {body}
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    position: "fixed" as "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  webContainer: {
+    width: "90%" as unknown as number,
+    maxWidth: 800,
+    height: "80%" as unknown as number,
+    maxHeight: 600,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    overflow: "hidden",
   },
   header: {
     flexDirection: "row",
