@@ -1,5 +1,9 @@
 # CLAUDE.md
 
+## Tools
+
+Use serena MCP over Claude code tools or Bash whenever relevant.
+
 ## Commands
 
 See [package.json](./package.json) for available commands.
