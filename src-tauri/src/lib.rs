@@ -155,9 +155,12 @@ fn git_has_unresolved_conflicts_repo(repo_path: String) -> Result<bool, String> 
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let port: u16 = portpicker::pick_unused_port().expect("failed to find unused port");
+
     tauri::Builder::default()
+        .plugin(tauri_plugin_localhost::Builder::new(port).build())
         .plugin(tauri_plugin_dialog::init())
-        .setup(|app| {
+        .setup(move |app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -165,6 +168,23 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            let url = if cfg!(debug_assertions) {
+                tauri::WebviewUrl::App("index.html".into())
+            } else {
+                tauri::WebviewUrl::External(
+                    format!("http://localhost:{}", port)
+                        .parse()
+                        .expect("valid localhost URL"),
+                )
+            };
+
+            tauri::WebviewWindowBuilder::new(app, "main", url)
+                .title("Keeper")
+                .inner_size(800.0, 600.0)
+                .resizable(true)
+                .build()?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

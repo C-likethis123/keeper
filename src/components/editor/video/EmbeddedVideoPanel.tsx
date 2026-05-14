@@ -1,10 +1,10 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
-import React from "react";
+import React, { useMemo } from "react";
 import { Platform, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { WebView } from "react-native-webview";
 import type { EmbeddedVideoSource } from "./videoUtils";
-import { resolveVideoEmbedOrigin } from "./videoUtils";
+import { buildVideoEmbedHtml, resolveVideoEmbedOrigin } from "./videoUtils";
 
 interface EmbeddedVideoPanelProps {
   source: EmbeddedVideoSource;
@@ -13,22 +13,28 @@ interface EmbeddedVideoPanelProps {
 
 export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
   const styles = useStyles(createStyles);
+  const origin = resolveVideoEmbedOrigin() ?? "https://myapp.local";
+
+  const embedHtml = useMemo(
+    () => buildVideoEmbedHtml(source.embedUrl, origin),
+    [source.embedUrl, origin],
+  );
+
+  const nativeSource = useMemo(
+    () => ({ html: embedHtml, baseUrl: origin }),
+    [embedHtml, origin],
+  );
 
   return (
     <View style={[styles.panel, style]} testID={"embedded-video-panel"}>
       <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.eyebrow}>Video</Text>
-        </View>
+        <Text style={styles.eyebrow}>Video</Text>
       </View>
       <View style={styles.playerFrame}>
         {Platform.OS === "web" ? (
           <iframe
-            src={source.embedUrl}
+            srcDoc={embedHtml}
             title={"Youtube video"}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
             style={{
               border: "0",
               width: "100%",
@@ -42,24 +48,7 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
             allowsFullscreenVideo
             allowsInlineMediaPlayback
             mediaPlaybackRequiresUserAction={false}
-            source={{
-              html: `
-                <!DOCTYPE html>
-                <html>
-                  <head>
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  </head>
-                  <body style="margin:0; padding:0; background:#000; display:flex; justify-content:center; align-items:center; height:100vh;">
-                    <iframe 
-                      src="${source.embedUrl}" 
-                      style="width:100%; height:100%; border:0;" 
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                      allowfullscreen>
-                    </iframe>
-                  </body>
-                </html>
-              `
-            }}
+            source={nativeSource}
             style={styles.webView}
           />
         )}
@@ -88,42 +77,14 @@ function createStyles(theme: ExtendedTheme) {
     header: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
       gap: 12,
       paddingHorizontal: 16,
-    },
-    headerText: {
-      flex: 1,
-      gap: 2,
     },
     eyebrow: {
       fontSize: 11,
       fontWeight: "700",
       textTransform: "uppercase",
       color: theme.colors.textMuted,
-    },
-    title: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: theme.colors.text,
-    },
-    actions: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-    },
-    iconButton: {
-      width: 32,
-      height: 32,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-    },
-    expandIcon: {
-      color: theme.colors.text,
     },
     playerFrame: {
       flex: 1,

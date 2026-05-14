@@ -48,22 +48,18 @@ export function parseEmbeddedVideoUrl(
 	};
 }
 
-// Returns the page origin for YouTube's postMessage API, or null when the
-// runtime protocol isn't a real web origin (e.g. tauri:// in production).
-// NOTE: This should ONLY be used for the Referer header and referrer policy.
-// Passing this as an Origin header or ?origin= URL parameter to YouTube
-// embeds often causes Error 153.
+// Returns the page origin used as baseUrl / base-href for YouTube embeds.
+// On Tauri desktop (production) the app is served via tauri-plugin-localhost,
+// so window.location.origin is already a valid http://localhost:{port} origin
+// that YouTube accepts. Returns null only in non-browser environments (e.g. SSR).
+// NOTE: Do NOT pass this value as an ?origin= query param to YouTube embed URLs —
+// that causes Error 153. Use it only as the document baseUrl / Referer context.
 export function resolveVideoEmbedOrigin(): string | null {
 	if (process.env.EXPO_PUBLIC_VIDEO_EMBED_ORIGIN) {
 		return process.env.EXPO_PUBLIC_VIDEO_EMBED_ORIGIN;
 	}
 
-	if (
-		typeof window === "undefined" ||
-		!window.location ||
-		typeof window.location.origin !== "string" ||
-		typeof window.location.protocol !== "string"
-	) {
+	if (typeof window === "undefined") {
 		return null;
 	}
 
@@ -73,6 +69,10 @@ export function resolveVideoEmbedOrigin(): string | null {
 	}
 
 	return null;
+}
+
+export function buildVideoEmbedHtml(embedUrl: string, origin: string): string {
+	return `<!DOCTYPE html><html><head><base href="${origin}"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="margin:0;padding:0;background:#000;height:100vh;display:flex;justify-content:center;align-items:center"><iframe src="${embedUrl}" style="width:100%;height:100%;border:0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></body></html>`;
 }
 
 export type VideoMode = "minimised" | "normal";
