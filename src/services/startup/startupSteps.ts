@@ -1,16 +1,14 @@
 import { GitInitializationService } from "@/services/git/gitInitializationService";
 import type { GitRuntimeSupport } from "@/services/git/runtime";
 import { NotesIndexService } from "@/services/notes/notesIndex";
+import { showToast } from "@/services/toast";
 import { StorageInitializationService } from "@/services/storage/storageInitializationService";
 import { useConflictStore } from "@/stores/conflictStore";
 import { useStorageStore } from "@/stores/storageStore";
 import type { StartupTelemetry } from "./startupTelemetry";
 
-type ShowToast = (message: string, duration?: number) => void;
-
 interface InitializeGitStepOptions {
 	backgroundMode: boolean;
-	showToast: ShowToast;
 	setInitError: (error: string) => void;
 }
 
@@ -45,7 +43,7 @@ export async function initializeStorageStep(
 }
 
 export async function initializeGitStep(
-	{ backgroundMode, showToast, setInitError }: InitializeGitStepOptions,
+	{ backgroundMode, setInitError }: InitializeGitStepOptions,
 	telemetry: StartupTelemetry,
 ): Promise<void> {
 	const initializeStart = telemetry.stepStarted("git.initialize", {
@@ -139,7 +137,6 @@ export async function initializeGitStep(
 
 export async function initializeUnsupportedRuntimeStep(
 	runtimeSupport: GitRuntimeSupport,
-	showToast: ShowToast,
 	telemetry: StartupTelemetry,
 ): Promise<void> {
 	if (runtimeSupport.reason) {

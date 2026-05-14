@@ -13,14 +13,6 @@ jest.mock("@/services/startup/startupTelemetry", () => ({
 	traceStartupBootstrapEvent: jest.fn(),
 }));
 
-const mockShowToast = jest.fn();
-
-jest.mock("@/stores/toastStore", () => ({
-	useToastStore: (
-		selector: (state: { showToast: typeof mockShowToast }) => unknown,
-	) => selector({ showToast: mockShowToast }),
-}));
-
 import { getGitRuntimeSupport } from "@/services/git/runtime";
 import { runStartupStrategy } from "@/services/startup/startupStrategies";
 import { renderHook, waitFor } from "@testing-library/react-native";

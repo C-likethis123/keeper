@@ -3,7 +3,7 @@ import type { GitConflictFile } from "@/services/git/engines/GitEngine";
 import { ConflictDetectionService } from "@/services/git/conflictDetectionService";
 import { getGitEngine } from "@/services/git/gitEngine";
 import { useConflictStore } from "@/stores/conflictStore";
-import { useToastStore } from "@/stores/toastStore";
+import { showToast } from "@/services/toast";
 import { useMemo, useState } from "react";
 import {
 	Pressable,
@@ -49,10 +49,7 @@ export default function ConflictResolutionModal({
 			if (currentIndex < conflicts.length - 1) {
 				setCurrentIndex((prev) => prev + 1);
 			} else {
-				useToastStore.getState().showToast(
-					`All ${conflicts.length} conflicts resolved successfully`,
-					3000,
-				);
+				showToast(`All ${conflicts.length} conflicts resolved successfully`, 3000);
 				onComplete();
 			}
 		} catch (error) {
@@ -72,10 +69,7 @@ export default function ConflictResolutionModal({
 
 				conflictStore.markAllResolved(strategy);
 
-				useToastStore.getState().showToast(
-					`${resolvedCount} conflicts resolved`,
-					3000,
-				);
+				showToast(`${resolvedCount} conflicts resolved`, 3000);
 				onComplete();
 			} catch (error) {
 				const message =

@@ -26,7 +26,7 @@ import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useFilterStore } from "@/stores/filterStore";
 import { useStorageStore } from "@/stores/storageStore";
-import { useToastStore } from "@/stores/toastStore";
+import { showToast } from "@/services/toast";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
 import { router, useFocusEffect, useNavigation } from "expo-router";
@@ -55,7 +55,6 @@ function IndexContent() {
 		setQuery,
 	} = useNotes();
 	const reset = useFilterStore((s) => s.reset);
-	const showToast = useToastStore((state) => state.showToast);
 	const bumpContentVersion = useStorageStore((s) => s.bumpContentVersion);
 	const [isResetting, setIsResetting] = React.useState(false);
 	const [isResetModalVisible, setIsResetModalVisible] = useState(false);
@@ -80,7 +79,7 @@ function IndexContent() {
 				showToast("Failed to delete note");
 			}
 		},
-		[showToast, handleRefresh],
+		[handleRefresh],
 	);
 
 	const runReset = useCallback(async () => {
@@ -105,7 +104,7 @@ function IndexContent() {
 		} finally {
 			setIsResetting(false);
 		}
-	}, [handleRefresh, isResetting, showToast]);
+	}, [handleRefresh, isResetting]);
 
 	const confirmReset = useCallback(() => {
 		if (isResetting) {

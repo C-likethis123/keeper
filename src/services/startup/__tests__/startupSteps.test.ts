@@ -8,6 +8,11 @@ import {
 	initializeUnsupportedRuntimeStep,
 } from "../startupSteps";
 
+const mockShowToast = jest.fn();
+jest.mock("@/services/toast", () => ({
+	showToast: (...args: unknown[]) => mockShowToast(...args),
+}));
+
 const mockBumpContentVersion = jest.fn();
 
 function createTelemetry() {
@@ -82,7 +87,6 @@ describe("startupSteps", () => {
 		await initializeGitStep(
 			{
 				backgroundMode: false,
-				showToast: jest.fn(),
 				setInitError: jest.fn(),
 			},
 			telemetry as never,
@@ -103,25 +107,22 @@ describe("startupSteps", () => {
 			} as Awaited<
 				ReturnType<typeof GitInitializationService.instance.initialize>
 			>);
-		const showToast = jest.fn();
 		const setInitError = jest.fn();
 
 		await initializeGitStep(
 			{
 				backgroundMode: false,
-				showToast,
 				setInitError,
 			},
 			createTelemetry() as never,
 		);
 
-		expect(showToast).not.toHaveBeenCalled();
+		expect(mockShowToast).not.toHaveBeenCalled();
 		expect(setInitError).toHaveBeenCalledWith("Sync exploded");
 	});
 
 	it("reports unsupported runtimes through a toast and telemetry", async () => {
 		const telemetry = createTelemetry();
-		const showToast = jest.fn();
 
 		await initializeUnsupportedRuntimeStep(
 			{
@@ -129,11 +130,10 @@ describe("startupSteps", () => {
 				supported: false,
 				reason: "Desktop-only feature",
 			},
-			showToast,
 			telemetry as never,
 		);
 
-		expect(showToast).toHaveBeenCalledWith("Desktop-only feature", 6000);
+		expect(mockShowToast).toHaveBeenCalledWith("Desktop-only feature", 6000);
 		expect(telemetry.trace).toHaveBeenCalledWith("runtime.unsupported_reason", {
 			reason: "Desktop-only feature",
 		});

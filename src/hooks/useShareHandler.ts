@@ -4,20 +4,18 @@ import { useRouter } from "expo-router";
 import { NoteService } from "@/services/notes/noteService";
 import { parseEmbeddedVideoUrl } from "@/components/editor/video/videoUtils";
 import { nanoid } from "nanoid";
-import { useToastStore } from "@/stores/toastStore";
+import { showToast } from "@/services/toast";
 
 export function useShareHandler(isHydrated: boolean) {
   const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
   const router = useRouter();
-  const showToast = useToastStore((state) => state.showToast);
-
   useEffect(() => {
     if (error) {
       console.error("[ShareHandler] Error:", error);
       showToast(`Share Error: ${error}`);
       resetShareIntent();
     }
-  }, [error, showToast, resetShareIntent]);
+  }, [error, resetShareIntent]);
 
   useEffect(() => {
     if (!isHydrated || !hasShareIntent || !shareIntent.value) {
@@ -79,5 +77,5 @@ export function useShareHandler(isHydrated: boolean) {
     };
 
     void processShareIntent();
-  }, [isHydrated, hasShareIntent, shareIntent, resetShareIntent, router, showToast]);
+  }, [isHydrated, hasShareIntent, shareIntent, resetShareIntent, router]);
 }

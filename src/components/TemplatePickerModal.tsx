@@ -4,7 +4,7 @@ import useSuspenseTemplates from "@/hooks/useSuspenseTemplates";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
-import { useToastStore } from "@/stores/toastStore";
+import { showToast } from "@/services/toast";
 import { FontAwesome } from "@expo/vector-icons";
 import React, { Suspense, useCallback } from "react";
 import {
@@ -74,7 +74,6 @@ function TemplatePickerContent({
 	styles: ReturnType<typeof createStyles>;
 }) {
 	const templates = useSuspenseTemplates();
-	const showToast = useToastStore((s) => s.showToast);
 	const loadMarkdown = useEditorState((s) => s.loadMarkdown);
 
 	const applyTemplate = useCallback(
@@ -93,7 +92,7 @@ function TemplatePickerContent({
 				showToast("Failed to apply template");
 			}
 		},
-		[loadMarkdown, onDismiss, showToast],
+		[loadMarkdown, onDismiss],
 	);
 
 	if (templates.length === 0) {

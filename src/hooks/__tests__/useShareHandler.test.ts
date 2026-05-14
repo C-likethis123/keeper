@@ -3,27 +3,28 @@ import { useShareHandler } from "../useShareHandler";
 import { useShareIntent } from "expo-share-intent";
 import { useRouter } from "expo-router";
 import { NoteService } from "@/services/notes/noteService";
-import { useToastStore } from "@/stores/toastStore";
 import { jest } from "@jest/globals";
 
 // Mock the dependencies
 jest.mock("expo-share-intent");
 jest.mock("expo-router");
 jest.mock("@/services/notes/noteService");
-jest.mock("@/stores/toastStore");
 jest.mock("nanoid", () => ({
   nanoid: () => "test-id",
+}));
+
+const mockShowToast = jest.fn();
+jest.mock("@/services/toast", () => ({
+  showToast: (...args: unknown[]) => mockShowToast(...args),
 }));
 
 describe("useShareHandler", () => {
   const mockResetShareIntent = jest.fn();
   const mockPush = jest.fn();
-  const mockShowToast = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
-    (useToastStore as unknown as jest.Mock).mockReturnValue(mockShowToast);
   });
 
   it("does nothing when no share intent is present", () => {

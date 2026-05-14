@@ -1,13 +1,11 @@
 import type { NoteType } from "@/services/notes/types";
 import { useTabStore } from "@/stores/tabStore";
-import { useToastStore } from "@/stores/toastStore";
+import { showToast } from "@/services/toast";
 import { router } from "expo-router";
 import { nanoid } from "nanoid";
 import { useCallback } from "react";
 
 export function useCreateAndOpenNote() {
-	const showToast = useToastStore((state) => state.showToast);
-
 	return useCallback(
 		async (options?: { title?: string; noteType?: NoteType }) => {
 			const newId = nanoid();
@@ -29,6 +27,6 @@ export function useCreateAndOpenNote() {
 				showToast("Failed to create note");
 			}
 		},
-		[showToast],
+		[],
 	);
 }

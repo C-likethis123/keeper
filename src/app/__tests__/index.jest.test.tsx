@@ -26,10 +26,8 @@ jest.mock("@/hooks/useAppKeyboardShortcuts", () => ({
 	useAppKeyboardShortcuts: jest.fn(),
 }));
 
-jest.mock("@/stores/toastStore", () => ({
-	useToastStore: (
-		selector: (state: { showToast: typeof mockShowToast }) => unknown,
-	) => selector({ showToast: mockShowToast }),
+jest.mock("@/services/toast", () => ({
+	showToast: mockShowToast,
 }));
 
 jest.mock("@/stores/filterStore", () => ({

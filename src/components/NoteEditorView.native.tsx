@@ -22,7 +22,7 @@ import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { type EditorState, useEditorState } from "@/stores/editorStore";
 import { useTabStore } from "@/stores/tabStore";
-import { useToastStore } from "@/stores/toastStore";
+import { showToast } from "@/services/toast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import React, {
@@ -91,8 +91,6 @@ export default function NoteEditorView({
   const { updateTabTitle, tabs, closeTab, activeTabId } = useTabStore();
   const tab = tabs.find((t) => t.noteId === id);
 
-  const showToast = useToastStore((s) => s.showToast);
-
   const flushGitAndToastOnFailure = useCallback(
     async (
       reason: "note-exit" | "delete",
@@ -108,7 +106,7 @@ export default function NoteEditorView({
       }
       return result.success;
     },
-    [showToast],
+    [],
   );
 
   const isLeavingRef = useRef(false);
@@ -384,7 +382,7 @@ export default function NoteEditorView({
     } catch {
       showToast("Failed to attach document.");
     }
-  }, [id, showToast, persistCurrentEntry]);
+  }, [id, persistCurrentEntry]);
 
   const handleHideAttachment = useCallback(() => {
     setIsAttachmentVisible(false);

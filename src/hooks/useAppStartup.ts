@@ -1,7 +1,6 @@
 import { getGitRuntimeSupport } from "@/services/git/runtime";
 import { runStartupStrategy } from "@/services/startup/startupStrategies";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
-import { useToastStore } from "@/stores/toastStore";
 import { useEffect, useState } from "react";
 
 type StartupStatus = "idle" | "running" | "ready" | "error";
@@ -34,7 +33,6 @@ export function useAppStartup(): AppStartupState {
 					: undefined,
 		});
 	}
-	const showToast = useToastStore((state) => state.showToast);
 	const [state, setState] = useState<AppStartupState>({
 		isHydrated: false,
 		initError: null,
@@ -72,7 +70,6 @@ export function useAppStartup(): AppStartupState {
 
 		void runStartupStrategy({
 			runtimeSupport,
-			showToast,
 			setHydrated: () =>
 				safeSetState((prev) => ({
 					...prev,
@@ -102,7 +99,7 @@ export function useAppStartup(): AppStartupState {
 		return () => {
 			isCancelled = true;
 		};
-	}, [showToast]);
+	}, []);
 
 	return state;
 }

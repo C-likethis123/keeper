@@ -10,11 +10,8 @@ import {
 	createStartupTelemetry,
 } from "./startupTelemetry";
 
-type ShowToast = (message: string, duration?: number) => void;
-
 interface StartupStrategyContext {
 	runtimeSupport: GitRuntimeSupport;
-	showToast: ShowToast;
 	setHydrated: () => void;
 	setInitError: (error: string) => void;
 	telemetry: StartupTelemetry;
@@ -23,7 +20,6 @@ interface StartupStrategyContext {
 type StartupStrategy = (context: StartupStrategyContext) => Promise<void>;
 
 const runDesktopStartup: StartupStrategy = async ({
-	showToast,
 	setHydrated,
 	setInitError,
 	telemetry,
@@ -35,7 +31,6 @@ const runDesktopStartup: StartupStrategy = async ({
 	void initializeGitStep(
 		{
 			backgroundMode: true,
-			showToast,
 			setInitError,
 		},
 		telemetry,
@@ -43,7 +38,6 @@ const runDesktopStartup: StartupStrategy = async ({
 };
 
 const runMobileStartup: StartupStrategy = async ({
-	showToast,
 	setHydrated,
 	setInitError,
 	telemetry,
@@ -52,7 +46,6 @@ const runMobileStartup: StartupStrategy = async ({
 	await initializeGitStep(
 		{
 			backgroundMode: false,
-			showToast,
 			setInitError,
 		},
 		telemetry,
@@ -64,12 +57,11 @@ const runMobileStartup: StartupStrategy = async ({
 
 const runUnsupportedStartup: StartupStrategy = async ({
 	runtimeSupport,
-	showToast,
 	setHydrated,
 	telemetry,
 }) => {
 	await initializeStorageStep(telemetry);
-	await initializeUnsupportedRuntimeStep(runtimeSupport, showToast, telemetry);
+	await initializeUnsupportedRuntimeStep(runtimeSupport, telemetry);
 	const hydrationStart = telemetry.stepStarted("unsupported.hydrate_ui");
 	setHydrated();
 	telemetry.stepCompleted("unsupported.hydrate_ui", hydrationStart);
