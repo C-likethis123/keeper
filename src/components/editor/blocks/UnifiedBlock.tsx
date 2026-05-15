@@ -572,11 +572,14 @@ export function UnifiedBlock({
             placeholderTextColor={theme.custom.editor.placeholder}
             textAlignVertical={applyListStyles ? undefined : "top"}
           />
-          {!isFocused && (
-            <View style={styles.overlay} pointerEvents="box-none">
-              {inlineMarkdown}
-            </View>
-          )}
+          {/* Always rendered to provide layout height for the absolutely-
+              positioned TextInput; hidden when focused so the textarea shows. */}
+          <View
+            style={[styles.overlay, isFocused && { opacity: 0 }]}
+            pointerEvents="box-none"
+          >
+            {inlineMarkdown}
+          </View>
         </View>
       </View>
     </Pressable>
