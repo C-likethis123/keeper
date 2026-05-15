@@ -27,6 +27,7 @@ import {
 } from "@/components/editor/core/Transaction";
 import { useCallback, useRef } from "react";
 import { create } from "zustand";
+import { useShallow } from "zustand/react/shallow";
 
 type EditorAction = Parameters<typeof editorReducer>[1];
 
@@ -615,11 +616,8 @@ export function useEditorBlock(index: number): BlockNode | undefined {
 	return useEditorState((s) => s.document.blocks[index]);
 }
 
-const BLOCK_ID_SEPARATOR = "\x01";
-
 export function useEditorBlockIds(): string[] {
-	const idsString = useEditorState((s) =>
-		s.document.blocks.map((b) => b.id).join(BLOCK_ID_SEPARATOR),
+	return useEditorState(
+		useShallow((s) => s.document.blocks.map((b) => b.id)),
 	);
-	return idsString ? idsString.split(BLOCK_ID_SEPARATOR) : [];
 }

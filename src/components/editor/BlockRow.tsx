@@ -26,7 +26,11 @@ import Animated, {
 } from "react-native-reanimated";
 
 interface BlockRowHandlers {
-  onContentChange: (index: number, content: string) => void;
+  onContentChange: (
+    index: number,
+    content: string,
+    cursorOffset?: number,
+  ) => void;
   onBlockTypeChange?: (
     index: number,
     newType: BlockType,

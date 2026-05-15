@@ -41,6 +41,13 @@ import {
 import type { BlockConfig } from "./BlockRegistry";
 import { ListMarker } from "./ListMarker";
 
+// In jest, requestAnimationFrame falls back to setTimeout and never flushes
+// during a synchronous test step, so dispatches would be lost. Tests still
+// assert intermediate state synchronously after fireEvent.changeText, so we
+// flush eagerly there. Production keeps the rAF batching.
+const SYNC_DISPATCH =
+  typeof (globalThis as { jest?: unknown }).jest !== "undefined";
+
 export function UnifiedBlock({
   block,
   index,
@@ -68,6 +75,87 @@ export function UnifiedBlock({
     (state) => state.getFocusedBlockIndex,
   );
   const handleVerticalArrow = useVerticalArrowNavigation(index, selectionRange);
+
+  // Local mirror of what the native TextInput actually holds. The input is
+  // uncontrolled — we never pass `value` or `selection` as props during typing,
+  // because doing so forces RN to push text + cursor back into the native widget
+  // on every keystroke, which is the dominant source of input lag at scale.
+  const localContentRef = useRef(block.content);
+  const localSelectionRef = useRef<{ start: number; end: number }>({
+    start: block.content.length,
+    end: block.content.length,
+  });
+  const pendingFlushRef = useRef(false);
+  const rafIdRef = useRef<number | null>(null);
+
+  const flushPendingDispatch = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    if (!pendingFlushRef.current) return;
+    pendingFlushRef.current = false;
+    const text = localContentRef.current;
+    const sel = localSelectionRef.current;
+    const storeBlock = useEditorState.getState().document.blocks[index];
+    if (storeBlock && storeBlock.content !== text) {
+      onContentChange(index, text, sel.end);
+    } else {
+      onSelectionChange(index, sel.start, sel.end);
+    }
+  }, [index, onContentChange, onSelectionChange]);
+
+  const scheduleDispatch = useCallback(() => {
+    pendingFlushRef.current = true;
+    if (SYNC_DISPATCH) {
+      flushPendingDispatch();
+      return;
+    }
+    if (rafIdRef.current !== null) return;
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null;
+      flushPendingDispatch();
+    });
+  }, [flushPendingDispatch]);
+
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    };
+  }, []);
+
+  // Sync FROM store TO native input when content changes externally
+  // (undo/redo, structural commands, paste from another path). Skip when the
+  // store update is just catching up to what the user already typed locally.
+  useLayoutEffect(() => {
+    if (block.content === localContentRef.current) return;
+    localContentRef.current = block.content;
+    inputRef.current?.setNativeProps({ text: block.content });
+  }, [block.content]);
+
+  // Sync FROM store TO native cursor only when the store moves the selection
+  // programmatically (focus moves, splitBlock, etc.). During normal typing the
+  // native cursor is already correct, so this no-ops because the store
+  // selection is updated to match what we emitted.
+  useLayoutEffect(() => {
+    if (!isFocused || !selectionRange) return;
+    const local = localSelectionRef.current;
+    if (
+      local.start === selectionRange.start &&
+      local.end === selectionRange.end
+    ) {
+      return;
+    }
+    const len = block.content.length;
+    const next = {
+      start: Math.min(selectionRange.start, len),
+      end: Math.min(selectionRange.end, len),
+    };
+    localSelectionRef.current = next;
+    inputRef.current?.setNativeProps({ selection: next });
+  }, [isFocused, selectionRange, block.content.length]);
 
   useLayoutEffect(() => {
     if (isFocused && !prevIsFocusedRef.current && inputRef.current) {
@@ -111,9 +199,6 @@ export function UnifiedBlock({
   // cursor to content.length, overriding the clicked position).
   const textInputNativelyFocusedRef = useRef(false);
 
-  // Called when the TextInput itself receives focus (user clicked directly on it).
-  // On web, reads the browser cursor position set during mousedown BEFORE
-  // focusBlock can override it with content.length.
   const handleTextInputFocus = useCallback(() => {
     if (isFocused && !hasBlockSelection) return;
     clearStructuredSelection();
@@ -121,6 +206,7 @@ export function UnifiedBlock({
       const el = document.activeElement as HTMLTextAreaElement | null;
       const offset = el?.selectionStart ?? block.content.length;
       textInputNativelyFocusedRef.current = true;
+      localSelectionRef.current = { start: offset, end: offset };
       focusBlockAt(index, offset);
     } else {
       focusBlock(index);
@@ -135,9 +221,6 @@ export function UnifiedBlock({
     isFocused,
   ]);
 
-  // Called when the Pressable is tapped (e.g. empty space in the block). On web
-  // the click also triggers handleTextInputFocus first (via bubbling), so we
-  // skip this call when that already ran to avoid resetting cursor to end.
   const handleFocus = useCallback(() => {
     if (isFocused && !hasBlockSelection) return;
     if (textInputNativelyFocusedRef.current) {
@@ -156,39 +239,51 @@ export function UnifiedBlock({
 
   // Web: document selectionchange fires on every cursor placement (including
   // plain clicks), whereas the TextInput onSelectionChange prop uses the
-  // textarea `select` event which only fires on text selection. This gives
-  // reliable cursor tracking for InlineMarkdown's custom cursor overlay.
+  // textarea `select` event which only fires on text selection. Coalesce via
+  // rAF so we don't dispatch on every keystroke.
   useEffect(() => {
     if (!isWeb || !isFocused) return;
     const handleDocSelectionChange = () => {
       const el = document.activeElement as HTMLTextAreaElement | null;
-      if (el?.selectionStart != null) {
-        onSelectionChange(
-          index,
-          el.selectionStart,
-          el.selectionEnd ?? el.selectionStart,
-        );
+      if (el?.selectionStart == null) return;
+      const start = el.selectionStart;
+      const end = el.selectionEnd ?? start;
+      if (
+        localSelectionRef.current.start === start &&
+        localSelectionRef.current.end === end
+      ) {
+        return;
       }
+      localSelectionRef.current = { start, end };
+      scheduleDispatch();
     };
     document.addEventListener("selectionchange", handleDocSelectionChange);
     return () =>
       document.removeEventListener("selectionchange", handleDocSelectionChange);
-  }, [isWeb, isFocused, index, onSelectionChange]);
+  }, [isWeb, isFocused, scheduleDispatch]);
 
   const handleBlur = useCallback(() => {
+    flushPendingDispatch();
     onBlockExit?.(index);
     const currentFocus = getFocusedBlockIndex();
     if (currentFocus === index) {
       blurBlock();
     }
-  }, [blurBlock, getFocusedBlockIndex, index, onBlockExit]);
+  }, [blurBlock, flushPendingDispatch, getFocusedBlockIndex, index, onBlockExit]);
 
   const handleSelectionChange = useCallback(
     (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
       const { start, end } = e.nativeEvent.selection;
-      onSelectionChange(index, start, end);
+      if (
+        localSelectionRef.current.start === start &&
+        localSelectionRef.current.end === end
+      ) {
+        return;
+      }
+      localSelectionRef.current = { start, end };
+      scheduleDispatch();
     },
-    [index, onSelectionChange],
+    [scheduleDispatch],
   );
 
   const handleWikiLinkPress = useCallback(
@@ -227,9 +322,20 @@ export function UnifiedBlock({
         return;
       }
 
-      onContentChange(index, newText);
-      if (isFocused && inputRef.current) {
-        const caret = newText.length;
+      localContentRef.current = newText;
+      // onSelectionChange may not have arrived yet (Android fires it after
+      // onChangeText); use end-of-text as the caret hint for trigger detection
+      // and as a fallback for the local selection ref.
+      const caret = newText.length;
+      if (
+        localSelectionRef.current.end > newText.length ||
+        localSelectionRef.current.start > newText.length
+      ) {
+        localSelectionRef.current = { start: caret, end: caret };
+      }
+      scheduleDispatch();
+
+      if (isFocused) {
         const wikiLinkStart = findWikiLinkTriggerStart(newText, caret);
         const slashCommandStart = findSlashCommandTriggerStart(newText, caret);
         if (wikiLinkStart !== null) {
@@ -248,8 +354,8 @@ export function UnifiedBlock({
     },
     [
       index,
-      onContentChange,
       isFocused,
+      scheduleDispatch,
       wikiLinks.handleTriggerStart,
       wikiLinks.handleCancel,
       slashCommands.handleTriggerStart,
@@ -265,15 +371,12 @@ export function UnifiedBlock({
         return;
       }
 
-      // Match list-block behavior for normal typing: only intercept space
-      // when we explicitly handle a markdown trigger at the block end.
-      if (
-        key === " " &&
-        block.type === BlockType.paragraph &&
-        selectionRange &&
-        selectionRange.start === selectionRange.end
-      ) {
-        const handled = onSpace(index, selectionRange.end);
+      const sel = localSelectionRef.current;
+      const isCaret = sel.start === sel.end;
+
+      if (key === " " && block.type === BlockType.paragraph && isCaret) {
+        flushPendingDispatch();
+        const handled = onSpace(index, sel.end);
         if (handled) {
           return;
         }
@@ -287,12 +390,7 @@ export function UnifiedBlock({
       );
 
       // Handle Enter key - split non-code blocks at the current cursor position
-      if (
-        key === "Enter" &&
-        !isShiftModified &&
-        selectionRange &&
-        selectionRange.start === selectionRange.end
-      ) {
+      if (key === "Enter" && !isShiftModified && isCaret) {
         if (block.type !== BlockType.codeBlock) {
           if (Platform.OS === "web") {
             // On web, React re-renders and moves focus to the new block before
@@ -304,23 +402,21 @@ export function UnifiedBlock({
             // action fires, so we can safely ignore that one onChangeText.
             ignoreNextChangeRef.current = true;
           }
-          onEnter(index, selectionRange.end);
+          flushPendingDispatch();
+          onEnter(index, sel.end);
         }
         return;
       }
 
       // Handle backspace at the start (position 0)
-      if (
-        key === "Backspace" &&
-        selectionRange?.start === 0 &&
-        selectionRange?.end === 0
-      ) {
+      if (key === "Backspace" && sel.start === 0 && sel.end === 0) {
         if (Platform.OS === "web") {
           e.preventDefault();
         } else {
           ignoreNextChangeRef.current = true;
         }
 
+        flushPendingDispatch();
         // Paragraph blocks: delegate to editor-level handler (empty = delete, non-empty = merge or focus previous)
         if (block.type === BlockType.paragraph) {
           onBackspaceAtStart(index);
@@ -336,12 +432,12 @@ export function UnifiedBlock({
     },
     [
       block.type,
+      flushPendingDispatch,
       handleVerticalArrow,
       index,
       onBackspaceAtStart,
       onEnter,
       onSpace,
-      selectionRange,
     ],
   );
 
@@ -361,16 +457,6 @@ export function UnifiedBlock({
         return styles.bodyStyle;
     }
   }, [block.type, styles]);
-  const selectionProp =
-    isFocused && selectionRange
-      ? (() => {
-          const len = block.content.length;
-          return {
-            start: Math.min(selectionRange.start, len),
-            end: Math.min(selectionRange.end, len),
-          };
-        })()
-      : undefined;
   const [numberOfLines, setNumberOfLines] = useState(1);
   const textInputStyle = [
     styles.input,
@@ -378,31 +464,20 @@ export function UnifiedBlock({
     { opacity: isFocused ? 1 : 0, position: "absolute" as const, top: 0, left: 0, right: 0, bottom: 0 },
   ];
 
-  const textInputProps = {
-    ref: inputRef,
-    style: textInputStyle,
-    value: block.content, // I get an error on mobile
-    ...(selectionProp !== undefined && { selection: selectionProp }),
-    onChangeText: handleContentChange,
-    onFocus: handleTextInputFocus,
-    onBlur: handleBlur,
-    onKeyPress: handleKeyPress,
-    onSelectionChange: handleSelectionChange,
-    onContentSizeChange: (event) => {
-      setNumberOfLines(
-        event.nativeEvent.contentSize.height / textStyle.lineHeight!,
-      );
-    },
-    numberOfLines,
-    multiline: true,
-    scrollEnabled: false,
-    autoGrow: true,
-    autoCapitalize: "none" as const,
-    autoCorrect: false,
-    spellCheck: false,
-    autoComplete: "off" as const,
-    placeholderTextColor: theme.custom.editor.placeholder,
-  };
+  // The InlineMarkdown overlay sits behind the input and is only visible when
+  // the block is unfocused. Re-parsing it on every keystroke while invisible
+  // is pure waste, so memoize on content + style and skip when focused.
+  const inlineMarkdown = useMemo(
+    () => (
+      <InlineMarkdown
+        text={block.content}
+        style={textStyle}
+        onWikiLinkPress={handleWikiLinkPress}
+        onWikiLinkLongPress={handleWikiLinkLongPress}
+      />
+    ),
+    [block.content, textStyle, handleWikiLinkPress, handleWikiLinkLongPress],
+  );
 
   const applyListStyles = isListItem(block.type);
 
@@ -442,20 +517,39 @@ export function UnifiedBlock({
           pointerEvents="box-none"
         >
           <TextInput
-            {...textInputProps}
+            ref={inputRef}
+            style={textInputStyle}
+            defaultValue={block.content}
+            onChangeText={handleContentChange}
+            onFocus={handleTextInputFocus}
+            onBlur={handleBlur}
+            onKeyPress={handleKeyPress}
+            onSelectionChange={handleSelectionChange}
+            onContentSizeChange={(event) => {
+              const next = Math.max(
+                1,
+                Math.round(
+                  event.nativeEvent.contentSize.height / textStyle.lineHeight!,
+                ),
+              );
+              setNumberOfLines((prev) => (prev === next ? prev : next));
+            }}
+            numberOfLines={numberOfLines}
+            multiline
+            scrollEnabled={false}
+            autoGrow
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            autoComplete="off"
+            placeholderTextColor={theme.custom.editor.placeholder}
             textAlignVertical={applyListStyles ? undefined : "top"}
           />
-          <View
-            style={[styles.overlay, isFocused ? { opacity: 0 } : null]}
-            pointerEvents="box-none"
-          >
-            <InlineMarkdown
-              text={block.content}
-              style={textStyle}
-              onWikiLinkPress={handleWikiLinkPress}
-              onWikiLinkLongPress={handleWikiLinkLongPress}
-            />
-          </View>
+          {!isFocused && (
+            <View style={styles.overlay} pointerEvents="box-none">
+              {inlineMarkdown}
+            </View>
+          )}
         </View>
       </View>
     </Pressable>

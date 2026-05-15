@@ -383,16 +383,18 @@ function HybridEditorContent() {
   );
 
   const handleContentChange = useCallback(
-    (index: number, content: string) => {
+    (index: number, content: string, cursorOffset?: number) => {
       if (ignoreNextContentChangeRef.current === index) {
         ignoreNextContentChangeRef.current = null;
+        return;
+      }
+      if (cursorOffset !== undefined) {
+        updateBlockContent(index, content, cursorOffset);
         return;
       }
       const state = useEditorState.getState();
       const oldContent = state.document.blocks[index]?.content ?? "";
       const delta = content.length - oldContent.length;
-      // Read cursor position directly from store selection instead of
-      // relying on a ref that can become stale when focus moves between blocks
       const currentSelection = state.selection;
       const currentOffset =
         currentSelection?.focus.blockIndex === index
