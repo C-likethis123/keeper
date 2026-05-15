@@ -26,6 +26,7 @@ pub struct GitStatusItem {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct GitConflictFile {
     pub path: String,
     pub base_content: Option<String>,
