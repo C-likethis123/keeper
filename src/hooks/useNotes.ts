@@ -25,6 +25,7 @@ import {
   startTransition,
   use,
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -228,6 +229,7 @@ export default function useNotes() {
   const contentVersion = useStorageStore((s) => s.contentVersion);
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
+  const deferredQuery = useDeferredValue(debouncedQuery);
   const noteTypeFilter = useFilterStore((s) => s.noteTypes);
   const statusFilter = useFilterStore((s) => s.status);
   const hideDone = useFilterStore((s) => s.hideDone);
@@ -276,7 +278,7 @@ export default function useNotes() {
   }
 
   const baseKey = buildNotesQueryKey({
-    query: debouncedQuery,
+    query: deferredQuery,
     filters,
     contentVersion,
     refreshVersion,
@@ -284,7 +286,7 @@ export default function useNotes() {
   const baseResult = use(
     getCachedQueryPromise(baseKey, () =>
       loadNotesPage({
-        query: debouncedQuery,
+        query: deferredQuery,
         filters,
         offset: 0,
       }),
@@ -329,7 +331,7 @@ export default function useNotes() {
 
     try {
       const result = await loadNotesPage({
-        query: debouncedQuery,
+        query: deferredQuery,
         filters,
         offset: activePagination.nextOffset,
       });
@@ -362,7 +364,7 @@ export default function useNotes() {
     activePagination.isLoadingMore,
     activePagination.nextOffset,
     baseKey,
-    debouncedQuery,
+    deferredQuery,
     filters,
   ]);
 
@@ -419,7 +421,7 @@ export default function useNotes() {
   const sections = useMemo(() => {
     const pinnedNotes = allNotes.filter((n) => n.isPinned);
     const isFiltered =
-      debouncedQuery.trim().length > 0 ||
+      deferredQuery.trim().length > 0 ||
       (filters.noteTypes != null && filters.noteTypes.length > 0) ||
       filters.status != null ||
       (filters.hideDone ?? false);
@@ -432,7 +434,7 @@ export default function useNotes() {
       sectionMetadata.acceptedClusterSections,
       isFiltered,
     );
-  }, [allNotes, sectionMetadata, debouncedQuery, filters]);
+  }, [allNotes, sectionMetadata, deferredQuery, filters]);
 
   return {
     notes: allNotes,

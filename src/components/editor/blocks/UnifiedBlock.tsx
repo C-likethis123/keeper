@@ -48,6 +48,33 @@ import { ListMarker } from "./ListMarker";
 const SYNC_DISPATCH =
   typeof (globalThis as { jest?: unknown }).jest !== "undefined";
 
+// react-native-web does not expose setNativeProps on the TextInput ref; the
+// ref doubles as the DOM textarea, so go through the standard DOM APIs there.
+function setInputText(input: NativeTextInput | null, text: string) {
+  if (!input) return;
+  if (Platform.OS === "web") {
+    const el = input as unknown as HTMLTextAreaElement;
+    if ("value" in el) el.value = text;
+    return;
+  }
+  input.setNativeProps?.({ text });
+}
+
+function setInputSelection(
+  input: NativeTextInput | null,
+  selection: { start: number; end: number },
+) {
+  if (!input) return;
+  if (Platform.OS === "web") {
+    const el = input as unknown as HTMLTextAreaElement;
+    if (typeof el.setSelectionRange === "function") {
+      el.setSelectionRange(selection.start, selection.end);
+    }
+    return;
+  }
+  input.setNativeProps?.({ selection });
+}
+
 export function UnifiedBlock({
   block,
   index,
@@ -132,7 +159,7 @@ export function UnifiedBlock({
   useLayoutEffect(() => {
     if (block.content === localContentRef.current) return;
     localContentRef.current = block.content;
-    inputRef.current?.setNativeProps({ text: block.content });
+    setInputText(inputRef.current, block.content);
   }, [block.content]);
 
   // Sync FROM store TO native cursor only when the store moves the selection
@@ -154,7 +181,7 @@ export function UnifiedBlock({
       end: Math.min(selectionRange.end, len),
     };
     localSelectionRef.current = next;
-    inputRef.current?.setNativeProps({ selection: next });
+    setInputSelection(inputRef.current, next);
   }, [isFocused, selectionRange, block.content.length]);
 
   useLayoutEffect(() => {
