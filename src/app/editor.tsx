@@ -8,10 +8,11 @@ import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { useSuspenseLoadNote } from "@/hooks/useSuspenseLoadNote";
+import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import type { Note } from "@/services/notes/types";
 import { useTabStore } from "@/stores/tabStore";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { Suspense, useCallback, useEffect } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 function NewNoteEditorContent({
@@ -34,11 +35,17 @@ function NewNoteEditorContent({
 	return <NoteEditorView note={virtualNote} isNew />;
 }
 
-function ExistingNoteEditorContent({ id }: { id: string }) {
+function ExistingNoteEditorContent({
+	id,
+	onRetry,
+}: {
+	id: string;
+	onRetry: () => void;
+}) {
 	const note = useSuspenseLoadNote(id);
 
 	if (!note) {
-		return <ErrorScreen errorMessage="Note not found" onRetry={() => {}} />;
+		return <ErrorScreen errorMessage="Note not found" onRetry={onRetry} />;
 	}
 
 	return <NoteEditorView note={note} />;
@@ -49,11 +56,13 @@ function NoteEditorContent({
 	isNew,
 	initialTitle,
 	initialNoteType,
+	onRetry,
 }: {
 	id: string;
 	isNew?: boolean;
 	initialTitle?: string;
 	initialNoteType?: string;
+	onRetry: () => void;
 }) {
 	if (isNew) {
 		return (
@@ -64,7 +73,7 @@ function NoteEditorContent({
 			/>
 		);
 	}
-	return <ExistingNoteEditorContent id={id} />;
+	return <ExistingNoteEditorContent id={id} onRetry={onRetry} />;
 }
 
 export default function NoteEditorScreen() {
@@ -80,6 +89,13 @@ export default function NoteEditorScreen() {
 		typeof params.title === "string" ? params.title : undefined;
 	const initialNoteType =
 		typeof params.noteType === "string" ? params.noteType : undefined;
+
+	const [retryVersion, setRetryVersion] = useState(0);
+
+	const handleRetry = useCallback(() => {
+		invalidateNoteQueryCache();
+		setRetryVersion((v) => v + 1);
+	}, []);
 
 	const createAndOpenNote = useCreateAndOpenNote();
 
@@ -116,7 +132,10 @@ export default function NoteEditorScreen() {
 		return (
 			<View style={styles.screen}>
 				<View style={styles.content}>
-					<ErrorScreen errorMessage="Note not found" onRetry={() => {}} />
+					<ErrorScreen
+						errorMessage="Note not found"
+						onRetry={() => router.replace("/")}
+					/>
 				</View>
 			</View>
 		);
@@ -126,16 +145,23 @@ export default function NoteEditorScreen() {
 			<TabBar />
 			<View style={styles.content}>
 				<QueryErrorBoundary
-					fallbackRender={(error) => (
-						<ErrorScreen errorMessage={error.message} onRetry={() => {}} />
+					fallbackRender={(error, reset) => (
+						<ErrorScreen
+							errorMessage={error.message}
+							onRetry={() => {
+								reset();
+								handleRetry();
+							}}
+						/>
 					)}
 				>
-					<Suspense fallback={<Loader />}>
+					<Suspense key={retryVersion} fallback={<Loader />}>
 						<NoteEditorContent
 							id={noteId}
 							isNew={isNew}
 							initialTitle={initialTitle}
 							initialNoteType={initialNoteType}
+							onRetry={handleRetry}
 						/>
 					</Suspense>
 				</QueryErrorBoundary>
