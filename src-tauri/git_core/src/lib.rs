@@ -647,39 +647,30 @@ pub fn get_conflicted_files(repo_path: &str) -> Result<Vec<GitConflictFile>, Str
     let repo = open_repo(repo_path)?;
     let index = repo.index().map_err(format_git_error)?;
 
-    // Collect unique paths from conflict entries
-    let mut path_set = std::collections::BTreeSet::new();
-    for entry in index.iter() {
-        let flags = entry.flags;
-        // Check if this is a conflict entry (stage > 0)
-        let stage = (flags >> 4) & 0x3;
-        if stage != 0 {
-            let path_bytes = String::from_utf8_lossy(&entry.path);
-            path_set.insert(path_bytes.into_owned());
-        }
-    }
+    let blob_text = |entry: Option<git2::IndexEntry>| -> Option<String> {
+        entry.and_then(|e| {
+            repo.find_blob(e.id).ok().and_then(|blob| {
+                String::from_utf8(blob.content().to_vec()).ok()
+            })
+        })
+    };
 
+    let conflicts = index.conflicts().map_err(format_git_error)?;
     let mut result = Vec::new();
-    for path in path_set {
-        // Stage 1 = base (common ancestor)
-        // Stage 2 = ours (local)
-        // Stage 3 = theirs (remote)
-        let find_stage = |stage: i32| -> Option<String> {
-            let path_ref = &path;
-            index
-                .get_path(std::path::Path::new(path_ref), stage)
-                .and_then(|entry| {
-                    repo.find_blob(entry.id).ok().and_then(|blob| {
-                        String::from_utf8(blob.content().to_vec()).ok()
-                    })
-                })
-        };
-
+    for conflict in conflicts {
+        let conflict = conflict.map_err(format_git_error)?;
+        let path = conflict
+            .our
+            .as_ref()
+            .or(conflict.their.as_ref())
+            .or(conflict.ancestor.as_ref())
+            .map(|e| String::from_utf8_lossy(&e.path).into_owned())
+            .unwrap_or_default();
         result.push(GitConflictFile {
-            path: path.clone(),
-            base_content: find_stage(1),
-            ours_content: find_stage(2),
-            theirs_content: find_stage(3),
+            path,
+            base_content: blob_text(conflict.ancestor),
+            ours_content: blob_text(conflict.our),
+            theirs_content: blob_text(conflict.their),
         });
     }
 
@@ -738,10 +729,7 @@ pub fn resolve_conflict(
 pub fn has_unresolved_conflicts(repo_path: &str) -> Result<bool, String> {
     let repo = open_repo(repo_path)?;
     let index = repo.index().map_err(format_git_error)?;
-    Ok(index.iter().any(|entry| {
-        let stage = (entry.flags >> 4) & 0x3;
-        stage != 0
-    }))
+    Ok(index.has_conflicts())
 }
 
 fn open_repo(repo_path: &str) -> Result<Repository, String> {
