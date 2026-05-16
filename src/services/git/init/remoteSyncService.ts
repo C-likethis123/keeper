@@ -26,18 +26,17 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 	) {}
 
 	private async ensureDeviceBranch(): Promise<string> {
-		const existing = await this.stateStore.readDeviceBranch();
-		if (existing) return existing;
-
 		let deviceId = await this.stateStore.readDeviceId();
 		if (!deviceId) {
 			deviceId = Math.random().toString(16).slice(2, 10);
 			await this.stateStore.writeDeviceId(deviceId);
 		}
 
+		const existing = await this.stateStore.readDeviceBranch();
+
 		const runtime = getGitRuntimeSupport().runtime;
 		const platform = runtime === "desktop-tauri" ? "desktop" : "mobile";
-		const branchName = `device/${platform}-${deviceId}`;
+		const branchName = existing ?? `device/${platform}-${deviceId}`;
 
 		try {
 			await this.gitEngine.createBranch(NOTES_ROOT, branchName, "main");

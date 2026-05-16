@@ -875,17 +875,17 @@ pub extern "C" fn git_checkout_ex(
         Err(code) => return code,
     };
 
-    if checkout(
+    match checkout(
         &repo_path,
         &reference,
         Some(force != 0),
         Some(no_update_head != 0),
-    )
-    .is_ok()
-    {
-        0
-    } else {
-        -1
+    ) {
+        Ok(()) => 0,
+        Err(err) => {
+            set_last_error(err);
+            -1
+        }
     }
 }
 
@@ -1288,17 +1288,17 @@ pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule
         Ok(value) => value,
         Err(code) => return code,
     };
-    if checkout(
+    match checkout(
         &repo_path,
         &reference,
         Some(force != 0),
         Some(no_update_head != 0),
-    )
-    .is_ok()
-    {
-        0
-    } else {
-        -1
+    ) {
+        Ok(()) => 0,
+        Err(err) => {
+            set_last_error(err);
+            -1
+        }
     }
 }
 
