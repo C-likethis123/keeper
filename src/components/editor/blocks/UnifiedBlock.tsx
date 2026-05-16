@@ -538,6 +538,7 @@ export function UnifiedBlock({
           style={[
             { flex: 1 },
             applyListStyles && { marginLeft: (getListLevel(block) + 1) * 16 },
+            isFocused && block.content === "" && { minHeight: textStyle.lineHeight ?? 24 },
           ]}
           pointerEvents="box-none"
         >
@@ -557,7 +558,7 @@ export function UnifiedBlock({
             spellCheck={false}
             autoComplete="off"
             placeholderTextColor={theme.custom.editor.placeholder}
-            textAlignVertical={applyListStyles ? undefined : "top"}
+            textAlignVertical="top"
           />
           {/* Always rendered to provide layout height for the absolutely-
               positioned TextInput; hidden when focused so the textarea shows. */}

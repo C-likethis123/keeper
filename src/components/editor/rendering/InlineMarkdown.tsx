@@ -110,12 +110,8 @@ export function InlineMarkdown({
 		);
 	}
 
-	const minHeight =
-		typeof style?.lineHeight === "number"
-			? style.lineHeight
-			: typeof style?.fontSize === "number"
-				? style.fontSize
-				: undefined;
+	const hasContent = elements.length > 0;
+	const minHeight = hasContent ? style?.lineHeight ?? style?.fontSize : undefined;
 
 	return (
 		<View
@@ -126,7 +122,7 @@ export function InlineMarkdown({
 				...(minHeight !== undefined ? { minHeight } : {}),
 			}}
 		>
-			{elements.length > 0 ? elements : <Text style={style}>{"\u200B"}</Text>}
+			{hasContent ? elements : null}
 		</View>
 	);
 }

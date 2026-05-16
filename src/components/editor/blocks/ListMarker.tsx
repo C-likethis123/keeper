@@ -85,7 +85,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		checkbox: {
 			borderRadius: 3,
 			borderWidth: 1.5,
-			lineHeight,
 			height: fontSize,
 			width: fontSize,
 			borderColor: theme.colors.primary,
