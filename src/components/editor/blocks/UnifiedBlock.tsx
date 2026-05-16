@@ -9,7 +9,6 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useState,
   useMemo,
   useRef,
 } from "react";
@@ -484,7 +483,6 @@ export function UnifiedBlock({
         return styles.bodyStyle;
     }
   }, [block.type, styles]);
-  const [numberOfLines, setNumberOfLines] = useState(1);
   const textInputStyle = [
     styles.input,
     textStyle,
@@ -552,19 +550,8 @@ export function UnifiedBlock({
             onBlur={handleBlur}
             onKeyPress={handleKeyPress}
             onSelectionChange={handleSelectionChange}
-            onContentSizeChange={(event) => {
-              const next = Math.max(
-                1,
-                Math.round(
-                  event.nativeEvent.contentSize.height / textStyle.lineHeight!,
-                ),
-              );
-              setNumberOfLines((prev) => (prev === next ? prev : next));
-            }}
-            numberOfLines={numberOfLines}
             multiline
             scrollEnabled={false}
-            autoGrow
             autoCapitalize="none"
             autoCorrect={false}
             spellCheck={false}
