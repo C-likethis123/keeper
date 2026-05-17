@@ -44,10 +44,10 @@ Keeper is a cross-platform block-based markdown note editor (iOS/Android/web/des
 
 1. **Screens** (`app/`) — expo-router file-based routing. `index.tsx` = note grid, `editor.tsx` = editor screen, `_layout.tsx` = app initialization + git setup.
 
-2. **Components** (`components/`) — UI layer. `NoteEditorView.tsx` is the main editor container combining `EditorToolbar` + `HybridEditor`.
+2. **Components** (`components/`) — UI layer. `NoteEditorView.tsx` is the main editor container combining `EditorToolbar` + `DomEditor`.
 
 3. **State** (`stores/`) — Two Zustand stores:
-   - `editorStore.ts` — All editor operations (document, selection, block manipulation, undo/redo). Backed by `editorReducer` (pure function) and `History` singleton.
+   - `editorStore.ts` — All editor operations (document, selection, block manipulation, undo/redo). Backed by `editorReducer` (pure function) and `History` singleton. Note: In the unified editor architecture, this store exists in both the native context (for persistence/auto-save) and the DOM component context (for editing).
    - `toastStore.ts` — Toast notifications with auto-dismiss.
 
 4. **Hooks** (`hooks/`) — Business logic: `useAutoSave` (2s debounce), `useNotes` (paginated listing), `useLoadNote`, `useToolbarActions`, `useFocusBlock`. Wiki link autocomplete state lives in `WikiLinkProvider` / `useWikiLinkContext` (editor/wikilinks).
