@@ -56,7 +56,8 @@ export function useToolbarActions(): UseToolbarActions {
 		const block = document.blocks[index];
 		if (block.type === BlockType.checkboxList) return;
 		updateBlockType(index, BlockType.checkboxList);
-		focusBlock(index);
+		// Force focus after a short tick to allow the state update to settle
+		setTimeout(() => focusBlock(index), 0);
 	}, [document, getFocusedBlockIndex, updateBlockType, focusBlock]);
 
 	const handleInsertImage = useCallback(async () => {

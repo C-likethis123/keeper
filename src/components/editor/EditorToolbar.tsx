@@ -60,7 +60,6 @@ export function EditorToolbar({
   const {
     handleOutdent,
     handleIndent,
-    handleConvertToCheckbox,
     handleInsertImage,
     handleInsertCollapsible,
   } = useToolbarActions();
@@ -69,8 +68,6 @@ export function EditorToolbar({
 
   const canOutdent = isListBlock;
   const canIndent = isListBlock && listLevel >= 0;
-  const canConvertToCheckbox =
-    blockType != null && blockType !== BlockType.checkboxList;
   const canAttachDocument = onAttachDocument != null;
   const canShowAttachment = onShowAttachment != null;
   const canHideAttachment = onHideAttachment != null;
@@ -98,11 +95,6 @@ export function EditorToolbar({
         name="dedent"
         onPress={handleOutdent}
         disabled={!canOutdent}
-      />
-      <IconButton
-        name="square-o"
-        onPress={handleConvertToCheckbox}
-        disabled={!canConvertToCheckbox}
       />
       <IconButton name="angle-down" onPress={handleInsertCollapsible} />
       <IconButton name="image" onPress={handleInsertImage} />
