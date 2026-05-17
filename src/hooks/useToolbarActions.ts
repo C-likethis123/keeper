@@ -6,7 +6,7 @@ import {
 import { executeEditorCommand } from "@/components/editor/keyboard/editorCommands";
 import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
 import { useEditorState } from "@/stores/editorStore";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import { useFocusBlock } from "./useFocusBlock";
 
@@ -24,12 +24,23 @@ export function useToolbarActions(): UseToolbarActions {
 	const updateBlockAttributes = useEditorState((s) => s.updateBlockAttributes);
 	const document = useEditorState((s) => s.document);
 	const insertBlockAfter = useEditorState((s) => s.insertBlockAfter);
+	const selection = useEditorState((s) => s.selection);
 	const { focusBlock } = useFocusBlock();
 	const commandContext = useEditorCommandContext({
 		isEditorActive: true,
 		isWikiLinkModalOpen: false,
 		dismissOverlays: () => false,
 	});
+
+	// Persists the last focused block index across blur events so toolbar
+	// actions still work after the editor loses focus on button press.
+	const lastFocusedBlockIndexRef = useRef<number | null>(null);
+	useEffect(() => {
+		const index = selection?.focus.blockIndex ?? null;
+		if (index !== null) {
+			lastFocusedBlockIndexRef.current = index;
+		}
+	}, [selection]);
 
 	const handleIndent = useCallback(() => {
 		executeEditorCommand("indentListItem", commandContext);
@@ -40,7 +51,7 @@ export function useToolbarActions(): UseToolbarActions {
 	}, [commandContext]);
 
 	const handleConvertToCheckbox = useCallback(() => {
-		const index = getFocusedBlockIndex();
+		const index = getFocusedBlockIndex() ?? lastFocusedBlockIndexRef.current;
 		if (index === null) return;
 		const block = document.blocks[index];
 		if (block.type === BlockType.checkboxList) return;

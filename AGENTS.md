@@ -1,6 +1,7 @@
 # AGENTS.md
 
 This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+Use serena MCP when searching in the codebase or trying to apply changes to code.
 
 ## Commands
 
@@ -10,15 +11,11 @@ npm start             # Start Expo/metro dev server
 
 # Mobile
 npm run android       # Prod Android: prebuild → Rust bridge → release APK → install
-npm run android:dev   # Dev Android: prebuild (dev variant) → Rust bridge → debug APK → install → metro
-npm run ios           # Run iOS via Expo CLI
-
 # Desktop (requires Rust + Xcode CLT)
 npm run desktop       # Start Tauri desktop window
 npm run build:desktop # Build production desktop app → src-tauri/target/release/
 
 # Utilities
-npm run build:mobile-git  # Rebuild Rust git bridge (all platforms)
 npm test                  # Test unit suite
 npm run lint              # Biome linter
 npm run lint:fix          # Auto-fix lint issues

@@ -18,7 +18,11 @@ export class UpdateBlockTypeOperation implements Operation {
 		const block = document.blocks[this.blockIndex];
 		let attributes = { ...block.attributes };
 		if (this.newType === BlockType.checkboxList) {
-			attributes = { ...attributes, checked: !!block.attributes?.checked };
+			attributes = { 
+				...attributes, 
+				checked: !!block.attributes?.checked,
+				listLevel: block.attributes?.listLevel ?? 0 
+			};
 		}
 		if (this.newLanguage !== undefined) {
 			attributes = { ...attributes, language: this.newLanguage };
