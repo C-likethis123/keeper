@@ -12,6 +12,7 @@ import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useFocusBlock } from "@/hooks/useFocusBlock";
+import { useNoteEditorLayout } from "@/hooks/useNoteEditorLayout";
 import { useRelatedNotes } from "@/hooks/useRelatedNotes";
 import { useStyles } from "@/hooks/useStyles";
 import { GitService } from "@/services/git/gitService";
@@ -28,7 +29,6 @@ import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { showToast } from "@/services/toast";
 import { type EditorState, useEditorState } from "@/stores/editorStore";
 import { useTabStore } from "@/stores/tabStore";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import React, {
 	useCallback,
@@ -38,36 +38,13 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import {
-	PanResponder,
-	Platform,
-	StyleSheet,
-	Text,
-	View,
-	useColorScheme,
-	useWindowDimensions,
-} from "react-native";
+import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 import AttachVideoModal from "./AttachVideoModal";
 import DomEditor from "./editor/DomEditor";
 import { EditorScrollProvider } from "./editor/EditorScrollContext";
 import { EditorToolbar } from "./editor/EditorToolbar";
 import { DocumentPanel } from "./editor/document/DocumentPanel";
 import VideoSplitPanel from "./editor/video/VideoSplitPanel";
-
-const SPLIT_RATIO_KEY = "doc-split-ratio";
-
-function getInitialActivePanel(
-	attachment: Note["attachment"],
-	attachedVideo: Note["attachedVideo"],
-): "document" | "video" {
-	if (attachedVideo) {
-		return "video";
-	}
-	if (attachment) {
-		return "document";
-	}
-	return "video";
-}
 
 export default function NoteEditorView({
 	note,
@@ -88,8 +65,16 @@ export default function NoteEditorView({
 		note.noteType === "todo" ? (note.status ?? "open") : undefined,
 	);
 	const [lastCommand, setLastCommand] = useState<
-		{ type: string; payload?: any; timestamp: number } | undefined
+		| { type: string; payload?: Record<string, unknown>; timestamp: number }
+		| undefined
 	>();
+
+	const sendCommand = useCallback(
+		(type: string, payload?: Record<string, unknown>) => {
+			setLastCommand({ type, payload, timestamp: Date.now() });
+		},
+		[],
+	);
 
 	const { updateTabTitle, tabs, closeTab, activeTabId } = useTabStore();
 	const tab = tabs.find((t) => t.noteId === id);
@@ -167,6 +152,15 @@ export default function NoteEditorView({
 		}
 	}, [tab, title, updateTabTitle]);
 
+	const {
+		activePanel,
+		setActivePanel,
+		toggleActivePanel,
+		splitRatio,
+		panResponder,
+		isDesktop,
+	} = useNoteEditorLayout(note);
+
 	const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
 	const [showRelatedNotes, setShowRelatedNotes] = useState(false);
 	const {
@@ -174,8 +168,6 @@ export default function NoteEditorView({
 		outgoing,
 		loading: relatedNotesLoading,
 	} = useRelatedNotes(id);
-	const { width: windowWidth } = useWindowDimensions();
-	const isDesktop = Platform.OS === "web";
 
 	const [attachmentPath, setAttachmentPath] = useState<string | null>(
 		note.attachment ?? null,
@@ -192,41 +184,7 @@ export default function NoteEditorView({
 	const [isVideoVisible, setIsVideoVisible] = useState<boolean>(
 		!!note.attachedVideo,
 	);
-	const [activePanel, setActivePanel] = useState<"document" | "video">(
-		getInitialActivePanel(note.attachment, note.attachedVideo),
-	);
 	const [isShowVideoModalVisible, setIsShowVideoModalVisible] = useState(false);
-	const [splitRatio, setSplitRatio] = useState(isDesktop ? 0.5 : 0.4);
-
-	useEffect(() => {
-		AsyncStorage.getItem(SPLIT_RATIO_KEY).then((val) => {
-			if (val) setSplitRatio(Number.parseFloat(val));
-		});
-	}, []);
-
-	const panResponder = useMemo(
-		() =>
-			PanResponder.create({
-				onMoveShouldSetPanResponder: () => true,
-				onPanResponderMove: (_, gestureState) => {
-					const delta = isDesktop
-						? gestureState.dx / windowWidth
-						: gestureState.dy / (windowWidth * (9 / 16));
-					setSplitRatio((r) => Math.min(0.75, Math.max(0.25, r + delta)));
-				},
-				onPanResponderRelease: (_, gestureState) => {
-					const delta = isDesktop
-						? gestureState.dx / windowWidth
-						: gestureState.dy / (windowWidth * (9 / 16));
-					setSplitRatio((r) => {
-						const next = Math.min(0.75, Math.max(0.25, r + delta));
-						AsyncStorage.setItem(SPLIT_RATIO_KEY, String(next));
-						return next;
-					});
-				},
-			}),
-		[isDesktop, windowWidth],
-	);
 	const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
 	const loadedNoteIdRef = useRef<string | null>(null);
 	const [noteType, setNoteType] = useState<Note["noteType"]>(() =>
@@ -315,9 +273,6 @@ export default function NoteEditorView({
 			setIsAttachmentVisible(!!note.attachment);
 			setAttachedVideo(note.attachedVideo);
 			setIsVideoVisible(!!note.attachedVideo);
-			setActivePanel(
-				getInitialActivePanel(note.attachment, note.attachedVideo),
-			);
 
 			if (loadedNoteIdRef.current !== note.id) {
 				loadedNoteIdRef.current = note.id;
@@ -439,7 +394,7 @@ export default function NoteEditorView({
 			setActivePanel("video");
 			setIsShowVideoModalVisible(false);
 		},
-		[persistCurrentEntry],
+		[persistCurrentEntry, setActivePanel],
 	);
 
 	const handleRemoveVideo = useCallback(async () => {
@@ -485,18 +440,6 @@ export default function NoteEditorView({
 		useEditorState.getState().loadMarkdown(newContent);
 	}, []);
 
-	const handleToolbarUndo = useCallback(() => {
-		setLastCommand({ type: "undo", timestamp: Date.now() });
-	}, []);
-	const handleToolbarRedo = useCallback(() => {
-		setLastCommand({ type: "redo", timestamp: Date.now() });
-	}, []);
-	const handleToolbarIndent = useCallback(() => {
-		setLastCommand({ type: "indent", timestamp: Date.now() });
-	}, []);
-	const handleToolbarOutdent = useCallback(() => {
-		setLastCommand({ type: "outdent", timestamp: Date.now() });
-	}, []);
 	const handleToolbarInsertImage = useCallback(async () => {
 		let path: string | null = null;
 		if (Platform.OS === "web") {
@@ -540,23 +483,16 @@ export default function NoteEditorView({
 			);
 		}
 		if (path) {
-			setLastCommand({
-				type: "insertBlock",
-				payload: { block: createImageBlock(path) },
-				timestamp: Date.now(),
-			});
+			sendCommand("insertBlock", { block: createImageBlock(path) });
 		}
-	}, []);
+	}, [sendCommand]);
+
 	const handleToolbarInsertCollapsible = useCallback(() => {
-		setLastCommand({
-			type: "updateType",
-			payload: {
-				type: BlockType.collapsibleBlock,
-				attributes: { summary: "", isExpanded: true },
-			},
-			timestamp: Date.now(),
+		sendCommand("updateType", {
+			type: BlockType.collapsibleBlock,
+			attributes: { summary: "", isExpanded: true },
 		});
-	}, []);
+	}, [sendCommand]);
 
 	const hasDocAttachment = attachmentPath !== null && attachmentType !== null;
 	const showSplit =
@@ -655,13 +591,11 @@ export default function NoteEditorView({
 							onToggleRelatedNotes={() => setShowRelatedNotes((v) => !v)}
 							onShowVideoModal={() => setIsShowVideoModalVisible(true)}
 							attachedVideo={attachedVideo}
-							onToggleActivePanel={() =>
-								setActivePanel(activePanel === "video" ? "document" : "video")
-							}
-							onUndo={handleToolbarUndo}
-							onRedo={handleToolbarRedo}
-							onIndent={handleToolbarIndent}
-							onOutdent={handleToolbarOutdent}
+							onToggleActivePanel={toggleActivePanel}
+							onUndo={() => sendCommand("undo")}
+							onRedo={() => sendCommand("redo")}
+							onIndent={() => sendCommand("indent")}
+							onOutdent={() => sendCommand("outdent")}
 							onInsertImage={handleToolbarInsertImage}
 							onInsertCollapsible={handleToolbarInsertCollapsible}
 						/>

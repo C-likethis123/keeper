@@ -9,13 +9,14 @@ import { StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { EditorScrollProvider } from "./EditorScrollContext";
 import { HybridEditor } from "./HybridEditor";
+import type { BlockNode, BlockType } from "./core/BlockNode";
 
 import { executeEditorCommand } from "./keyboard/editorCommands";
 import { useEditorCommandContext } from "./keyboard/useEditorCommandContext";
 
 interface Command {
 	type: string;
-	payload?: any;
+	payload?: Record<string, unknown>;
 	timestamp: number;
 }
 
@@ -49,18 +50,15 @@ export default function DomEditor({
 		dismissOverlays: () => false,
 	});
 
-	const loadedRef = useRef(false);
-	const lastReportedMarkdownRef = useRef(markdown);
+	const lastReportedMarkdownRef = useRef<string | null>(null);
 
 	// Sync initial content or external updates
 	useEffect(() => {
 		if (
-			!loadedRef.current ||
-			(markdown !== lastReportedMarkdownRef.current &&
-				markdown !== getContent())
+			markdown !== lastReportedMarkdownRef.current &&
+			markdown !== getContent()
 		) {
 			loadMarkdown(markdown);
-			loadedRef.current = true;
 			lastReportedMarkdownRef.current = markdown;
 		}
 	}, [markdown, loadMarkdown, getContent]);
@@ -69,7 +67,11 @@ export default function DomEditor({
 	useEffect(() => {
 		if (!command) return;
 
-		switch (command.type) {
+		const { type, payload } = command;
+		const state = useEditorState.getState();
+		const getFocusedIndex = () => state.getFocusedBlockIndex() ?? 0;
+
+		switch (type) {
 			case "undo":
 				executeEditorCommand("undo", commandContext);
 				break;
@@ -83,23 +85,23 @@ export default function DomEditor({
 				executeEditorCommand("outdentListItem", commandContext);
 				break;
 			case "insertBlock":
-				if (command.payload?.block) {
-					const state = useEditorState.getState();
-					const index = state.getFocusedBlockIndex() ?? 0;
-					state.insertBlockAfter(index, command.payload.block);
+				if (payload?.block) {
+					state.insertBlockAfter(getFocusedIndex(), payload.block as BlockNode);
 				}
 				break;
 			case "updateType":
-				if (command.payload?.type) {
-					const state = useEditorState.getState();
-					const index = state.getFocusedBlockIndex() ?? 0;
+				if (payload?.type) {
+					const index = getFocusedIndex();
 					state.updateBlockType(
 						index,
-						command.payload.type,
-						command.payload.language,
+						payload.type as BlockType,
+						payload.language as string,
 					);
-					if (command.payload.attributes) {
-						state.updateBlockAttributes(index, command.payload.attributes);
+					if (payload.attributes) {
+						state.updateBlockAttributes(
+							index,
+							payload.attributes as Record<string, unknown>,
+						);
 					}
 				}
 				break;
