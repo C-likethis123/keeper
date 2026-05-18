@@ -72,7 +72,6 @@ describe("runStartupStrategy", () => {
 		expect(mockInitializeGitStep).toHaveBeenCalledWith(
 			{
 				backgroundMode: true,
-				showToast: context.showToast,
 				setInitError: context.setInitError,
 			},
 			expect.any(Object),
@@ -96,7 +95,6 @@ describe("runStartupStrategy", () => {
 		expect(mockInitializeGitStep).toHaveBeenCalledWith(
 			{
 				backgroundMode: false,
-				showToast: context.showToast,
 				setInitError: context.setInitError,
 			},
 			expect.any(Object),
@@ -117,7 +115,6 @@ describe("runStartupStrategy", () => {
 
 		expect(mockInitializeUnsupportedRuntimeStep).toHaveBeenCalledWith(
 			context.runtimeSupport,
-			context.showToast,
 			expect.any(Object),
 		);
 		expect(context.setHydrated).toHaveBeenCalledTimes(1);

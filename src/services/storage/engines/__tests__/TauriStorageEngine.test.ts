@@ -72,7 +72,10 @@ describe("TauriStorageEngine", () => {
 				isPinned: true,
 				noteType: "template",
 				status: null,
+				createdAt: undefined,
+				completedAt: undefined,
 				attachment: null,
+				attachedVideo: null,
 				modified: result.modified,
 			},
 		});

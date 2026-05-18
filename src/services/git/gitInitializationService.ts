@@ -218,8 +218,9 @@ export class GitInitializationService {
 			if (hasPendingJournal) {
 				await GitService.prepareRecoveryForRemoteSync();
 			}
-			const syncResult =
-				await dependencies.remoteSyncService.syncWithRemote(telemetry);
+			const syncResult = await GitService.withGitLock(() =>
+				dependencies.remoteSyncService.syncWithRemote(telemetry),
+			);
 			this.applySyncMetrics(metrics, syncResult.metrics);
 
 			if (syncResult.success) {

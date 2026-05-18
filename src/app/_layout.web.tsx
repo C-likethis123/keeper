@@ -8,12 +8,15 @@ import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppStartup } from "@/hooks/useAppStartup";
 import { useConflictResolution } from "@/hooks/useConflictResolution";
 import { useStyles } from "@/hooks/useStyles";
+import { GitService } from "@/services/git/gitService";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
+import { getTauriInvoke } from "@/services/storage/runtime";
 import { ThemeProvider } from "@react-navigation/native";
 import { Drawer } from "expo-router/drawer";
 import { useEffect } from "react";
 import {
 	ActivityIndicator,
+	Platform,
 	StyleSheet,
 	Text,
 	View,
@@ -28,6 +31,40 @@ traceStartupBootstrapEvent("bootstrap.layout_module_evaluated");
 export default function RootLayout() {
 	useEffect(() => {
 		traceStartupBootstrapEvent("bootstrap.root_layout_first_render");
+
+		// Tauri desktop: handle window close to flush pending git changes
+		if (Platform.OS === "web" && getTauriInvoke() !== null) {
+			let unlisten: (() => void) | null = null;
+			import("@tauri-apps/api/window")
+				.then(({ getCurrentWindow }) => {
+					return getCurrentWindow().onCloseRequested(async (event) => {
+						// Prevent immediate close
+						event.preventDefault();
+						try {
+							// Trigger a flush with a reasonable timeout
+							await GitService.flushPendingChanges({
+								reason: "app-background",
+								timeoutMs: 5000,
+							});
+						} catch (e) {
+							console.warn("[Tauri] Failed to flush on close:", e);
+						} finally {
+							// Actually close the window
+							getCurrentWindow().close();
+						}
+					});
+				})
+				.then((u) => {
+					unlisten = u;
+				})
+				.catch((err) => {
+					console.warn("[Tauri] Failed to setup close listener:", err);
+				});
+
+			return () => {
+				if (unlisten) unlisten();
+			};
+		}
 	}, []);
 	const themeMode = useColorScheme();
 	const { isHydrated, initError } = useAppStartup();

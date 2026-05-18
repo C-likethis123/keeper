@@ -45,12 +45,63 @@ export class GitService {
 	private static backgroundCommitPromise: Promise<void> | null = null;
 	private static reconcileHandler: (() => Promise<void>) | null = null;
 
+	// Queues to prevent race conditions
+	private static journalQueue: Promise<void> = Promise.resolve();
+	private static gitMutex: Promise<void> = Promise.resolve();
+
 	private appStateSubscription: NativeEventSubscription | null = null;
 
 	private constructor() {
 		this.appStateSubscription = AppState.addEventListener(
 			"change",
 			this.handleAppStateChange,
+		);
+	}
+
+	/**
+	 * Executes a task sequentially using a given queue promise to prevent race conditions.
+	 */
+	private static async serialize<T>(
+		queuePromise: Promise<void>,
+		updateQueue: (next: Promise<void>) => void,
+		task: () => Promise<T>,
+	): Promise<T> {
+		const result = (async () => {
+			await queuePromise;
+			return task();
+		})();
+		updateQueue(
+			result.then(
+				() => {},
+				() => {},
+			),
+		);
+		return result;
+	}
+
+	/**
+	 * Executes a journal operation sequentially to prevent data loss from concurrent R-M-W.
+	 */
+	private static async enqueueJournalTask<T>(task: () => Promise<T>): Promise<T> {
+		return GitService.serialize(
+			GitService.journalQueue,
+			(next) => {
+				GitService.journalQueue = next;
+			},
+			task,
+		);
+	}
+
+	/**
+	 * Executes a Git operation under a global mutex to prevent branch-switching races.
+	 */
+	static async withGitLock<T>(task: () => Promise<T>): Promise<T> {
+		return GitService.serialize(
+			GitService.gitMutex,
+			(next) => {
+				GitService.gitMutex = next;
+			},
+			task,
 		);
 	}
 
@@ -71,60 +122,26 @@ export class GitService {
 		operation: GitJournalOperation,
 		note?: GitJournalEntry["note"],
 	): Promise<void> {
-		if (!filePath) {
-			return;
-		}
+		if (!filePath) return;
 
-		const journal = await GitService.stateStore.readPendingJournal();
-		const queue = new Map(
-			journal.map((entry) => [entry.filePath, entry] as const),
-		);
-		const previous = queue.get(filePath);
+		return GitService.enqueueJournalTask(async () => {
+			const journal = await GitService.stateStore.readPendingJournal();
+			const queue = new Map(journal.map((e) => [e.filePath, e] as const));
+			const previous = queue.get(filePath);
 
-		if (!previous) {
-			queue.set(filePath, {
-				filePath,
-				operation,
-				note,
-				updatedAt: Date.now(),
-			});
+			// Logic to collapse redundant operations
+			if (previous?.operation === "add" && operation === "modify") {
+				queue.set(filePath, { ...previous, note, updatedAt: Date.now() });
+			} else if (previous?.operation === "add" && operation === "delete") {
+				queue.delete(filePath);
+			} else if (previous?.operation === "modify" && operation === "delete") {
+				queue.set(filePath, { filePath, operation: "delete", updatedAt: Date.now() });
+			} else {
+				queue.set(filePath, { filePath, operation, note, updatedAt: Date.now() });
+			}
+
 			await GitService.persistQueue(queue);
-			return;
-		}
-
-		if (previous.operation === "add" && operation === "modify") {
-			queue.set(filePath, {
-				...previous,
-				note,
-				updatedAt: Date.now(),
-			});
-			await GitService.persistQueue(queue);
-			return;
-		}
-
-		if (previous.operation === "modify" && operation === "delete") {
-			queue.set(filePath, {
-				filePath,
-				operation: "delete",
-				updatedAt: Date.now(),
-			});
-			await GitService.persistQueue(queue);
-			return;
-		}
-
-		if (previous.operation === "add" && operation === "delete") {
-			queue.delete(filePath);
-			await GitService.persistQueue(queue);
-			return;
-		}
-
-		queue.set(filePath, {
-			filePath,
-			operation,
-			note,
-			updatedAt: Date.now(),
 		});
-		await GitService.persistQueue(queue);
 	}
 
 	static clearQueuedChanges(): void {
@@ -132,11 +149,13 @@ export class GitService {
 	}
 
 	static async clearQueuedChangesAsync(): Promise<void> {
-		if (GitService.commitTimeout) {
-			clearTimeout(GitService.commitTimeout);
-			GitService.commitTimeout = null;
-		}
-		await GitService.stateStore.writePendingJournal([]);
+		return GitService.enqueueJournalTask(async () => {
+			if (GitService.commitTimeout) {
+				clearTimeout(GitService.commitTimeout);
+				GitService.commitTimeout = null;
+			}
+			await GitService.stateStore.writePendingJournal([]);
+		});
 	}
 
 	static scheduleCommitBatch(delayMs = COMMIT_DEBOUNCE_MS): void {
@@ -269,52 +288,56 @@ export class GitService {
 	}
 
 	static async prepareRecoveryForRemoteSync(): Promise<void> {
-		const journal = await GitService.stateStore.readPendingJournal();
-		if (journal.length === 0) {
-			return;
-		}
+		return GitService.withGitLock(async () => {
+			const journal = await GitService.stateStore.readPendingJournal();
+			if (journal.length === 0) {
+				return;
+			}
 
-		const gitEngine = GitService.ensureGitEngine();
-		await gitEngine.checkout(NOTES_ROOT, "HEAD", {
-			noUpdateHead: true,
-			force: true,
+			const gitEngine = GitService.ensureGitEngine();
+			await gitEngine.checkout(NOTES_ROOT, "HEAD", {
+				noUpdateHead: true,
+				force: true,
+			});
 		});
 	}
 
 	static async restorePendingChangesFromJournal(): Promise<boolean> {
-		const journal = await GitService.stateStore.readPendingJournal();
-		if (journal.length === 0) {
-			return false;
-		}
+		return GitService.enqueueJournalTask(async () => {
+			const journal = await GitService.stateStore.readPendingJournal();
+			if (journal.length === 0) {
+				return false;
+			}
 
-		let restored = false;
-		for (const entry of journal) {
-			if (entry.operation === "delete") {
-				const noteId = entry.filePath.replace(/\.md$/, "");
-				await storageEngine.deleteNote(noteId);
-				await NotesIndexService.deleteNote(noteId);
+			let restored = false;
+			for (const entry of journal) {
+				if (entry.operation === "delete") {
+					const noteId = entry.filePath.replace(/\.md$/, "");
+					await storageEngine.deleteNote(noteId);
+					await NotesIndexService.deleteNote(noteId);
+					restored = true;
+					continue;
+				}
+
+				if (!entry.note) {
+					continue;
+				}
+
+				const saved = await storageEngine.saveNote(entry.note);
+				await NotesIndexService.upsertNote({
+					noteId: saved.id,
+					summary: extractSummary(saved.content),
+					title: saved.title,
+					isPinned: saved.isPinned,
+					updatedAt: saved.lastUpdated,
+					noteType: saved.noteType,
+					status: saved.status ?? null,
+				});
 				restored = true;
-				continue;
 			}
 
-			if (!entry.note) {
-				continue;
-			}
-
-			const saved = await storageEngine.saveNote(entry.note);
-			await NotesIndexService.upsertNote({
-				noteId: saved.id,
-				summary: extractSummary(saved.content),
-				title: saved.title,
-				isPinned: saved.isPinned,
-				updatedAt: saved.lastUpdated,
-				noteType: saved.noteType,
-				status: saved.status ?? null,
-			});
-			restored = true;
-		}
-
-		return restored;
+			return restored;
+		});
 	}
 
 	static async recoverPendingChanges(): Promise<GitFlushResult> {
@@ -339,95 +362,79 @@ export class GitService {
 		message?: string,
 		recovery = false,
 	): Promise<GitFlushResult> {
-		if (GitService.commitTimeout) {
-			clearTimeout(GitService.commitTimeout);
-			GitService.commitTimeout = null;
-		}
-		const snapshot = await GitService.stateStore.readPendingJournal();
-		if (snapshot.length === 0) {
-			return {
-				success: true,
-				didCommit: false,
-				didPush: false,
-				didRecover: false,
-			};
-		}
-		let didCommit = false;
+		return GitService.withGitLock(async () => {
+			if (GitService.commitTimeout) {
+				clearTimeout(GitService.commitTimeout);
+				GitService.commitTimeout = null;
+			}
 
-		try {
-			const gitEngine = GitService.ensureGitEngine();
-			const status = await gitEngine.status(NOTES_ROOT);
-			if (status.length > 0) {
-				// Export feedback before committing
-				try {
-					await exportFeedbackToFile();
-				} catch (error) {
-					console.warn("[GitService] Failed to export feedback:", error);
+			const snapshot = await GitService.stateStore.readPendingJournal();
+			if (snapshot.length === 0) {
+				return { success: true, didCommit: false, didPush: false, didRecover: false };
+			}
+
+			let didCommit = false;
+			try {
+				const gitEngine = GitService.ensureGitEngine();
+				const status = await gitEngine.status(NOTES_ROOT);
+
+				if (status.length > 0) {
+					try {
+						await exportFeedbackToFile();
+					} catch (error) {
+						console.warn("[GitService] Failed to export feedback:", error);
+					}
+
+					await gitEngine.commit(NOTES_ROOT, GitService.generateCommitMessage(snapshot, message, recovery));
+					didCommit = true;
 				}
 
-				let commitMessage = message;
-				if (!commitMessage) {
-					if (recovery) {
-						// Check if we're recovering from an exit log
-						const exitLog = snapshot.find((e) => e.exitLog)?.exitLog;
-						if (exitLog) {
-							commitMessage = `Recover ${snapshot.length} file(s) from ${exitLog.reason} exit (auto-committed on restart)`;
-						} else {
-							commitMessage = `Recover pending local note changes (${snapshot.length} files)`;
-						}
-					} else {
-						commitMessage = `Update ${snapshot.length} file(s)`;
+				// Ensure HEAD is on the device branch before pushing
+				const deviceBranch = await GitService.stateStore.readDeviceBranch();
+				if (deviceBranch) {
+					const currentBranch = await gitEngine.currentBranch(NOTES_ROOT);
+					if (currentBranch !== deviceBranch) {
+						await gitEngine.checkout(NOTES_ROOT, deviceBranch);
 					}
 				}
-				await gitEngine.commit(NOTES_ROOT, commitMessage);
-				didCommit = true;
-			}
-			// Ensure HEAD is on the device branch before pushing
-			const deviceBranch = await GitService.stateStore.readDeviceBranch();
-			if (deviceBranch) {
-				const currentBranch = await gitEngine.currentBranch(NOTES_ROOT);
-				if (currentBranch !== deviceBranch) {
-					await gitEngine.checkout(NOTES_ROOT, deviceBranch);
+
+				await gitEngine.push(NOTES_ROOT);
+
+				if (GitService.reconcileHandler) {
+					void GitService.withGitLock(() =>
+						GitService.reconcileHandler!().catch((err) =>
+							console.warn("[GitService] Reconcile failed:", err),
+						),
+					);
 				}
+
+				const currentJournal = await GitService.stateStore.readPendingJournal();
+				const snapshotKeys = new Set(snapshot.map((e) => `${e.filePath}:${e.updatedAt}`));
+				const remaining = currentJournal.filter((entry) => !snapshotKeys.has(`${entry.filePath}:${entry.updatedAt}`));
+				await GitService.stateStore.writePendingJournal(remaining);
+
+				return { success: true, didCommit, didPush: true, didRecover: recovery };
+			} catch (error) {
+				const errorMsg = error instanceof Error ? error.message : String(error);
+				console.warn("[GitService] Commit/push batch failed:", error);
+				return { success: false, didCommit, didPush: false, error: errorMsg, didRecover: recovery };
 			}
+		});
+	}
 
-			await gitEngine.push(NOTES_ROOT);
+	private static generateCommitMessage(
+		snapshot: GitJournalEntry[],
+		message?: string,
+		recovery = false,
+	): string {
+		if (message) return message;
+		if (!recovery) return `Update ${snapshot.length} file(s)`;
 
-			// Fire-and-forget reconcile after a successful push
-			if (GitService.reconcileHandler) {
-				void GitService.reconcileHandler().catch((err) =>
-					console.warn("[GitService] Reconcile failed:", err),
-				);
-			}
-
-			// Safely clear only the entries we just processed
-			const currentJournal = await GitService.stateStore.readPendingJournal();
-			const snapshotKeys = new Set(
-				snapshot.map((e) => `${e.filePath}:${e.updatedAt}`),
-			);
-			const remaining = currentJournal.filter(
-				(entry) => !snapshotKeys.has(`${entry.filePath}:${entry.updatedAt}`),
-			);
-			await GitService.stateStore.writePendingJournal(remaining);
-
-			return {
-				success: true,
-				didCommit,
-				didPush: true,
-				didRecover: recovery,
-			};
-		} catch (error) {
-			const resolvedError =
-				error instanceof Error ? error.message : String(error);
-			console.warn("[GitService] Commit/push batch failed:", error);
-			return {
-				success: false,
-				didCommit,
-				didPush: false,
-				error: resolvedError,
-				didRecover: recovery,
-			};
+		const exitLog = snapshot.find((e) => e.exitLog)?.exitLog;
+		if (exitLog) {
+			return `Recover ${snapshot.length} file(s) from ${exitLog.reason} exit (auto-committed on restart)`;
 		}
+		return `Recover pending local note changes (${snapshot.length} files)`;
 	}
 
 	private static withTimeout<T>(
