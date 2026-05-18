@@ -10,7 +10,7 @@ npm install           # Install dependencies
 npm start             # Start Expo/metro dev server
 
 # Mobile
-npm run android       # Prod Android: prebuild → Rust bridge → release APK → install
+npm run build:android     # Prod Android: prebuild → Rust bridge → release APK → install
 # Desktop (requires Rust + Xcode CLT)
 npm run desktop       # Start Tauri desktop window
 npm run build:desktop # Build production desktop app → src-tauri/target/release/
@@ -29,7 +29,7 @@ Two separate apps with distinct bundle IDs coexist on the same device:
 
 | | Dev | Prod |
 |--|-----|------|
-| **Script** | `npm run android:dev` | `npm run android` |
+| **Script** | `npm run android:dev` | `npm run build:android` |
 | **App name** | Keeper (Dev) | Keeper |
 | **Bundle ID** | `com.clikethis123.keeper.dev` | `com.clikethis123.keeper` |
 | **JS source** | Metro server (hot reload) | Bundled in APK |
