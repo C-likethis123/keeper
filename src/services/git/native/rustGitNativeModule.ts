@@ -102,11 +102,7 @@ const nativeBridge: KeeperGitBridgeSpec | undefined = nativeBridgeRaw
 				parseMaybeJson<GitChangedPaths>(
 					await nativeBridgeRaw.changedMarkdownPaths(repoPath, fromOid, toOid),
 				),
-			changedPaths: async (
-				repoPath: string,
-				fromOid: string,
-				toOid: string,
-			) =>
+			changedPaths: async (repoPath: string, fromOid: string, toOid: string) =>
 				parseMaybeJson<GitChangedPaths>(
 					await nativeBridgeRaw.changedPaths(repoPath, fromOid, toOid),
 				),

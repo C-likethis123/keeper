@@ -90,11 +90,15 @@ export async function listAcceptedSuperClusters(): Promise<SuperClusterRow[]> {
 	return invoke<SuperClusterRow[]>("super_clusters_get_accepted");
 }
 
-export async function superClusterAccept(superClusterId: string): Promise<void> {
+export async function superClusterAccept(
+	superClusterId: string,
+): Promise<void> {
 	await invoke("super_clusters_accept", { superClusterId });
 }
 
-export async function superClusterDismiss(superClusterId: string): Promise<void> {
+export async function superClusterDismiss(
+	superClusterId: string,
+): Promise<void> {
 	await invoke("super_clusters_dismiss", { superClusterId });
 }
 

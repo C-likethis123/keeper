@@ -64,12 +64,12 @@ export class DefaultMainReconcileService implements MainReconcileService {
 
 			for (const branch of sortedBranches) {
 				const remoteRef = `origin/${branch}`;
-				
+
 				// Detect if the branch is stale (already merged into main)
 				// We can check if `main` is an ancestor of `remoteRef` or vice versa.
 				// For now, let's just use git's merge strategy.
 				// If a branch is entirely stale, git merge often results in a no-op (Already up-to-date).
-				
+
 				try {
 					await this.gitEngine.merge(NOTES_ROOT, {
 						ours: "main",

@@ -24,9 +24,9 @@ import type { NoteSection } from "@/services/notes/indexDb/types";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
+import { showToast } from "@/services/toast";
 import { useFilterStore } from "@/stores/filterStore";
 import { useStorageStore } from "@/stores/storageStore";
-import { showToast } from "@/services/toast";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
 import { router, useFocusEffect, useNavigation } from "expo-router";
@@ -38,7 +38,13 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { Alert, Platform, StyleSheet, type TextInput, View } from "react-native";
+import {
+	Alert,
+	Platform,
+	StyleSheet,
+	type TextInput,
+	View,
+} from "react-native";
 
 const LazyNoteGrid = React.lazy(() => import("@/components/NoteGrid"));
 
@@ -163,7 +169,9 @@ function IndexContent() {
 		async (noteId: string) => {
 			if (!addNoteTarget?.clusterId) return;
 			await clusterAddNote(addNoteTarget.clusterId, noteId);
-			logFeedback(addNoteTarget.clusterId, "add_note", { noteId }).catch(() => {});
+			logFeedback(addNoteTarget.clusterId, "add_note", { noteId }).catch(
+				() => {},
+			);
 			setAddNoteTarget(null);
 			bumpContentVersion();
 			await handleRefresh();
@@ -184,7 +192,9 @@ function IndexContent() {
 				await handleRefresh();
 			};
 			if (Platform.OS === "web") {
-				if (window.confirm(`Delete "${section.title}"? This cannot be undone.`)) {
+				if (
+					window.confirm(`Delete "${section.title}"? This cannot be undone.`)
+				) {
 					void confirmDelete();
 				}
 			} else {

@@ -1,7 +1,9 @@
 import { ConflictDetectionService } from "../conflictDetectionService";
 import type { GitConflictFile, GitEngine } from "../engines/GitEngine";
 
-function makeConflictFile(overrides?: Partial<GitConflictFile>): GitConflictFile {
+function makeConflictFile(
+	overrides?: Partial<GitConflictFile>,
+): GitConflictFile {
 	return {
 		path: overrides?.path ?? "test.md",
 		baseContent: overrides?.baseContent ?? null,

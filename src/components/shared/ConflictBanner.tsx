@@ -9,11 +9,8 @@ interface ConflictBannerProps {
 
 export default function ConflictBanner({ onPress }: ConflictBannerProps) {
 	const styles = useStyles(createStyles);
-	const {
-		hasUnresolvedConflicts,
-		unresolvedCount,
-		showConflictModal,
-	} = useConflictResolution();
+	const { hasUnresolvedConflicts, unresolvedCount, showConflictModal } =
+		useConflictResolution();
 
 	if (!hasUnresolvedConflicts) {
 		return null;

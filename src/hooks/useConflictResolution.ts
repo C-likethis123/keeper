@@ -1,5 +1,5 @@
-import type { GitConflictFile } from "@/services/git/engines/GitEngine";
 import { ConflictDetectionService } from "@/services/git/conflictDetectionService";
+import type { GitConflictFile } from "@/services/git/engines/GitEngine";
 import { getGitEngine } from "@/services/git/gitEngine";
 import { useConflictStore } from "@/stores/conflictStore";
 
@@ -16,7 +16,9 @@ export function useConflictResolution(): UseConflictResolutionReturn {
 	const conflictStore = useConflictStore();
 
 	return {
-		conflicts: conflictStore.conflicts.filter((c) => !c.resolved).map((c) => c.file),
+		conflicts: conflictStore.conflicts
+			.filter((c) => !c.resolved)
+			.map((c) => c.file),
 		isShowingModal: conflictStore.isShowingModal,
 		unresolvedCount: conflictStore.getUnresolvedCount(),
 		showConflictModal: conflictStore.showConflictModal,

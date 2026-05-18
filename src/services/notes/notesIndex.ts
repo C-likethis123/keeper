@@ -1,8 +1,8 @@
 import type { GitChangedPaths } from "@/services/git/engines/GitEngine";
 import { isIndexedNoteMarkdownPath } from "@/services/notes/templatePaths";
 import type { NoteListFilters } from "@/services/notes/types";
-import { Platform } from "react-native";
 import { storageEngine } from "@/services/storage/storageEngine";
+import { Platform } from "react-native";
 export { extractSummary } from "./indexDb/mapper";
 import { syncChanges } from "./indexDb/syncService";
 import type {

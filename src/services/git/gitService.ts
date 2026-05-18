@@ -155,9 +155,7 @@ export class GitService {
 		GitService.backgroundSaveHandler = handler;
 	}
 
-	static registerReconcileHandler(
-		handler: (() => Promise<void>) | null,
-	): void {
+	static registerReconcileHandler(handler: (() => Promise<void>) | null): void {
 		GitService.reconcileHandler = handler;
 	}
 

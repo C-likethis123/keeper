@@ -100,7 +100,8 @@ export default function NoteEditorScreen() {
 	const createAndOpenNote = useCreateAndOpenNote();
 
 	const handleCloseActiveTab = useCallback(() => {
-		const currentActiveId = activeTabId || tabs.find(t => t.noteId === noteId)?.id;
+		const currentActiveId =
+			activeTabId || tabs.find((t) => t.noteId === noteId)?.id;
 		if (!currentActiveId) return;
 
 		closeTab(currentActiveId);

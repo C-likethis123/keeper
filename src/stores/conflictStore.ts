@@ -45,7 +45,12 @@ export const useConflictStore = create<ConflictState>((set, get) => ({
 		set((state) => ({
 			conflicts: state.conflicts.map((c) =>
 				c.file.path === path
-					? { ...c, resolved: true, resolvedAt: Date.now(), resolutionStrategy: strategy }
+					? {
+							...c,
+							resolved: true,
+							resolvedAt: Date.now(),
+							resolutionStrategy: strategy,
+						}
 					: c,
 			),
 		})),

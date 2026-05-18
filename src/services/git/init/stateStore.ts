@@ -18,7 +18,11 @@ export class AsyncGitSyncStateStore implements GitSyncStateStore {
 		}
 	}
 
-	private async write(key: string, value: string, label: string): Promise<void> {
+	private async write(
+		key: string,
+		value: string,
+		label: string,
+	): Promise<void> {
 		try {
 			await AsyncStorage.setItem(key, value);
 		} catch (err) {
@@ -117,6 +121,10 @@ export class AsyncGitSyncStateStore implements GitSyncStateStore {
 	}
 
 	async writeLastReconciledMainOid(oid: string): Promise<void> {
-		return this.write(LAST_RECONCILED_MAIN_OID_KEY, oid, "lastReconciledMainOid");
+		return this.write(
+			LAST_RECONCILED_MAIN_OID_KEY,
+			oid,
+			"lastReconciledMainOid",
+		);
 	}
 }

@@ -111,7 +111,9 @@ export function InlineMarkdown({
 	}
 
 	const hasContent = elements.length > 0;
-	const minHeight = hasContent ? style?.lineHeight ?? style?.fontSize : undefined;
+	const minHeight = hasContent
+		? (style?.lineHeight ?? style?.fontSize)
+		: undefined;
 
 	return (
 		<View

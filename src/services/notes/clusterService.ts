@@ -1,6 +1,10 @@
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import { File } from "expo-file-system";
+import { getNotesIndexDb } from "./indexDb/db";
 import {
+	type ClusterMemberRow,
+	type ClusterRow,
+	type SuperClusterRow,
 	acceptCluster,
 	acceptSuperCluster,
 	addNoteToCluster,
@@ -19,11 +23,7 @@ import {
 	renameSuperCluster,
 	upsertClustersFromJson,
 	upsertSuperClustersFromJson,
-	type ClusterMemberRow,
-	type ClusterRow,
-	type SuperClusterRow,
 } from "./indexDb/repository";
-import { getNotesIndexDb } from "./indexDb/db";
 
 export type { ClusterRow, ClusterMemberRow, SuperClusterRow };
 
@@ -139,12 +139,16 @@ export async function listAcceptedSuperClusters(): Promise<SuperClusterRow[]> {
 	return getAcceptedSuperClusters(database);
 }
 
-export async function superClusterAccept(superClusterId: string): Promise<void> {
+export async function superClusterAccept(
+	superClusterId: string,
+): Promise<void> {
 	const database = await getNotesIndexDb();
 	await acceptSuperCluster(database, superClusterId);
 }
 
-export async function superClusterDismiss(superClusterId: string): Promise<void> {
+export async function superClusterDismiss(
+	superClusterId: string,
+): Promise<void> {
 	const database = await getNotesIndexDb();
 	await dismissSuperCluster(database, superClusterId);
 }

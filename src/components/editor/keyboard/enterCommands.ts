@@ -34,10 +34,7 @@ type EnterCommand = (ctx: EnterCommandContext) => boolean;
 
 // 1. Code and math blocks handle their own newlines — skip Enter processing
 const skipCodeAndMathBlocks: EnterCommand = (ctx) => {
-	if (
-		ctx.block.type === BT.codeBlock ||
-		ctx.block.type === BT.mathBlock
-	) {
+	if (ctx.block.type === BT.codeBlock || ctx.block.type === BT.mathBlock) {
 		return true;
 	}
 	return false;

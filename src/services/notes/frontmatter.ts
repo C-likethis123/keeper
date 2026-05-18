@@ -147,7 +147,9 @@ export function stringifyFrontmatter(
 		frontmatterLines.push(`attachment: ${JSON.stringify(note.attachment)}`);
 	}
 	if (note.attachedVideo) {
-		frontmatterLines.push(`attachedVideo: ${JSON.stringify(note.attachedVideo)}`);
+		frontmatterLines.push(
+			`attachedVideo: ${JSON.stringify(note.attachedVideo)}`,
+		);
 	}
 	frontmatterLines.push("---");
 

@@ -1,6 +1,6 @@
 import { NOTES_ROOT } from "@/services/notes/Notes";
-import { Platform } from "react-native";
 import { Directory } from "expo-file-system";
+import { Platform } from "react-native";
 import type { CloneErrorResolution, GitInitErrorMapper } from "./types";
 
 const TLS_CERT_ERROR_PREFIX = "tls_cert_invalid";

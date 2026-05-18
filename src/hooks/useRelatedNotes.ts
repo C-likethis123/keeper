@@ -1,9 +1,9 @@
+import { NoteService } from "@/services/notes/noteService";
 import {
 	notesIndexDbGetBacklinks,
 	notesIndexDbGetOutgoingLinks,
 } from "@/services/notes/notesIndexDb";
 import type { Note } from "@/services/notes/types";
-import { NoteService } from "@/services/notes/noteService";
 import { useEffect, useState } from "react";
 
 export interface RelatedNotesResult {

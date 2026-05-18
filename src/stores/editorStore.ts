@@ -617,7 +617,5 @@ export function useEditorBlock(index: number): BlockNode | undefined {
 }
 
 export function useEditorBlockIds(): string[] {
-	return useEditorState(
-		useShallow((s) => s.document.blocks.map((b) => b.id)),
-	);
+	return useEditorState(useShallow((s) => s.document.blocks.map((b) => b.id)));
 }

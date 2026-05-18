@@ -75,7 +75,16 @@ export function useToolbarActions(): UseToolbarActions {
 				filters: [
 					{
 						name: "Images",
-						extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico"],
+						extensions: [
+							"png",
+							"jpg",
+							"jpeg",
+							"gif",
+							"webp",
+							"bmp",
+							"svg",
+							"ico",
+						],
 					},
 				],
 			});

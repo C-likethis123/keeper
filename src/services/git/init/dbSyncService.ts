@@ -1,9 +1,9 @@
-import { importClustersFromFile } from "@/services/notes/clusterService";
 import type {
 	GitChangedPaths,
 	GitEngine,
 } from "@/services/git/engines/GitEngine";
 import { NOTES_ROOT } from "@/services/notes/Notes";
+import { importClustersFromFile } from "@/services/notes/clusterService";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import type { StartupTelemetry } from "@/services/startup/startupTelemetry";
 import type {
@@ -45,7 +45,6 @@ export class DefaultDbSyncService implements DbSyncService {
 			};
 		}
 	}
-
 
 	async syncDbAfterPull(
 		currentOid: string | undefined,
@@ -103,12 +102,11 @@ export class DefaultDbSyncService implements DbSyncService {
 					changedPaths,
 				);
 
-				const allChanged = [
-					...changedPaths.added,
-					...changedPaths.modified,
-				];
+				const allChanged = [...changedPaths.added, ...changedPaths.modified];
 				if (allChanged.includes(".moc_clusters.json")) {
-					console.log("[GitInitializationService] MOC clusters changed, importing...");
+					console.log(
+						"[GitInitializationService] MOC clusters changed, importing...",
+					);
 					didImportClusters = (await importClustersFromFile()) > 0;
 				}
 

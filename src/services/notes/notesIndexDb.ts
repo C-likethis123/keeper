@@ -42,7 +42,9 @@ export async function notesIndexDbDelete(noteId: string): Promise<void> {
 	await deleteById(database, noteId);
 }
 
-export async function notesIndexDbGetById(noteId: string): Promise<NoteIndexItem | null> {
+export async function notesIndexDbGetById(
+	noteId: string,
+): Promise<NoteIndexItem | null> {
 	const database = await getNotesIndexDb();
 	return getById(database, noteId);
 }

@@ -13,7 +13,11 @@ import type {
 import { createEmptyStartupMetrics } from "./types";
 
 function createEmptyRemoteSyncMetrics(): RemoteSyncMetrics {
-	const { validateRepoMs: _, totalMs: __, ...empty } = createEmptyStartupMetrics();
+	const {
+		validateRepoMs: _,
+		totalMs: __,
+		...empty
+	} = createEmptyStartupMetrics();
 	return empty;
 }
 
@@ -123,7 +127,9 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 			metrics.branchResolveMs = Math.round(performance.now() - tBranchResolve);
 
 			// Always pull from origin/main so we pick up all devices' changes
-			const mainBranch = remoteBranches.includes("main") ? "main" : (this.pickPreferredBranch(remoteBranches) ?? "main");
+			const mainBranch = remoteBranches.includes("main")
+				? "main"
+				: (this.pickPreferredBranch(remoteBranches) ?? "main");
 			const remoteBranch = `origin/${mainBranch}`;
 			telemetry.trace("git.branch_resolution_completed", {
 				durationMs: metrics.branchResolveMs,

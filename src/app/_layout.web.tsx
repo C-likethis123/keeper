@@ -44,8 +44,12 @@ const App = ({
 	initError,
 }: { isHydrated: boolean; initError: string | null }) => {
 	const styles = useStyles(createStyles);
-	const { conflicts, isShowingModal, hideConflictModal, hasUnresolvedConflicts } =
-		useConflictResolution();
+	const {
+		conflicts,
+		isShowingModal,
+		hideConflictModal,
+		hasUnresolvedConflicts,
+	} = useConflictResolution();
 
 	if (!isHydrated) {
 		return (

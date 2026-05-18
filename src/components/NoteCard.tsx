@@ -64,11 +64,19 @@ export default function NoteCard({
 		<Pressable
 			style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
 			onPress={openNote}
-			onLongPress={onRemoveFromCluster && Platform.OS !== "web" ? handleLongPress : undefined}
+			onLongPress={
+				onRemoveFromCluster && Platform.OS !== "web"
+					? handleLongPress
+					: undefined
+			}
 			accessible={true}
 			accessibilityRole={Platform.OS !== "web" ? "button" : undefined}
 			accessibilityLabel={`Open note ${note.title || "Untitled"}`}
-			accessibilityHint={onRemoveFromCluster && Platform.OS !== "web" ? "Long press to remove from cluster" : undefined}
+			accessibilityHint={
+				onRemoveFromCluster && Platform.OS !== "web"
+					? "Long press to remove from cluster"
+					: undefined
+			}
 		>
 			<View style={styles.titleRow}>
 				<Text style={styles.title} numberOfLines={2}>

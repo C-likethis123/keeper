@@ -44,8 +44,7 @@ jest.mock("@/hooks/useExtendedTheme", () => ({
 
 const youtubeSource: EmbeddedVideoSource = {
 	rawUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-	embedUrl:
-		"https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0",
+	embedUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0",
 	host: "youtube.com",
 };
 
@@ -82,8 +81,8 @@ describe("EmbeddedVideoPanel", () => {
 		expect(screen.getByTestId("webview").props.accessibilityLabel).toContain(
 			'"Referer":"https://keeper.app"',
 		);
-		expect(screen.getByTestId("webview").props.accessibilityLabel).not.toContain(
-			'"Origin":"https://keeper.app"',
-		);
+		expect(
+			screen.getByTestId("webview").props.accessibilityLabel,
+		).not.toContain('"Origin":"https://keeper.app"');
 	});
 });

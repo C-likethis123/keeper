@@ -1,8 +1,8 @@
 import { GitInitializationService } from "@/services/git/gitInitializationService";
 import type { GitRuntimeSupport } from "@/services/git/runtime";
 import { NotesIndexService } from "@/services/notes/notesIndex";
-import { showToast } from "@/services/toast";
 import { StorageInitializationService } from "@/services/storage/storageInitializationService";
+import { showToast } from "@/services/toast";
 import { useConflictStore } from "@/stores/conflictStore";
 import { useStorageStore } from "@/stores/storageStore";
 import type { StartupTelemetry } from "./startupTelemetry";

@@ -1,5 +1,10 @@
 import MOCSuggestions from "@/components/MOCSuggestions";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import {
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react-native";
 import React from "react";
 
 const mockListActiveClusters = jest.fn();
@@ -43,10 +48,12 @@ jest.mock("@/services/notes/notesIndexDb", () => ({
 }));
 
 jest.mock("@/stores/storageStore", () => ({
-	useStorageStore: (selector: (state: {
-		contentVersion: number;
-		bumpContentVersion: jest.Mock;
-	}) => unknown) =>
+	useStorageStore: (
+		selector: (state: {
+			contentVersion: number;
+			bumpContentVersion: jest.Mock;
+		}) => unknown,
+	) =>
 		selector({
 			contentVersion: 0,
 			bumpContentVersion: jest.fn(),
@@ -91,15 +98,21 @@ describe("MOCSuggestions", () => {
 	});
 
 	it("renders an inline view-all action when suggestions exist", async () => {
-		mockListActiveClusters.mockResolvedValue([makeCluster("cluster-1", "Research MOC")]);
-		mockListClusterMembers.mockResolvedValue([{ note_id: "note-1", score: 0.9 }]);
+		mockListActiveClusters.mockResolvedValue([
+			makeCluster("cluster-1", "Research MOC"),
+		]);
+		mockListClusterMembers.mockResolvedValue([
+			{ note_id: "note-1", score: 0.9 },
+		]);
 		mockNotesIndexDbGetById.mockResolvedValue({ id: "note-1", title: "Alpha" });
 		const onPressViewAll = jest.fn();
 
 		render(<MOCSuggestions onPressViewAll={onPressViewAll} />);
 
 		expect(await screen.findByText("Research MOC")).toBeOnTheScreen();
-		fireEvent.press(screen.getByRole("button", { name: "View all suggested MOCs" }));
+		fireEvent.press(
+			screen.getByRole("button", { name: "View all suggested MOCs" }),
+		);
 
 		expect(onPressViewAll).toHaveBeenCalledTimes(1);
 		expect(screen.getByText("Alpha")).toBeOnTheScreen();

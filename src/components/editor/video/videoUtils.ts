@@ -4,7 +4,6 @@ export interface EmbeddedVideoSource {
 	host: string;
 }
 
-
 function extractYouTubeVideoId(url: URL): string | null {
 	const hostname = url.hostname.replace(/^www\./, "").toLowerCase();
 

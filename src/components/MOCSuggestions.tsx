@@ -79,7 +79,9 @@ export default function MOCSuggestions({
 				originalName: card.cluster.name,
 				confidence: card.cluster.confidence,
 				memberCount: card.memberNoteIds.length,
-			}).catch((e) => console.warn("[MOCSuggestions] logFeedback dismiss failed:", e));
+			}).catch((e) =>
+				console.warn("[MOCSuggestions] logFeedback dismiss failed:", e),
+			);
 			bumpContentVersion();
 			await loadClusters();
 		},
@@ -94,7 +96,9 @@ export default function MOCSuggestions({
 				confidence: card.cluster.confidence,
 				memberCount: card.memberNoteIds.length,
 				memberIds: card.memberNoteIds,
-			}).catch((e) => console.warn("[MOCSuggestions] logFeedback accept failed:", e));
+			}).catch((e) =>
+				console.warn("[MOCSuggestions] logFeedback accept failed:", e),
+			);
 			bumpContentVersion();
 			await loadClusters();
 		},
@@ -112,7 +116,9 @@ export default function MOCSuggestions({
 			logFeedback(renameCard.cluster.id, "rename", {
 				originalName: renameCard.cluster.name,
 				newName,
-			}).catch((e) => console.warn("[MOCSuggestions] logFeedback rename failed:", e));
+			}).catch((e) =>
+				console.warn("[MOCSuggestions] logFeedback rename failed:", e),
+			);
 			setRenameCard(null);
 			await loadClusters();
 		},
@@ -135,7 +141,9 @@ export default function MOCSuggestions({
 				targetClusterId,
 				mergedNoteIds: selectedNoteIds,
 				confidence: mergeCard.cluster.confidence,
-			}).catch((e) => console.warn("[MOCSuggestions] logFeedback merge failed:", e));
+			}).catch((e) =>
+				console.warn("[MOCSuggestions] logFeedback merge failed:", e),
+			);
 			setMergeCard(null);
 			bumpContentVersion();
 			await loadClusters();

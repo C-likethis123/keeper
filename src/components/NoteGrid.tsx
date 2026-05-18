@@ -3,9 +3,9 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { NoteSection } from "@/services/notes/indexDb/types";
 import type { Note } from "@/services/notes/types";
+import { FontAwesome } from "@expo/vector-icons";
 import type React from "react";
 import { useCallback, useMemo } from "react";
-import { FontAwesome } from "@expo/vector-icons";
 import {
 	ActivityIndicator,
 	FlatList,
@@ -72,12 +72,20 @@ export default function NoteGrid({
 		if (sections && sections.length > 0) {
 			const items: Array<
 				| { type: "header"; section: NoteSection }
-				| { type: "note-row"; notes: Note[]; clusterActions?: NoteSection["clusterActions"] }
+				| {
+						type: "note-row";
+						notes: Note[];
+						clusterActions?: NoteSection["clusterActions"];
+				  }
 			> = [];
 			for (const section of sections) {
 				items.push({ type: "header", section });
 				for (const row of chunkNotes(section.notes)) {
-					items.push({ type: "note-row", notes: row, clusterActions: section.clusterActions });
+					items.push({
+						type: "note-row",
+						notes: row,
+						clusterActions: section.clusterActions,
+					});
 				}
 			}
 			return items;
@@ -141,14 +149,41 @@ export default function NoteGrid({
 								</Text>
 								{item.section.clusterActions && (
 									<View style={styles.sectionHeaderActions}>
-										<Pressable onPress={item.section.clusterActions.onRename} hitSlop={8} accessibilityRole="button" accessibilityLabel="Rename cluster">
-											<FontAwesome name="pencil" size={14} color={theme.colors.textSecondary} />
+										<Pressable
+											onPress={item.section.clusterActions.onRename}
+											hitSlop={8}
+											accessibilityRole="button"
+											accessibilityLabel="Rename cluster"
+										>
+											<FontAwesome
+												name="pencil"
+												size={14}
+												color={theme.colors.textSecondary}
+											/>
 										</Pressable>
-										<Pressable onPress={item.section.clusterActions.onAddNote} hitSlop={8} accessibilityRole="button" accessibilityLabel="Add note to cluster">
-											<FontAwesome name="plus" size={14} color={theme.colors.textSecondary} />
+										<Pressable
+											onPress={item.section.clusterActions.onAddNote}
+											hitSlop={8}
+											accessibilityRole="button"
+											accessibilityLabel="Add note to cluster"
+										>
+											<FontAwesome
+												name="plus"
+												size={14}
+												color={theme.colors.textSecondary}
+											/>
 										</Pressable>
-										<Pressable onPress={item.section.clusterActions.onDelete} hitSlop={8} accessibilityRole="button" accessibilityLabel="Delete cluster">
-											<FontAwesome name="trash" size={14} color={theme.colors.textSecondary} />
+										<Pressable
+											onPress={item.section.clusterActions.onDelete}
+											hitSlop={8}
+											accessibilityRole="button"
+											accessibilityLabel="Delete cluster"
+										>
+											<FontAwesome
+												name="trash"
+												size={14}
+												color={theme.colors.textSecondary}
+											/>
 										</Pressable>
 									</View>
 								)}

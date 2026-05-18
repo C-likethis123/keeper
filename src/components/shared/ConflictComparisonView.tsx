@@ -1,7 +1,8 @@
-import { useState, useRef, useMemo } from "react";
-import type { GitConflictFile } from "@/services/git/engines/GitEngine";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
+import type { GitConflictFile } from "@/services/git/engines/GitEngine";
+import diffSequences from "diff-sequences";
+import { useMemo, useRef, useState } from "react";
 import {
 	Alert,
 	Platform,
@@ -12,7 +13,6 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
-import diffSequences from "diff-sequences";
 
 type ViewMode = "diff" | "comparison" | "edit";
 
@@ -60,7 +60,10 @@ function computeLineDiff(a: string, b: string): DiffLine[] {
 
 interface ConflictComparisonViewProps {
 	conflict: GitConflictFile;
-	onResolve: (strategy: "ours" | "theirs" | "base" | "manual", manualContent?: string) => void;
+	onResolve: (
+		strategy: "ours" | "theirs" | "base" | "manual",
+		manualContent?: string,
+	) => void;
 }
 
 export default function ConflictComparisonView({
@@ -73,7 +76,8 @@ export default function ConflictComparisonView({
 	const textInputRef = useRef<TextInput>(null);
 
 	const diffLines = useMemo(() => {
-		if (conflict.oursContent === null || conflict.theirsContent === null) return null;
+		if (conflict.oursContent === null || conflict.theirsContent === null)
+			return null;
 		return computeLineDiff(conflict.oursContent, conflict.theirsContent);
 	}, [conflict.oursContent, conflict.theirsContent]);
 
@@ -84,7 +88,11 @@ export default function ConflictComparisonView({
 
 	const handleCancelEdit = () => {
 		if (Platform.OS === "web") {
-			if (window.confirm("Discard Changes? Your edits will be lost. Continue anyway?")) {
+			if (
+				window.confirm(
+					"Discard Changes? Your edits will be lost. Continue anyway?",
+				)
+			) {
 				setViewMode("diff");
 			}
 			return;
@@ -107,24 +115,22 @@ export default function ConflictComparisonView({
 	const handleSaveAndResolve = () => {
 		if (!editedContent.trim()) {
 			if (Platform.OS === "web") {
-				if (window.confirm("Empty Content: The file will be empty. Are you sure?")) {
+				if (
+					window.confirm("Empty Content: The file will be empty. Are you sure?")
+				) {
 					onResolve("manual", editedContent);
 				}
 				return;
 			}
 
-			Alert.alert(
-				"Empty Content",
-				"The file will be empty. Are you sure?",
-				[
-					{ text: "Cancel", style: "cancel" },
-					{
-						text: "Continue",
-						style: "destructive",
-						onPress: () => onResolve("manual", editedContent),
-					},
-				],
-			);
+			Alert.alert("Empty Content", "The file will be empty. Are you sure?", [
+				{ text: "Cancel", style: "cancel" },
+				{
+					text: "Continue",
+					style: "destructive",
+					onPress: () => onResolve("manual", editedContent),
+				},
+			]);
 		} else {
 			onResolve("manual", editedContent);
 		}
@@ -138,7 +144,9 @@ export default function ConflictComparisonView({
 	if (!hasContent) {
 		return (
 			<View style={styles.emptyContainer}>
-				<Text style={styles.emptyText}>No content available for this conflict</Text>
+				<Text style={styles.emptyText}>
+					No content available for this conflict
+				</Text>
 			</View>
 		);
 	}
@@ -147,13 +155,28 @@ export default function ConflictComparisonView({
 		return (
 			<View style={styles.container}>
 				<View style={styles.toolbar}>
-					<TouchableOpacity style={[styles.toolbarButton, styles.toolbarButtonActive]} activeOpacity={0.7}>
-						<Text style={[styles.toolbarButtonText, styles.toolbarButtonTextActive]}>Diff</Text>
+					<TouchableOpacity
+						style={[styles.toolbarButton, styles.toolbarButtonActive]}
+						activeOpacity={0.7}
+					>
+						<Text
+							style={[styles.toolbarButtonText, styles.toolbarButtonTextActive]}
+						>
+							Diff
+						</Text>
 					</TouchableOpacity>
-					<TouchableOpacity style={styles.toolbarButton} onPress={() => setViewMode("comparison")} activeOpacity={0.7}>
+					<TouchableOpacity
+						style={styles.toolbarButton}
+						onPress={() => setViewMode("comparison")}
+						activeOpacity={0.7}
+					>
 						<Text style={styles.toolbarButtonText}>Side by Side</Text>
 					</TouchableOpacity>
-					<TouchableOpacity style={styles.toolbarButton} onPress={handleEnterEditMode} activeOpacity={0.7}>
+					<TouchableOpacity
+						style={styles.toolbarButton}
+						onPress={handleEnterEditMode}
+						activeOpacity={0.7}
+					>
 						<Text style={styles.toolbarButtonText}>Edit</Text>
 					</TouchableOpacity>
 				</View>
@@ -162,11 +185,15 @@ export default function ConflictComparisonView({
 					<ScrollView style={styles.diffScroll}>
 						<View style={styles.diffLegend}>
 							<View style={styles.diffLegendItem}>
-								<View style={[styles.diffLegendDot, { backgroundColor: "#dc2626" }]} />
+								<View
+									style={[styles.diffLegendDot, { backgroundColor: "#dc2626" }]}
+								/>
 								<Text style={styles.diffLegendText}>Local only</Text>
 							</View>
 							<View style={styles.diffLegendItem}>
-								<View style={[styles.diffLegendDot, { backgroundColor: "#16a34a" }]} />
+								<View
+									style={[styles.diffLegendDot, { backgroundColor: "#16a34a" }]}
+								/>
 								<Text style={styles.diffLegendText}>Remote only</Text>
 							</View>
 						</View>
@@ -186,7 +213,11 @@ export default function ConflictComparisonView({
 										line.type === "added" && styles.diffLinePrefixAdded,
 									]}
 								>
-									{line.type === "removed" ? "-" : line.type === "added" ? "+" : " "}
+									{line.type === "removed"
+										? "-"
+										: line.type === "added"
+											? "+"
+											: " "}
 								</Text>
 								<Text
 									style={[
@@ -206,15 +237,24 @@ export default function ConflictComparisonView({
 						{conflict.oursContent !== null && (
 							<>
 								<View style={styles.diffOnlyHeader}>
-									<Text style={styles.diffOnlyHeaderText}>Local version (no remote to compare)</Text>
+									<Text style={styles.diffOnlyHeaderText}>
+										Local version (no remote to compare)
+									</Text>
 								</View>
 								<Text style={styles.columnText}>{conflict.oursContent}</Text>
 							</>
 						)}
 						{conflict.theirsContent !== null && (
 							<>
-								<View style={[styles.diffOnlyHeader, { borderLeftColor: "#10b981" }]}>
-									<Text style={styles.diffOnlyHeaderText}>Remote version (no local to compare)</Text>
+								<View
+									style={[
+										styles.diffOnlyHeader,
+										{ borderLeftColor: "#10b981" },
+									]}
+								>
+									<Text style={styles.diffOnlyHeaderText}>
+										Remote version (no local to compare)
+									</Text>
 								</View>
 								<Text style={styles.columnText}>{conflict.theirsContent}</Text>
 							</>
@@ -260,13 +300,28 @@ export default function ConflictComparisonView({
 		return (
 			<View style={styles.container}>
 				<View style={styles.toolbar}>
-					<TouchableOpacity style={styles.toolbarButton} onPress={() => setViewMode("diff")} activeOpacity={0.7}>
+					<TouchableOpacity
+						style={styles.toolbarButton}
+						onPress={() => setViewMode("diff")}
+						activeOpacity={0.7}
+					>
 						<Text style={styles.toolbarButtonText}>Diff</Text>
 					</TouchableOpacity>
-					<TouchableOpacity style={[styles.toolbarButton, styles.toolbarButtonActive]} activeOpacity={0.7}>
-						<Text style={[styles.toolbarButtonText, styles.toolbarButtonTextActive]}>Side by Side</Text>
+					<TouchableOpacity
+						style={[styles.toolbarButton, styles.toolbarButtonActive]}
+						activeOpacity={0.7}
+					>
+						<Text
+							style={[styles.toolbarButtonText, styles.toolbarButtonTextActive]}
+						>
+							Side by Side
+						</Text>
 					</TouchableOpacity>
-					<TouchableOpacity style={styles.toolbarButton} onPress={handleEnterEditMode} activeOpacity={0.7}>
+					<TouchableOpacity
+						style={styles.toolbarButton}
+						onPress={handleEnterEditMode}
+						activeOpacity={0.7}
+					>
 						<Text style={styles.toolbarButtonText}>Edit</Text>
 					</TouchableOpacity>
 				</View>
@@ -274,7 +329,9 @@ export default function ConflictComparisonView({
 				<View style={styles.comparisonContainer}>
 					{conflict.oursContent !== null && (
 						<View style={styles.column}>
-							<View style={[styles.columnHeader, { borderLeftColor: "#3b82f6" }]}>
+							<View
+								style={[styles.columnHeader, { borderLeftColor: "#3b82f6" }]}
+							>
 								<Text style={styles.columnHeaderTitle}>Local</Text>
 								<Text style={styles.columnHeaderSubtitle}>This Device</Text>
 							</View>
@@ -290,7 +347,9 @@ export default function ConflictComparisonView({
 
 					{conflict.theirsContent !== null && (
 						<View style={styles.column}>
-							<View style={[styles.columnHeader, { borderLeftColor: "#10b981" }]}>
+							<View
+								style={[styles.columnHeader, { borderLeftColor: "#10b981" }]}
+							>
 								<Text style={styles.columnHeaderTitle}>Remote</Text>
 								<Text style={styles.columnHeaderSubtitle}>Server</Text>
 							</View>
@@ -299,7 +358,6 @@ export default function ConflictComparisonView({
 							</ScrollView>
 						</View>
 					)}
-
 				</View>
 
 				<View style={styles.actionsContainer}>
@@ -339,14 +397,29 @@ export default function ConflictComparisonView({
 	return (
 		<View style={styles.container}>
 			<View style={styles.toolbar}>
-				<TouchableOpacity style={styles.toolbarButton} onPress={() => setViewMode("diff")} activeOpacity={0.7}>
+				<TouchableOpacity
+					style={styles.toolbarButton}
+					onPress={() => setViewMode("diff")}
+					activeOpacity={0.7}
+				>
 					<Text style={styles.toolbarButtonText}>Diff</Text>
 				</TouchableOpacity>
-				<TouchableOpacity style={styles.toolbarButton} onPress={() => setViewMode("comparison")} activeOpacity={0.7}>
+				<TouchableOpacity
+					style={styles.toolbarButton}
+					onPress={() => setViewMode("comparison")}
+					activeOpacity={0.7}
+				>
 					<Text style={styles.toolbarButtonText}>Side by Side</Text>
 				</TouchableOpacity>
-				<TouchableOpacity style={[styles.toolbarButton, styles.toolbarButtonActive]} activeOpacity={0.7}>
-					<Text style={[styles.toolbarButtonText, styles.toolbarButtonTextActive]}>Edit</Text>
+				<TouchableOpacity
+					style={[styles.toolbarButton, styles.toolbarButtonActive]}
+					activeOpacity={0.7}
+				>
+					<Text
+						style={[styles.toolbarButtonText, styles.toolbarButtonTextActive]}
+					>
+						Edit
+					</Text>
 				</TouchableOpacity>
 			</View>
 
@@ -374,7 +447,11 @@ export default function ConflictComparisonView({
 			</View>
 
 			<View style={styles.editorActions}>
-				<TouchableOpacity style={styles.cancelButton} onPress={handleCancelEdit} activeOpacity={0.7}>
+				<TouchableOpacity
+					style={styles.cancelButton}
+					onPress={handleCancelEdit}
+					activeOpacity={0.7}
+				>
 					<Text style={styles.cancelButtonText}>Cancel</Text>
 				</TouchableOpacity>
 				<TouchableOpacity

@@ -3,8 +3,8 @@ import { useStyles } from "@/hooks/useStyles";
 import useSuspenseTemplates from "@/hooks/useSuspenseTemplates";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
-import { useEditorState } from "@/stores/editorStore";
 import { showToast } from "@/services/toast";
+import { useEditorState } from "@/stores/editorStore";
 import { FontAwesome } from "@expo/vector-icons";
 import React, { Suspense, useCallback } from "react";
 import {

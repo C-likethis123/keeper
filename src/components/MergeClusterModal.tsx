@@ -138,9 +138,7 @@ export default function MergeClusterModal({
 											},
 										]}
 									>
-										{checked && (
-											<Text style={styles.checkmark}>✓</Text>
-										)}
+										{checked && <Text style={styles.checkmark}>✓</Text>}
 									</View>
 									<Text style={styles.rowText} numberOfLines={1}>
 										{memberNoteTitles.get(id) ?? id}

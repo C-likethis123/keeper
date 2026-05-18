@@ -1,6 +1,7 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import {
@@ -10,7 +11,6 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 interface NoteRelatedNotesProps {
 	backlinks: Note[];
@@ -76,12 +76,16 @@ function NoteList({
 				<Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
 					{title}
 				</Text>
-				<Text style={[styles.sectionCount, { color: theme.colors.textSecondary }]}>
+				<Text
+					style={[styles.sectionCount, { color: theme.colors.textSecondary }]}
+				>
 					{notes.length}
 				</Text>
 			</View>
 			{notes.length === 0 ? (
-				<Text style={[styles.emptyLabel, { color: theme.colors.textSecondary }]}>
+				<Text
+					style={[styles.emptyLabel, { color: theme.colors.textSecondary }]}
+				>
 					{emptyLabel}
 				</Text>
 			) : (
@@ -105,7 +109,9 @@ export default function NoteRelatedNotes({
 	if (loading) {
 		return (
 			<View style={styles.container}>
-				<Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+				<Text
+					style={[styles.loadingText, { color: theme.colors.textSecondary }]}
+				>
 					Loading related notes...
 				</Text>
 			</View>

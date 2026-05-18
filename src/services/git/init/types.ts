@@ -1,4 +1,7 @@
-import type { GitConflictFile, GitEngine } from "@/services/git/engines/GitEngine";
+import type {
+	GitConflictFile,
+	GitEngine,
+} from "@/services/git/engines/GitEngine";
 import type { NoteSaveInput } from "@/services/notes/types";
 import type { StartupTelemetry } from "@/services/startup/startupTelemetry";
 
@@ -78,7 +81,6 @@ export interface GitJournalEntry {
 	/** Optional exit log indicating when/why this state was captured */
 	exitLog?: GitExitLog;
 }
-
 
 export interface SyncDbAfterPullResult {
 	didDbSync: boolean;

@@ -11,8 +11,6 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
             accepted_at INTEGER
         )
     `);
-	await db.execAsync(
-		"ALTER TABLE clusters ADD COLUMN parent_id TEXT",
-	);
+	await db.execAsync("ALTER TABLE clusters ADD COLUMN parent_id TEXT");
 	await db.execAsync("PRAGMA user_version = 8");
 }

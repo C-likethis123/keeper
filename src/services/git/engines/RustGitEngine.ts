@@ -1,11 +1,11 @@
 import type {
+	ConflictResolutionStrategy,
 	GitChangedPaths,
 	GitCheckoutOptions,
 	GitConflictFile,
 	GitEngine,
 	GitMergeOptions,
 	GitStatusItem,
-	ConflictResolutionStrategy,
 } from "@/services/git/engines/GitEngine";
 import {
 	getRustGitNativeBridge,
@@ -226,7 +226,6 @@ export class RustGitEngine implements GitEngine {
 		return this.bridge.module.resolveHeadOid(uriToGitPath(dir));
 	}
 
-
 	changedMarkdownPaths(
 		dir: string,
 		fromOid: string,
@@ -255,27 +254,23 @@ export class RustGitEngine implements GitEngine {
 		toOid: string,
 	): Promise<GitChangedPaths> {
 		if (this.bridge.kind === "tauri") {
-			return this.bridge.invoke<GitChangedPaths>(
-				"git_changed_paths_repo",
-				{
-					repoPath: dir,
-					fromOid,
-					toOid,
-				},
-			);
+			return this.bridge.invoke<GitChangedPaths>("git_changed_paths_repo", {
+				repoPath: dir,
+				fromOid,
+				toOid,
+			});
 		}
-		return this.bridge.module.changedPaths(
-			uriToGitPath(dir),
-			fromOid,
-			toOid,
-		);
+		return this.bridge.module.changedPaths(uriToGitPath(dir), fromOid, toOid);
 	}
 
 	getConflictedFiles(dir: string): Promise<GitConflictFile[]> {
 		if (this.bridge.kind === "tauri") {
-			return this.bridge.invoke<GitConflictFile[]>("git_conflicted_files_repo", {
-				repoPath: dir,
-			});
+			return this.bridge.invoke<GitConflictFile[]>(
+				"git_conflicted_files_repo",
+				{
+					repoPath: dir,
+				},
+			);
 		}
 		return this.bridge.module.getConflictedFiles(uriToGitPath(dir));
 	}

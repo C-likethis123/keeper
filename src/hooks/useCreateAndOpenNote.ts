@@ -1,6 +1,6 @@
 import type { NoteType } from "@/services/notes/types";
-import { useTabStore } from "@/stores/tabStore";
 import { showToast } from "@/services/toast";
+import { useTabStore } from "@/stores/tabStore";
 import { router } from "expo-router";
 import { nanoid } from "nanoid";
 import { useCallback } from "react";

@@ -231,11 +231,7 @@ export function DocumentPanel({
 					/>
 				) : attachmentType === "epub" && fileUri && !epubBase64 ? (
 					<View style={styles.fallbackContainer}>
-						<FontAwesome
-							name="book"
-							size={40}
-							style={styles.fallbackIcon}
-						/>
+						<FontAwesome name="book" size={40} style={styles.fallbackIcon} />
 						<Text style={styles.fallbackText}>
 							Unable to load this EPUB in the reader.
 						</Text>
