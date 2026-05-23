@@ -573,6 +573,7 @@ export function UnifiedBlock({
 						autoComplete="off"
 						placeholderTextColor={theme.custom.editor.placeholder}
 						textAlignVertical="top"
+						underlineColorAndroid="transparent"
 					/>
 					{/* Always rendered to provide layout height for the absolutely-
               positioned TextInput; hidden when focused so the textarea shows. */}
