@@ -205,43 +205,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 					</Text>
 				);
 
-				const lineNumberElement = showLineNumbers ? (
-					<View
-						key={`${nodeKey}-line-number-container`}
-						style={{
-							backgroundColor: lineNumbersBackgroundColor,
-							paddingRight: 10,
-							paddingLeft: 10,
-						}}
-					>
-						<Text
-							key={`${nodeKey}-line-number`}
-							style={{
-								fontFamily,
-								fontSize,
-								color: lineNumbersColor,
-							}}
-						>
-							{Number.parseInt(key, 10) + 1}
-						</Text>
-					</View>
-				) : null;
-
-				renderedNodes.push(
-					showLineNumbers ? (
-						<View
-							key={`${nodeKey}-row`}
-							style={{
-								flexDirection: "row",
-							}}
-						>
-							{lineNumberElement}
-							{textElement}
-						</View>
-					) : (
-						textElement
-					),
-				);
+				renderedNodes.push(textElement);
 			}
 
 			if (node.value !== undefined) {

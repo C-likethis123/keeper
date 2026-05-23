@@ -79,6 +79,7 @@
     "@welldone-software/why-did-you-render": "^10.0.1",
     "babel-plugin-dynamic-import-node": "^2.3.3",
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.4.1",
     "jest-expo": "^55.0.10",
     "jsdom": "^20.0.3",
     "jszip": "^3.10.1",
