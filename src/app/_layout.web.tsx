@@ -37,20 +37,27 @@ export default function RootLayout() {
 			let unlisten: (() => void) | null = null;
 			import("@tauri-apps/api/window")
 				.then(({ getCurrentWindow }) => {
+					let isClosing = false;
 					return getCurrentWindow().onCloseRequested(async (event) => {
+						if (isClosing) return;
+						console.log("[Tauri] Close requested, preventing default...");
 						// Prevent immediate close
 						event.preventDefault();
+						isClosing = true;
 						try {
+							console.log("[Tauri] Flushing changes...");
 							// Trigger a flush with a reasonable timeout
 							await GitService.flushPendingChanges({
 								reason: "app-background",
 								timeoutMs: 5000,
 							});
+							console.log("[Tauri] Flush complete.");
 						} catch (e) {
 							console.warn("[Tauri] Failed to flush on close:", e);
 						} finally {
+							console.log("[Tauri] Closing window...");
 							// Actually close the window
-							getCurrentWindow().close();
+							await getCurrentWindow().close();
 						}
 					});
 				})

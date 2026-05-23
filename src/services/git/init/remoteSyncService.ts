@@ -46,7 +46,11 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 			await this.gitEngine.createBranch(NOTES_ROOT, branchName, "main");
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
-			if (!msg.toLowerCase().includes("already exists")) {
+			console.log("[RemoteSync] Create branch error:", msg);
+			if (msg.toLowerCase().includes("already exists")) {
+				console.log("[RemoteSync] Branch exists, switching to it...");
+				await this.gitEngine.checkout(NOTES_ROOT, branchName);
+			} else {
 				throw err;
 			}
 		}
