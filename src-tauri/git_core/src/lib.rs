@@ -978,10 +978,12 @@ pub extern "C" fn git_merge_json(repo_path: *const c_char, options_json: *const 
         Err(_) => return -1,
     };
 
-    if merge(&repo_path, options).is_ok() {
-        0
-    } else {
-        -1
+    match merge(&repo_path, options) {
+        Ok(()) => 0,
+        Err(err) => {
+            set_last_error(err);
+            -1
+        }
     }
 }
 
@@ -1377,7 +1379,13 @@ pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule
         Ok(value) => value,
         Err(_) => return -1,
     };
-    if merge(&repo_path, options).is_ok() { 0 } else { -1 }
+    match merge(&repo_path, options) {
+        Ok(()) => 0,
+        Err(err) => {
+            set_last_error(err);
+            -1
+        }
+    }
 }
 
 #[cfg(target_os = "android")]

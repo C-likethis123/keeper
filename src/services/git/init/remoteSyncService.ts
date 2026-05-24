@@ -106,7 +106,7 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 							: String(mergeError);
 					console.error("[GitInitializationService] Merge failed:", errorMsg);
 
-					if (errorMsg.startsWith("MERGE_CONFLICT")) {
+					if (errorMsg.includes("MERGE_CONFLICT")) {
 						try {
 							const conflictedFiles =
 								await this.gitEngine.getConflictedFiles(NOTES_ROOT);
