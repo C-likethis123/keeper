@@ -425,10 +425,12 @@ pub fn merge(repo_path: &str, options: GitMergeOptionsInput) -> Result<(), Strin
     let theirs_commit = theirs_ref.peel_to_commit().map_err(format_git_error)?;
 
     let mut merge_opts = MergeOptions::new();
-    let mut index = repo
-        .merge_commits(&ours_commit, &theirs_commit, Some(&mut merge_opts))
+    // Use repo.merge() so conflict state (index stages + working tree) is written to disk,
+    // allowing getConflictedFiles() to read them if we return MERGE_CONFLICT.
+    repo.merge(&[&annotated], Some(&mut merge_opts), None)
         .map_err(format_git_error)?;
 
+    let mut index = repo.index().map_err(format_git_error)?;
     if index.has_conflicts() {
         return Err("MERGE_CONFLICT: manual resolution required".to_string());
     }
@@ -453,8 +455,7 @@ pub fn merge(repo_path: &str, options: GitMergeOptionsInput) -> Result<(), Strin
     )
     .map_err(format_git_error)?;
 
-    repo.checkout_head(Some(CheckoutBuilder::new().force()))
-        .map_err(format_git_error)?;
+    repo.cleanup_state().map_err(format_git_error)?;
     Ok(())
 }
 
@@ -478,23 +479,35 @@ pub fn commit(repo_path: &str, message: &str) -> Result<(), String> {
         .and_then(|head| head.target())
         .and_then(|oid| repo.find_commit(oid).ok());
 
-    match parent_commit {
-        Some(parent) => repo
-            .commit(
-                Some("HEAD"),
-                &signature,
-                &signature,
-                message,
-                &tree,
-                &[&parent],
-            )
-            .map(|_| ())
-            .map_err(format_git_error),
-        None => repo
-            .commit(Some("HEAD"), &signature, &signature, message, &tree, &[])
-            .map(|_| ())
-            .map_err(format_git_error),
+    // Include MERGE_HEAD as a second parent when finalizing a merge after conflict resolution
+    let merge_head_commit = repo
+        .find_reference("MERGE_HEAD")
+        .ok()
+        .and_then(|r| r.target())
+        .and_then(|oid| repo.find_commit(oid).ok());
+
+    let parents: Vec<&git2::Commit> = match (&parent_commit, &merge_head_commit) {
+        (Some(p), Some(m)) => vec![p, m],
+        (Some(p), None) => vec![p],
+        _ => vec![],
+    };
+
+    repo.commit(
+        Some("HEAD"),
+        &signature,
+        &signature,
+        message,
+        &tree,
+        &parents,
+    )
+    .map(|_| ())
+    .map_err(format_git_error)?;
+
+    if merge_head_commit.is_some() {
+        repo.cleanup_state().map_err(format_git_error)?;
     }
+
+    Ok(())
 }
 
 pub fn push(repo_path: &str) -> Result<(), String> {
