@@ -15,12 +15,6 @@ export class DefaultRepoBootstrapper implements RepoBootstrapper {
 		private readonly errorMapper: GitInitErrorMapper,
 	) {}
 
-	private pickPreferredBranch(branches: string[]): string | undefined {
-		if (branches.includes("main")) return "main";
-		if (branches.includes("master")) return "master";
-		return branches[0];
-	}
-
 	private hasBlockingNotesDirectory(): boolean {
 		// On Tauri desktop, no blocking directory check needed
 		// Tauri can safely clone over existing paths
@@ -64,13 +58,11 @@ export class DefaultRepoBootstrapper implements RepoBootstrapper {
 
 			try {
 				console.log(
-					"[GitInitializationService] Clone completed, checking out branch...",
+					"[GitInitializationService] Clone completed, checking out main branch...",
 				);
-				const branches = await this.gitEngine.listBranches(NOTES_ROOT);
-				const branchToCheckout = this.pickPreferredBranch(branches) ?? "main";
-				await this.gitEngine.checkout(NOTES_ROOT, branchToCheckout);
+				await this.gitEngine.checkout(NOTES_ROOT, "main");
 				console.log(
-					`[GitInitializationService] Successfully checked out branch: ${branchToCheckout}`,
+					"[GitInitializationService] Successfully checked out branch: main",
 				);
 			} catch (checkoutError) {
 				console.error(

@@ -112,10 +112,7 @@ export interface GitSyncStateStore {
 	writePendingJournal(entries: GitJournalEntry[]): Promise<void>;
 	readDeviceId(): Promise<string | undefined>;
 	writeDeviceId(id: string): Promise<void>;
-	readDeviceBranch(): Promise<string | undefined>;
-	writeDeviceBranch(branch: string): Promise<void>;
-	readLastReconciledMainOid(): Promise<string | undefined>;
-	writeLastReconciledMainOid(oid: string): Promise<void>;
+
 }
 
 export interface RepoBootstrapper {

@@ -389,15 +389,6 @@ export class GitService {
 					didCommit = true;
 				}
 
-				// Ensure HEAD is on the device branch before pushing
-				const deviceBranch = await GitService.stateStore.readDeviceBranch();
-				if (deviceBranch) {
-					const currentBranch = await gitEngine.currentBranch(NOTES_ROOT);
-					if (currentBranch !== deviceBranch) {
-						await gitEngine.checkout(NOTES_ROOT, deviceBranch);
-					}
-				}
-
 				await gitEngine.push(NOTES_ROOT);
 
 				if (GitService.reconcileHandler) {

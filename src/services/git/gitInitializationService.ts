@@ -1,4 +1,6 @@
+import { parseFrontmatter } from "@/services/notes/frontmatter";
 import { NOTES_ROOT } from "@/services/notes/Notes";
+import { NoteService } from "@/services/notes/noteService";
 import {
 	type StartupTelemetry,
 	createNoopStartupTelemetry,
@@ -12,6 +14,7 @@ import { DefaultMainReconcileService } from "./init/mainReconcileService";
 import { DefaultRemoteSyncService } from "./init/remoteSyncService";
 import { DefaultRepoBootstrapper } from "./init/repoBootstrapper";
 import { AsyncGitSyncStateStore } from "./init/stateStore";
+import type { GitConflictFile } from "./engines/GitEngine";
 import {
 	type GitHubConfig,
 	type GitInitDependencies,
@@ -21,6 +24,45 @@ import {
 	createEmptyStartupMetrics,
 } from "./init/types";
 import { getGitRuntimeSupport } from "./runtime";
+
+async function createSyncConflictNotes(
+	conflicts: GitConflictFile[],
+): Promise<void> {
+	for (const conflict of conflicts) {
+		if (!conflict.theirsContent) continue;
+		const baseName = conflict.path.replace(/\.md$/, "");
+		const conflictId = `${baseName}-sync_conflict`;
+		try {
+			const parsed = parseFrontmatter(conflict.theirsContent);
+			const title = parsed.title
+				? `${parsed.title} (sync conflict)`
+				: `${baseName} (sync conflict)`;
+			await NoteService.saveNote(
+				{
+					id: conflictId,
+					title,
+					content: parsed.content,
+					isPinned: false,
+					noteType: parsed.noteType ?? "note",
+					status: parsed.status ?? null,
+					createdAt: parsed.createdAt ?? Date.now(),
+					completedAt: parsed.completedAt ?? null,
+					attachment: parsed.attachment ?? null,
+					attachedVideo: parsed.attachedVideo ?? null,
+				},
+				true,
+			);
+			console.log(
+				`[GitInitializationService] Created sync conflict note: ${conflictId}`,
+			);
+		} catch (err) {
+			console.warn(
+				`[GitInitializationService] Failed to create sync conflict note for ${conflict.path}:`,
+				err,
+			);
+		}
+	}
+}
 
 function assertGitHubConfig(): GitHubConfig {
 	const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
@@ -57,7 +99,6 @@ function createGitInitDependencies(config: GitHubConfig): GitInitDependencies {
 		gitEngine,
 		dbSyncService,
 		stateStore,
-		mainReconcileService,
 	);
 
 	return {
@@ -224,15 +265,10 @@ export class GitInitializationService {
 			this.applySyncMetrics(metrics, syncResult.metrics);
 
 			if (syncResult.success) {
-				// Register the reconciler so every subsequent push folds device branches into main
-				GitService.registerReconcileHandler(() =>
-					dependencies.mainReconcileService
-						.reconcile(createNoopStartupTelemetry("reconcile"))
-						.then(() => undefined),
-				);
-
-				// Check if there are unresolved conflicts from the sync
-				const conflicts = syncResult.conflicts;
+				// Create sync_conflict notes for any files that had merge conflicts
+				if (syncResult.conflicts && syncResult.conflicts.length > 0) {
+					await createSyncConflictNotes(syncResult.conflicts);
+				}
 
 				if (hasPendingJournal) {
 					const recoveryResult = await GitService.recoverPendingChanges();
@@ -255,7 +291,6 @@ export class GitInitializationService {
 					success: true,
 					wasCloned: false,
 					supported: true,
-					conflicts,
 					metrics,
 				};
 			}

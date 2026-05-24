@@ -5,8 +5,6 @@ import type { GitJournalEntry, GitSyncStateStore } from "./types";
 const LAST_SYNCED_OID_KEY = "git:lastSyncedOid";
 const PENDING_JOURNAL_KEY = "git:pendingJournal";
 const DEVICE_ID_KEY = "git:deviceId";
-const DEVICE_BRANCH_KEY = "git:deviceBranch";
-const LAST_RECONCILED_MAIN_OID_KEY = "git:lastReconciledMainOid";
 
 export class AsyncGitSyncStateStore implements GitSyncStateStore {
 	private async read(key: string): Promise<string | undefined> {
@@ -108,23 +106,4 @@ export class AsyncGitSyncStateStore implements GitSyncStateStore {
 		return this.write(DEVICE_ID_KEY, id, "deviceId");
 	}
 
-	async readDeviceBranch(): Promise<string | undefined> {
-		return this.read(DEVICE_BRANCH_KEY);
-	}
-
-	async writeDeviceBranch(branch: string): Promise<void> {
-		return this.write(DEVICE_BRANCH_KEY, branch, "deviceBranch");
-	}
-
-	async readLastReconciledMainOid(): Promise<string | undefined> {
-		return this.read(LAST_RECONCILED_MAIN_OID_KEY);
-	}
-
-	async writeLastReconciledMainOid(oid: string): Promise<void> {
-		return this.write(
-			LAST_RECONCILED_MAIN_OID_KEY,
-			oid,
-			"lastReconciledMainOid",
-		);
-	}
 }
