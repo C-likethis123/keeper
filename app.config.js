@@ -1,20 +1,16 @@
-const IS_DEV = process.env.APP_VARIANT === "development";
-
 export default {
 	expo: {
-		name: IS_DEV ? "Keeper (Dev)" : "Keeper",
+		name: "Keeper",
 		slug: "native",
 		version: "1.0.0",
 		orientation: "portrait",
 		icon: "./assets/images/icon.png",
-		scheme: IS_DEV ? "native-dev" : "native",
+		scheme: "native",
 		userInterfaceStyle: "automatic",
 		newArchEnabled: true,
 		ios: {
 			supportsTablet: true,
-			bundleIdentifier: IS_DEV
-				? "com.clikethis123.keeper.dev"
-				: "com.clikethis123.keeper",
+			bundleIdentifier: "com.clikethis123.keeper",
 		},
 		android: {
 			versionCode: 3,
@@ -27,9 +23,7 @@ export default {
 			},
 			edgeToEdgeEnabled: true,
 			predictiveBackGestureEnabled: false,
-			package: IS_DEV
-				? "com.clikethis123.keeper.dev"
-				: "com.clikethis123.keeper",
+			package: "com.clikethis123.keeper",
 		},
 		web: {
 			output: "static",
@@ -38,7 +32,6 @@ export default {
 		plugins: [
 			"expo-router",
 			"expo-share-intent",
-			...(IS_DEV ? ["expo-dev-client"] : []),
 			[
 				"expo-splash-screen",
 				{

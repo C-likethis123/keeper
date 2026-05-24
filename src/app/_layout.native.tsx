@@ -7,7 +7,6 @@ import { lightTheme } from "@/constants/themes/lightTheme";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppStartup } from "@/hooks/useAppStartup";
 import { useConflictResolution } from "@/hooks/useConflictResolution";
-import { useFeedbackExport } from "@/hooks/useFeedbackExport";
 import { useShareHandler } from "@/hooks/useShareHandler";
 import { useStyles } from "@/hooks/useStyles";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
@@ -56,15 +55,7 @@ const App = ({
 		hideConflictModal,
 		hasUnresolvedConflicts,
 	} = useConflictResolution();
-	const { exportFeedback } = useFeedbackExport();
-
 	useShareHandler(isHydrated);
-
-	// Debug trigger for feedback export (dev only)
-	if (__DEV__) {
-		// biome-ignore lint/suspicious/noExplicitAny: Debug-only global function
-		(global as any).exportMocFeedback = exportFeedback;
-	}
 
 	if (!isHydrated) {
 		return (

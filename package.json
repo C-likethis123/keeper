@@ -6,9 +6,8 @@
     "start": "expo start",
     "eas-build-pre-install": "./scripts/eas-install-rust.sh",
     "web:desktop": "BROWSER=none expo start --web --port 8082",
-    "all": "sh -c 'trap \"kill 0\" INT TERM EXIT; npm run desktop & npm run android:dev & wait'",
+
     "build:android": "EXPO_UPDATE_CHANNEL=production npx expo prebuild --platform android --clean && ./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installRelease",
-    "android:dev": "APP_VARIANT=development npx expo prebuild --platform android --clean && ./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installDebug && cd .. && (adb reverse tcp:8081 tcp:8081 || true) && npx expo start --dev-client",
     "desktop": "tauri dev",
     "ios": "expo run:ios",
     "build:web": "expo export --platform web",
@@ -35,7 +34,6 @@
     "expo": "~54.0.33",
     "expo-clipboard": "~8.0.3",
     "expo-constants": "~18.0.13",
-    "expo-dev-client": "~6.0.20",
     "expo-document-picker": "~14.0.8",
     "expo-file-system": "~19.0.21",
     "expo-font": "~14.0.11",
