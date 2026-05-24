@@ -57,6 +57,20 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 				currentBranch: mainBranch,
 				remoteBranch,
 			});
+
+			// Commit any uncommitted local changes before merging to avoid
+			// "uncommitted change would be overwritten by merge" errors.
+			const dirtyFiles = await this.gitEngine.status(NOTES_ROOT);
+			if (dirtyFiles.length > 0) {
+				console.log(
+					`[GitInitializationService] Committing ${dirtyFiles.length} uncommitted file(s) before merge...`,
+				);
+				await this.gitEngine.commit(NOTES_ROOT, "Auto-save before sync");
+				telemetry.trace("git.auto_save_before_sync", {
+					fileCount: dirtyFiles.length,
+				});
+			}
+
 			console.log(
 				`[GitInitializationService] Attempting to merge from ${remoteBranch}...`,
 			);
