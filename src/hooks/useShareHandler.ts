@@ -39,7 +39,19 @@ export function useShareHandler(isHydrated: boolean) {
 			if (videoSource) {
 				try {
 					const id = nanoid();
-					const title = "Resource: YouTube Video";
+					let videoTitle = "YouTube Video";
+					try {
+						const oembedRes = await fetch(
+							`https://www.youtube.com/oembed?url=${encodeURIComponent(sharedValue)}&format=json`,
+						);
+						if (oembedRes.ok) {
+							const oembedData = (await oembedRes.json()) as { title?: string };
+							if (oembedData.title) videoTitle = oembedData.title;
+						}
+					} catch {
+						// fall through to default title
+					}
+					const title = `Resource: ${videoTitle}`;
 					const content = `![video](${sharedValue})\n\nShared from YouTube.`;
 
 					const newNote = await NoteService.saveNote(
