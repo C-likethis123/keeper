@@ -39,6 +39,7 @@ function createContext(runtimeSupport: GitRuntimeSupport) {
 		showToast: jest.fn(),
 		setHydrated: jest.fn(),
 		setInitError: jest.fn(),
+		setStatusMessage: jest.fn(),
 	};
 }
 
@@ -73,6 +74,7 @@ describe("runStartupStrategy", () => {
 			{
 				backgroundMode: true,
 				setInitError: context.setInitError,
+				setStatusMessage: context.setStatusMessage,
 			},
 			expect.any(Object),
 		);
@@ -96,6 +98,7 @@ describe("runStartupStrategy", () => {
 			{
 				backgroundMode: false,
 				setInitError: context.setInitError,
+				setStatusMessage: context.setStatusMessage,
 			},
 			expect.any(Object),
 		);

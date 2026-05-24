@@ -10,6 +10,7 @@ interface AppStartupState {
 	initError: string | null;
 	runtime: ReturnType<typeof getGitRuntimeSupport>["runtime"];
 	status: StartupStatus;
+	statusMessage: string;
 }
 
 const initialRuntime = getGitRuntimeSupport().runtime;
@@ -38,6 +39,7 @@ export function useAppStartup(): AppStartupState {
 		initError: null,
 		runtime: initialRuntime,
 		status: "idle",
+		statusMessage: "",
 	});
 
 	useEffect(() => {
@@ -75,6 +77,7 @@ export function useAppStartup(): AppStartupState {
 					...prev,
 					isHydrated: true,
 					status: prev.initError ? "error" : "ready",
+					statusMessage: "",
 				})),
 			setInitError: (error) =>
 				safeSetState((prev) => ({
@@ -82,6 +85,8 @@ export function useAppStartup(): AppStartupState {
 					initError: error,
 					status: "error",
 				})),
+			setStatusMessage: (message) =>
+				safeSetState((prev) => ({ ...prev, statusMessage: message })),
 		}).catch((error) => {
 			console.error("[App] Startup error:", error);
 			safeSetState((prev) => ({

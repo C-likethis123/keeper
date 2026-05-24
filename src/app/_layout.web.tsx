@@ -74,11 +74,11 @@ export default function RootLayout() {
 		}
 	}, []);
 	const themeMode = useColorScheme();
-	const { isHydrated, initError } = useAppStartup();
+	const { isHydrated, initError, statusMessage } = useAppStartup();
 
 	return (
 		<ThemeProvider value={themeMode === "light" ? lightTheme : darkTheme}>
-			<App isHydrated={isHydrated} initError={initError} />
+			<App isHydrated={isHydrated} initError={initError} statusMessage={statusMessage} />
 		</ThemeProvider>
 	);
 }
@@ -86,7 +86,8 @@ export default function RootLayout() {
 const App = ({
 	isHydrated,
 	initError,
-}: { isHydrated: boolean; initError: string | null }) => {
+	statusMessage,
+}: { isHydrated: boolean; initError: string | null; statusMessage: string }) => {
 	const styles = useStyles(createStyles);
 	const {
 		conflicts,
@@ -100,6 +101,9 @@ const App = ({
 			<View style={styles.splash}>
 				<Text style={styles.title}>Keeper</Text>
 				<ActivityIndicator size="large" style={styles.activityIndicator} />
+				{!!statusMessage && (
+					<Text style={styles.statusText}>{statusMessage}</Text>
+				)}
 			</View>
 		);
 	}
@@ -160,6 +164,12 @@ function createStyles(theme: ExtendedTheme) {
 		activityIndicator: {
 			marginTop: 16,
 			color: theme.colors.primary,
+		},
+		statusText: {
+			marginTop: 12,
+			fontSize: 14,
+			color: theme.colors.text,
+			opacity: 0.6,
 		},
 		errorText: {
 			marginTop: 16,

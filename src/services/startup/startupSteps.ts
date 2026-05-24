@@ -9,6 +9,7 @@ import type { StartupTelemetry } from "./startupTelemetry";
 interface InitializeGitStepOptions {
 	backgroundMode: boolean;
 	setInitError: (error: string) => void;
+	setStatusMessage?: (message: string) => void;
 }
 
 export async function initializeStorageStep(
@@ -42,9 +43,10 @@ export async function initializeStorageStep(
 }
 
 export async function initializeGitStep(
-	{ backgroundMode, setInitError }: InitializeGitStepOptions,
+	{ backgroundMode, setInitError, setStatusMessage }: InitializeGitStepOptions,
 	telemetry: StartupTelemetry,
 ): Promise<void> {
+	setStatusMessage?.("Syncing with GitHub...");
 	const initializeStart = telemetry.stepStarted("git.initialize", {
 		backgroundMode,
 	});

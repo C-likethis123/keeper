@@ -14,6 +14,7 @@ interface StartupStrategyContext {
 	runtimeSupport: GitRuntimeSupport;
 	setHydrated: () => void;
 	setInitError: (error: string) => void;
+	setStatusMessage: (message: string) => void;
 	telemetry: StartupTelemetry;
 }
 
@@ -22,6 +23,7 @@ type StartupStrategy = (context: StartupStrategyContext) => Promise<void>;
 const runDesktopStartup: StartupStrategy = async ({
 	setHydrated,
 	setInitError,
+	setStatusMessage,
 	telemetry,
 }) => {
 	await initializeStorageStep(telemetry);
@@ -32,6 +34,7 @@ const runDesktopStartup: StartupStrategy = async ({
 		{
 			backgroundMode: true,
 			setInitError,
+			setStatusMessage,
 		},
 		telemetry,
 	);
@@ -40,6 +43,7 @@ const runDesktopStartup: StartupStrategy = async ({
 const runMobileStartup: StartupStrategy = async ({
 	setHydrated,
 	setInitError,
+	setStatusMessage,
 	telemetry,
 }) => {
 	await initializeStorageStep(telemetry);
@@ -47,6 +51,7 @@ const runMobileStartup: StartupStrategy = async ({
 		{
 			backgroundMode: false,
 			setInitError,
+			setStatusMessage,
 		},
 		telemetry,
 	);
@@ -83,7 +88,7 @@ export async function runStartupStrategy(
 		supported: context.runtimeSupport.supported,
 	});
 	if (!__DEV__) {
-		void checkForUpdates();
+		void checkForUpdates(context.setStatusMessage);
 	}
 	const run = startupStrategies[context.runtimeSupport.runtime];
 	try {
