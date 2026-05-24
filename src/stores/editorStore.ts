@@ -63,6 +63,7 @@ function isInlineFormattingUnsupported(type: BlockType): boolean {
 		BlockType.mathBlock,
 		BlockType.image,
 		BlockType.video,
+		BlockType.table,
 	].includes(type);
 }
 

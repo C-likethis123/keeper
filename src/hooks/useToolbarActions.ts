@@ -2,6 +2,7 @@ import {
 	BlockType,
 	createImageBlock,
 	createParagraphBlock,
+	createTableBlock,
 } from "@/components/editor/core/BlockNode";
 import { executeEditorCommand } from "@/components/editor/keyboard/editorCommands";
 import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
@@ -16,6 +17,7 @@ interface UseToolbarActions {
 	handleConvertToCheckbox: () => void;
 	handleInsertImage: () => Promise<void>;
 	handleInsertCollapsible: () => void;
+	handleInsertTable: (rows: number, cols: number) => void;
 }
 
 export function useToolbarActions(): UseToolbarActions {
@@ -125,11 +127,21 @@ export function useToolbarActions(): UseToolbarActions {
 		focusBlock,
 	]);
 
+	const handleInsertTable = useCallback(
+		(rows: number, cols: number) => {
+			const insertIndex = getFocusedBlockIndex() ?? 0;
+			insertBlockAfter(insertIndex, createTableBlock(rows, cols));
+			focusBlock(insertIndex + 1);
+		},
+		[getFocusedBlockIndex, insertBlockAfter, focusBlock],
+	);
+
 	return {
 		handleOutdent,
 		handleIndent,
 		handleConvertToCheckbox,
 		handleInsertImage,
 		handleInsertCollapsible,
+		handleInsertTable,
 	};
 }

@@ -12,6 +12,7 @@ export enum BlockType {
 	image = "image",
 	video = "video",
 	collapsibleBlock = "collapsibleBlock",
+	table = "table",
 }
 
 /// Immutable node representing a block of content in the document.
@@ -121,6 +122,34 @@ export function createImageBlock(path: string): BlockNode {
 	};
 }
 
+/// Creates a new table block
+export function createTableBlock(
+	rows: number,
+	cols: number,
+	data?: string[][],
+	headerRow = true,
+): BlockNode {
+	const tableData =
+		data ??
+		Array.from({ length: rows }, () => Array.from({ length: cols }, () => ""));
+	return {
+		id: generateId(),
+		type: BlockType.table,
+		content: "",
+		attributes: { tableData, headerRow },
+	};
+}
+
+export function getTableData(block: BlockNode): string[][] {
+	const v = block.attributes?.tableData;
+	if (Array.isArray(v)) return v as string[][];
+	return [[""]];
+}
+
+export function getTableHeaderRow(block: BlockNode): boolean {
+	return block.attributes?.headerRow !== false;
+}
+
 /// Creates a new collapsible section block
 export function createCollapsibleBlock(
 	summary = "",
@@ -195,6 +224,24 @@ export function blockToMarkdown(block: BlockNode, listNumber?: number): string {
 			const openAttr = isCollapsibleExpanded(block) ? " open" : "";
 			return `<details${openAttr}>\n<summary>${summary}</summary>\n\n${block.content}\n\n</details>`;
 		}
+		case BlockType.table: {
+			const tableData = getTableData(block);
+			if (tableData.length === 0 || tableData[0].length === 0) return "";
+			const numCols = tableData[0].length;
+			const lines: string[] = [];
+			lines.push(
+				`| ${tableData[0].map((c) => c.replace(/\|/g, "\\|") || " ").join(" | ")} |`,
+			);
+			lines.push(`| ${Array(numCols).fill("---").join(" | ")} |`);
+			for (let r = 1; r < tableData.length; r++) {
+				lines.push(
+					`| ${tableData[r].map((c) => c.replace(/\|/g, "\\|") || " ").join(" | ")} |`,
+				);
+			}
+			return lines.join("\n");
+		}
+		case BlockType.video:
+			return "";
 		case BlockType.paragraph:
 			return block.content;
 	}

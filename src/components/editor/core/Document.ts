@@ -10,10 +10,20 @@ import {
 	createListBlock,
 	createMathBlock,
 	createParagraphBlock,
+	createTableBlock,
 	getListLevel,
 	isCodeBlock,
 	isCollapsibleBlock,
 } from "./BlockNode";
+
+function parseTableRow(line: string): string[] {
+	const trimmed = line.trim();
+	const inner = trimmed.startsWith("|") ? trimmed.slice(1) : trimmed;
+	const withoutTrailing = inner.endsWith("|") ? inner.slice(0, -1) : inner;
+	return withoutTrailing.split("|").map((cell) =>
+		cell.trim().replace(/\\\|/g, "|"),
+	);
+}
 
 /// Immutable document representing the entire editor content.
 ///
@@ -125,6 +135,26 @@ export function createDocumentFromMarkdown(markdown: string): Document {
 				createCollapsibleBlock(summary, bodyLines.join("\n"), isExpanded),
 			);
 			i++; // Skip </details>
+			continue;
+		}
+
+		// Check for GFM tables
+		if (
+			line.startsWith("|") &&
+			i + 1 < lines.length &&
+			/^\|[\s\-|:]+\|$/.test(lines[i + 1].trim())
+		) {
+			const headerCells = parseTableRow(line);
+			i += 2; // skip separator line
+			const bodyRows: string[][] = [];
+			while (i < lines.length && lines[i].startsWith("|")) {
+				bodyRows.push(parseTableRow(lines[i]));
+				i++;
+			}
+			const tableData = [headerCells, ...bodyRows];
+			blocks.push(
+				createTableBlock(tableData.length, headerCells.length, tableData, true),
+			);
 			continue;
 		}
 
@@ -378,11 +408,12 @@ export function documentToMarkdown(document: Document): string {
 		buffer.push(blockToMarkdown(block, listNumber));
 		if (i < document.blocks.length - 1) {
 			buffer.push("\n");
-			// Add extra newline after code blocks and collapsible blocks
+			// Add extra newline after code blocks, collapsible blocks, and tables
 			if (
 				isCodeBlock(block) ||
 				block.type === BlockType.mathBlock ||
-				isCollapsibleBlock(block)
+				isCollapsibleBlock(block) ||
+				block.type === BlockType.table
 			) {
 				buffer.push("\n");
 			}

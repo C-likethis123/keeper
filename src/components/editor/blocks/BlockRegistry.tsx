@@ -21,6 +21,12 @@ const LazyCollapsibleBlock = React.lazy(() =>
 	})),
 );
 
+const LazyTableBlock = React.lazy(() =>
+	import("./TableBlock").then((module) => ({
+		default: module.TableBlock,
+	})),
+);
+
 export interface BlockConfig {
 	block: BlockNode;
 	index: number;
@@ -225,5 +231,10 @@ blockRegistry.registerAll([
 		triggerPrefix: /^<details(?: open)?>(?:<\/details>)?$/,
 		markdownPrefix: "<details>",
 		build: (config) => renderLazyBlock(LazyCollapsibleBlock, config),
+	},
+	{
+		type: BlockType.table,
+		markdownPrefix: "|",
+		build: (config) => renderLazyBlock(LazyTableBlock, config),
 	},
 ]);

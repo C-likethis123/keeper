@@ -1,9 +1,10 @@
 import { executeEditorCommand } from "@/components/editor/keyboard/editorCommands";
 import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
+import { TableSizeModal } from "@/components/editor/table/TableSizeModal";
 import { IconButton } from "@/components/shared/IconButton";
 import { useToolbarActions } from "@/hooks/useToolbarActions";
 import { useEditorState } from "@/stores/editorStore";
-import React from "react";
+import React, { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { BlockType, getListLevel, isListItem } from "./core/BlockNode";
 
@@ -39,6 +40,7 @@ interface EditorToolbarProps {
 	onOutdent?: () => void;
 	onInsertImage?: () => void;
 	onInsertCollapsible?: () => void;
+	onInsertTable?: (rows: number, cols: number) => void;
 }
 
 export function EditorToolbar({
@@ -59,7 +61,9 @@ export function EditorToolbar({
 	onOutdent,
 	onInsertImage,
 	onInsertCollapsible,
+	onInsertTable,
 }: EditorToolbarProps) {
+	const [tableSizeModalVisible, setTableSizeModalVisible] = useState(false);
 	const canUndo = useEditorState((s) => s.getCanUndo());
 	const canRedo = useEditorState((s) => s.getCanRedo());
 	const block = useEditorState((s) => s.getFocusedBlock());
@@ -81,6 +85,8 @@ export function EditorToolbar({
 	const handleInsertImage = onInsertImage ?? toolbarActions.handleInsertImage;
 	const handleInsertCollapsible =
 		onInsertCollapsible ?? toolbarActions.handleInsertCollapsible;
+	const handleInsertTable =
+		onInsertTable ?? toolbarActions.handleInsertTable;
 
 	const isListBlock = isListItem(blockType);
 
@@ -111,6 +117,11 @@ export function EditorToolbar({
 					disabled={!canOutdent}
 				/>
 				<IconButton name="angle-down" onPress={handleInsertCollapsible} />
+				<IconButton
+					name="table"
+					onPress={() => setTableSizeModalVisible(true)}
+					label="Insert table"
+				/>
 				<IconButton
 					name="image"
 					onPress={() => {
@@ -176,6 +187,14 @@ export function EditorToolbar({
 					/>
 				)}
 			</ScrollView>
+		<TableSizeModal
+			visible={tableSizeModalVisible}
+			onDismiss={() => setTableSizeModalVisible(false)}
+			onInsert={(rows, cols) => {
+				handleInsertTable(rows, cols);
+				setTableSizeModalVisible(false);
+			}}
+		/>
 		</View>
 	);
 }
