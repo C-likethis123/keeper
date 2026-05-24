@@ -19,12 +19,16 @@ export function useShareHandler(isHydrated: boolean) {
 	}, [error, resetShareIntent]);
 
 	useEffect(() => {
-		if (!isHydrated || !hasShareIntent || !shareIntent.value) {
+		if (!isHydrated || !hasShareIntent || (!shareIntent.webUrl && !shareIntent.text)) {
 			return;
 		}
 
 		const processShareIntent = async () => {
-			const sharedValue = shareIntent.value;
+			const rawUrl = shareIntent.webUrl ?? null;
+			const textUrl = shareIntent.text
+				? (shareIntent.text.match(/https?:\/\/\S+/)?.[0]?.replace(/[).,;:!?"'[\]]+$/, "") ?? null)
+				: null;
+			const sharedValue = rawUrl ?? textUrl;
 			if (!sharedValue) return;
 
 			console.log("[ShareHandler] Processing share intent:", sharedValue);
@@ -83,5 +87,5 @@ export function useShareHandler(isHydrated: boolean) {
 		};
 
 		void processShareIntent();
-	}, [isHydrated, hasShareIntent, shareIntent, resetShareIntent, router]);
+	}, [isHydrated, hasShareIntent, shareIntent.webUrl, shareIntent.text, resetShareIntent, router]);
 }

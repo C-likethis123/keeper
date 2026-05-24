@@ -30,7 +30,7 @@ describe("useShareHandler", () => {
 	it("does nothing when no share intent is present", () => {
 		(useShareIntent as jest.Mock).mockReturnValue({
 			hasShareIntent: false,
-			shareIntent: {},
+			shareIntent: { webUrl: null, text: null, files: null, type: null },
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});
@@ -44,7 +44,12 @@ describe("useShareHandler", () => {
 	it("does nothing when not hydrated", () => {
 		(useShareIntent as jest.Mock).mockReturnValue({
 			hasShareIntent: true,
-			shareIntent: { value: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+			shareIntent: {
+				webUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+				text: null,
+				files: null,
+				type: "weburl",
+			},
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});
@@ -54,11 +59,11 @@ describe("useShareHandler", () => {
 		expect(NoteService.saveNote).not.toHaveBeenCalled();
 	});
 
-	it("creates a note and navigates when a YouTube URL is shared", async () => {
+	it("creates a note and navigates when a YouTube URL is shared via webUrl (iOS)", async () => {
 		const youtubeUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 		(useShareIntent as jest.Mock).mockReturnValue({
 			hasShareIntent: true,
-			shareIntent: { value: youtubeUrl },
+			shareIntent: { webUrl: youtubeUrl, text: null, files: null, type: "weburl" },
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});
@@ -85,10 +90,40 @@ describe("useShareHandler", () => {
 		});
 	});
 
+	it("creates a note when a YouTube URL is shared via text (Android / copy-link)", async () => {
+		const youtubeUrl = "https://youtu.be/dQw4w9WgXcQ";
+		(useShareIntent as jest.Mock).mockReturnValue({
+			hasShareIntent: true,
+			shareIntent: {
+				webUrl: null,
+				text: `Check out this video ${youtubeUrl}`,
+				files: null,
+				type: "text",
+			},
+			resetShareIntent: mockResetShareIntent,
+			error: null,
+		});
+
+		(NoteService.saveNote as jest.Mock).mockResolvedValue({ id: "test-id" });
+
+		renderHook(() => useShareHandler(true));
+
+		await waitFor(() => {
+			expect(NoteService.saveNote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					noteType: "resource",
+					attachedVideo: youtubeUrl,
+				}),
+				true,
+			);
+			expect(mockPush).toHaveBeenCalledWith("/editor?id=test-id");
+		});
+	});
+
 	it("resets intent and shows toast when an unsupported URL is shared", async () => {
 		(useShareIntent as jest.Mock).mockReturnValue({
 			hasShareIntent: true,
-			shareIntent: { value: "https://example.com" },
+			shareIntent: { webUrl: "https://example.com", text: null, files: null, type: "weburl" },
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});
@@ -107,7 +142,12 @@ describe("useShareHandler", () => {
 	it("handles errors from NoteService", async () => {
 		(useShareIntent as jest.Mock).mockReturnValue({
 			hasShareIntent: true,
-			shareIntent: { value: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+			shareIntent: {
+				webUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+				text: null,
+				files: null,
+				type: "weburl",
+			},
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});
