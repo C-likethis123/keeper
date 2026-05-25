@@ -492,14 +492,9 @@ export function UnifiedBlock({
 	const textInputStyle = [
 		styles.input,
 		textStyle,
-		{
-			opacity: isFocused ? 1 : 0,
-			position: "absolute" as const,
-			top: 0,
-			left: 0,
-			right: 0,
-			bottom: 0,
-		},
+		isFocused
+			? styles.focusedInput
+			: [styles.unfocusedInput, StyleSheet.absoluteFill],
 	];
 
 	// The InlineMarkdown overlay sits behind the input and is only visible when
@@ -575,10 +570,10 @@ export function UnifiedBlock({
 						textAlignVertical="top"
 						underlineColorAndroid="transparent"
 					/>
-					{/* Always rendered to provide layout height for the absolutely-
-              positioned TextInput; hidden when focused so the textarea shows. */}
+					{/* The preview owns layout while unfocused. While editing, the
+              TextInput owns layout so wrapping/caret metrics match the raw text. */}
 					<View
-						style={[styles.overlay, isFocused && { opacity: 0 }]}
+						style={[styles.overlay, isFocused && styles.hiddenOverlay]}
 						pointerEvents="box-none"
 					>
 						{inlineMarkdown}
@@ -610,7 +605,18 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		input: {
 			flex: 1,
 			color: theme.colors.text,
+			padding: 0,
 			...webMultilineTextInputReset,
+		},
+		focusedInput: {
+			position: "relative",
+			opacity: 1,
+		},
+		unfocusedInput: {
+			opacity: 0,
+		},
+		hiddenOverlay: {
+			display: "none",
 		},
 		heading1Style: theme.typography.heading1,
 		heading2Style: theme.typography.heading2,

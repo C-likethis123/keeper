@@ -196,6 +196,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 							{
 								fontFamily,
 								fontSize,
+								lineHeight: highlighterLineHeight,
 								color: highlighterColor || stylesheet.hljs.color,
 							},
 							nodeStyle,

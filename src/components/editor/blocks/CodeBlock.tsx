@@ -34,6 +34,36 @@ const LazySyntaxHighlighter = React.lazy(
 	() => import("../code/SyntaxHighlighter"),
 );
 
+type TextSelection = { start: number; end: number };
+type EditResult = { newText: string; newCursorOffset: number };
+
+function cursorSelection(offset: number): TextSelection {
+	return { start: offset, end: offset };
+}
+
+function isSameSelection(a: TextSelection, b: TextSelection): boolean {
+	return a.start === b.start && a.end === b.end;
+}
+
+function setCodeInputSelection(
+	input: TextInput | null,
+	selection: TextSelection,
+) {
+	if (!input) {
+		return;
+	}
+
+	if (Platform.OS === "web") {
+		const el = input as unknown as HTMLTextAreaElement;
+		if (typeof el.setSelectionRange === "function") {
+			el.setSelectionRange(selection.start, selection.end);
+		}
+		return;
+	}
+
+	input.setNativeProps?.({ selection });
+}
+
 export function CodeBlock({
 	block,
 	index,
@@ -48,7 +78,13 @@ export function CodeBlock({
 	const inputRef = useRef<TextInput>(null);
 	const [value, setValue] = useState(block.content);
 	const highlighterRef = useRef<ScrollView>(null);
-	const [selection, setSelection] = useState<{ start: number; end: number }>({
+	const [selection, setSelection] = useState<TextSelection>({
+		start: 0,
+		end: 0,
+	});
+	// Tracks the cursor position native currently holds, so we can skip redundant setNativeProps
+	// calls on every keystroke and only intervene when external navigation requires a cursor jump.
+	const nativeSelectionRef = useRef<TextSelection>({
 		start: 0,
 		end: 0,
 	});
@@ -73,6 +109,14 @@ export function CodeBlock({
 		onContentChange(index, value);
 	}, [onContentChange, index, value]);
 
+	const applySelectionToInput = useCallback(
+		(nextSelection: TextSelection) => {
+			nativeSelectionRef.current = nextSelection;
+			setCodeInputSelection(inputRef.current, nextSelection);
+		},
+		[],
+	);
+
 	useEffect(() => {
 		if (!isFocused || !selectionRange) {
 			return;
@@ -86,7 +130,13 @@ export function CodeBlock({
 			}
 			return selectionRange;
 		});
-	}, [isFocused, selectionRange]);
+		// Only move the native cursor when the store is asking for a position different
+		// from where native already is (e.g. undo/redo or cross-block arrow navigation),
+		// not on every keystroke echo from the store round-trip.
+		if (!isSameSelection(nativeSelectionRef.current, selectionRange)) {
+			applySelectionToInput(selectionRange);
+		}
+	}, [isFocused, selectionRange, applySelectionToInput]);
 
 	useLayoutEffect(() => {
 		if (isFocused && !prevIsFocusedRef.current) {
@@ -96,7 +146,7 @@ export function CodeBlock({
 	}, [isFocused]);
 
 	const setSelectionAndSync = useCallback(
-		(nextSelection: { start: number; end: number }) => {
+		(nextSelection: TextSelection) => {
 			setSelection(nextSelection);
 			onSelectionChange?.(index, nextSelection.start, nextSelection.end);
 		},
@@ -104,17 +154,22 @@ export function CodeBlock({
 	);
 
 	const handleScroll = (e: NativeSyntheticEvent<TextInputScrollEventData>) => {
-		const y = e.nativeEvent.contentOffset.y;
+		const nativeOffsetY = e.nativeEvent.contentOffset?.y;
+		const webTarget = e.currentTarget as unknown as { scrollTop?: number };
+		const y =
+			typeof nativeOffsetY === "number"
+				? nativeOffsetY
+				: (webTarget.scrollTop ?? 0);
 		highlighterRef.current?.scrollTo({ y, animated: false });
 	};
 
 	const handleEnterKey = (
 		val: string,
-	): { newText: string; newCursorOffset: number } => {
-		// When Enter is pressed, React Native has already inserted a newline at selection.start - 1
-		// SmartEditingHandler expects to insert the newline itself, so we need to reconstruct
-		// the text before the newline was inserted
-		const newlinePosition = selection.start - 1;
+	): EditResult => {
+		// onKeyPress fires before the character is inserted, so selection.start is the cursor
+		// position before Enter was pressed — that's exactly where the newline sits in val.
+		// SmartEditingHandler expects to receive the pre-newline text and re-inserts it itself.
+		const newlinePosition = selection.start;
 		const textBeforeNewline = val.substring(0, newlinePosition);
 		const textAfterNewline = val.substring(newlinePosition + 1);
 		const textWithoutNewline = textBeforeNewline + textAfterNewline;
@@ -142,7 +197,7 @@ export function CodeBlock({
 	const handleBraceInsert = (
 		val: string,
 		key: string,
-	): { newText: string; newCursorOffset: number } => {
+	): EditResult => {
 		const cursorPosition = selection.start;
 		const textWithoutInsertedCharacter =
 			val.substring(0, cursorPosition) + val.substring(cursorPosition + 1);
@@ -159,26 +214,34 @@ export function CodeBlock({
 			};
 		}
 
-		// Fallback: insert closing brace manually
-		const closingBrace = Braces.getCloseBrace(key);
-		if (closingBrace) {
-			const newText =
-				val.substring(0, cursorPosition) +
-				key +
-				closingBrace +
-				val.substring(cursorPosition);
-			return { newText, newCursorOffset: cursorPosition + 1 };
-		}
-
-		return { newText: val, newCursorOffset: cursorPosition };
+		// handleCharacterInsert decided not to handle this character (e.g. angle bracket,
+		// or a quote where auto-complete is not appropriate). React Native has already
+		// inserted the character at cursorPosition in val — just advance the cursor past it.
+		return { newText: val, newCursorOffset: cursorPosition + 1 };
 	};
 
 	const handleSelectionChange = (
 		e: NativeSyntheticEvent<TextInputSelectionChangeEventData>,
 	) => {
 		const sel = e.nativeEvent.selection;
+		nativeSelectionRef.current = sel;
 		setSelectionAndSync(sel);
 	};
+
+	const commitEditedText = useCallback(
+		(resolveEdit: (currentValue: string) => EditResult) => {
+			setValue((curr) => {
+				const result = resolveEdit(curr);
+				setTimeout(() => {
+					const nextSelection = cursorSelection(result.newCursorOffset);
+					setSelectionAndSync(nextSelection);
+					applySelectionToInput(nextSelection);
+				}, 0);
+				return result.newText;
+			});
+		},
+		[applySelectionToInput, setSelectionAndSync],
+	);
 
 	const handleFocus = useCallback(() => {
 		if (isFocused) {
@@ -218,33 +281,13 @@ export function CodeBlock({
 					return;
 				}
 				setTimeout(() => {
-					setValue((curr) => {
-						const result = handleEnterKey(curr);
-						// Update cursor position after state update
-						setTimeout(() => {
-							setSelectionAndSync({
-								start: result.newCursorOffset,
-								end: result.newCursorOffset,
-							});
-						}, 0);
-						return result.newText;
-					});
+					commitEditedText(handleEnterKey);
 				}, 10);
 				break;
 			default:
 				if (Braces.isOpenBrace(key)) {
 					setTimeout(() => {
-						setValue((curr) => {
-							const result = handleBraceInsert(curr, key);
-							// Update cursor position after state update
-							setTimeout(() => {
-								setSelectionAndSync({
-									start: result.newCursorOffset,
-									end: result.newCursorOffset,
-								});
-							}, 0);
-							return result.newText;
-						});
+						commitEditedText((curr) => handleBraceInsert(curr, key));
 					}, 0);
 				}
 				break;
@@ -261,6 +304,7 @@ export function CodeBlock({
 	};
 
 	const fontSize = 16;
+	const lineHeight = 22;
 	const padding = 16;
 	const lineNumbersPadding = 1.75 * fontSize;
 	const fontFamily = Platform.OS === "ios" ? "Menlo-Regular" : "monospace";
@@ -281,6 +325,12 @@ export function CodeBlock({
 						language={language}
 						showLineNumbers
 						scrollEnabled={false}
+						addedStyle={{
+							fontFamily,
+							fontSize,
+							padding,
+							highlighterLineHeight: lineHeight,
+						}}
 						ref={highlighterRef}
 					>
 						{value}
@@ -294,6 +344,7 @@ export function CodeBlock({
 							color: "#FFFFFF00",
 							fontFamily,
 							fontSize,
+							lineHeight,
 							paddingTop: padding,
 							paddingRight: padding,
 							paddingBottom: padding,
@@ -301,7 +352,6 @@ export function CodeBlock({
 						},
 					]}
 					onScroll={handleScroll}
-					selection={selection}
 					onKeyPress={handleKeyPress}
 					onSelectionChange={handleSelectionChange}
 					onFocus={handleFocus}
@@ -323,6 +373,10 @@ const styles = StyleSheet.create({
 	},
 	input: {
 		position: "absolute",
+		top: 0,
+		right: 0,
+		bottom: 0,
+		left: 0,
 		textAlignVertical: "top",
 		...webMultilineTextInputReset,
 	},

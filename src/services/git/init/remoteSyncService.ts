@@ -10,6 +10,15 @@ import type {
 } from "./types";
 import { createEmptyStartupMetrics } from "./types";
 
+const DEFAULT_BRANCH = "main";
+const REMOTE_NAME = "origin";
+
+type RemoteBranchResolution = {
+	currentBranch: string;
+	remoteMergeBranch: string;
+	remoteBranch: string;
+};
+
 function createEmptyRemoteSyncMetrics(): RemoteSyncMetrics {
 	const {
 		validateRepoMs: _,
@@ -25,6 +34,37 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 		private readonly dbSyncService: DbSyncService,
 		private readonly stateStore: GitSyncStateStore,
 	) {}
+
+	private async resolveRemoteBranch(
+		metrics: RemoteSyncMetrics,
+	): Promise<RemoteBranchResolution> {
+		const branchResolveStart = performance.now();
+		const currentBranch =
+			(await this.gitEngine.currentBranch(NOTES_ROOT)) ?? DEFAULT_BRANCH;
+		metrics.currentBranchResolveMs = Math.round(
+			performance.now() - branchResolveStart,
+		);
+
+		const remoteBranchListStart = performance.now();
+		const remoteBranches = await this.gitEngine.listBranches(
+			NOTES_ROOT,
+			REMOTE_NAME,
+		);
+		metrics.remoteBranchListMs = Math.round(
+			performance.now() - remoteBranchListStart,
+		);
+		metrics.branchResolveMs =
+			metrics.currentBranchResolveMs + metrics.remoteBranchListMs;
+
+		const remoteMergeBranch = remoteBranches.includes(currentBranch)
+			? currentBranch
+			: DEFAULT_BRANCH;
+		return {
+			currentBranch,
+			remoteMergeBranch,
+			remoteBranch: `${REMOTE_NAME}/${remoteMergeBranch}`,
+		};
+	}
 
 	async syncWithRemote(
 		telemetry: StartupTelemetry,
@@ -50,11 +90,12 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 				headOidPrefix: headBeforeSync.slice(0, 7),
 			});
 
-			const mainBranch = "main";
-			const remoteBranch = "origin/main";
+			const { currentBranch, remoteMergeBranch, remoteBranch } =
+				await this.resolveRemoteBranch(metrics);
 
 			telemetry.trace("git.branch_resolution_completed", {
-				currentBranch: mainBranch,
+				currentBranch,
+				remoteMergeBranch,
 				remoteBranch,
 			});
 
@@ -78,7 +119,7 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 			try {
 				const tMerge = performance.now();
 				await this.gitEngine.merge(NOTES_ROOT, {
-					ours: mainBranch,
+					ours: currentBranch,
 					theirs: remoteBranch,
 					fastForwardOnly: true,
 				});
@@ -99,7 +140,7 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 				try {
 					const tMerge = performance.now();
 					await this.gitEngine.merge(NOTES_ROOT, {
-						ours: mainBranch,
+						ours: currentBranch,
 						theirs: remoteBranch,
 						author: {
 							name: "Git Sync",
