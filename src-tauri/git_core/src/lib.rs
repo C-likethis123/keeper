@@ -432,7 +432,7 @@ pub fn merge(repo_path: &str, options: GitMergeOptionsInput) -> Result<(), Strin
 
     let mut index = repo.index().map_err(format_git_error)?;
     if index.has_conflicts() {
-        return Err("MERGE_CONFLICT: manual resolution required".to_string());
+        split_sync_conflicts(&repo, repo_path, &mut index)?;
     }
 
     let tree_id = index.write_tree_to(&repo).map_err(format_git_error)?;
@@ -456,6 +456,81 @@ pub fn merge(repo_path: &str, options: GitMergeOptionsInput) -> Result<(), Strin
     .map_err(format_git_error)?;
 
     repo.cleanup_state().map_err(format_git_error)?;
+    Ok(())
+}
+
+fn sync_conflict_path(path: &str) -> String {
+    let path = std::path::Path::new(path);
+    let parent = path.parent().and_then(|p| p.to_str()).unwrap_or("");
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+    let extension = path.extension().and_then(|e| e.to_str());
+
+    let file_name = match extension {
+        Some(ext) if !ext.is_empty() => format!("{stem}-sync_conflict.{ext}"),
+        _ => format!("{stem}-sync_conflict"),
+    };
+
+    if parent.is_empty() {
+        file_name
+    } else {
+        format!("{parent}/{file_name}")
+    }
+}
+
+fn write_worktree_file(repo_path: &str, path: &str, content: &[u8]) -> Result<(), String> {
+    let full_path = std::path::Path::new(repo_path).join(path);
+    if let Some(parent) = full_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("MERGE_CONFLICT: {e}"))?;
+    }
+    std::fs::write(&full_path, content).map_err(|e| format!("MERGE_CONFLICT: {e}"))
+}
+
+fn split_sync_conflicts(
+    repo: &Repository,
+    repo_path: &str,
+    index: &mut git2::Index,
+) -> Result<(), String> {
+    let conflicts = index.conflicts().map_err(format_git_error)?;
+    let mut resolved_paths = Vec::new();
+
+    for conflict in conflicts {
+        let conflict = conflict.map_err(format_git_error)?;
+        let path = conflict
+            .our
+            .as_ref()
+            .or(conflict.their.as_ref())
+            .or(conflict.ancestor.as_ref())
+            .map(|e| String::from_utf8_lossy(&e.path).into_owned())
+            .ok_or_else(|| "MERGE_CONFLICT: conflict entry missing path".to_string())?;
+
+        let ours_entry = conflict
+            .our
+            .as_ref()
+            .ok_or_else(|| format!("MERGE_CONFLICT: missing local version for {path}"))?;
+        let theirs_entry = conflict
+            .their
+            .as_ref()
+            .ok_or_else(|| format!("MERGE_CONFLICT: missing incoming version for {path}"))?;
+
+        let ours_blob = repo.find_blob(ours_entry.id).map_err(format_git_error)?;
+        let theirs_blob = repo.find_blob(theirs_entry.id).map_err(format_git_error)?;
+        let conflict_path = sync_conflict_path(&path);
+
+        write_worktree_file(repo_path, &path, ours_blob.content())?;
+        write_worktree_file(repo_path, &conflict_path, theirs_blob.content())?;
+        resolved_paths.push((path, conflict_path));
+    }
+
+    for (path, conflict_path) in resolved_paths {
+        index
+            .add_path(std::path::Path::new(&path))
+            .map_err(format_git_error)?;
+        index
+            .add_path(std::path::Path::new(&conflict_path))
+            .map_err(format_git_error)?;
+    }
+    index.write().map_err(format_git_error)?;
+
     Ok(())
 }
 
@@ -788,6 +863,24 @@ fn map_status(status: Status) -> String {
         "current".to_string()
     } else {
         labels.join("|")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sync_conflict_path;
+
+    #[test]
+    fn sync_conflict_path_inserts_suffix_before_extension() {
+        assert_eq!(sync_conflict_path("note.md"), "note-sync_conflict.md");
+    }
+
+    #[test]
+    fn sync_conflict_path_preserves_parent_directory() {
+        assert_eq!(
+            sync_conflict_path("folder/note.md"),
+            "folder/note-sync_conflict.md"
+        );
     }
 }
 
