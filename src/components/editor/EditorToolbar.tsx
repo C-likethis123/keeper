@@ -1,10 +1,13 @@
 import { executeEditorCommand } from "@/components/editor/keyboard/editorCommands";
 import { useEditorCommandContext } from "@/components/editor/keyboard/useEditorCommandContext";
-import { TableSizeModal } from "@/components/editor/table/TableSizeModal";
+import {
+	TableSizeModal,
+	type TableSizeAnchorRect,
+} from "@/components/editor/table/TableSizeModal";
 import { IconButton } from "@/components/shared/IconButton";
 import { useToolbarActions } from "@/hooks/useToolbarActions";
 import { useEditorState } from "@/stores/editorStore";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { BlockType, getListLevel, isListItem } from "./core/BlockNode";
 
@@ -64,6 +67,9 @@ export function EditorToolbar({
 	onInsertTable,
 }: EditorToolbarProps) {
 	const [tableSizeModalVisible, setTableSizeModalVisible] = useState(false);
+	const [tableAnchorRect, setTableAnchorRect] =
+		useState<TableSizeAnchorRect | null>(null);
+	const tableButtonRef = useRef<View>(null);
 	const canUndo = useEditorState((s) => s.getCanUndo());
 	const canRedo = useEditorState((s) => s.getCanRedo());
 	const block = useEditorState((s) => s.getFocusedBlock());
@@ -87,6 +93,12 @@ export function EditorToolbar({
 		onInsertCollapsible ?? toolbarActions.handleInsertCollapsible;
 	const handleInsertTable =
 		onInsertTable ?? toolbarActions.handleInsertTable;
+	const handleOpenTablePicker = () => {
+		tableButtonRef.current?.measureInWindow((x, y, width, height) => {
+			setTableAnchorRect({ x, y, width, height });
+			setTableSizeModalVisible(true);
+		});
+	};
 
 	const isListBlock = isListItem(blockType);
 
@@ -117,11 +129,13 @@ export function EditorToolbar({
 					disabled={!canOutdent}
 				/>
 				<IconButton name="angle-down" onPress={handleInsertCollapsible} />
-				<IconButton
-					name="table"
-					onPress={() => setTableSizeModalVisible(true)}
-					label="Insert table"
-				/>
+				<View ref={tableButtonRef}>
+					<IconButton
+						name="table"
+						onPress={handleOpenTablePicker}
+						label="Insert table"
+					/>
+				</View>
 				<IconButton
 					name="image"
 					onPress={() => {
@@ -189,6 +203,7 @@ export function EditorToolbar({
 			</ScrollView>
 		<TableSizeModal
 			visible={tableSizeModalVisible}
+			anchorRect={tableAnchorRect}
 			onDismiss={() => setTableSizeModalVisible(false)}
 			onInsert={(rows, cols) => {
 				handleInsertTable(rows, cols);
