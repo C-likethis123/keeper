@@ -103,6 +103,11 @@ type SyntaxHighlighterStyleType = {
 	lineNumbersBackgroundColor?: ColorValue;
 
 	/**
+	 * Left padding used to align the rendered code with an overlaid editor input.
+	 */
+	paddingLeft?: number;
+
+	/**
 	 * Use this property to align the syntax highlighter text with the text input.
 	 */
 	highlighterLineHeight?: number;
@@ -163,6 +168,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 		fontSize = 16,
 		backgroundColor = undefined,
 		padding = 16,
+		paddingLeft = 16,
 		lineNumbersColor = "rgba(127, 127, 127, 0.9)",
 		lineNumbersBackgroundColor = undefined,
 		highlighterLineHeight = undefined,
@@ -197,6 +203,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 								fontFamily,
 								fontSize,
 								lineHeight: highlighterLineHeight,
+								includeFontPadding: false,
 								color: highlighterColor || stylesheet.hljs.color,
 							},
 							nodeStyle,
@@ -209,13 +216,13 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 				renderedNodes.push(textElement);
 			}
 
-			if (node.value !== undefined) {
-				let textValue = String(node.value);
-				// To prevent an empty line after each string
-				textValue = textValue.replace("\n", "");
-				// To render blank lines at an equal font height
-				textValue = textValue.length ? textValue : " ";
-				renderedNodes.push(textValue);
+		if (node.value !== undefined) {
+			let textValue = String(node.value);
+			// To prevent an empty line after each string
+			textValue = textValue.replace(/\n/g, "");
+			// To render blank lines at an equal font height
+			textValue = textValue.length ? textValue : " ";
+			renderedNodes.push(textValue);
 			}
 		}
 
@@ -240,6 +247,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 		paddingTop: padding,
 		paddingRight: padding,
 		paddingBottom: padding,
+		paddingLeft,
 	};
 
 	const nativeRenderer = ({ rows }: HighlighterRendererParams) => {
@@ -255,12 +263,20 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 		);
 	};
 
+	const preStyle: CSSProperties = {
+		...(highlighterProps.customStyle as CSSProperties | undefined),
+		margin: 0,
+		marginBlockStart: 0,
+		marginBlockEnd: 0,
+	};
+
 	return (
 		<Highlighter
 			{...highlighterProps}
 			key={testID}
 			language={highlighterProps.language || "plaintext"}
 			style={syntaxStyle as Record<string, CSSProperties>}
+			customStyle={preStyle}
 			horizontal={false}
 			renderer={nativeRenderer}
 		/>

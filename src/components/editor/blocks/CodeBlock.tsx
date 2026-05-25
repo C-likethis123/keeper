@@ -329,6 +329,7 @@ export function CodeBlock({
 							fontFamily,
 							fontSize,
 							padding,
+							paddingLeft: lineNumbersPadding,
 							highlighterLineHeight: lineHeight,
 						}}
 						ref={highlighterRef}
@@ -345,6 +346,8 @@ export function CodeBlock({
 							fontFamily,
 							fontSize,
 							lineHeight,
+							includeFontPadding: false,
+							padding: 0,
 							paddingTop: padding,
 							paddingRight: padding,
 							paddingBottom: padding,
@@ -378,6 +381,7 @@ const styles = StyleSheet.create({
 		bottom: 0,
 		left: 0,
 		textAlignVertical: "top",
+		padding: 0,
 		...webMultilineTextInputReset,
 	},
 });
