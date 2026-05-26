@@ -167,12 +167,15 @@ export function createDocumentFromMarkdown(markdown: string): Document {
 		}
 
 		// Check for headings
-		if (line.startsWith("### ")) {
-			blocks.push(createHeadingBlock(BlockType.heading3, line.substring(4)));
-		} else if (line.startsWith("## ")) {
-			blocks.push(createHeadingBlock(BlockType.heading2, line.substring(3)));
-		} else if (line.startsWith("# ")) {
-			blocks.push(createHeadingBlock(BlockType.heading1, line.substring(2)));
+		const headingMatch = line.match(/^(#{1,3})\s+(.*)$/);
+		if (headingMatch) {
+			const headingType =
+				headingMatch[1].length === 1
+					? BlockType.heading1
+					: headingMatch[1].length === 2
+						? BlockType.heading2
+						: BlockType.heading3;
+			blocks.push(createHeadingBlock(headingType, headingMatch[2]));
 		} else if (/^(\s*)- \[([ xX])\]\s+(.*)$/.test(line)) {
 			const checkboxMatch = line.match(/^(\s*)- \[([ xX])\]\s+(.*)$/);
 			if (checkboxMatch) {

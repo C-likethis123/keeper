@@ -3,7 +3,6 @@ import HomeQuickComposer from "@/components/HomeQuickComposer";
 import HomeScreenHeader from "@/components/HomeScreenHeader";
 import RenameClusterModal from "@/components/moc/RenameClusterModal";
 import ResetAppDataModal from "@/components/ResetAppDataModal";
-import ConflictBanner from "@/components/conflictResolution/ConflictBanner";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
@@ -210,9 +209,11 @@ function IndexContent() {
     [bumpContentVersion, handleRefresh],
   );
 
+  const safeSections = sections ?? [];
+
   const enhancedSections = useMemo(
     () =>
-      sections.map((section) =>
+      safeSections.map((section) =>
         section.clusterId
           ? {
               ...section,
@@ -227,7 +228,7 @@ function IndexContent() {
             }
           : section,
       ),
-    [sections, handleDeleteCluster, handleRemoveNote],
+    [safeSections, handleDeleteCluster, handleRemoveNote],
   );
 
   useEffect(() => {
@@ -267,7 +268,7 @@ function IndexContent() {
       />
       <Suspense fallback={<Loader />}>
         <LazyNoteGrid
-          notes={notes}
+          notes={notes ?? []}
           sections={enhancedSections}
           emptySubtitle={emptySubtitle}
           onDelete={handleDeleteNote}
@@ -277,12 +278,7 @@ function IndexContent() {
           onEndReached={loadMoreNotes}
           isLoadingMore={isLoading}
           hasMore={hasMore}
-          listHeaderComponent={
-            <>
-              <ConflictBanner />
-              <HomeQuickComposer onPress={createAndOpenNote} />
-            </>
-          }
+          listHeaderComponent={<HomeQuickComposer onPress={createAndOpenNote} />}
         />
       </Suspense>
       <ResetAppDataModal

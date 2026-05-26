@@ -1,12 +1,9 @@
 import { FilterDrawerContent } from "@/components/FilterDrawerContent";
-import ConflictBanner from "@/components/conflictResolution/ConflictBanner";
-import ConflictResolutionModal from "@/components/conflictResolution/ConflictResolutionModal";
 import { ToastOverlay } from "@/components/shared/Toast";
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppStartup } from "@/hooks/useAppStartup";
-import { useConflictResolution } from "@/hooks/useConflictResolution";
 import { useStyles } from "@/hooks/useStyles";
 import { GitService } from "@/services/git/gitService";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
@@ -97,12 +94,6 @@ const App = ({
   statusMessage: string;
 }) => {
   const styles = useStyles(createStyles);
-  const {
-    conflicts,
-    isShowingModal,
-    hideConflictModal,
-    hasUnresolvedConflicts,
-  } = useConflictResolution();
 
   if (!isHydrated) {
     return (
@@ -143,14 +134,6 @@ const App = ({
           />
         </Drawer>
         <ToastOverlay />
-        {hasUnresolvedConflicts && <ConflictBanner />}
-        {hasUnresolvedConflicts && (
-          <ConflictResolutionModal
-            visible={isShowingModal}
-            conflicts={conflicts}
-            onComplete={hideConflictModal}
-          />
-        )}
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );

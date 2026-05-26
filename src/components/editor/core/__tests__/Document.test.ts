@@ -85,6 +85,18 @@ $$
 		]);
 	});
 
+	it("consumes extra spaces after heading markers", () => {
+		const blocks = summarizeDocument(`#  Title
+##   Subtitle
+###    Section`);
+
+		expect(blocks).toEqual([
+			{ type: BlockType.heading1, content: "Title", attributes: {} },
+			{ type: BlockType.heading2, content: "Subtitle", attributes: {} },
+			{ type: BlockType.heading3, content: "Section", attributes: {} },
+		]);
+	});
+
 	it("serializes numbered lists and code blocks back to markdown", () => {
 		const document = createDocumentFromMarkdown(`1. First
 2. Second
@@ -134,10 +146,11 @@ Know what your program is doing
 
 # Takeaways
 Understanding cache topology and shared writes is the key to scalable concurrent code`;
+		const expectedMarkdown = markdown.replace("#  4 core cliff", "# 4 core cliff");
 
 		const document = createDocumentFromMarkdown(markdown);
 
-		expect(documentToMarkdown(document)).toBe(markdown);
+		expect(documentToMarkdown(document)).toBe(expectedMarkdown);
 	});
 
 	it("parses a collapsible block with summary and body content", () => {
