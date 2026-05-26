@@ -186,7 +186,7 @@ export default function NoteEditorView({
   );
   const [isShowVideoModalVisible, setIsShowVideoModalVisible] = useState(false);
   const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
-  const loadedNoteIdRef = useRef<string | null>(null);
+  const loadedNoteRef = useRef<{ id: string; content: string } | null>(null);
   const [noteType, setNoteType] = useState<Note["noteType"]>(() =>
     deriveNoteType(note.title),
   );
@@ -274,8 +274,9 @@ export default function NoteEditorView({
       setAttachedVideo(note.attachedVideo);
       setIsVideoVisible(!!note.attachedVideo);
 
-      if (loadedNoteIdRef.current !== note.id) {
-        loadedNoteIdRef.current = note.id;
+      const loadedNote = loadedNoteRef.current;
+      if (loadedNote?.id !== note.id || loadedNote.content !== note.content) {
+        loadedNoteRef.current = { id: note.id, content: note.content };
         loadMarkdown(note.content);
       }
     }, [

@@ -102,6 +102,7 @@ describe("EditorState", () => {
 		const afterUndo = editorReducer(replaced, { type: "UNDO" }, history);
 
 		expect(replaced.document.blocks[0].content).toBe("Fresh");
+		expect(replaced.document.version).toBe(updated.document.version + 1);
 		expect(afterUndo.document.blocks[0].content).toBe("Fresh");
 	});
 });

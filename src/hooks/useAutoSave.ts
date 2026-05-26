@@ -57,8 +57,15 @@ export function useAutoSave({
 	const latestDocumentVersionRef = useRef(
 		useEditorState.getState().document.version,
 	);
+	const latestInitialContentRef = useRef(
+		normalizeMarkdownForPersistence(initialContent),
+	);
+	const hasEditorContentChangedRef = useRef(false);
 
 	useEffect(() => {
+		const normalizedInitialContent =
+			normalizeMarkdownForPersistence(initialContent);
+		latestInitialContentRef.current = normalizedInitialContent;
 		latestNoteRef.current = {
 			id,
 			title,
@@ -72,13 +79,16 @@ export function useAutoSave({
 			lastSavedRef.current = {
 				id,
 				title: title.trim(),
-				content: normalizeMarkdownForPersistence(initialContent),
+				content: normalizedInitialContent,
 				isPinned,
 				lastUpdated: Date.now(),
 				noteType: initialNoteType ?? noteType,
 				status: noteStatus,
 			};
 			isNewEntryRef.current = !!isNew;
+			hasEditorContentChangedRef.current = false;
+			latestDocumentVersionRef.current =
+				useEditorState.getState().document.version;
 			setStatus("idle");
 		}
 	}, [
@@ -98,9 +108,9 @@ export function useAutoSave({
 		}
 
 		const currentNote = latestNoteRef.current;
-		const currentContent = getContentForVersion(
-			latestDocumentVersionRef.current,
-		);
+		const currentContent = hasEditorContentChangedRef.current
+			? getContentForVersion(latestDocumentVersionRef.current)
+			: (lastSavedRef.current?.content ?? latestInitialContentRef.current);
 		const trimmedTitle = currentNote.title.trim();
 
 		const previousId = lastSavedRef.current?.id;
@@ -218,6 +228,24 @@ export function useAutoSave({
 			}
 			lastDocumentVersion = nextDocumentVersion;
 			latestDocumentVersionRef.current = nextDocumentVersion;
+
+			const nextContent = state.getContentForVersion(nextDocumentVersion);
+			if (nextContent === latestInitialContentRef.current) {
+				const currentNote = latestNoteRef.current;
+				lastSavedRef.current = {
+					id: currentNote.id,
+					title: currentNote.title.trim(),
+					content: latestInitialContentRef.current,
+					isPinned: currentNote.isPinned,
+					lastUpdated: Date.now(),
+					noteType: currentNote.noteType,
+					status: currentNote.status,
+				};
+				hasEditorContentChangedRef.current = false;
+				return;
+			}
+
+			hasEditorContentChangedRef.current = true;
 			lastInputAtRef.current = Date.now();
 
 			if (prepareTimeoutRef.current) {

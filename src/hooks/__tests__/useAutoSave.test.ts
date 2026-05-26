@@ -63,7 +63,9 @@ describe("useAutoSave", () => {
 	});
 
 	afterEach(() => {
-		jest.runOnlyPendingTimers();
+		act(() => {
+			jest.runOnlyPendingTimers();
+		});
 		jest.useRealTimers();
 	});
 
@@ -87,6 +89,82 @@ describe("useAutoSave", () => {
 		expect(persistEditorEntry).not.toHaveBeenCalled();
 
 		unmount();
+	});
+
+	it("does not persist stale editor content before the loaded note is observed", async () => {
+		useEditorState.getState().loadMarkdown("Stale editor body");
+		const { result } = renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Fresh loaded body",
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+
+		await act(async () => {
+			await result.current.forceSave();
+		});
+
+		expect(persistEditorEntry).not.toHaveBeenCalled();
+	});
+
+	it("saves metadata changes with loaded note content before editor content changes", async () => {
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		useEditorState.getState().loadMarkdown("Stale editor body");
+		const { result, rerender } = renderHook(
+			({ title }) =>
+				useAutoSave({
+					id: "note-1",
+					title,
+					content: "Fresh loaded body",
+					isPinned: false,
+					noteType: "note",
+				}),
+			{
+				initialProps: { title: "Draft note" },
+			},
+		);
+
+		rerender({ title: "Renamed note" });
+
+		await act(async () => {
+			await result.current.forceSave();
+		});
+
+		expect(persistEditorEntry).toHaveBeenCalledWith({
+			id: "note-1",
+			title: "Renamed note",
+			content: "Fresh loaded body",
+			isPinned: false,
+			noteType: "note",
+			status: undefined,
+			isNewEntry: false,
+		});
+	});
+
+	it("treats loading the incoming note content as a clean baseline", async () => {
+		useEditorState.getState().loadMarkdown("Stale editor body");
+		const { result } = renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Fresh loaded body",
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+
+		act(() => {
+			useEditorState.getState().loadMarkdown("Fresh loaded body");
+		});
+
+		await act(async () => {
+			await result.current.forceSave();
+		});
+
+		expect(persistEditorEntry).not.toHaveBeenCalled();
 	});
 
 	it("persists dirty note changes after the idle interval and returns to idle after saved status", async () => {

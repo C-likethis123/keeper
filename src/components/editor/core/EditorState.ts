@@ -113,7 +113,10 @@ export function editorReducer(
 			history.clear();
 			return {
 				...state,
-				document: action.document,
+				document: {
+					...action.document,
+					version: state.document.version + 1,
+				},
 				selection: null,
 				blockSelection: null,
 				blockSelectionAnchor: null,

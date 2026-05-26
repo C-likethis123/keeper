@@ -111,6 +111,35 @@ x^2
 $$`);
 	});
 
+	it("round-trips sections after a GFM table", () => {
+		const markdown = `Left-right data structure
+- The writer needs to look out if it goes up or if it's dormant. Dormant reader threads prevent the writer from making updates
+
+left-right reads scale linearly with number of reader threads - and this only works if writes are rare
+- only writes can make contention in the system
+
+#  4 core cliff
+The issue is false sharing - each reader has its own epoch counter, but multiple readers may have their counter on the same cache line.
+
+| Readers | Ops/sec | Expected |
+| --- | --- | --- |
+| 1 | 213M | 213M |
+| 4 | 57M | 825M |
+
+When benchmarking left-right, there is a performance anomaly - it slows down at exactly 4 cores
+- Even "lock-free" code can suffer from cache coherence
+
+# Choose wisely
+Know what your program is doing
+
+# Takeaways
+Understanding cache topology and shared writes is the key to scalable concurrent code`;
+
+		const document = createDocumentFromMarkdown(markdown);
+
+		expect(documentToMarkdown(document)).toBe(markdown);
+	});
+
 	it("parses a collapsible block with summary and body content", () => {
 		const blocks = summarizeDocument(
 			`<details open>
