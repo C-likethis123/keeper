@@ -66,6 +66,14 @@ type SyntaxStyleEntry = CSSProperties & {
 	display?: unknown;
 };
 
+type WebTextStyle = TextStyle & {
+	whiteSpace?: "pre";
+};
+
+type WebCodeStyle = CSSProperties & {
+	tabSize?: number;
+};
+
 type HighlighterRenderer = NonNullable<
 	React.ComponentProps<typeof Highlighter>["renderer"]
 >;
@@ -184,6 +192,15 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 		Object.entries(syntaxStyle).map(([key, value]) => [key, cleanStyle(value)]),
 	) as Record<string, CSSProperties>;
 
+	const baseTextStyle: WebTextStyle = {
+		fontFamily,
+		fontSize,
+		lineHeight: highlighterLineHeight,
+		includeFontPadding: false,
+		color: highlighterColor || stylesheet.hljs.color,
+		...(Platform.OS === "web" ? { whiteSpace: "pre" as const } : {}),
+	};
+
 	const renderNode = (nodes: RendererNode[], key = "0"): React.ReactNode[] => {
 		const renderedNodes: React.ReactNode[] = [];
 
@@ -196,19 +213,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 				}
 
 				const textElement = (
-					<Text
-						key={`${nodeKey}-text`}
-						style={[
-							{
-								fontFamily,
-								fontSize,
-								lineHeight: highlighterLineHeight,
-								includeFontPadding: false,
-								color: highlighterColor || stylesheet.hljs.color,
-							},
-							nodeStyle,
-						]}
-					>
+					<Text key={`${nodeKey}-text`} style={[baseTextStyle, nodeStyle]}>
 						{renderNode(node.children, nodeKey)}
 					</Text>
 				);
@@ -216,17 +221,32 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 				renderedNodes.push(textElement);
 			}
 
-		if (node.value !== undefined) {
-			let textValue = String(node.value);
-			// To prevent an empty line after each string
-			textValue = textValue.replace(/\n/g, "");
-			// To render blank lines at an equal font height
-			textValue = textValue.length ? textValue : " ";
-			renderedNodes.push(textValue);
+			if (node.value !== undefined) {
+				let textValue = String(node.value);
+				// To prevent an empty line after each string
+				textValue = textValue.replace(/\n/g, "");
+				// To render blank lines at an equal font height
+				textValue = textValue.length ? textValue : " ";
+				renderedNodes.push(textValue);
 			}
 		}
 
 		return renderedNodes;
+	};
+
+	const renderRows = (rows: RendererNode[]): React.ReactNode[] => {
+		return rows.map((row, index) => {
+			const rowKey = `row-${index}`;
+			const rowContent = row.children
+				? renderNode(row.children, rowKey)
+				: renderNode([row], rowKey);
+
+			return (
+				<Text key={rowKey} style={baseTextStyle}>
+					{rowContent}
+				</Text>
+			);
+		});
 	};
 
 	const baseStyle = stylesheet.hljs;
@@ -237,6 +257,56 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 			: typeof baseStyle?.background === "string"
 				? baseStyle.background
 				: undefined);
+
+	if (Platform.OS === "web") {
+		const webCodeStyle: WebCodeStyle = {
+			fontFamily,
+			fontSize,
+			lineHeight:
+				highlighterLineHeight == null
+					? undefined
+					: `${highlighterLineHeight}px`,
+			whiteSpace: "pre-wrap",
+			tabSize: 4,
+			background: "transparent",
+		};
+		const webScrollStyle: ViewStyle = {
+			width: "100%",
+			backgroundColor: syntaxBackground as ColorValue,
+			padding: 0,
+			paddingTop: padding,
+			paddingRight: padding,
+			paddingBottom: padding,
+			paddingLeft,
+		};
+		const webPreStyle: CSSProperties = {
+			...(highlighterProps.customStyle as CSSProperties | undefined),
+			...webCodeStyle,
+			margin: 0,
+			marginBlockStart: 0,
+			marginBlockEnd: 0,
+			padding: 0,
+		};
+
+		return (
+			<ScrollView
+				style={webScrollStyle}
+				testID={`${testID}-scroll-view`}
+				ref={forwardedRef}
+				scrollEnabled={scrollEnabled}
+			>
+				<Highlighter
+					{...highlighterProps}
+					key={testID}
+					language={highlighterProps.language || "plaintext"}
+					style={syntaxStyle as Record<string, CSSProperties>}
+					customStyle={webPreStyle}
+					codeTagProps={{ style: webCodeStyle }}
+					horizontal={false}
+				/>
+			</ScrollView>
+		);
+	}
 
 	const scrollStyle: ViewStyle = {
 		width: "100%",
@@ -258,7 +328,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 				ref={forwardedRef}
 				scrollEnabled={scrollEnabled}
 			>
-				{renderNode(rows)}
+				{renderRows(rows)}
 			</ScrollView>
 		);
 	};

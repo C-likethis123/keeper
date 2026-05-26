@@ -21,6 +21,7 @@ import {
 	type TextInputKeyPressEventData,
 	type TextInputScrollEventData,
 	type TextInputSelectionChangeEventData,
+	type TextStyle,
 	View,
 } from "react-native";
 import * as Braces from "../code/Braces";
@@ -36,6 +37,12 @@ const LazySyntaxHighlighter = React.lazy(
 
 type TextSelection = { start: number; end: number };
 type EditResult = { newText: string; newCursorOffset: number };
+type WebCodeInputStyle = TextStyle & {
+	fontKerning?: "none";
+	fontVariantLigatures?: "none";
+	tabSize?: number;
+	whiteSpace?: "pre-wrap";
+};
 
 function cursorSelection(offset: number): TextSelection {
 	return { start: offset, end: offset };
@@ -64,6 +71,22 @@ function setCodeInputSelection(
 	input.setNativeProps?.({ selection });
 }
 
+function setCodeInputText(input: TextInput | null, text: string) {
+	if (!input) {
+		return;
+	}
+
+	if (Platform.OS === "web") {
+		const el = input as unknown as HTMLTextAreaElement;
+		if ("value" in el) {
+			el.value = text;
+		}
+		return;
+	}
+
+	input.setNativeProps?.({ text });
+}
+
 export function CodeBlock({
 	block,
 	index,
@@ -82,12 +105,17 @@ export function CodeBlock({
 		start: 0,
 		end: 0,
 	});
-	// Tracks the cursor position native currently holds, so we can skip redundant setNativeProps
-	// calls on every keystroke and only intervene when external navigation requires a cursor jump.
+	const localContentRef = useRef(block.content);
+	// Tracks the cursor position native currently holds. The TextInput is uncontrolled
+	// during typing, so this ref is the bridge between native selection and editor state.
 	const nativeSelectionRef = useRef<TextSelection>({
 		start: 0,
 		end: 0,
 	});
+	const forcedSelectionRef = useRef<TextSelection | null>(null);
+	const forcedSelectionTimeoutRef = useRef<ReturnType<
+		typeof setTimeout
+	> | null>(null);
 	const prevIsFocusedRef = useRef(false);
 	const { focusBlockAt, blurBlock } = useFocusBlock();
 	const selectionRange = useEditorBlockSelection(index);
@@ -105,17 +133,20 @@ export function CodeBlock({
 		return new SmartEditingHandler(languageConfig);
 	}, [languageConfig]);
 
-	useEffect(() => {
-		onContentChange(index, value);
-	}, [onContentChange, index, value]);
+	const applySelectionToInput = useCallback((nextSelection: TextSelection) => {
+		nativeSelectionRef.current = nextSelection;
+		setSelection(nextSelection);
+		setCodeInputSelection(inputRef.current, nextSelection);
+	}, []);
 
-	const applySelectionToInput = useCallback(
-		(nextSelection: TextSelection) => {
-			nativeSelectionRef.current = nextSelection;
-			setCodeInputSelection(inputRef.current, nextSelection);
-		},
-		[],
-	);
+	useLayoutEffect(() => {
+		if (block.content === localContentRef.current) {
+			return;
+		}
+		localContentRef.current = block.content;
+		setValue(block.content);
+		setCodeInputText(inputRef.current, block.content);
+	}, [block.content]);
 
 	useEffect(() => {
 		if (!isFocused || !selectionRange) {
@@ -140,18 +171,63 @@ export function CodeBlock({
 
 	useLayoutEffect(() => {
 		if (isFocused && !prevIsFocusedRef.current) {
-			inputRef.current?.focus();
+			if (Platform.OS === "web") {
+				const el = inputRef.current as unknown as HTMLTextAreaElement | null;
+				if (el && document.activeElement !== el) {
+					el.focus();
+				}
+			} else {
+				inputRef.current?.focus();
+			}
 		}
 		prevIsFocusedRef.current = isFocused;
 	}, [isFocused]);
 
 	const setSelectionAndSync = useCallback(
 		(nextSelection: TextSelection) => {
+			nativeSelectionRef.current = nextSelection;
 			setSelection(nextSelection);
 			onSelectionChange?.(index, nextSelection.start, nextSelection.end);
 		},
 		[index, onSelectionChange],
 	);
+
+	useEffect(() => {
+		return () => {
+			if (forcedSelectionTimeoutRef.current) {
+				clearTimeout(forcedSelectionTimeoutRef.current);
+			}
+		};
+	}, []);
+
+	useEffect(() => {
+		if (Platform.OS !== "web" || !isFocused) {
+			return;
+		}
+
+		const handleDocumentSelectionChange = () => {
+			const el = inputRef.current as unknown as HTMLTextAreaElement | null;
+			if (!el || document.activeElement !== el || el.selectionStart == null) {
+				return;
+			}
+			const nextSelection = {
+				start: el.selectionStart,
+				end: el.selectionEnd ?? el.selectionStart,
+			};
+			if (isSameSelection(nativeSelectionRef.current, nextSelection)) {
+				return;
+			}
+			setSelectionAndSync(nextSelection);
+		};
+
+		document.addEventListener("selectionchange", handleDocumentSelectionChange);
+		return () => {
+			document.removeEventListener(
+				"selectionchange",
+				handleDocumentSelectionChange,
+			);
+		};
+	}, [isFocused, setSelectionAndSync]);
 
 	const handleScroll = (e: NativeSyntheticEvent<TextInputScrollEventData>) => {
 		const nativeOffsetY = e.nativeEvent.contentOffset?.y;
@@ -163,9 +239,7 @@ export function CodeBlock({
 		highlighterRef.current?.scrollTo({ y, animated: false });
 	};
 
-	const handleEnterKey = (
-		val: string,
-	): EditResult => {
+	const handleEnterKey = (val: string): EditResult => {
 		// onKeyPress fires before the character is inserted, so selection.start is the cursor
 		// position before Enter was pressed — that's exactly where the newline sits in val.
 		// SmartEditingHandler expects to receive the pre-newline text and re-inserts it itself.
@@ -194,16 +268,24 @@ export function CodeBlock({
 		return { newText: val, newCursorOffset: newlinePosition + 1 };
 	};
 
-	const handleBraceInsert = (
-		val: string,
-		key: string,
-	): EditResult => {
+	const handleBraceInsert = (text: string, key: string): EditResult => {
 		const cursorPosition = selection.start;
-		const textWithoutInsertedCharacter =
-			val.substring(0, cursorPosition) + val.substring(cursorPosition + 1);
+		const selectionEnd = selection.end;
+		if (selectionEnd > cursorPosition) {
+			const closeBrace = Braces.getCloseBrace(key);
+			return {
+				newText:
+					text.substring(0, cursorPosition) +
+					key +
+					text.substring(cursorPosition, selectionEnd) +
+					closeBrace +
+					text.substring(selectionEnd),
+				newCursorOffset: selectionEnd + 2,
+			};
+		}
 		const result = editingHandler.handleCharacterInsert(
 			key,
-			textWithoutInsertedCharacter,
+			text,
 			cursorPosition,
 		);
 
@@ -215,9 +297,14 @@ export function CodeBlock({
 		}
 
 		// handleCharacterInsert decided not to handle this character (e.g. angle bracket,
-		// or a quote where auto-complete is not appropriate). React Native has already
-		// inserted the character at cursorPosition in val — just advance the cursor past it.
-		return { newText: val, newCursorOffset: cursorPosition + 1 };
+		// or a quote where auto-complete is not appropriate).
+		return {
+			newText:
+				text.substring(0, cursorPosition) +
+				key +
+				text.substring(cursorPosition),
+			newCursorOffset: cursorPosition + 1,
+		};
 	};
 
 	const handleSelectionChange = (
@@ -225,6 +312,21 @@ export function CodeBlock({
 	) => {
 		const sel = e.nativeEvent.selection;
 		nativeSelectionRef.current = sel;
+
+		const forcedSelection = forcedSelectionRef.current;
+		if (forcedSelection) {
+			if (isSameSelection(sel, forcedSelection)) {
+				forcedSelectionRef.current = null;
+				if (forcedSelectionTimeoutRef.current) {
+					clearTimeout(forcedSelectionTimeoutRef.current);
+					forcedSelectionTimeoutRef.current = null;
+				}
+			} else {
+				applySelectionToInput(forcedSelection);
+				return;
+			}
+		}
+
 		setSelectionAndSync(sel);
 	};
 
@@ -232,19 +334,81 @@ export function CodeBlock({
 		(resolveEdit: (currentValue: string) => EditResult) => {
 			setValue((curr) => {
 				const result = resolveEdit(curr);
+				const nextSelection = cursorSelection(result.newCursorOffset);
+				localContentRef.current = result.newText;
+				forcedSelectionRef.current = nextSelection;
+				if (forcedSelectionTimeoutRef.current) {
+					clearTimeout(forcedSelectionTimeoutRef.current);
+				}
+				forcedSelectionTimeoutRef.current = setTimeout(() => {
+					forcedSelectionRef.current = null;
+					forcedSelectionTimeoutRef.current = null;
+				}, 100);
+				setSelectionAndSync(nextSelection);
+				onContentChange(index, result.newText, result.newCursorOffset);
 				setTimeout(() => {
-					const nextSelection = cursorSelection(result.newCursorOffset);
-					setSelectionAndSync(nextSelection);
 					applySelectionToInput(nextSelection);
 				}, 0);
 				return result.newText;
 			});
 		},
-		[applySelectionToInput, setSelectionAndSync],
+		[applySelectionToInput, index, onContentChange, setSelectionAndSync],
+	);
+
+	const handleContentChange = useCallback(
+		(newText: string) => {
+			const previousText = localContentRef.current;
+			const previousSelection = nativeSelectionRef.current;
+			localContentRef.current = newText;
+			setValue(newText);
+
+			let nextSelection = previousSelection;
+			if (Platform.OS === "web") {
+				const el = inputRef.current as unknown as HTMLTextAreaElement | null;
+				if (el?.selectionStart != null) {
+					nextSelection = {
+						start: el.selectionStart,
+						end: el.selectionEnd ?? el.selectionStart,
+					};
+				}
+			} else {
+				const selectedLength = Math.max(
+					0,
+					previousSelection.end - previousSelection.start,
+				);
+				const insertedLength =
+					newText.length - (previousText.length - selectedLength);
+				const cursorOffset =
+					selectedLength > 0
+						? previousSelection.start + Math.max(0, insertedLength)
+						: previousSelection.end + (newText.length - previousText.length);
+				const clampedOffset = Math.max(
+					0,
+					Math.min(newText.length, cursorOffset),
+				);
+				nextSelection = cursorSelection(clampedOffset);
+			}
+
+			setSelectionAndSync(nextSelection);
+			onContentChange(index, newText, nextSelection.end);
+		},
+		[index, onContentChange, setSelectionAndSync],
 	);
 
 	const handleFocus = useCallback(() => {
 		if (isFocused) {
+			return;
+		}
+		if (Platform.OS === "web") {
+			const el = inputRef.current as unknown as HTMLTextAreaElement | null;
+			const offset = el?.selectionStart ?? selection.end;
+			const nextSelection = {
+				start: offset,
+				end: el?.selectionEnd ?? offset,
+			};
+			nativeSelectionRef.current = nextSelection;
+			setSelection(nextSelection);
+			focusBlockAt(index, nextSelection.end);
 			return;
 		}
 		focusBlockAt(index, selection.end);
@@ -286,9 +450,8 @@ export function CodeBlock({
 				break;
 			default:
 				if (Braces.isOpenBrace(key)) {
-					setTimeout(() => {
-						commitEditedText((curr) => handleBraceInsert(curr, key));
-					}, 0);
+					e.preventDefault();
+					commitEditedText((curr) => handleBraceInsert(curr, key));
 				}
 				break;
 		}
@@ -306,8 +469,19 @@ export function CodeBlock({
 	const fontSize = 16;
 	const lineHeight = 22;
 	const padding = 16;
-	const lineNumbersPadding = 1.75 * fontSize;
-	const fontFamily = Platform.OS === "ios" ? "Menlo-Regular" : "monospace";
+	const fontFamily =
+		Platform.OS === "ios"
+			? "Menlo-Regular"
+			: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace";
+	const webCodeInputStyle: WebCodeInputStyle =
+		Platform.OS === "web"
+			? {
+					fontKerning: "none",
+					fontVariantLigatures: "none",
+					tabSize: 4,
+					whiteSpace: "pre-wrap",
+				}
+			: {};
 
 	return (
 		<Pressable onPress={() => inputRef.current?.focus()}>
@@ -323,13 +497,13 @@ export function CodeBlock({
 				<React.Suspense fallback={<View style={styles.highlighterFallback} />}>
 					<LazySyntaxHighlighter
 						language={language}
-						showLineNumbers
+						showLineNumbers={false}
 						scrollEnabled={false}
 						addedStyle={{
 							fontFamily,
 							fontSize,
 							padding,
-							paddingLeft: lineNumbersPadding,
+							paddingLeft: padding,
 							highlighterLineHeight: lineHeight,
 						}}
 						ref={highlighterRef}
@@ -351,7 +525,8 @@ export function CodeBlock({
 							paddingTop: padding,
 							paddingRight: padding,
 							paddingBottom: padding,
-							paddingLeft: lineNumbersPadding,
+							paddingLeft: padding,
+							...webCodeInputStyle,
 						},
 					]}
 					onScroll={handleScroll}
@@ -362,8 +537,8 @@ export function CodeBlock({
 					multiline
 					autoCapitalize="none"
 					autoCorrect={false}
-					value={value}
-					onChangeText={setValue}
+					defaultValue={block.content}
+					onChangeText={handleContentChange}
 				/>
 			</View>
 		</Pressable>

@@ -32,3 +32,21 @@ describe("blockRegistry.detectBlockType — collapsible variants", () => {
 		expect(blockRegistry.detectBlockType("<details open>extra")).toBeNull();
 	});
 });
+
+describe("blockRegistry.detectBlockType — markdown prefix spacing", () => {
+	it.each([
+		["#  Heading", BlockType.heading1, "Heading"],
+		["##  Heading", BlockType.heading2, "Heading"],
+		["###  Heading", BlockType.heading3, "Heading"],
+		["-  Item", BlockType.bulletList, "Item"],
+		["1.  Item", BlockType.numberedList, "Item"],
+		["- [ ]  Task", BlockType.checkboxList, "Task"],
+	])(
+		"consumes extra trigger spaces for %s",
+		(input, expectedType, expectedContent) => {
+			const result = blockRegistry.detectBlockType(input);
+			expect(result?.type).toBe(expectedType);
+			expect(result?.remainingContent).toBe(expectedContent);
+		},
+	);
+});

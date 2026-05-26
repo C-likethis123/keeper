@@ -326,6 +326,9 @@ Watch YouTube (and other videos) while editing notes, without leaving the app.
 - Flexible split resizing via UI controls
 - Integrated position tracking (native WebView + Web iframe)
 
+**Follow-up / expected behavior**:
+- Persist playback timestamp when the user backgrounds/closes the app or navigates away from the note, and restore it when they return to the same note/video.
+
 **Key files**:
 - `src/components/editor/video/videoUtils.ts`: URL parsing and layout logic
 - `src/components/editor/video/videoPositionStore.ts`: AsyncStorage-backed position storage
