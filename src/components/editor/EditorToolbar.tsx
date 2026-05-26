@@ -91,8 +91,7 @@ export function EditorToolbar({
 	const handleInsertImage = onInsertImage ?? toolbarActions.handleInsertImage;
 	const handleInsertCollapsible =
 		onInsertCollapsible ?? toolbarActions.handleInsertCollapsible;
-	const handleInsertTable =
-		onInsertTable ?? toolbarActions.handleInsertTable;
+	const handleInsertTable = onInsertTable ?? toolbarActions.handleInsertTable;
 	const handleOpenTablePicker = () => {
 		tableButtonRef.current?.measureInWindow((x, y, width, height) => {
 			setTableAnchorRect({ x, y, width, height });
@@ -201,15 +200,17 @@ export function EditorToolbar({
 					/>
 				)}
 			</ScrollView>
-		<TableSizeModal
-			visible={tableSizeModalVisible}
-			anchorRect={tableAnchorRect}
-			onDismiss={() => setTableSizeModalVisible(false)}
-			onInsert={(rows, cols) => {
-				handleInsertTable(rows, cols);
-				setTableSizeModalVisible(false);
-			}}
-		/>
+			{tableSizeModalVisible && (
+				<TableSizeModal
+					visible={tableSizeModalVisible}
+					anchorRect={tableAnchorRect}
+					onDismiss={() => setTableSizeModalVisible(false)}
+					onInsert={(rows, cols) => {
+						handleInsertTable(rows, cols);
+						setTableSizeModalVisible(false);
+					}}
+				/>
+			)}
 		</View>
 	);
 }
