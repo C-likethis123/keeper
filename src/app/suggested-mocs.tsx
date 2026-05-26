@@ -1,4 +1,4 @@
-import MOCSuggestions from "@/components/MOCSuggestions";
+import MOCSuggestions from "@/components/moc/MOCSuggestions";
 import { IconButton } from "@/components/shared/IconButton";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";

@@ -38,7 +38,7 @@ export function TableBlock({
 	useEffect(() => {
 		setTableData(getTableData(block));
 		setHeaderRow(getTableHeaderRow(block));
-	}, [block.attributes]);
+	}, [block]);
 
 	const pushUpdate = useCallback(
 		(newData: string[][], newHeaderRow: boolean) => {
@@ -113,13 +113,24 @@ export function TableBlock({
 				showsHorizontalScrollIndicator={false}
 				bounces={false}
 			>
-				<View>
-					{/* Column control row: delete col buttons */}
-					<View style={styles.colControlRow}>
-						{/* Spacer aligned with row-delete column */}
-						<View style={{ width: ROW_CTRL_WIDTH }} />
+					<View>
+						{/* Column control row: delete col buttons */}
+						<View style={styles.colControlRow}>
+							<Pressable
+								accessibilityLabel="Delete table"
+								style={[styles.rowCtrl, { width: ROW_CTRL_WIDTH }]}
+								onPress={() => onDelete(index)}
+								hitSlop={6}
+							>
+								<FontAwesome
+									name="trash"
+									size={12}
+									color={theme.colors.textMuted}
+								/>
+							</Pressable>
 						{Array.from({ length: numCols }, (_, ci) => (
 							<View
+								// biome-ignore lint/suspicious/noArrayIndexKey: table column controls are keyed by grid coordinate
 								key={ci}
 								style={[styles.colControlCell, { width: CELL_WIDTH }]}
 							>
@@ -144,7 +155,11 @@ export function TableBlock({
 					{tableData.map((row, ri) => {
 						const isHeader = headerRow && ri === 0;
 						return (
-							<View key={ri} style={styles.row}>
+							<View
+								// biome-ignore lint/suspicious/noArrayIndexKey: table rows are keyed by grid coordinate
+								key={ri}
+								style={styles.row}
+							>
 								{/* Row delete button */}
 								<Pressable
 									style={[styles.rowCtrl, { width: ROW_CTRL_WIDTH }]}
@@ -160,6 +175,7 @@ export function TableBlock({
 
 								{row.map((cell, ci) => (
 									<View
+										// biome-ignore lint/suspicious/noArrayIndexKey: table cells are keyed by grid coordinate
 										key={ci}
 										style={[
 											styles.cell,

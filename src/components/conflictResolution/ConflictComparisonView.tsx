@@ -199,7 +199,7 @@ export default function ConflictComparisonView({
 						</View>
 						{diffLines.map((line, i) => (
 							<View
-								key={i}
+								key={`${line.type}:${i}:${line.content}`}
 								style={[
 									styles.diffLine,
 									line.type === "removed" && styles.diffLineRemoved,

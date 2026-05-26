@@ -23,7 +23,6 @@ interface Command {
 interface DomEditorProps {
 	markdown: string;
 	themeMode: "light" | "dark";
-	onContentChange: (markdown: string) => Promise<void>;
 	onInsertTemplateCommand?: () => void | Promise<void>;
 	command?: Command;
 	dom?: import("expo/dom").DOMProps;
@@ -37,7 +36,6 @@ interface DomEditorProps {
 export default function DomEditor({
 	markdown,
 	themeMode,
-	onContentChange,
 	onInsertTemplateCommand,
 	command,
 }: DomEditorProps) {
@@ -50,16 +48,13 @@ export default function DomEditor({
 		dismissOverlays: () => false,
 	});
 
-	const lastReportedMarkdownRef = useRef<string | null>(null);
+	const loadedMarkdownRef = useRef<string | null>(null);
 
-	// Sync initial content or external updates
+	// Sync initial content or external note updates into the editor store.
 	useEffect(() => {
-		if (
-			markdown !== lastReportedMarkdownRef.current &&
-			markdown !== getContent()
-		) {
+		if (markdown !== loadedMarkdownRef.current && markdown !== getContent()) {
 			loadMarkdown(markdown);
-			lastReportedMarkdownRef.current = markdown;
+			loadedMarkdownRef.current = markdown;
 		}
 	}, [markdown, loadMarkdown, getContent]);
 
@@ -107,31 +102,6 @@ export default function DomEditor({
 				break;
 		}
 	}, [command, commandContext]);
-
-	// Sync changes back to native
-	useEffect(() => {
-		let timeoutId: ReturnType<typeof setTimeout>;
-
-		const unsubscribe = useEditorState.subscribe(
-			(state) => state.document.version,
-			() => {
-				if (timeoutId) clearTimeout(timeoutId);
-
-				timeoutId = setTimeout(() => {
-					const currentMarkdown = getContent();
-					if (currentMarkdown !== lastReportedMarkdownRef.current) {
-						lastReportedMarkdownRef.current = currentMarkdown;
-						onContentChange(currentMarkdown);
-					}
-				}, 200); // 200ms debounce for bridge reports
-			},
-		);
-
-		return () => {
-			unsubscribe();
-			if (timeoutId) clearTimeout(timeoutId);
-		};
-	}, [getContent, onContentChange]);
 
 	const theme = themeMode === "light" ? lightTheme : darkTheme;
 

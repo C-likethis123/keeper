@@ -25,7 +25,7 @@ describe("Block Conversion Fix", () => {
 
 		expect(nextBlock.type).toBe(BlockType.checkboxList);
 		expect(nextBlock.attributes).toBeDefined();
-		expect(nextBlock.attributes!.checked).toBe(false);
+		expect(nextBlock.attributes?.checked).toBe(false);
 	});
 
 	it("preserves listLevel when converting from a bulletList to a checkboxList", () => {
@@ -45,7 +45,7 @@ describe("Block Conversion Fix", () => {
 		const nextBlock = nextDoc.blocks[0];
 
 		expect(nextBlock.type).toBe(BlockType.checkboxList);
-		expect(nextBlock.attributes!.listLevel).toBe(2);
-		expect(nextBlock.attributes!.checked).toBe(false);
+		expect(nextBlock.attributes?.listLevel).toBe(2);
+		expect(nextBlock.attributes?.checked).toBe(false);
 	});
 });

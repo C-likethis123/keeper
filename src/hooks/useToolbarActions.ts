@@ -129,8 +129,10 @@ export function useToolbarActions(): UseToolbarActions {
 
 	const handleInsertTable = useCallback(
 		(rows: number, cols: number) => {
-			const insertIndex = getFocusedBlockIndex() ?? 0;
+			const insertIndex =
+				getFocusedBlockIndex() ?? lastFocusedBlockIndexRef.current ?? 0;
 			insertBlockAfter(insertIndex, createTableBlock(rows, cols));
+			insertBlockAfter(insertIndex + 1, createParagraphBlock());
 			focusBlock(insertIndex + 1);
 		},
 		[getFocusedBlockIndex, insertBlockAfter, focusBlock],

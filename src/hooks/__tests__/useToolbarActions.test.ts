@@ -10,6 +10,8 @@ import { useToolbarActions } from "../useToolbarActions";
 const mockFocusBlock = jest.fn();
 const mockGetDocumentAsync = jest.fn();
 const mockCopyPickedImageToNotes = jest.fn();
+const mockOpenDialog = jest.fn();
+const mockCopyPickedWebImageToNotes = jest.fn();
 
 jest.mock("@/components/editor/keyboard/editorCommands", () => ({
 	executeEditorCommand: jest.fn(),
@@ -34,6 +36,15 @@ jest.mock("expo-document-picker", () => ({
 jest.mock("@/services/notes/imageStorage", () => ({
 	copyPickedImageToNotes: (...args: unknown[]) =>
 		mockCopyPickedImageToNotes(...args),
+}));
+
+jest.mock("@tauri-apps/plugin-dialog", () => ({
+	open: (...args: unknown[]) => mockOpenDialog(...args),
+}));
+
+jest.mock("@/services/notes/imageStorage.web", () => ({
+	copyPickedImageToNotes: (...args: unknown[]) =>
+		mockCopyPickedWebImageToNotes(...args),
 }));
 
 describe("useToolbarActions", () => {
@@ -81,16 +92,21 @@ describe("useToolbarActions", () => {
 	});
 
 	it("converts the focused block to a checkbox and refocuses it", () => {
+		jest.useFakeTimers();
 		const { result } = renderHook(() => useToolbarActions());
 
 		act(() => {
 			result.current.handleConvertToCheckbox();
+		});
+		act(() => {
+			jest.runOnlyPendingTimers();
 		});
 
 		expect(useEditorState.getState().document.blocks[0]?.type).toBe(
 			BlockType.checkboxList,
 		);
 		expect(mockFocusBlock).toHaveBeenCalledWith(0);
+		jest.useRealTimers();
 	});
 
 	it("does nothing when the focused block is already a checkbox", () => {
@@ -116,6 +132,7 @@ describe("useToolbarActions", () => {
 			configurable: true,
 			value: "web",
 		});
+		mockOpenDialog.mockResolvedValue(null);
 
 		const { result } = renderHook(() => useToolbarActions());
 
@@ -124,6 +141,8 @@ describe("useToolbarActions", () => {
 		});
 
 		expect(mockGetDocumentAsync).not.toHaveBeenCalled();
+		expect(mockOpenDialog).toHaveBeenCalled();
+		expect(mockCopyPickedWebImageToNotes).not.toHaveBeenCalled();
 		expect(useEditorState.getState().document.blocks).toHaveLength(1);
 	});
 
@@ -152,4 +171,37 @@ describe("useToolbarActions", () => {
 		});
 		expect(mockFocusBlock).toHaveBeenCalledWith(1);
 	});
+
+	it("inserts a table after the last focused block when toolbar press clears focus", () => {
+		useEditorState.setState({
+			document: createDocumentFromMarkdown("First\n\nSecond"),
+			selection: createCollapsedSelection({ blockIndex: 2, offset: 6 }),
+		});
+		const { result } = renderHook(() => useToolbarActions());
+
+		act(() => {
+			useEditorState.getState().setSelection(null);
+		});
+		act(() => {
+			result.current.handleInsertTable(2, 3);
+		});
+
+		const blocks = useEditorState.getState().document.blocks;
+			expect(blocks).toHaveLength(5);
+			expect(blocks[3]).toMatchObject({
+				type: BlockType.table,
+				attributes: {
+					headerRow: true,
+				tableData: [
+					["", "", ""],
+					["", "", ""],
+					],
+				},
+			});
+			expect(blocks[4]).toMatchObject({
+				type: BlockType.paragraph,
+				content: "",
+			});
+			expect(mockFocusBlock).toHaveBeenCalledWith(3);
+		});
 });

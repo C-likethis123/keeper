@@ -25,6 +25,10 @@ import Animated, {
 	withTiming,
 } from "react-native-reanimated";
 
+type WebCursorStyle = {
+	cursor: "grab";
+};
+
 interface BlockRowHandlers {
 	onContentChange: (
 		index: number,
@@ -296,7 +300,9 @@ function makeStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			lineHeight: 18,
 		},
 		dragHandle: {
-			...(Platform.OS === "web" ? ({ cursor: "grab" } as any) : {}),
+			...(Platform.OS === "web"
+				? ({ cursor: "grab" } satisfies WebCursorStyle)
+				: {}),
 		},
 		dragHandleDots: {
 			width: 10,

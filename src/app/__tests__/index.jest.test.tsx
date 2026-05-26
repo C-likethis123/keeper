@@ -120,7 +120,7 @@ jest.mock("@/components/NoteGrid", () => {
 	};
 });
 
-jest.mock("@/components/AddNoteToClusterModal", () => {
+jest.mock("@/components/moc/AddNoteToClusterModal", () => {
 	const React = require("react");
 	return {
 		__esModule: true,
@@ -128,7 +128,7 @@ jest.mock("@/components/AddNoteToClusterModal", () => {
 	};
 });
 
-jest.mock("@/components/RenameClusterModal", () => {
+jest.mock("@/components/moc/RenameClusterModal", () => {
 	const React = require("react");
 	return {
 		__esModule: true,

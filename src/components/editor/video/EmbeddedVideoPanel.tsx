@@ -6,8 +6,6 @@ import { WebView } from "react-native-webview";
 import type { EmbeddedVideoSource } from "./videoUtils";
 import { buildVideoEmbedHtml, resolveVideoEmbedOrigin } from "./videoUtils";
 
-const EMBED_ORIGIN = resolveVideoEmbedOrigin() ?? "https://myapp.local";
-
 interface EmbeddedVideoPanelProps {
 	source: EmbeddedVideoSource;
 	style?: ViewStyle;
@@ -15,7 +13,10 @@ interface EmbeddedVideoPanelProps {
 
 export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
 	const styles = useStyles(createStyles);
-	const origin = EMBED_ORIGIN;
+	const origin = useMemo(
+		() => resolveVideoEmbedOrigin() ?? "https://myapp.local",
+		[],
+	);
 
 	const embedHtml = useMemo(
 		() => buildVideoEmbedHtml(source.embedUrl, origin),

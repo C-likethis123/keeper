@@ -58,7 +58,7 @@ export function resolveVideoEmbedOrigin(): string | null {
 		return process.env.EXPO_PUBLIC_VIDEO_EMBED_ORIGIN;
 	}
 
-	if (typeof window === "undefined") {
+	if (typeof window === "undefined" || !window.location) {
 		return null;
 	}
 

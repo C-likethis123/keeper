@@ -11,7 +11,9 @@
 			"android/build",
 			"android/app/build",
 			".claude/skills",
-			"mlx-env"
+			"mlx-env",
+			".worktrees",
+			"scripts/moc_pipeline/.venv"
 		],
 		"maxSize": 3000000
 	},

@@ -1,4 +1,4 @@
-import MOCSuggestions from "@/components/MOCSuggestions";
+import MOCSuggestions from "@/components/moc/MOCSuggestions";
 import {
 	fireEvent,
 	render,
@@ -12,7 +12,7 @@ const mockListAcceptedClusters = jest.fn();
 const mockListClusterMembers = jest.fn();
 const mockNotesIndexDbGetById = jest.fn();
 
-jest.mock("@/components/MergeClusterModal", () => {
+jest.mock("@/components/moc/MergeClusterModal", () => {
 	const React = require("react");
 	return {
 		__esModule: true,
@@ -20,7 +20,7 @@ jest.mock("@/components/MergeClusterModal", () => {
 	};
 });
 
-jest.mock("@/components/RenameClusterModal", () => {
+jest.mock("@/components/moc/RenameClusterModal", () => {
 	const React = require("react");
 	return {
 		__esModule: true,

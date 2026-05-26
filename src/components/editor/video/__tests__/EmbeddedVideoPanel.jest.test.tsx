@@ -53,8 +53,6 @@ describe("EmbeddedVideoPanel", () => {
 
 	beforeAll(() => {
 		// @ts-ignore
-		delete window.location;
-		// @ts-ignore
 		window.location = {
 			origin: "https://keeper.app",
 			protocol: "https:",
@@ -76,10 +74,10 @@ describe("EmbeddedVideoPanel", () => {
 		expect(screen.getByText(youtubeSource.rawUrl)).toBeTruthy();
 	});
 
-	it("passes referer identity headers to the native webview request", () => {
+	it("passes the app origin as the native webview base URL", () => {
 		render(<EmbeddedVideoPanel source={youtubeSource} />);
 		expect(screen.getByTestId("webview").props.accessibilityLabel).toContain(
-			'"Referer":"https://keeper.app"',
+			'"baseUrl":"https://keeper.app"',
 		);
 		expect(
 			screen.getByTestId("webview").props.accessibilityLabel,

@@ -392,8 +392,9 @@ export class GitService {
 				await gitEngine.push(NOTES_ROOT);
 
 				if (GitService.reconcileHandler) {
+					const reconcileHandler = GitService.reconcileHandler;
 					void GitService.withGitLock(() =>
-						GitService.reconcileHandler!().catch((err) =>
+						reconcileHandler().catch((err) =>
 							console.warn("[GitService] Reconcile failed:", err),
 						),
 					);

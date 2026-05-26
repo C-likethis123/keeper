@@ -184,7 +184,12 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 	} = addedStyle || {};
 
 	const cleanStyle = (style: SyntaxStyleEntry) => {
-		const { display: _display, ...rest } = style;
+		const {
+			display: _display,
+			fontStyle: _fontStyle,
+			fontWeight: _fontWeight,
+			...rest
+		} = style;
 		return rest;
 	};
 
@@ -299,7 +304,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 					{...highlighterProps}
 					key={testID}
 					language={highlighterProps.language || "plaintext"}
-					style={syntaxStyle as Record<string, CSSProperties>}
+					style={stylesheet}
 					customStyle={webPreStyle}
 					codeTagProps={{ style: webCodeStyle }}
 					horizontal={false}
@@ -345,7 +350,7 @@ const SyntaxHighlighter = (props: PropsWithForwardRef): React.JSX.Element => {
 			{...highlighterProps}
 			key={testID}
 			language={highlighterProps.language || "plaintext"}
-			style={syntaxStyle as Record<string, CSSProperties>}
+			style={stylesheet}
 			customStyle={preStyle}
 			horizontal={false}
 			renderer={nativeRenderer}

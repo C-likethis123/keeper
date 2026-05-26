@@ -240,21 +240,9 @@ export function CodeBlock({
 	};
 
 	const handleEnterKey = (val: string): EditResult => {
-		// onKeyPress fires before the character is inserted, so selection.start is the cursor
-		// position before Enter was pressed — that's exactly where the newline sits in val.
-		// SmartEditingHandler expects to receive the pre-newline text and re-inserts it itself.
-		const newlinePosition = selection.start;
-		const textBeforeNewline = val.substring(0, newlinePosition);
-		const textAfterNewline = val.substring(newlinePosition + 1);
-		const textWithoutNewline = textBeforeNewline + textAfterNewline;
-		const cursorBeforeNewline = newlinePosition;
-
-		// Use SmartEditingHandler to handle the Enter key
-		// It expects the cursor position before the newline was inserted
-		const result = editingHandler.handleEnter(
-			textWithoutNewline,
-			cursorBeforeNewline,
-		);
+		const cursorPosition = selection.start;
+		const selectionEnd = selection.end;
+		const result = editingHandler.handleEnter(val, cursorPosition);
 
 		if (result.handled) {
 			return {
@@ -263,9 +251,10 @@ export function CodeBlock({
 			};
 		}
 
-		// Fallback to original behavior if not handled
-		// Reconstruct with the newline that React Native inserted
-		return { newText: val, newCursorOffset: newlinePosition + 1 };
+		return {
+			newText: `${val.substring(0, cursorPosition)}\n${val.substring(selectionEnd)}`,
+			newCursorOffset: cursorPosition + 1,
+		};
 	};
 
 	const handleBraceInsert = (text: string, key: string): EditResult => {
@@ -336,6 +325,7 @@ export function CodeBlock({
 				const result = resolveEdit(curr);
 				const nextSelection = cursorSelection(result.newCursorOffset);
 				localContentRef.current = result.newText;
+				setCodeInputText(inputRef.current, result.newText);
 				forcedSelectionRef.current = nextSelection;
 				if (forcedSelectionTimeoutRef.current) {
 					clearTimeout(forcedSelectionTimeoutRef.current);
@@ -444,9 +434,8 @@ export function CodeBlock({
 				if (isShiftModified) {
 					return;
 				}
-				setTimeout(() => {
-					commitEditedText(handleEnterKey);
-				}, 10);
+				e.preventDefault();
+				commitEditedText(handleEnterKey);
 				break;
 			default:
 				if (Braces.isOpenBrace(key)) {

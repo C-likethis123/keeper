@@ -435,13 +435,14 @@ function HybridEditorContent() {
 			updateBlockType(index, detection.type, detection.language);
 			updateBlockContent(index, detection.remainingContent, 0);
 
-			if (
-				detection.type === BlockType.mathBlock ||
-				detection.type === BlockType.codeBlock ||
-				detection.type === BlockType.collapsibleBlock
-			) {
-				insertBlockAfter(index, createParagraphBlock());
-			}
+				if (
+					detection.type === BlockType.mathBlock ||
+					detection.type === BlockType.codeBlock ||
+					detection.type === BlockType.collapsibleBlock ||
+					detection.type === BlockType.table
+				) {
+					insertBlockAfter(index, createParagraphBlock());
+				}
 
 			// Set ignore flag if requested to prevent feedback loop
 			if (options?.ignoreContentChange) {

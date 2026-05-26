@@ -1,7 +1,7 @@
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { notesIndexDbListAll } from "@/services/notes/notesIndexDb";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	FlatList,
 	Modal,
@@ -30,29 +30,44 @@ export default function AddNoteToClusterModal({
 	const styles = useStyles(createStyles);
 	const [query, setQuery] = useState("");
 	const [results, setResults] = useState<NoteResult[]>([]);
-
-	const search = useCallback(
-		async (q: string) => {
-			const { items } = await notesIndexDbListAll(q, 20);
-			setResults(
-				items
-					.filter((n) => !excludeNoteIds.includes(n.noteId))
-					.map((n) => ({ id: n.noteId, title: n.title })),
-			);
-		},
-		[excludeNoteIds],
-	);
+	const excludeNoteIdsKey = JSON.stringify(excludeNoteIds);
 
 	useEffect(() => {
 		if (visible) {
 			setQuery("");
-			void search("");
 		}
-	}, [visible, search]);
+	}, [visible]);
 
 	useEffect(() => {
-		void search(query);
-	}, [query, search]);
+		if (!visible) {
+			return;
+		}
+
+		let isCurrent = true;
+
+		async function search() {
+			const excludedNoteIds = new Set(
+				JSON.parse(excludeNoteIdsKey) as string[],
+			);
+			const { items } = await notesIndexDbListAll(query, 20);
+
+			if (!isCurrent) {
+				return;
+			}
+
+			setResults(
+				items
+					.filter((n) => !excludedNoteIds.has(n.noteId))
+					.map((n) => ({ id: n.noteId, title: n.title })),
+			);
+		}
+
+		void search();
+
+		return () => {
+			isCurrent = false;
+		};
+	}, [visible, query, excludeNoteIdsKey]);
 
 	return (
 		<Modal
