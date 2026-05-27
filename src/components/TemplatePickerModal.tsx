@@ -4,7 +4,6 @@ import useSuspenseTemplates from "@/hooks/useSuspenseTemplates";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { showToast } from "@/services/toast";
-import { useEditorState } from "@/stores/editorStore";
 import { FontAwesome } from "@expo/vector-icons";
 import React, { Suspense, useCallback } from "react";
 import {
@@ -21,9 +20,11 @@ import QueryErrorBoundary from "./shared/QueryErrorBoundary";
 export default function TemplatePickerModal({
 	visible,
 	onDismiss,
+	onApplyTemplate,
 }: {
 	visible: boolean;
 	onDismiss: () => void;
+	onApplyTemplate: (markdown: string) => void;
 }) {
 	const styles = useStyles(createStyles);
 
@@ -57,7 +58,11 @@ export default function TemplatePickerModal({
 								</View>
 							)}
 						>
-							<TemplatePickerContent onDismiss={onDismiss} styles={styles} />
+							<TemplatePickerContent
+								onApplyTemplate={onApplyTemplate}
+								onDismiss={onDismiss}
+								styles={styles}
+							/>
 						</QueryErrorBoundary>
 					</Suspense>
 				</View>
@@ -67,14 +72,15 @@ export default function TemplatePickerModal({
 }
 
 function TemplatePickerContent({
+	onApplyTemplate,
 	onDismiss,
 	styles,
 }: {
+	onApplyTemplate: (markdown: string) => void;
 	onDismiss: () => void;
 	styles: ReturnType<typeof createStyles>;
 }) {
 	const templates = useSuspenseTemplates();
-	const loadMarkdown = useEditorState((s) => s.loadMarkdown);
 
 	const applyTemplate = useCallback(
 		async (template: Note) => {
@@ -84,7 +90,7 @@ function TemplatePickerContent({
 					showToast("Template not found");
 					return;
 				}
-				loadMarkdown(fullTemplate.content);
+				onApplyTemplate(fullTemplate.content);
 				onDismiss();
 				showToast(`Applied template "${fullTemplate.title || "Untitled"}"`);
 			} catch (error) {
@@ -92,7 +98,7 @@ function TemplatePickerContent({
 				showToast("Failed to apply template");
 			}
 		},
-		[loadMarkdown, onDismiss],
+		[onApplyTemplate, onDismiss],
 	);
 
 	if (templates.length === 0) {

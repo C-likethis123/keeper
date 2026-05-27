@@ -189,6 +189,13 @@ export default function NoteEditorView({
   );
   const [isShowVideoModalVisible, setIsShowVideoModalVisible] = useState(false);
   const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
+  const handleApplyTemplate = useCallback(
+    (markdown: string) => {
+      loadMarkdown(markdown);
+      sendCommand("loadMarkdown", { markdown });
+    },
+    [loadMarkdown, sendCommand],
+  );
   const loadedNoteRef = useRef<{ id: string; content: string } | null>(null);
   const [noteType, setNoteType] = useState<Note["noteType"]>(() =>
     deriveNoteType(note.title),
@@ -648,6 +655,7 @@ export default function NoteEditorView({
 
       <TemplatePickerModal
         visible={isTemplateModalVisible}
+        onApplyTemplate={handleApplyTemplate}
         onDismiss={() => setIsTemplateModalVisible(false)}
       />
       <AttachVideoModal

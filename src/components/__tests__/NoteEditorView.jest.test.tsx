@@ -27,6 +27,7 @@ const mockIndexListNotes = jest.fn();
 const mockNavigationSetOptions = jest.fn();
 const mockNavigationDispatch = jest.fn();
 const mockGitFlushPendingChanges = jest.fn();
+const mockDomEditorRender = jest.fn();
 
 let beforeRemoveListener:
 	| ((event: {
@@ -153,28 +154,30 @@ jest.mock("@/components/editor/EditorToolbar", () => {
 	};
 });
 
-jest.mock("@/components/editor/HybridEditor", () => {
+jest.mock("@/components/editor/DomEditor", () => {
 	const React = require("react");
 	const { Pressable, Text } = require("react-native");
 	return {
-		HybridEditor: ({
-			onInsertTemplateCommand,
-		}: {
+		__esModule: true,
+		default: (props: {
 			onInsertTemplateCommand?: () => void;
-		}) =>
-			React.createElement(
+			command?: { type: string; payload?: Record<string, unknown> };
+		}) => {
+			mockDomEditorRender(props);
+			return React.createElement(
 				React.Fragment,
 				null,
 				React.createElement(Text, null, "Mock editor"),
 				React.createElement(
 					Pressable,
 					{
-						onPress: onInsertTemplateCommand,
+						onPress: props.onInsertTemplateCommand,
 						accessibilityRole: "button",
 					},
 					React.createElement(Text, null, "Trigger insert template"),
 				),
-			),
+			);
+		},
 	};
 });
 
@@ -291,6 +294,7 @@ describe("NoteEditorView", () => {
 		mockIndexListNotes.mockReset();
 		mockGitFlushPendingChanges.mockReset();
 		mockNavigationDispatch.mockReset();
+		mockDomEditorRender.mockReset();
 		mockLoadNote.mockImplementation(async (id: string) => makeNote({ id }));
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
@@ -677,6 +681,14 @@ describe("NoteEditorView", () => {
 				"Full template body\n- with checklist",
 			);
 		});
+		expect(mockDomEditorRender).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				command: expect.objectContaining({
+					type: "loadMarkdown",
+					payload: { markdown: "Full template body\n- with checklist" },
+				}),
+			}),
+		);
 	});
 
 	it("renders the note title input in the navigation header and keeps save status on the left", async () => {

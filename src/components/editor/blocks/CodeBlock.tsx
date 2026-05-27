@@ -202,7 +202,7 @@ export function CodeBlock({
 		const storeBlock = useEditorState.getState().document.blocks[index];
 		if (storeBlock && storeBlock.content !== text) {
 			onContentChange(index, text, sel.end);
-		} else {
+		} else if (inputRef.current?.isFocused()) {
 			onSelectionChange?.(index, sel.start, sel.end);
 		}
 	}, [index, onContentChange, onSelectionChange]);

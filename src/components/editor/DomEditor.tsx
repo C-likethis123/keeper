@@ -84,6 +84,11 @@ export default function DomEditor({
 					state.insertBlockAfter(getFocusedIndex(), payload.block as BlockNode);
 				}
 				break;
+			case "loadMarkdown":
+				if (typeof payload?.markdown === "string") {
+					loadMarkdown(payload.markdown);
+				}
+				break;
 			case "updateType":
 				if (payload?.type) {
 					const index = getFocusedIndex();
@@ -101,7 +106,7 @@ export default function DomEditor({
 				}
 				break;
 		}
-	}, [command, commandContext]);
+	}, [command, commandContext, loadMarkdown]);
 
 	const theme = themeMode === "light" ? lightTheme : darkTheme;
 
