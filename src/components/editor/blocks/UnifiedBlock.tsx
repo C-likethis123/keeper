@@ -27,6 +27,10 @@ import {
 } from "react-native";
 import { useEditorScrollView } from "../EditorScrollContext";
 import { BlockType, getListLevel, isListItem } from "../core/BlockNode";
+import {
+	registerPendingDispatchFlusher,
+	unregisterPendingDispatchFlusher,
+} from "../core/pendingDispatchRegistry";
 import { InlineMarkdown } from "../rendering/InlineMarkdown";
 import { useSlashCommandContext } from "../slash-commands/SlashCommandContext";
 import { findSlashCommandTriggerStart } from "../slash-commands/SlashCommandTrigger";
@@ -143,6 +147,11 @@ export function UnifiedBlock({
 			flushPendingDispatch();
 		});
 	}, [flushPendingDispatch]);
+
+	useEffect(() => {
+		registerPendingDispatchFlusher(block.id, flushPendingDispatch);
+		return () => unregisterPendingDispatchFlusher(block.id, flushPendingDispatch);
+	}, [block.id, flushPendingDispatch]);
 
 	useEffect(() => {
 		return () => {

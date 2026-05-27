@@ -87,4 +87,25 @@ Content`);
 		expect(markdown).toContain("createdAt: 1710000000000");
 		expect(markdown).toContain("completedAt: 1710003600000");
 	});
+
+	it("round trips document positions metadata", () => {
+		const markdown = stringifyFrontmatter({
+			id: "resource-1",
+			title: "Paper",
+			isPinned: false,
+			content: "Notes",
+			noteType: "resource",
+			documentPositions: {
+				"_attachments/paper.pdf": "12",
+				"_attachments/book.epub": "epubcfi(/6/2)",
+			},
+		});
+
+		const parsed = parseFrontmatter(markdown);
+
+		expect(parsed.documentPositions).toEqual({
+			"_attachments/paper.pdf": "12",
+			"_attachments/book.epub": "epubcfi(/6/2)",
+		});
+	});
 });

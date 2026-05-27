@@ -4,7 +4,7 @@ import {
 	resolveAttachmentUri,
 } from "@/services/notes/attachmentStorage";
 import { FontAwesome } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
 	Linking,
 	Pressable,
@@ -19,11 +19,17 @@ import {
 } from "./documentPositionStore";
 import { buildEpubViewerHtml, buildPdfViewerHtml } from "./viewerTemplates";
 
+const POSITION_SAVE_DEBOUNCE_MS = 1000;
+
 export interface DocumentPanelProps {
 	noteId: string;
 	attachmentPath: string;
 	attachmentType: AttachmentType;
 	onTextSelected?: (text: string) => void;
+	onDocumentPositionChange?: (
+		attachmentPath: string,
+		position: string,
+	) => Promise<void> | void;
 	onDismiss: () => void;
 	style?: ViewStyle;
 	theme?: "light" | "dark";
@@ -41,7 +47,12 @@ export type DocumentViewerMessage = {
 
 type UseDocumentPanelStateOptions = Pick<
 	DocumentPanelProps,
-	"noteId" | "attachmentPath" | "attachmentType" | "onTextSelected" | "theme"
+	| "noteId"
+	| "attachmentPath"
+	| "attachmentType"
+	| "onTextSelected"
+	| "onDocumentPositionChange"
+	| "theme"
 > & {
 	readAttachmentBase64: ReadAttachmentBase64;
 };
@@ -51,6 +62,7 @@ export function useDocumentPanelState({
 	attachmentPath,
 	attachmentType,
 	onTextSelected,
+	onDocumentPositionChange,
 	theme = "light",
 	readAttachmentBase64,
 }: UseDocumentPanelStateOptions) {
@@ -62,16 +74,57 @@ export function useDocumentPanelState({
 	const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
 	const [failedAttachmentType, setFailedAttachmentType] =
 		useState<AttachmentType | null>(null);
+	const positionSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+		null,
+	);
+	const pendingPositionRef = useRef<string | null>(null);
 
 	const filename = attachmentPath.split("/").pop() ?? attachmentPath;
 
 	useEffect(() => {
 		const resolved = resolveAttachmentUri(attachmentPath);
 		setFileUri(resolved);
+		setSavedPosition(null);
 		loadDocumentPosition(noteId, attachmentPath).then((position) => {
 			if (position) setSavedPosition(position);
 		});
 	}, [noteId, attachmentPath]);
+
+	const flushPendingPosition = useCallback(() => {
+		if (positionSaveTimeoutRef.current) {
+			clearTimeout(positionSaveTimeoutRef.current);
+			positionSaveTimeoutRef.current = null;
+		}
+
+		const position = pendingPositionRef.current;
+		if (!position) return;
+		pendingPositionRef.current = null;
+		if (onDocumentPositionChange) {
+			void onDocumentPositionChange(attachmentPath, position);
+			return;
+		}
+		void saveDocumentPosition(noteId, attachmentPath, position);
+	}, [noteId, attachmentPath, onDocumentPositionChange]);
+
+	const schedulePositionSave = useCallback(
+		(position: string) => {
+			pendingPositionRef.current = position;
+			setSavedPosition(position);
+			if (positionSaveTimeoutRef.current) {
+				clearTimeout(positionSaveTimeoutRef.current);
+			}
+			positionSaveTimeoutRef.current = setTimeout(() => {
+				flushPendingPosition();
+			}, POSITION_SAVE_DEBOUNCE_MS);
+		},
+		[flushPendingPosition],
+	);
+
+	useEffect(() => {
+		return () => {
+			flushPendingPosition();
+		};
+	}, [flushPendingPosition]);
 
 	useEffect(() => {
 		if (attachmentType === "epub") {
@@ -143,16 +196,16 @@ export function useDocumentPanelState({
 					: data;
 
 			if (message.type === "cfi" && message.cfi) {
-				saveDocumentPosition(noteId, attachmentPath, message.cfi);
+				schedulePositionSave(message.cfi);
 			} else if (message.type === "page" && message.page) {
-				saveDocumentPosition(noteId, attachmentPath, message.page);
+				schedulePositionSave(message.page);
 			} else if (message.type === "textSelected" && message.text) {
 				onTextSelected?.(message.text);
 			}
 
 			return message;
 		},
-		[noteId, attachmentPath, onTextSelected],
+		[onTextSelected, schedulePositionSave],
 	);
 
 	const handleOpenExternally = useCallback(async () => {

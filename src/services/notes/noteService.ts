@@ -66,6 +66,7 @@ export class NoteService {
 				completedAt: saved.completedAt,
 				attachment: saved.attachment ?? null,
 				attachedVideo: saved.attachedVideo ?? null,
+				documentPositions: saved.documentPositions ?? null,
 			},
 		);
 		GitService.scheduleCommitBatch();

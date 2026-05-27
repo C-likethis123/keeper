@@ -13,7 +13,6 @@ import { Drawer } from "expo-router/drawer";
 import { useEffect } from "react";
 import {
   ActivityIndicator,
-  Platform,
   StyleSheet,
   Text,
   View,
@@ -30,7 +29,7 @@ export default function RootLayout() {
     traceStartupBootstrapEvent("bootstrap.root_layout_first_render");
 
     // Tauri desktop: handle window close to flush pending git changes
-    if (Platform.OS === "web" && getTauriInvoke() !== null) {
+    if (getTauriInvoke() !== null) {
       let unlisten: (() => void) | null = null;
       import("@tauri-apps/api/window")
         .then(({ getCurrentWindow }) => {
@@ -42,8 +41,9 @@ export default function RootLayout() {
             event.preventDefault();
             isClosing = true;
             try {
+              console.log("[Tauri] Saving editor state...");
+              await GitService.saveCurrentEditorBeforeBackgroundFlush();
               console.log("[Tauri] Flushing changes...");
-              // Trigger a flush with a reasonable timeout
               await GitService.flushPendingChanges({
                 reason: "app-background",
                 timeoutMs: 5000,

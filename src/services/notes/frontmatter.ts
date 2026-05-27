@@ -11,6 +11,7 @@ interface ParsedFrontmatter {
 	modified?: number;
 	attachment?: string;
 	attachedVideo?: string;
+	documentPositions?: Record<string, string>;
 	content: string;
 }
 
@@ -45,6 +46,24 @@ function parseTimestamp(value: string): number | undefined {
 	return parsed;
 }
 
+function parseDocumentPositions(value: string): Record<string, string> | undefined {
+	try {
+		const parsed = JSON.parse(value) as unknown;
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+			return undefined;
+		}
+		const positions: Record<string, string> = {};
+		for (const [key, position] of Object.entries(parsed)) {
+			if (typeof key === "string" && typeof position === "string") {
+				positions[key] = position;
+			}
+		}
+		return Object.keys(positions).length > 0 ? positions : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(markdown);
 	if (!match) {
@@ -66,6 +85,7 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	let modified: number | undefined;
 	let attachment: string | undefined;
 	let attachedVideo: string | undefined;
+	let documentPositions: Record<string, string> | undefined;
 	let id = "";
 	const frontmatter = match[1];
 	const content = markdown.slice(match[0].length);
@@ -98,6 +118,8 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 			attachment = value;
 		} else if (key === "attachedVideo") {
 			attachedVideo = value;
+		} else if (key === "documentPositions") {
+			documentPositions = parseDocumentPositions(value);
 		}
 	}
 
@@ -112,6 +134,7 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 		modified,
 		attachment,
 		attachedVideo,
+		documentPositions,
 		content,
 	};
 }
@@ -120,6 +143,7 @@ export function stringifyFrontmatter(
 	note: Omit<Note, "lastUpdated"> & {
 		modified?: number;
 		attachment?: string | null;
+		documentPositions?: Record<string, string> | null;
 	},
 ): string {
 	const frontmatterLines = [
@@ -149,6 +173,11 @@ export function stringifyFrontmatter(
 	if (note.attachedVideo) {
 		frontmatterLines.push(
 			`attachedVideo: ${JSON.stringify(note.attachedVideo)}`,
+		);
+	}
+	if (note.documentPositions && Object.keys(note.documentPositions).length > 0) {
+		frontmatterLines.push(
+			`documentPositions: ${JSON.stringify(note.documentPositions)}`,
 		);
 	}
 	frontmatterLines.push("---");

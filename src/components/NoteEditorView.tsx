@@ -181,6 +181,9 @@ export default function NoteEditorView({
   const [attachedVideo, setAttachedVideo] = useState<Note["attachedVideo"]>(
     note.attachedVideo,
   );
+  const [documentPositions, setDocumentPositions] = useState<
+    Note["documentPositions"]
+  >(note.documentPositions ?? null);
   const [isVideoVisible, setIsVideoVisible] = useState<boolean>(
     !!note.attachedVideo,
   );
@@ -237,10 +240,14 @@ export default function NoteEditorView({
           overrides?.attachedVideo !== undefined
             ? overrides.attachedVideo
             : attachedVideo,
+        documentPositions:
+          overrides?.documentPositions !== undefined
+            ? overrides.documentPositions
+            : documentPositions,
         ...overrides,
       };
     },
-    [attachmentPath, attachedVideo, id],
+    [attachmentPath, attachedVideo, documentPositions, id],
   );
   const persistCurrentEntry = useCallback(
     async (overrides?: Partial<NoteSaveInput>) => {
@@ -272,6 +279,7 @@ export default function NoteEditorView({
       );
       setIsAttachmentVisible(!!note.attachment);
       setAttachedVideo(note.attachedVideo);
+      setDocumentPositions(note.documentPositions ?? null);
       setIsVideoVisible(!!note.attachedVideo);
 
       const loadedNote = loadedNoteRef.current;
@@ -284,6 +292,7 @@ export default function NoteEditorView({
       note.attachment,
       note.attachedVideo,
       note.content,
+      note.documentPositions,
       note.id,
       note.isPinned,
       note.noteType,
@@ -377,14 +386,27 @@ export default function NoteEditorView({
     }
   }, [attachmentPath, attachmentType]);
 
+  const handleDocumentPositionChange = useCallback(
+    async (path: string, position: string) => {
+      const nextPositions = {
+        ...(documentPositions ?? {}),
+        [path]: position,
+      };
+      setDocumentPositions(nextPositions);
+      await persistCurrentEntry({ documentPositions: nextPositions });
+    },
+    [documentPositions, persistCurrentEntry],
+  );
+
   const handleRemoveAttachment = useCallback(async () => {
     if (attachmentPath) {
       await deleteAttachment(attachmentPath).catch(() => null);
     }
     setAttachmentPath(null);
     setAttachmentType(null);
+    setDocumentPositions(null);
     setIsAttachmentVisible(false);
-    await persistCurrentEntry({ attachment: null });
+    await persistCurrentEntry({ attachment: null, documentPositions: null });
   }, [attachmentPath, persistCurrentEntry]);
 
   const handleAttachVideo = useCallback(
@@ -543,6 +565,7 @@ export default function NoteEditorView({
                   attachmentPath={attachmentPath as string}
                   attachmentType={attachmentType as AttachmentType}
                   onTextSelected={handleTextSelected}
+                  onDocumentPositionChange={handleDocumentPositionChange}
                   onDismiss={handleHideAttachment}
                 />
               ) : (

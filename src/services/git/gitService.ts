@@ -174,6 +174,10 @@ export class GitService {
 		GitService.backgroundSaveHandler = handler;
 	}
 
+	static async saveCurrentEditorBeforeBackgroundFlush(): Promise<void> {
+		await GitService.backgroundSaveHandler?.();
+	}
+
 	static registerReconcileHandler(handler: (() => Promise<void>) | null): void {
 		GitService.reconcileHandler = handler;
 	}
@@ -503,7 +507,7 @@ export class GitService {
 			void (async () => {
 				try {
 					// Persist current editor state to disk
-					await GitService.backgroundSaveHandler?.();
+					await GitService.saveCurrentEditorBeforeBackgroundFlush();
 				} catch (error) {
 					console.warn("[GitService] Background save failed:", error);
 				}

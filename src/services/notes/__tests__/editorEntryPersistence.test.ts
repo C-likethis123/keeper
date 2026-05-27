@@ -199,6 +199,79 @@ describe("persistEditorEntry", () => {
 		);
 	});
 
+	it("preserves existing document positions when autosave omits position metadata", async () => {
+		mockLoadNote.mockResolvedValue({
+			id: "note-1",
+			title: "Draft note",
+			content: "Initial body",
+			lastUpdated: 1710000000000,
+			isPinned: false,
+			noteType: "note",
+			status: null,
+			createdAt: null,
+			completedAt: null,
+			documentPositions: {
+				"_attachments/paper.pdf": "4",
+			},
+		});
+
+		await persistEditorEntry({
+			id: "note-1",
+			title: "Draft note",
+			content: "Updated body",
+			isPinned: false,
+			noteType: "note",
+			status: null,
+		});
+
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				documentPositions: {
+					"_attachments/paper.pdf": "4",
+				},
+			}),
+			false,
+		);
+	});
+
+	it("saves when document position metadata changes", async () => {
+		mockLoadNote.mockResolvedValue({
+			id: "note-1",
+			title: "Draft note",
+			content: "Initial body",
+			lastUpdated: 1710000000000,
+			isPinned: false,
+			noteType: "note",
+			status: null,
+			createdAt: null,
+			completedAt: null,
+			documentPositions: {
+				"_attachments/paper.pdf": "4",
+			},
+		});
+
+		await persistEditorEntry({
+			id: "note-1",
+			title: "Draft note",
+			content: "Initial body",
+			isPinned: false,
+			noteType: "note",
+			status: null,
+			documentPositions: {
+				"_attachments/paper.pdf": "5",
+			},
+		});
+
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				documentPositions: {
+					"_attachments/paper.pdf": "5",
+				},
+			}),
+			false,
+		);
+	});
+
 	it("saves templates through NoteService", async () => {
 		mockLoadNote.mockResolvedValue(null);
 

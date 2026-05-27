@@ -5,6 +5,7 @@ import {
 	persistEditorEntry,
 } from "@/services/notes/editorEntryPersistence";
 import type { Note } from "@/services/notes/types";
+import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import { useEditorState } from "@/stores/editorStore";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { InteractionManager } from "react-native";
@@ -106,6 +107,8 @@ export function useAutoSave({
 		if (isSavingRef.current) {
 			return;
 		}
+
+		flushAllPendingEditorDispatches();
 
 		const currentNote = latestNoteRef.current;
 		const currentContent = hasEditorContentChangedRef.current

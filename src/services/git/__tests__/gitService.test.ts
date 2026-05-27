@@ -28,10 +28,9 @@ function createDeferred<T = void>() {
 }
 
 async function flushMicrotasks() {
-	await Promise.resolve();
-	await Promise.resolve();
-	await Promise.resolve();
-	await Promise.resolve();
+	for (let i = 0; i < 10; i++) {
+		await Promise.resolve();
+	}
 }
 
 describe("GitService", () => {
@@ -93,6 +92,10 @@ describe("GitService", () => {
 				saveNote: (...args: unknown[]) => mockStorageSaveNote(...args),
 				deleteNote: (...args: unknown[]) => mockStorageDeleteNote(...args),
 			},
+		}));
+
+		jest.doMock("@/services/notes/clusterFeedbackService", () => ({
+			exportFeedbackToFile: jest.fn().mockResolvedValue(undefined),
 		}));
 
 		jest.doMock("@/services/notes/notesIndex", () => ({
@@ -254,6 +257,17 @@ describe("GitService", () => {
 
 		expect(mockCommit).toHaveBeenCalledTimes(1);
 		expect(mockPush).toHaveBeenCalledTimes(1);
+	});
+
+	it("runs the registered background save handler on explicit background save", async () => {
+		const { GitService } = await import("../gitService");
+		const backgroundSave = jest.fn().mockResolvedValue(undefined);
+
+		GitService.registerBackgroundSaveHandler(backgroundSave);
+
+		await GitService.saveCurrentEditorBeforeBackgroundFlush();
+
+		expect(backgroundSave).toHaveBeenCalledTimes(1);
 	});
 
 	it("replays journaled note snapshots during recovery and clears the journal after push", async () => {

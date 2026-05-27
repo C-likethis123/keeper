@@ -28,6 +28,10 @@ import * as Braces from "../code/Braces";
 import { LanguageRegistry } from "../code/LanguageRegistry";
 import { SmartEditingHandler } from "../code/SmartEditingHandler";
 import { BlockType, getBlockLanguage } from "../core/BlockNode";
+import {
+	registerPendingDispatchFlusher,
+	unregisterPendingDispatchFlusher,
+} from "../core/pendingDispatchRegistry";
 import type { BlockConfig } from "./BlockRegistry";
 import { CodeBlockHeader } from "./CodeBlockHeader";
 
@@ -191,6 +195,22 @@ export function CodeBlock({
 		},
 		[index, onSelectionChange],
 	);
+
+	const flushPendingDispatch = useCallback(() => {
+		const text = localContentRef.current;
+		const sel = nativeSelectionRef.current;
+		const storeBlock = useEditorState.getState().document.blocks[index];
+		if (storeBlock && storeBlock.content !== text) {
+			onContentChange(index, text, sel.end);
+		} else {
+			onSelectionChange?.(index, sel.start, sel.end);
+		}
+	}, [index, onContentChange, onSelectionChange]);
+
+	useEffect(() => {
+		registerPendingDispatchFlusher(block.id, flushPendingDispatch);
+		return () => unregisterPendingDispatchFlusher(block.id, flushPendingDispatch);
+	}, [block.id, flushPendingDispatch]);
 
 	useEffect(() => {
 		return () => {
@@ -405,11 +425,12 @@ export function CodeBlock({
 	}, [focusBlockAt, index, isFocused, selection.end]);
 
 	const handleBlur = useCallback(() => {
+		flushPendingDispatch();
 		const currentFocus = getFocusedBlockIndex();
 		if (currentFocus === index) {
 			blurBlock();
 		}
-	}, [blurBlock, getFocusedBlockIndex, index]);
+	}, [blurBlock, flushPendingDispatch, getFocusedBlockIndex, index]);
 
 	const handleKeyPress = (
 		e: NativeSyntheticEvent<TextInputKeyPressEventData>,

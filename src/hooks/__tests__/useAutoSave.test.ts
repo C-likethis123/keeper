@@ -1,4 +1,8 @@
 import { createDocumentFromMarkdown } from "@/components/editor/core/Document";
+import {
+	registerPendingDispatchFlusher,
+	unregisterPendingDispatchFlusher,
+} from "@/components/editor/core/pendingDispatchRegistry";
 import { GitService } from "@/services/git/gitService";
 import {
 	normalizeMarkdownForPersistence,
@@ -214,6 +218,40 @@ describe("useAutoSave", () => {
 		});
 
 		expect(result.current.status).toBe("idle");
+	});
+
+	it("flushes pending editor dispatches before reading content in forceSave", async () => {
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		const { result } = renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Initial body",
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+		registerPendingDispatchFlusher("test-flusher", () => {
+			useEditorState.getState().updateBlockContent(0, "Flushed body", 12);
+		});
+
+		try {
+			await act(async () => {
+				await result.current.forceSave();
+			});
+		} finally {
+			unregisterPendingDispatchFlusher("test-flusher");
+		}
+
+		expect(persistEditorEntry).toHaveBeenCalledWith({
+			id: "note-1",
+			title: "Draft note",
+			content: "Flushed body",
+			isPinned: false,
+			noteType: "note",
+			status: undefined,
+			isNewEntry: false,
+		});
 	});
 
 	it("resets to idle when persistence fails and skips onPersisted", async () => {
