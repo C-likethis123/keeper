@@ -114,6 +114,11 @@ export default function NoteEditorView({
     isNew,
   });
 
+  const saveAndFlushBeforeExit = useCallback(async () => {
+    await forceSave();
+    await flushGitAndToastOnFailure("note-exit");
+  }, [flushGitAndToastOnFailure, forceSave]);
+
   const leaveEditor = useCallback(
     async (action?: { type: string; payload?: object }) => {
       if (isLeavingRef.current) {
@@ -122,8 +127,7 @@ export default function NoteEditorView({
 
       isLeavingRef.current = true;
       try {
-        await forceSave();
-        await flushGitAndToastOnFailure("note-exit");
+        await saveAndFlushBeforeExit();
         bypassNextBeforeRemoveRef.current = true;
         if (action) {
           navigation.dispatch(action);
@@ -134,17 +138,19 @@ export default function NoteEditorView({
         isLeavingRef.current = false;
       }
     },
-    [flushGitAndToastOnFailure, forceSave, navigation, router],
+    [navigation, router, saveAndFlushBeforeExit],
   );
 
   const handleBack = useCallback(async () => {
     if (tabs.length === 1 && tab && !tab.isPinned) {
+      await saveAndFlushBeforeExit();
+      bypassNextBeforeRemoveRef.current = true;
       closeTab(tab.id);
       router.replace("/");
     } else {
       await leaveEditor();
     }
-  }, [tabs.length, tab, closeTab, leaveEditor, router]);
+  }, [tabs.length, tab, closeTab, leaveEditor, router, saveAndFlushBeforeExit]);
 
   useEffect(() => {
     if (tab && title && tab.title !== title) {
@@ -474,11 +480,12 @@ export default function NoteEditorView({
   }, [leaveEditor, navigation]);
 
   const handleNavigateToNote = useCallback(
-    (noteId: string) => {
-      void leaveEditor();
+    async (noteId: string) => {
+      await saveAndFlushBeforeExit();
+      bypassNextBeforeRemoveRef.current = true;
       router.push(`/editor?id=${noteId}`);
     },
-    [leaveEditor, router],
+    [router, saveAndFlushBeforeExit],
   );
 
   const handleToolbarInsertImage = useCallback(async () => {

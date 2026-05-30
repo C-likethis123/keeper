@@ -172,6 +172,10 @@ export class GitInitializationService {
 				await dependencies.stateStore.clearForceRepoResetFlag();
 			}
 
+			const hasPendingJournal = await dependencies.stateStore
+				.readPendingJournal()
+				.then((entries) => entries.length > 0);
+
 			const runtimeSupport = getGitRuntimeSupport();
 			if (!runtimeSupport.supported) {
 				telemetry.trace("git.runtime_unsupported", {
@@ -244,6 +248,20 @@ export class GitInitializationService {
 						metrics,
 					};
 				}
+				if (hasPendingJournal) {
+					const recoveryResult = await GitService.recoverPendingChanges();
+					if (!recoveryResult.success) {
+						console.warn(
+							"[GitInitializationService] Recovery push after clone failed:",
+							recoveryResult.error,
+						);
+					}
+					if (recoveryResult.didPush) {
+						const recoveredHead =
+							await dependencies.gitEngine.resolveHeadOid(NOTES_ROOT);
+						await dependencies.stateStore.writeLastSyncedOid(recoveredHead);
+					}
+				}
 				return {
 					success: true,
 					wasCloned: true,
@@ -255,11 +273,26 @@ export class GitInitializationService {
 			console.log(
 				"[GitInitializationService] Valid repository already exists, skipping clone",
 			);
-			const hasPendingJournal = await dependencies.stateStore
-				.readPendingJournal()
-				.then((entries) => entries.length > 0);
 			if (hasPendingJournal) {
-				await GitService.prepareRecoveryForRemoteSync();
+				const recoveryResult = await GitService.recoverPendingChanges();
+				if (!recoveryResult.success) {
+					console.warn(
+						"[GitInitializationService] Recovery push before sync failed:",
+						recoveryResult.error,
+					);
+					return {
+						success: true,
+						wasCloned: false,
+						supported: true,
+						error: recoveryResult.error,
+						metrics,
+					};
+				}
+				if (recoveryResult.didPush) {
+					const recoveredHead =
+						await dependencies.gitEngine.resolveHeadOid(NOTES_ROOT);
+					await dependencies.stateStore.writeLastSyncedOid(recoveredHead);
+				}
 			}
 			const syncResult = await GitService.withGitLock(() =>
 				dependencies.remoteSyncService.syncWithRemote(telemetry),
@@ -272,20 +305,6 @@ export class GitInitializationService {
 					await createSyncConflictNotes(syncResult.conflicts);
 				}
 
-				if (hasPendingJournal) {
-					const recoveryResult = await GitService.recoverPendingChanges();
-					if (!recoveryResult.success) {
-						console.warn(
-							"[GitInitializationService] Recovery push failed:",
-							recoveryResult.error,
-						);
-					}
-					if (recoveryResult.didPush) {
-						const recoveredHead =
-							await dependencies.gitEngine.resolveHeadOid(NOTES_ROOT);
-						await dependencies.stateStore.writeLastSyncedOid(recoveredHead);
-					}
-				}
 				console.log(
 					"[GitInitializationService] Successfully synced with remote",
 				);

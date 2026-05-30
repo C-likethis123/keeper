@@ -1614,6 +1614,37 @@ pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule
 
 #[cfg(target_os = "android")]
 #[no_mangle]
+pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule_git_1changed_1paths_1json(
+    env: *mut RawJniEnv,
+    _: jobject,
+    repo_path: jstring,
+    from_oid: jstring,
+    to_oid: jstring,
+) -> jstring {
+    let mut env = match android_env(env) {
+        Ok(value) => value,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let repo_path = match android_jstring_arg(&mut env, repo_path) {
+        Ok(value) => value,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let from_oid = match android_jstring_arg(&mut env, from_oid) {
+        Ok(value) => value,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let to_oid = match android_jstring_arg(&mut env, to_oid) {
+        Ok(value) => value,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let payload = changed_paths(&repo_path, &from_oid, &to_oid)
+        .ok()
+        .and_then(|changed| serde_json::to_string(&changed).ok());
+    android_json_result(&mut env, payload)
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
 pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule_git_1conflicted_1files_1json(
     env: *mut RawJniEnv,
     _: jobject,

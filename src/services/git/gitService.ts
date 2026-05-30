@@ -298,11 +298,7 @@ export class GitService {
 				return;
 			}
 
-			const gitEngine = GitService.ensureGitEngine();
-			await gitEngine.checkout(NOTES_ROOT, "HEAD", {
-				noUpdateHead: true,
-				force: true,
-			});
+			await GitService.restorePendingChangesFromJournal();
 		});
 	}
 

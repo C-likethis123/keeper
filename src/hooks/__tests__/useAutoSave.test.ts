@@ -330,6 +330,121 @@ describe("useAutoSave", () => {
 		});
 	});
 
+	it("runs a follow-up save when content changes during an in-flight save", async () => {
+		let resolveFirstSave: (() => void) | undefined;
+		(persistEditorEntry as jest.Mock).mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveFirstSave = resolve;
+				}),
+		);
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Initial body",
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+
+		act(() => {
+			useEditorState.getState().loadMarkdown("First edit");
+		});
+		await act(async () => {
+			jest.advanceTimersByTime(0);
+			await Promise.resolve();
+		});
+
+		act(() => {
+			useEditorState.getState().loadMarkdown("Second edit");
+		});
+		await act(async () => {
+			jest.advanceTimersByTime(0);
+			await Promise.resolve();
+		});
+
+		await act(async () => {
+			resolveFirstSave?.();
+			await Promise.resolve();
+			await Promise.resolve();
+		});
+
+		await waitFor(() => {
+			expect(persistEditorEntry).toHaveBeenLastCalledWith({
+				id: "note-1",
+				title: "Draft note",
+				content: "Second edit",
+				isPinned: false,
+				noteType: "note",
+				status: undefined,
+				isNewEntry: false,
+			});
+		});
+	});
+
+	it("waits for the follow-up save when forceSave is called during an in-flight save", async () => {
+		let resolveFirstSave: (() => void) | undefined;
+		(persistEditorEntry as jest.Mock).mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveFirstSave = resolve;
+				}),
+		);
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		const { result } = renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Initial body",
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+
+		act(() => {
+			useEditorState.getState().loadMarkdown("First edit");
+		});
+
+		let firstSave: Promise<void> | undefined;
+		await act(async () => {
+			firstSave = result.current.forceSave();
+			await Promise.resolve();
+		});
+
+		act(() => {
+			useEditorState.getState().loadMarkdown("Second edit");
+		});
+
+		let secondSaveResolved = false;
+		const secondSave = result.current.forceSave().then(() => {
+			secondSaveResolved = true;
+		});
+		await act(async () => {
+			await Promise.resolve();
+		});
+
+		expect(secondSaveResolved).toBe(false);
+
+		await act(async () => {
+			resolveFirstSave?.();
+			await firstSave;
+			await secondSave;
+		});
+
+		expect(persistEditorEntry).toHaveBeenLastCalledWith({
+			id: "note-1",
+			title: "Draft note",
+			content: "Second edit",
+			isPinned: false,
+			noteType: "note",
+			status: undefined,
+			isNewEntry: false,
+		});
+		expect(secondSaveResolved).toBe(true);
+	});
+
 	it("resets to idle when persistence fails and skips onPersisted", async () => {
 		(persistEditorEntry as jest.Mock).mockRejectedValue(
 			new Error("Save failed"),

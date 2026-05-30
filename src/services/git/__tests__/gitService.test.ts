@@ -318,7 +318,7 @@ describe("GitService", () => {
 		});
 	});
 
-	it("cleans the working tree before remote sync when a journal exists", async () => {
+	it("restores journaled changes before remote sync when a journal exists", async () => {
 		const { GitService } = await import("../gitService");
 
 		await GitService.queueChangeAsync("note-1.md", "modify", {
@@ -332,9 +332,23 @@ describe("GitService", () => {
 
 		await GitService.prepareRecoveryForRemoteSync();
 
-		expect(mockCheckout).toHaveBeenCalledWith(expect.any(String), "HEAD", {
-			noUpdateHead: true,
-			force: true,
+		expect(mockCheckout).not.toHaveBeenCalled();
+		expect(mockStorageSaveNote).toHaveBeenCalledWith({
+			id: "note-1",
+			title: "Recovered",
+			content: "body",
+			isPinned: false,
+			noteType: "note",
+			status: null,
+		});
+		expect(mockIndexUpsert).toHaveBeenCalledWith({
+			noteId: "note-1",
+			summary: "body",
+			title: "Recovered",
+			isPinned: false,
+			updatedAt: 1000,
+			noteType: "note",
+			status: null,
 		});
 	});
 
