@@ -10,12 +10,15 @@ import {
 } from "@/services/notes/editorEntryPersistence";
 import { useEditorState } from "@/stores/editorStore";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { InteractionManager } from "react-native";
+import { AppState, InteractionManager } from "react-native";
 import { useAutoSave } from "../useAutoSave";
 
 type InteractionTask = Parameters<
 	typeof InteractionManager.runAfterInteractions
 >[0];
+type AppStateListener = Parameters<typeof AppState.addEventListener>[1];
+
+let appStateListener: AppStateListener | null = null;
 
 function runInteractionTask(task: InteractionTask) {
 	if (!task) {
@@ -44,6 +47,7 @@ describe("useAutoSave", () => {
 	beforeEach(() => {
 		jest.useFakeTimers();
 		jest.clearAllMocks();
+		appStateListener = null;
 		useEditorState.getState().resetState();
 		useEditorState.setState({
 			document: createDocumentFromMarkdown("Initial body"),
@@ -64,6 +68,10 @@ describe("useAutoSave", () => {
 					typeof InteractionManager.runAfterInteractions
 				>;
 			});
+		jest.spyOn(AppState, "addEventListener").mockImplementation((_type, listener) => {
+			appStateListener = listener;
+			return { remove: jest.fn() };
+		});
 	});
 
 	afterEach(() => {
@@ -194,11 +202,6 @@ describe("useAutoSave", () => {
 			await Promise.resolve();
 		});
 
-		await act(async () => {
-			jest.advanceTimersByTime(60000);
-			await Promise.resolve();
-		});
-
 		await waitFor(() => {
 			expect(persistEditorEntry).toHaveBeenCalledWith({
 				id: "note-1",
@@ -218,6 +221,42 @@ describe("useAutoSave", () => {
 		});
 
 		expect(result.current.status).toBe("idle");
+	});
+
+	it("persists dirty title changes after the idle interval", async () => {
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		const { rerender } = renderHook(
+			({ title }) =>
+				useAutoSave({
+					id: "note-1",
+					title,
+					content: "Initial body",
+					isPinned: false,
+					noteType: "note",
+				}),
+			{
+				initialProps: { title: "Draft note" },
+			},
+		);
+
+		rerender({ title: "Renamed note" });
+
+		await act(async () => {
+			jest.advanceTimersByTime(1500);
+			await Promise.resolve();
+		});
+
+		await waitFor(() => {
+			expect(persistEditorEntry).toHaveBeenCalledWith({
+				id: "note-1",
+				title: "Renamed note",
+				content: "Initial body",
+				isPinned: false,
+				noteType: "note",
+				status: undefined,
+				isNewEntry: false,
+			});
+		});
 	});
 
 	it("flushes pending editor dispatches before reading content in forceSave", async () => {
@@ -251,6 +290,43 @@ describe("useAutoSave", () => {
 			noteType: "note",
 			status: undefined,
 			isNewEntry: false,
+		});
+	});
+
+	it("persists dirty pending text when the app leaves active state", async () => {
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Initial body",
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+		registerPendingDispatchFlusher("test-flusher", () => {
+			useEditorState.getState().updateBlockContent(0, "Leaving body", 12);
+		});
+
+		try {
+			await act(async () => {
+				appStateListener?.("background");
+				await Promise.resolve();
+			});
+		} finally {
+			unregisterPendingDispatchFlusher("test-flusher");
+		}
+
+		await waitFor(() => {
+			expect(persistEditorEntry).toHaveBeenCalledWith({
+				id: "note-1",
+				title: "Draft note",
+				content: "Leaving body",
+				isPinned: false,
+				noteType: "note",
+				status: undefined,
+				isNewEntry: false,
+			});
 		});
 	});
 

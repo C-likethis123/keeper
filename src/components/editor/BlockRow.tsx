@@ -255,7 +255,7 @@ function makeStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			borderWidth: 1,
 			borderColor: "transparent",
 			backgroundColor: "transparent",
-			paddingLeft: 40,
+			paddingLeft: Platform.OS === "web" ? 40 : 0,
 		},
 		rowShellSelected: {
 			backgroundColor: theme.custom.editor.blockFocused,
@@ -272,6 +272,7 @@ function makeStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			alignItems: "center",
 			justifyContent: "center",
 			gap: 6,
+			display: Platform.OS === "web" ? "flex" : "none",
 		},
 		chromeButton: {
 			width: 24,

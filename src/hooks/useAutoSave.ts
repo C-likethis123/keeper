@@ -8,7 +8,7 @@ import type { Note } from "@/services/notes/types";
 import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import { useEditorState } from "@/stores/editorStore";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { InteractionManager } from "react-native";
+import { AppState, InteractionManager } from "react-native";
 
 const AUTO_SAVE_INTERVAL_MS = 60000;
 const INPUT_IDLE_BEFORE_SAVE_MS = 1500;
@@ -53,6 +53,7 @@ export function useAutoSave({
 	const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const prepareTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const scheduleSaveWhenIdleRef = useRef<(() => void) | null>(null);
 	const isSavingRef = useRef(false);
 	const isNewEntryRef = useRef(!!isNew);
 	const latestDocumentVersionRef = useRef(
@@ -91,6 +92,13 @@ export function useAutoSave({
 			latestDocumentVersionRef.current =
 				useEditorState.getState().document.version;
 			setStatus("idle");
+		} else if (
+			title.trim() !== lastSavedRef.current.title ||
+			isPinned !== lastSavedRef.current.isPinned ||
+			noteType !== lastSavedRef.current.noteType ||
+			noteStatus !== lastSavedRef.current.status
+		) {
+			scheduleSaveWhenIdleRef.current?.();
 		}
 	}, [
 		id,
@@ -250,6 +258,7 @@ export function useAutoSave({
 
 			hasEditorContentChangedRef.current = true;
 			lastInputAtRef.current = Date.now();
+			scheduleSaveWhenIdleRef.current?.();
 
 			if (prepareTimeoutRef.current) {
 				clearTimeout(prepareTimeoutRef.current);
@@ -285,6 +294,18 @@ export function useAutoSave({
 	}, [forceSave]);
 
 	useEffect(() => {
+		const subscription = AppState.addEventListener("change", (nextState) => {
+			if (nextState !== "active") {
+				void forceSave();
+			}
+		});
+
+		return () => {
+			subscription.remove();
+		};
+	}, [forceSave]);
+
+	useEffect(() => {
 		if (statusTimeoutRef.current) {
 			clearTimeout(statusTimeoutRef.current);
 			statusTimeoutRef.current = null;
@@ -302,7 +323,7 @@ export function useAutoSave({
 			intervalRef.current = null;
 		}
 
-		const scheduleSaveWhenIdle = () => {
+		scheduleSaveWhenIdleRef.current = () => {
 			if (isSavingRef.current) {
 				return;
 			}
@@ -323,7 +344,7 @@ export function useAutoSave({
 		};
 
 		intervalRef.current = setInterval(
-			scheduleSaveWhenIdle,
+			() => scheduleSaveWhenIdleRef.current?.(),
 			AUTO_SAVE_INTERVAL_MS,
 		);
 
@@ -344,6 +365,7 @@ export function useAutoSave({
 				clearInterval(intervalRef.current);
 				intervalRef.current = null;
 			}
+			scheduleSaveWhenIdleRef.current = null;
 		};
 	}, [forceSave]);
 
