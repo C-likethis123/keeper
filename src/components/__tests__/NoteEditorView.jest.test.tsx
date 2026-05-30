@@ -160,6 +160,7 @@ jest.mock("@/components/editor/DomEditor", () => {
 	return {
 		__esModule: true,
 		default: (props: {
+			markdown: string;
 			onInsertTemplateCommand?: () => void;
 			command?: { type: string; payload?: Record<string, unknown> };
 		}) => {
@@ -683,6 +684,7 @@ describe("NoteEditorView", () => {
 		});
 		expect(mockDomEditorRender).toHaveBeenLastCalledWith(
 			expect.objectContaining({
+				markdown: "Full template body\n- with checklist",
 				command: expect.objectContaining({
 					type: "loadMarkdown",
 					payload: { markdown: "Full template body\n- with checklist" },

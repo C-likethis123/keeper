@@ -67,6 +67,7 @@ export default function NoteEditorView({
     | { type: string; payload?: Record<string, unknown>; timestamp: number }
     | undefined
   >();
+  const [editorMarkdown, setEditorMarkdown] = useState(note.content);
 
   const sendCommand = useCallback(
     (type: string, payload?: Record<string, unknown>) => {
@@ -196,6 +197,7 @@ export default function NoteEditorView({
   const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
   const handleApplyTemplate = useCallback(
     (markdown: string) => {
+      setEditorMarkdown(markdown);
       loadMarkdown(markdown);
       sendCommand("loadMarkdown", { markdown });
     },
@@ -303,6 +305,7 @@ export default function NoteEditorView({
       const loadedNote = loadedNoteRef.current;
       if (loadedNote?.id !== note.id || loadedNote.content !== note.content) {
         loadedNoteRef.current = { id: note.id, content: note.content };
+        setEditorMarkdown(note.content);
         loadMarkdown(note.content);
       }
     }, [
@@ -653,7 +656,7 @@ export default function NoteEditorView({
               onInsertCollapsible={handleToolbarInsertCollapsible}
             />
             <DomEditor
-              markdown={note.content}
+              markdown={editorMarkdown}
               themeMode={colorScheme ?? "dark"}
               onInsertTemplateCommand={async () => {
                 setIsTemplateModalVisible(true);
