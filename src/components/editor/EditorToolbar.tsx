@@ -24,6 +24,8 @@ const styles = StyleSheet.create({
 	},
 });
 
+const noop = () => {};
+
 interface EditorToolbarProps {
 	onAttachDocument?: () => void;
 	hasAttachment?: boolean;
@@ -36,6 +38,10 @@ interface EditorToolbarProps {
 	onToggleActivePanel?: () => void;
 	onShowVideoModal?: () => void;
 	attachedVideo?: string | null;
+	resourceUrl?: string | null;
+	isArticleVisible?: boolean;
+	onShowArticle?: () => void;
+	onHideArticle?: () => void;
 	// Action overrides
 	onUndo?: () => void;
 	onRedo?: () => void;
@@ -58,6 +64,10 @@ export function EditorToolbar({
 	onToggleActivePanel,
 	onShowVideoModal,
 	attachedVideo,
+	resourceUrl,
+	isArticleVisible = false,
+	onShowArticle,
+	onHideArticle,
 	onUndo,
 	onRedo,
 	onIndent,
@@ -107,6 +117,12 @@ export function EditorToolbar({
 	const canShowAttachment = onShowAttachment != null;
 	const canHideAttachment = onHideAttachment != null;
 	const canRemoveAttachment = onRemoveAttachment != null;
+	const attachedPanelCount = [hasAttachment, !!attachedVideo, !!resourceUrl].filter(
+		Boolean,
+	).length;
+	const handleToggleArticle = isArticleVisible ? onHideArticle : onShowArticle;
+	const articleButtonName = isArticleVisible ? "times-circle" : "newspaper-o";
+	const articleButtonLabel = isArticleVisible ? "Hide article" : "View article";
 
 	return (
 		<View style={styles.toolbar}>
@@ -181,6 +197,14 @@ export function EditorToolbar({
 						label={attachedVideo ? "Manage video" : "Attach video"}
 					/>
 				)}
+				{resourceUrl && (
+					<IconButton
+						name={articleButtonName}
+						onPress={handleToggleArticle ?? noop}
+						disabled={handleToggleArticle == null}
+						label={articleButtonLabel}
+					/>
+				)}
 				{/* Related Notes toggle */}
 				{onToggleRelatedNotes && (
 					<IconButton
@@ -191,8 +215,8 @@ export function EditorToolbar({
 						}
 					/>
 				)}
-				{/* Panel toggle: only when both PDF and video are present */}
-				{hasAttachment && attachedVideo && onToggleActivePanel && (
+				{/* Panel toggle: only when multiple attachment panels are present */}
+				{attachedPanelCount > 1 && onToggleActivePanel && (
 					<IconButton
 						name="exchange"
 						onPress={onToggleActivePanel}

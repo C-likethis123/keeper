@@ -11,6 +11,7 @@ interface ParsedFrontmatter {
 	modified?: number;
 	attachment?: string;
 	attachedVideo?: string;
+	resourceUrl?: string;
 	documentPositions?: Record<string, string>;
 	content: string;
 }
@@ -85,6 +86,7 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 	let modified: number | undefined;
 	let attachment: string | undefined;
 	let attachedVideo: string | undefined;
+	let resourceUrl: string | undefined;
 	let documentPositions: Record<string, string> | undefined;
 	let id = "";
 	const frontmatter = match[1];
@@ -118,6 +120,8 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 			attachment = value;
 		} else if (key === "attachedVideo") {
 			attachedVideo = value;
+		} else if (key === "resourceUrl") {
+			resourceUrl = value;
 		} else if (key === "documentPositions") {
 			documentPositions = parseDocumentPositions(value);
 		}
@@ -134,6 +138,7 @@ export function parseFrontmatter(markdown: string): ParsedFrontmatter {
 		modified,
 		attachment,
 		attachedVideo,
+		resourceUrl,
 		documentPositions,
 		content,
 	};
@@ -143,6 +148,7 @@ export function stringifyFrontmatter(
 	note: Omit<Note, "lastUpdated"> & {
 		modified?: number;
 		attachment?: string | null;
+		resourceUrl?: string | null;
 		documentPositions?: Record<string, string> | null;
 	},
 ): string {
@@ -174,6 +180,9 @@ export function stringifyFrontmatter(
 		frontmatterLines.push(
 			`attachedVideo: ${JSON.stringify(note.attachedVideo)}`,
 		);
+	}
+	if (note.resourceUrl) {
+		frontmatterLines.push(`resourceUrl: ${JSON.stringify(note.resourceUrl)}`);
 	}
 	if (note.documentPositions && Object.keys(note.documentPositions).length > 0) {
 		frontmatterLines.push(

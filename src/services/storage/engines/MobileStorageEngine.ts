@@ -97,6 +97,7 @@ export class MobileStorageEngine implements StorageEngine {
 					parsed.noteType === "todo" ? (parsed.completedAt ?? null) : null,
 				attachment: parsed.attachment ?? null,
 				attachedVideo: parsed.attachedVideo ?? null,
+				resourceUrl: parsed.resourceUrl ?? null,
 				documentPositions: parsed.documentPositions ?? null,
 				modified,
 			};

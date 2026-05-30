@@ -24,6 +24,7 @@ type ReadEntryResult = {
 	completedAt: Note["completedAt"];
 	attachment: Note["attachment"];
 	attachedVideo: Note["attachedVideo"];
+	resourceUrl: Note["resourceUrl"];
 	documentPositions: Note["documentPositions"];
 	modified: Note["modified"];
 };
@@ -67,6 +68,7 @@ export class TauriStorageEngine implements StorageEngine {
 				completedAt: note.completedAt,
 				attachment: note.attachment ?? null,
 				attachedVideo: note.attachedVideo ?? null,
+				resourceUrl: note.resourceUrl ?? null,
 				documentPositions: note.documentPositions ?? null,
 				modified,
 			},

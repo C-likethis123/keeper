@@ -34,14 +34,13 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
 import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 import AttachVideoModal from "./AttachVideoModal";
+import ArticleSplitPanel from "./editor/article/ArticleSplitPanel";
 import DomEditor from "./editor/DomEditor";
-import { EditorScrollProvider } from "./editor/EditorScrollContext";
 import { EditorToolbar } from "./editor/EditorToolbar";
 import { DocumentPanel } from "./editor/document/DocumentPanel";
 import VideoSplitPanel from "./editor/video/VideoSplitPanel";
@@ -76,7 +75,7 @@ export default function NoteEditorView({
     [],
   );
 
-  const { updateTabTitle, tabs, closeTab, activeTabId } = useTabStore();
+  const { updateTabTitle, tabs, closeTab } = useTabStore();
   const tab = tabs.find((t) => t.noteId === id);
 
   const flushGitAndToastOnFailure = useCallback(
@@ -181,6 +180,12 @@ export default function NoteEditorView({
   const [attachedVideo, setAttachedVideo] = useState<Note["attachedVideo"]>(
     note.attachedVideo,
   );
+  const [resourceUrl, setResourceUrl] = useState<Note["resourceUrl"]>(
+    note.resourceUrl,
+  );
+  const [isArticleVisible, setIsArticleVisible] = useState<boolean>(
+    !!note.resourceUrl,
+  );
   const [documentPositions, setDocumentPositions] = useState<
     Note["documentPositions"]
   >(note.documentPositions ?? null);
@@ -247,6 +252,10 @@ export default function NoteEditorView({
           overrides?.attachedVideo !== undefined
             ? overrides.attachedVideo
             : attachedVideo,
+        resourceUrl:
+          overrides?.resourceUrl !== undefined
+            ? overrides.resourceUrl
+            : resourceUrl,
         documentPositions:
           overrides?.documentPositions !== undefined
             ? overrides.documentPositions
@@ -254,7 +263,7 @@ export default function NoteEditorView({
         ...overrides,
       };
     },
-    [attachmentPath, attachedVideo, documentPositions, id],
+    [attachmentPath, attachedVideo, documentPositions, id, resourceUrl],
   );
   const persistCurrentEntry = useCallback(
     async (overrides?: Partial<NoteSaveInput>) => {
@@ -286,6 +295,8 @@ export default function NoteEditorView({
       );
       setIsAttachmentVisible(!!note.attachment);
       setAttachedVideo(note.attachedVideo);
+      setResourceUrl(note.resourceUrl ?? null);
+      setIsArticleVisible(!!note.resourceUrl);
       setDocumentPositions(note.documentPositions ?? null);
       setIsVideoVisible(!!note.attachedVideo);
 
@@ -303,6 +314,7 @@ export default function NoteEditorView({
       note.id,
       note.isPinned,
       note.noteType,
+      note.resourceUrl,
       note.status,
       note.title,
     ]),
@@ -524,7 +536,9 @@ export default function NoteEditorView({
   const showSplit =
     activePanel === "document"
       ? hasDocAttachment && isAttachmentVisible
-      : !!attachedVideo && isVideoVisible;
+      : activePanel === "article"
+        ? !!resourceUrl && isArticleVisible
+        : !!attachedVideo && isVideoVisible;
   const splitFlexDir =
     activePanel === "video" ? "column" : isDesktop ? "row" : "column";
 
@@ -575,6 +589,11 @@ export default function NoteEditorView({
                   onDocumentPositionChange={handleDocumentPositionChange}
                   onDismiss={handleHideAttachment}
                 />
+              ) : activePanel === "article" ? (
+                <ArticleSplitPanel
+                  url={resourceUrl ?? ""}
+                  onDismiss={() => setIsArticleVisible(false)}
+                />
               ) : (
                 <VideoSplitPanel
                   url={attachedVideo ?? ""}
@@ -618,6 +637,13 @@ export default function NoteEditorView({
               onToggleRelatedNotes={() => setShowRelatedNotes((v) => !v)}
               onShowVideoModal={() => setIsShowVideoModalVisible(true)}
               attachedVideo={attachedVideo}
+              resourceUrl={resourceUrl}
+              isArticleVisible={showSplit && activePanel === "article"}
+              onShowArticle={() => {
+                setActivePanel("article");
+                setIsArticleVisible(true);
+              }}
+              onHideArticle={() => setIsArticleVisible(false)}
               onToggleActivePanel={toggleActivePanel}
               onUndo={() => sendCommand("undo")}
               onRedo={() => sendCommand("redo")}

@@ -24,6 +24,7 @@ describe("useShareHandler", () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		global.fetch = jest.fn(() => Promise.reject(new Error("offline"))) as jest.Mock;
 		(useRouter as jest.Mock).mockReturnValue({ push: mockPush });
 	});
 
@@ -120,10 +121,73 @@ describe("useShareHandler", () => {
 		});
 	});
 
-	it("resets intent and shows toast when an unsupported URL is shared", async () => {
+	it("creates a resource note when a generic article URL is shared", async () => {
 		(useShareIntent as jest.Mock).mockReturnValue({
 			hasShareIntent: true,
 			shareIntent: { webUrl: "https://example.com", text: null, files: null, type: "weburl" },
+			resetShareIntent: mockResetShareIntent,
+			error: null,
+		});
+		(NoteService.saveNote as jest.Mock).mockResolvedValue({ id: "test-id" });
+
+		renderHook(() => useShareHandler(true));
+
+		await waitFor(() => {
+			expect(NoteService.saveNote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: "test-id",
+					title: "Resource: example.com",
+					content: "",
+					noteType: "resource",
+					attachedVideo: null,
+					resourceUrl: "https://example.com/",
+				}),
+				true,
+			);
+			expect(mockResetShareIntent).toHaveBeenCalled();
+			expect(mockPush).toHaveBeenCalledWith("/editor?id=test-id");
+			expect(mockShowToast).toHaveBeenCalledWith(
+				expect.stringContaining("shared link"),
+			);
+		});
+	});
+
+	it("uses page metadata for generic article titles", async () => {
+		(global.fetch as jest.Mock).mockResolvedValue({
+			ok: true,
+			text: async () =>
+				'<html><head><meta property="og:title" content="Deep Article &amp; Notes"></head></html>',
+		});
+		(useShareIntent as jest.Mock).mockReturnValue({
+			hasShareIntent: true,
+			shareIntent: {
+				webUrl: null,
+				text: "Read https://example.com/article.",
+				files: null,
+				type: "text",
+			},
+			resetShareIntent: mockResetShareIntent,
+			error: null,
+		});
+		(NoteService.saveNote as jest.Mock).mockResolvedValue({ id: "test-id" });
+
+		renderHook(() => useShareHandler(true));
+
+		await waitFor(() => {
+			expect(NoteService.saveNote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: "Resource: Deep Article & Notes",
+					resourceUrl: "https://example.com/article",
+				}),
+				true,
+			);
+		});
+	});
+
+	it("resets intent and shows toast when shared text contains no link", async () => {
+		(useShareIntent as jest.Mock).mockReturnValue({
+			hasShareIntent: true,
+			shareIntent: { webUrl: null, text: "no link here", files: null, type: "text" },
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});
@@ -134,7 +198,7 @@ describe("useShareHandler", () => {
 			expect(NoteService.saveNote).not.toHaveBeenCalled();
 			expect(mockResetShareIntent).toHaveBeenCalled();
 			expect(mockShowToast).toHaveBeenCalledWith(
-				expect.stringContaining("supported"),
+				expect.stringContaining("No link"),
 			);
 		});
 	});

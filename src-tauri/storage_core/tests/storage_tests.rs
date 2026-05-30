@@ -59,7 +59,7 @@ fn write_markdown(path: &Path, markdown: &str) {
 #[test]
 fn parse_frontmatter_unescapes_quoted_titles() {
     let markdown = "---\ntitle: \"He said \\\"hi\\\"\"\npinned: true\n---\nHello";
-    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _document_positions, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _resource_url, _document_positions, content) =
         parse_frontmatter(markdown);
 
     assert_eq!(title, "He said \"hi\"");
@@ -75,7 +75,7 @@ fn parse_frontmatter_unescapes_quoted_titles() {
 #[test]
 fn parse_frontmatter_falls_back_for_plain_markdown() {
     let markdown = "# Heading\n\nBody";
-    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _document_positions, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _resource_url, _document_positions, content) =
         parse_frontmatter(markdown);
 
     assert_eq!(title, "");
@@ -91,7 +91,7 @@ fn parse_frontmatter_falls_back_for_plain_markdown() {
 #[test]
 fn parse_frontmatter_falls_back_for_invalid_yaml() {
     let markdown = "---\ntitle: \"unterminated\n---\nBody";
-    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _document_positions, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _resource_url, _document_positions, content) =
         parse_frontmatter(markdown);
 
     assert_eq!(title, "");
@@ -117,11 +117,12 @@ fn serialize_note_writes_frontmatter_and_body() {
         completed_at: Some(1710003600000),
         attachment: None,
         attached_video: None,
+        resource_url: None,
         document_positions: None,
     })
     .expect("note should serialize");
 
-    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _document_positions, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _resource_url, _document_positions, content) =
         parse_frontmatter(&markdown);
     assert_eq!(title, "He said \"hi\"");
     assert!(is_pinned);
@@ -137,7 +138,7 @@ fn serialize_note_writes_frontmatter_and_body() {
 #[test]
 fn parse_frontmatter_reads_template_metadata() {
     let markdown = "---\ntitle: \"Meeting\"\nid: \"template-1\"\ntype: \"todo\"\nstatus: \"doing\"\n---\n- agenda";
-    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _document_positions, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _resource_url, _document_positions, content) =
         parse_frontmatter(markdown);
 
     assert_eq!(title, "Meeting");
@@ -163,11 +164,12 @@ fn serialize_note_omits_pinned_for_templates() {
         completed_at: None,
         attachment: None,
         attached_video: None,
+        resource_url: None,
         document_positions: None,
     })
     .expect("template should serialize");
 
-    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _document_positions, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _resource_url, _document_positions, content) =
         parse_frontmatter(&markdown);
     assert_eq!(title, "Checklist");
     assert!(!is_pinned);
@@ -194,11 +196,12 @@ fn serialize_note_and_parse_frontmatter_round_trip_attachment() {
         completed_at: None,
         attachment: Some("_attachments/article.pdf".to_string()),
         attached_video: None,
+        resource_url: None,
         document_positions: None,
     })
     .expect("note should serialize");
 
-    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _document_positions, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, _attached_video, _resource_url, _document_positions, content) =
         parse_frontmatter(&markdown);
 
     assert_eq!(title, "Article Notes");
@@ -209,6 +212,30 @@ fn serialize_note_and_parse_frontmatter_round_trip_attachment() {
     assert_eq!(completed_at, None);
     assert_eq!(attachment.as_deref(), Some("_attachments/article.pdf"));
     assert_eq!(content, "body");
+}
+
+#[test]
+fn serialize_note_and_parse_frontmatter_round_trip_resource_url() {
+    let markdown = serialize_note(&WriteNoteInput {
+        id: "note-with-resource-url".to_string(),
+        title: "Article Notes".to_string(),
+        content: "".to_string(),
+        is_pinned: false,
+        note_type: "resource".to_string(),
+        status: None,
+        created_at: None,
+        completed_at: None,
+        attachment: None,
+        attached_video: None,
+        resource_url: Some("https://example.com/article".to_string()),
+        document_positions: None,
+    })
+    .expect("note should serialize");
+
+    let (_, _, _, _, _, _, _, _, resource_url, _, content) = parse_frontmatter(&markdown);
+
+    assert_eq!(resource_url.as_deref(), Some("https://example.com/article"));
+    assert_eq!(content, "");
 }
 
 #[test]
@@ -231,11 +258,12 @@ fn serialize_note_and_parse_frontmatter_round_trip_document_positions() {
         completed_at: None,
         attachment: Some("_attachments/article.pdf".to_string()),
         attached_video: None,
+        resource_url: None,
         document_positions: Some(document_positions),
     })
     .expect("note should serialize");
 
-    let (_, _, _, _, _, _, _, _, parsed_positions, content) = parse_frontmatter(&markdown);
+    let (_, _, _, _, _, _, _, _, _, parsed_positions, content) = parse_frontmatter(&markdown);
 
     assert_eq!(content, "body");
     assert_eq!(
@@ -272,6 +300,7 @@ fn write_note_saves_templates_in_the_notes_directory() {
             completed_at: None,
             attachment: None,
             attached_video: None,
+            resource_url: None,
             document_positions: None,
         },
     )
@@ -298,6 +327,7 @@ fn write_note_routes_regular_notes_into_notes_directory() {
             completed_at: None,
             attachment: None,
             attached_video: None,
+            resource_url: None,
             document_positions: None,
         },
     )
@@ -342,6 +372,7 @@ fn read_note_returns_attachment_metadata() {
             completed_at: None,
             attachment: Some("_attachments/paper.pdf".to_string()),
             attached_video: None,
+            resource_url: None,
             document_positions: None,
         },
     )

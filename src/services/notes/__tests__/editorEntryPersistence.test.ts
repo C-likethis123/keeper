@@ -199,6 +199,71 @@ describe("persistEditorEntry", () => {
 		);
 	});
 
+	it("preserves an existing resource URL when autosave omits resource metadata", async () => {
+		mockLoadNote.mockResolvedValue({
+			id: "note-1",
+			title: "Draft note",
+			content: "Initial body",
+			lastUpdated: 1710000000000,
+			isPinned: false,
+			noteType: "resource",
+			status: null,
+			createdAt: null,
+			completedAt: null,
+			resourceUrl: "https://example.com/article",
+		});
+
+		await persistEditorEntry({
+			id: "note-1",
+			title: "Draft note",
+			content: "Updated body",
+			isPinned: false,
+			noteType: "resource",
+			status: null,
+		});
+
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "note-1",
+				resourceUrl: "https://example.com/article",
+			}),
+			false,
+		);
+	});
+
+	it("saves when resource URL metadata changes", async () => {
+		mockLoadNote.mockResolvedValue({
+			id: "note-1",
+			title: "Draft note",
+			content: "Initial body",
+			lastUpdated: 1710000000000,
+			isPinned: false,
+			noteType: "resource",
+			status: null,
+			createdAt: null,
+			completedAt: null,
+			resourceUrl: "https://example.com/old",
+		});
+
+		await persistEditorEntry({
+			id: "note-1",
+			title: "Draft note",
+			content: "Initial body",
+			isPinned: false,
+			noteType: "resource",
+			status: null,
+			resourceUrl: "https://example.com/new",
+		});
+
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "note-1",
+				resourceUrl: "https://example.com/new",
+			}),
+			false,
+		);
+	});
+
 	it("preserves existing document positions when autosave omits position metadata", async () => {
 		mockLoadNote.mockResolvedValue({
 			id: "note-1",

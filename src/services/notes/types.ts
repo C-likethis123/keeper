@@ -19,6 +19,7 @@ export interface Note {
 	completedAt?: number | null;
 	attachment?: string | null;
 	attachedVideo?: string | null;
+	resourceUrl?: string | null;
 	documentPositions?: Record<string, string> | null;
 	modified?: number | null;
 }

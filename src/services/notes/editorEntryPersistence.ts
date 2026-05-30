@@ -16,6 +16,7 @@ type PersistEditorEntryInput = {
 	completedAt?: Note["completedAt"];
 	attachment?: Note["attachment"];
 	attachedVideo?: Note["attachedVideo"];
+	resourceUrl?: Note["resourceUrl"];
 	documentPositions?: Note["documentPositions"];
 	isNewEntry?: boolean;
 };
@@ -57,6 +58,10 @@ function buildPayload(
 			input.attachedVideo !== undefined
 				? input.attachedVideo
 				: (existingNote?.attachedVideo ?? null),
+		resourceUrl:
+			input.resourceUrl !== undefined
+				? input.resourceUrl
+				: (existingNote?.resourceUrl ?? null),
 		documentPositions:
 			input.documentPositions !== undefined
 				? input.documentPositions
@@ -88,6 +93,7 @@ function isSamePayload(a: NoteSaveInput, b: NoteSaveInput): boolean {
 		(a.completedAt ?? null) === (b.completedAt ?? null) &&
 		(a.attachment ?? null) === (b.attachment ?? null) &&
 		(a.attachedVideo ?? null) === (b.attachedVideo ?? null) &&
+		(a.resourceUrl ?? null) === (b.resourceUrl ?? null) &&
 		areDocumentPositionsEqual(a.documentPositions, b.documentPositions)
 	);
 }

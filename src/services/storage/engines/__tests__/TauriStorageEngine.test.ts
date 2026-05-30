@@ -76,6 +76,8 @@ describe("TauriStorageEngine", () => {
 				completedAt: undefined,
 				attachment: null,
 				attachedVideo: null,
+				resourceUrl: null,
+				documentPositions: null,
 				modified: result.modified,
 			},
 		});

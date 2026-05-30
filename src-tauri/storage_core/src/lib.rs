@@ -40,6 +40,7 @@ pub struct ReadNoteResult {
     pub completed_at: Option<i64>,
     pub attachment: Option<String>,
     pub attached_video: Option<String>,
+    pub resource_url: Option<String>,
     pub document_positions: Option<HashMap<String, String>>,
 }
 
@@ -56,6 +57,7 @@ pub struct WriteNoteInput {
     pub completed_at: Option<i64>,
     pub attachment: Option<String>,
     pub attached_video: Option<String>,
+    pub resource_url: Option<String>,
     pub document_positions: Option<HashMap<String, String>>,
 }
 
@@ -202,6 +204,8 @@ struct NoteFrontmatter {
     attachment: Option<String>,
     #[serde(rename = "attachedVideo")]
     attached_video: Option<String>,
+    #[serde(rename = "resourceUrl")]
+    resource_url: Option<String>,
     #[serde(rename = "documentPositions")]
     document_positions: Option<HashMap<String, String>>,
 }
@@ -217,6 +221,7 @@ pub fn parse_frontmatter(
     Option<i64>,
     Option<String>,
     Option<String>,
+    Option<String>,
     Option<HashMap<String, String>>,
     String,
 ) {
@@ -228,6 +233,7 @@ pub fn parse_frontmatter(
                 String::new(),
                 false,
                 "note".to_string(),
+                None,
                 None,
                 None,
                 None,
@@ -249,6 +255,7 @@ pub fn parse_frontmatter(
         frontmatter.completed_at,
         frontmatter.attachment,
         frontmatter.attached_video,
+        frontmatter.resource_url,
         frontmatter.document_positions,
         parsed.content,
     )
@@ -269,6 +276,7 @@ fn serialize_entry(
     is_pinned: Option<bool>,
     attachment: Option<&str>,
     attached_video: Option<&str>,
+    resource_url: Option<&str>,
     document_positions: Option<&HashMap<String, String>>,
 ) -> Result<String, String> {
     let matter = Matter::<YAML>::new();
@@ -281,7 +289,7 @@ fn serialize_entry(
     });
 
     Ok(format!(
-        "{delimiter}{pinned}\ntitle: {title}\nid: {id}{note_type}{status}{created_at}{completed_at}{attachment}{attached_video}{document_positions}\n{close_delimiter}\n{content}",
+        "{delimiter}{pinned}\ntitle: {title}\nid: {id}{note_type}{status}{created_at}{completed_at}{attachment}{attached_video}{resource_url}{document_positions}\n{close_delimiter}\n{content}",
         pinned = pinned.unwrap_or_default(),
         note_type = format!(
             "\ntype: {}",
@@ -324,6 +332,13 @@ fn serialize_entry(
                     .unwrap_or_default()
             })
             .unwrap_or_default(),
+        resource_url = resource_url
+            .map(|value| {
+                stringify_yaml_string(value)
+                    .map(|v| format!("\nresourceUrl: {v}"))
+                    .unwrap_or_default()
+            })
+            .unwrap_or_default(),
         document_positions = document_positions
             .filter(|positions| !positions.is_empty())
             .map(|positions| {
@@ -351,6 +366,7 @@ pub fn serialize_note(input: &WriteNoteInput) -> Result<String, String> {
         },
         input.attachment.as_deref(),
         input.attached_video.as_deref(),
+        input.resource_url.as_deref(),
         input.document_positions.as_ref(),
     )
 }
@@ -413,7 +429,7 @@ pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>
         return Ok(None);
     }
     let markdown = fs::read_to_string(&path).map_err(|e| format!("failed to read note: {e}"))?;
-    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, attached_video, document_positions, content) =
+    let (title, is_pinned, note_type, status, created_at, completed_at, attachment, attached_video, resource_url, document_positions, content) =
         parse_frontmatter(&markdown);
     Ok(Some(ReadNoteResult {
         id,
@@ -427,6 +443,7 @@ pub fn read_note(notes_root: &Path, id: String) -> Result<Option<ReadNoteResult>
         completed_at,
         attachment,
         attached_video,
+        resource_url,
         document_positions,
     }))
 }
@@ -677,7 +694,7 @@ pub fn index_rebuild_from_disk(
         };
         let markdown =
             fs::read_to_string(&path).map_err(|e| format!("failed to read markdown: {e}"))?;
-        let (title, is_pinned, note_type, status, _, _, _, _, _, content) =
+        let (title, is_pinned, note_type, status, _, _, _, _, _, _, content) =
             parse_frontmatter(&markdown);
         let summary = extract_summary(&content, 6);
         let status = if note_type == "todo" {

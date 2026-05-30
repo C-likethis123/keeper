@@ -49,6 +49,7 @@ async function createSyncConflictNotes(
 					completedAt: parsed.completedAt ?? null,
 					attachment: parsed.attachment ?? null,
 					attachedVideo: parsed.attachedVideo ?? null,
+					resourceUrl: parsed.resourceUrl ?? null,
 					documentPositions: parsed.documentPositions ?? null,
 				},
 				true,

@@ -108,4 +108,20 @@ Content`);
 			"_attachments/book.epub": "epubcfi(/6/2)",
 		});
 	});
+
+	it("round trips resource URL metadata", () => {
+		const markdown = stringifyFrontmatter({
+			id: "resource-2",
+			title: "Article",
+			isPinned: false,
+			content: "",
+			noteType: "resource",
+			resourceUrl: "https://example.com/article",
+		});
+
+		const parsed = parseFrontmatter(markdown);
+
+		expect(markdown).toContain('resourceUrl: "https://example.com/article"');
+		expect(parsed.resourceUrl).toBe("https://example.com/article");
+	});
 });
