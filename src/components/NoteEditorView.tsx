@@ -37,7 +37,15 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
+import {
+  Keyboard,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AttachVideoModal from "./AttachVideoModal";
 import ArticleSplitPanel from "./editor/article/ArticleSplitPanel";
 import DomEditor from "./editor/DomEditor";
@@ -57,6 +65,7 @@ export default function NoteEditorView({
   const { focusBlock } = useFocusBlock();
   const styles = useStyles(createStyles);
   const colorScheme = useColorScheme();
+  const safeAreaInsets = useSafeAreaInsets();
   const id = note.id;
   const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
   const [title, setTitle] = useState<string>(note.title);
@@ -68,6 +77,8 @@ export default function NoteEditorView({
     | undefined
   >();
   const [editorMarkdown, setEditorMarkdown] = useState(note.content);
+  const [editorInstanceKey, setEditorInstanceKey] = useState(0);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const sendCommand = useCallback(
     (type: string, payload?: Record<string, unknown>) => {
@@ -204,6 +215,7 @@ export default function NoteEditorView({
   const handleApplyTemplate = useCallback(
     (markdown: string) => {
       setEditorMarkdown(markdown);
+      setEditorInstanceKey((key) => key + 1);
       loadMarkdown(markdown);
       sendCommand("loadMarkdown", { markdown });
     },
@@ -226,6 +238,20 @@ export default function NoteEditorView({
     noteType: deriveNoteType(title),
     todoStatus,
   };
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener("keyboardDidShow", (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+    });
+    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const derived = deriveNoteType(title);
@@ -663,8 +689,11 @@ export default function NoteEditorView({
               onInsertCollapsible={handleToolbarInsertCollapsible}
             />
             <DomEditor
+              key={editorInstanceKey}
               markdown={editorMarkdown}
               themeMode={colorScheme ?? "dark"}
+              safeAreaInsets={safeAreaInsets}
+              keyboardHeight={keyboardHeight}
               onInsertTemplateCommand={async () => {
                 setIsTemplateModalVisible(true);
               }}

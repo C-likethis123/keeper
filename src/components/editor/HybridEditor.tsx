@@ -65,21 +65,44 @@ import { WikiLinkModal } from "./wikilinks/WikiLinkModal";
 /// - Undo/redo support
 interface HybridEditorProps {
 	onInsertTemplateCommand?: () => void | Promise<void>;
+	safeAreaInsets?: {
+		top: number;
+		right: number;
+		bottom: number;
+		left: number;
+	};
+	keyboardHeight?: number;
 }
 
 export function HybridEditor({
 	onInsertTemplateCommand,
+	safeAreaInsets,
+	keyboardHeight = 0,
 }: HybridEditorProps = {}) {
 	return (
 		<WikiLinkProvider>
 			<SlashCommandProvider onInsertTemplateCommand={onInsertTemplateCommand}>
-				<HybridEditorContent />
+				<HybridEditorContent
+					safeAreaInsets={safeAreaInsets}
+					keyboardHeight={keyboardHeight}
+				/>
 			</SlashCommandProvider>
 		</WikiLinkProvider>
 	);
 }
 
-function HybridEditorContent() {
+function HybridEditorContent({
+	safeAreaInsets,
+	keyboardHeight,
+}: {
+	safeAreaInsets?: {
+		top: number;
+		right: number;
+		bottom: number;
+		left: number;
+	};
+	keyboardHeight: number;
+}) {
 	const router = useRouter();
 	const blockIds = useEditorBlockIds();
 	const setSelection = useEditorState((s) => s.setSelection);
@@ -776,7 +799,10 @@ function HybridEditorContent() {
 			</ScrollView>
 			<WikiLinkModal />
 			<WikiLinkActions onOpenWikiLink={handleOpenWikiLink} />
-			<SlashCommandModal />
+			<SlashCommandModal
+				safeAreaInsets={safeAreaInsets}
+				keyboardHeight={keyboardHeight}
+			/>
 		</View>
 	);
 }

@@ -1,7 +1,7 @@
 import { webTextInputReset } from "@/components/shared/textInputWebStyles";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	Modal,
 	type NativeSyntheticEvent,
@@ -14,12 +14,37 @@ import {
 import { useSlashCommandContext } from "./SlashCommandContext";
 import { SlashCommandOverlay } from "./SlashCommandOverlay";
 
-export function SlashCommandModal() {
+interface EdgeInsets {
+	top: number;
+	right: number;
+	bottom: number;
+	left: number;
+}
+
+export function SlashCommandModal({
+	safeAreaInsets,
+	keyboardHeight = 0,
+}: {
+	safeAreaInsets?: EdgeInsets;
+	keyboardHeight?: number;
+}) {
 	const theme = useExtendedTheme();
 	const styles = createStyles(theme);
 	const inputRef = useRef<TextInput>(null);
 	const slashCommands = useSlashCommandContext();
 	const [inputValue, setInputValue] = useState("");
+	const backdropStyle = useMemo(
+		() => [
+			styles.backdrop,
+			{
+				paddingTop: (safeAreaInsets?.top ?? 0) + 24,
+				paddingRight: (safeAreaInsets?.right ?? 0) + 24,
+				paddingBottom: (safeAreaInsets?.bottom ?? 0) + keyboardHeight + 24,
+				paddingLeft: (safeAreaInsets?.left ?? 0) + 24,
+			},
+		],
+		[styles.backdrop, safeAreaInsets, keyboardHeight],
+	);
 
 	useEffect(() => {
 		if (slashCommands.isActive) {
@@ -71,7 +96,7 @@ export function SlashCommandModal() {
 				inputRef.current?.focus();
 			}}
 		>
-			<View style={styles.backdrop}>
+			<View style={backdropStyle}>
 				<Pressable
 					style={StyleSheet.absoluteFill}
 					onPress={slashCommands.handleCancel}
@@ -114,7 +139,6 @@ function createStyles(theme: ExtendedTheme) {
 			backgroundColor: "rgba(0,0,0,0.4)",
 			justifyContent: "center",
 			alignItems: "center",
-			padding: 24,
 		},
 		card: {
 			width: "100%",

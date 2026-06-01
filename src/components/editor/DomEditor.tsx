@@ -20,9 +20,18 @@ interface Command {
 	timestamp: number;
 }
 
+interface EdgeInsets {
+	top: number;
+	right: number;
+	bottom: number;
+	left: number;
+}
+
 interface DomEditorProps {
 	markdown: string;
 	themeMode: "light" | "dark";
+	safeAreaInsets?: EdgeInsets;
+	keyboardHeight?: number;
 	onInsertTemplateCommand?: () => void | Promise<void>;
 	command?: Command;
 	dom?: import("expo/dom").DOMProps;
@@ -36,6 +45,8 @@ interface DomEditorProps {
 export default function DomEditor({
 	markdown,
 	themeMode,
+	safeAreaInsets,
+	keyboardHeight = 0,
 	onInsertTemplateCommand,
 	command,
 }: DomEditorProps) {
@@ -114,7 +125,11 @@ export default function DomEditor({
 		<ThemeProvider value={theme}>
 			<GestureHandlerRootView style={styles.container}>
 				<EditorScrollProvider>
-					<HybridEditor onInsertTemplateCommand={onInsertTemplateCommand} />
+					<HybridEditor
+						onInsertTemplateCommand={onInsertTemplateCommand}
+						safeAreaInsets={safeAreaInsets}
+						keyboardHeight={keyboardHeight}
+					/>
 				</EditorScrollProvider>
 			</GestureHandlerRootView>
 		</ThemeProvider>
