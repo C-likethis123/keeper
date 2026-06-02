@@ -1,6 +1,5 @@
 import NoteEditorHeader from "@/components/NoteEditorHeader";
 import NoteRelatedNotes from "@/components/moc/NoteRelatedNotes";
-import TemplatePickerModal from "@/components/TemplatePickerModal";
 import {
   BlockType,
   createImageBlock,
@@ -38,18 +37,16 @@ import React, {
   useState,
 } from "react";
 import {
-  Keyboard,
   Platform,
   StyleSheet,
   Text,
   View,
   useColorScheme,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AttachVideoModal from "./AttachVideoModal";
 import ArticleSplitPanel from "./editor/article/ArticleSplitPanel";
-import DomEditor from "./editor/DomEditor";
 import { EditorToolbar } from "./editor/EditorToolbar";
+import TiptapDomEditor from "./editor/TiptapDomEditor";
 import { DocumentPanel } from "./editor/document/DocumentPanel";
 import VideoSplitPanel from "./editor/video/VideoSplitPanel";
 
@@ -65,7 +62,6 @@ export default function NoteEditorView({
   const { focusBlock } = useFocusBlock();
   const styles = useStyles(createStyles);
   const colorScheme = useColorScheme();
-  const safeAreaInsets = useSafeAreaInsets();
   const id = note.id;
   const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
   const [title, setTitle] = useState<string>(note.title);
@@ -78,7 +74,6 @@ export default function NoteEditorView({
   >();
   const [editorMarkdown, setEditorMarkdown] = useState(note.content);
   const [editorInstanceKey, setEditorInstanceKey] = useState(0);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const sendCommand = useCallback(
     (type: string, payload?: Record<string, unknown>) => {
@@ -86,7 +81,6 @@ export default function NoteEditorView({
     },
     [],
   );
-
   const { updateTabTitle, tabs, closeTab } = useTabStore();
   const tab = tabs.find((t) => t.noteId === id);
 
@@ -178,7 +172,6 @@ export default function NoteEditorView({
     isDesktop,
   } = useNoteEditorLayout(note);
 
-  const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
   const [showRelatedNotes, setShowRelatedNotes] = useState(false);
   const {
     backlinks,
@@ -212,14 +205,11 @@ export default function NoteEditorView({
   );
   const [isShowVideoModalVisible, setIsShowVideoModalVisible] = useState(false);
   const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
-  const handleApplyTemplate = useCallback(
-    (markdown: string) => {
-      setEditorMarkdown(markdown);
-      setEditorInstanceKey((key) => key + 1);
+  const handleTiptapMarkdownChange = useCallback(
+    async (markdown: string) => {
       loadMarkdown(markdown);
-      sendCommand("loadMarkdown", { markdown });
     },
-    [loadMarkdown, sendCommand],
+    [loadMarkdown],
   );
   const loadedNoteRef = useRef<{ id: string; content: string } | null>(null);
   const [noteType, setNoteType] = useState<Note["noteType"]>(() =>
@@ -238,20 +228,6 @@ export default function NoteEditorView({
     noteType: deriveNoteType(title),
     todoStatus,
   };
-
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener("keyboardDidShow", (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
-    });
-    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
 
   useEffect(() => {
     const derived = deriveNoteType(title);
@@ -688,16 +664,12 @@ export default function NoteEditorView({
               onInsertImage={handleToolbarInsertImage}
               onInsertCollapsible={handleToolbarInsertCollapsible}
             />
-            <DomEditor
+            <TiptapDomEditor
               key={editorInstanceKey}
               markdown={editorMarkdown}
               themeMode={colorScheme ?? "dark"}
-              safeAreaInsets={safeAreaInsets}
-              keyboardHeight={keyboardHeight}
-              onInsertTemplateCommand={async () => {
-                setIsTemplateModalVisible(true);
-              }}
               command={lastCommand}
+              onMarkdownChange={handleTiptapMarkdownChange}
               dom={{
                 scrollEnabled: false,
                 style: { flex: 1 },
@@ -718,11 +690,6 @@ export default function NoteEditorView({
         </View>
       </View>
 
-      <TemplatePickerModal
-        visible={isTemplateModalVisible}
-        onApplyTemplate={handleApplyTemplate}
-        onDismiss={() => setIsTemplateModalVisible(false)}
-      />
       <AttachVideoModal
         visible={isShowVideoModalVisible}
         currentVideo={attachedVideo}

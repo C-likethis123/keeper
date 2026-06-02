@@ -27,7 +27,7 @@ const mockIndexListNotes = jest.fn();
 const mockNavigationSetOptions = jest.fn();
 const mockNavigationDispatch = jest.fn();
 const mockGitFlushPendingChanges = jest.fn();
-const mockDomEditorRender = jest.fn();
+const mockTiptapEditorRender = jest.fn();
 
 let beforeRemoveListener:
 	| ((event: {
@@ -154,30 +154,17 @@ jest.mock("@/components/editor/EditorToolbar", () => {
 	};
 });
 
-jest.mock("@/components/editor/DomEditor", () => {
+jest.mock("@/components/editor/TiptapDomEditor", () => {
 	const React = require("react");
-	const { Pressable, Text } = require("react-native");
+	const { Text } = require("react-native");
 	return {
 		__esModule: true,
 		default: (props: {
 			markdown: string;
-			onInsertTemplateCommand?: () => void;
 			command?: { type: string; payload?: Record<string, unknown> };
 		}) => {
-			mockDomEditorRender(props);
-			return React.createElement(
-				React.Fragment,
-				null,
-				React.createElement(Text, null, "Mock editor"),
-				React.createElement(
-					Pressable,
-					{
-						onPress: props.onInsertTemplateCommand,
-						accessibilityRole: "button",
-					},
-					React.createElement(Text, null, "Trigger insert template"),
-				),
-			);
+			mockTiptapEditorRender(props);
+			return React.createElement(Text, null, "Mock editor");
 		},
 	};
 });
@@ -295,7 +282,7 @@ describe("NoteEditorView", () => {
 		mockIndexListNotes.mockReset();
 		mockGitFlushPendingChanges.mockReset();
 		mockNavigationDispatch.mockReset();
-		mockDomEditorRender.mockReset();
+		mockTiptapEditorRender.mockReset();
 		mockLoadNote.mockImplementation(async (id: string) => makeNote({ id }));
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
@@ -575,122 +562,6 @@ describe("NoteEditorView", () => {
 		await waitFor(() => {
 			expect(result.getPathname()).toBe("/");
 		});
-	});
-
-	it("opens the template modal when the editor requests insert template", async () => {
-		const user = userEvent.setup();
-		const note = makeNote();
-		mockIndexListNotes.mockResolvedValue({
-			items: [
-				{
-					noteId: "template-1",
-					title: "Daily template",
-					summary: "Morning checklist",
-					isPinned: false,
-					updatedAt: 1,
-					noteType: "template",
-					status: null,
-				},
-			],
-			cursor: undefined,
-		});
-
-		renderNoteEditor(note);
-
-		await screen.findByText("Mock editor");
-		await user.press(screen.getByText("Trigger insert template"));
-
-		await screen.findByText("Choose template");
-		expect(mockIndexListNotes).toHaveBeenCalledWith("", 100, 0, {
-			noteTypes: ["template"],
-		});
-		expect(screen.getByText("Daily template")).toBeTruthy();
-	});
-
-	it("shows templates from fallback note listing when the index is empty", async () => {
-		const user = userEvent.setup();
-		const note = makeNote();
-		mockIndexListNotes.mockResolvedValue({ items: [], cursor: undefined });
-		mockListNotesFallback.mockResolvedValue({
-			items: [
-				{
-					noteId: "template-1",
-					title: "Daily template",
-					summary: "Morning checklist",
-					updatedAt: 1,
-					isPinned: false,
-					noteType: "template",
-					status: null,
-				},
-			],
-			cursor: undefined,
-		});
-
-		renderNoteEditor(note);
-
-		await screen.findByText("Mock editor");
-		await user.press(screen.getByText("Trigger insert template"));
-
-		await screen.findByText("Daily template");
-		expect(mockIndexListNotes).toHaveBeenCalledWith("", 100, 0, {
-			noteTypes: ["template"],
-		});
-		expect(mockListNotesFallback).toHaveBeenCalledWith("", 100, 0, {
-			noteTypes: ["template"],
-		});
-	});
-
-	it("applies the full template body instead of the indexed summary", async () => {
-		const user = userEvent.setup();
-		const note = makeNote({ content: "" });
-		mockLoadNote.mockImplementation(async (id: string) => {
-			if (id === "template-1") {
-				return makeNote({
-					id,
-					title: "Daily template",
-					content: "Full template body\n- with checklist",
-					noteType: "template",
-				});
-			}
-			return makeNote({ id });
-		});
-		mockIndexListNotes.mockResolvedValue({
-			items: [
-				{
-					noteId: "template-1",
-					title: "Daily template",
-					summary: "Summary only",
-					isPinned: false,
-					updatedAt: 1,
-					noteType: "template",
-					status: null,
-				},
-			],
-			cursor: undefined,
-		});
-
-		renderNoteEditor(note);
-
-		await screen.findByText("Mock editor");
-		await user.press(screen.getByText("Trigger insert template"));
-		await screen.findByText("Daily template");
-		await user.press(screen.getByText("Daily template"));
-
-		await waitFor(() => {
-			expect(mockLoadNote).toHaveBeenCalledWith("template-1");
-			expect(useEditorState.getState().getContent()).toBe(
-				"Full template body\n- with checklist",
-			);
-		});
-		expect(mockDomEditorRender).toHaveBeenLastCalledWith(
-			expect.objectContaining({
-				markdown: "Full template body\n- with checklist",
-				command: expect.objectContaining({
-					type: "loadMarkdown",
-					payload: { markdown: "Full template body\n- with checklist" },
-				}),
-			}),
-		);
 	});
 
 	it("renders the note title input in the navigation header and keeps save status on the left", async () => {
