@@ -1,18 +1,8 @@
 "use dom";
 
-import { darkTheme } from "@/constants/themes/darkTheme";
-import { lightTheme } from "@/constants/themes/lightTheme";
 import { useEditorState } from "@/stores/editorStore";
-import { ThemeProvider } from "@react-navigation/native";
-import React, { useEffect, useRef } from "react";
-import { StyleSheet, View } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { EditorScrollProvider } from "./EditorScrollContext";
-import { HybridEditor } from "./HybridEditor";
-import type { BlockNode, BlockType } from "./core/BlockNode";
-
-import { executeEditorCommand } from "./keyboard/editorCommands";
-import { useEditorCommandContext } from "./keyboard/useEditorCommandContext";
+import React, { useCallback, useEffect, useRef } from "react";
+import LexicalMarkdownEditor from "./lexical/LexicalMarkdownEditor";
 
 interface Command {
 	type: string;
@@ -47,18 +37,10 @@ export default function DomEditor({
 	themeMode,
 	safeAreaInsets,
 	keyboardHeight = 0,
-	onInsertTemplateCommand,
 	command,
 }: DomEditorProps) {
 	const loadMarkdown = useEditorState((s) => s.loadMarkdown);
 	const getContent = useEditorState((s) => s.getContent);
-
-	const commandContext = useEditorCommandContext({
-		isEditorActive: true,
-		isWikiLinkModalOpen: false,
-		dismissOverlays: () => false,
-	});
-
 	const loadedMarkdownRef = useRef<string | null>(null);
 
 	// Sync initial content or external note updates into the editor store.
@@ -69,75 +51,24 @@ export default function DomEditor({
 		}
 	}, [markdown, loadMarkdown, getContent]);
 
-	// Handle incoming commands from native
-	useEffect(() => {
-		if (!command) return;
-
-		const { type, payload } = command;
-		const state = useEditorState.getState();
-		const getFocusedIndex = () => state.getFocusedBlockIndex() ?? 0;
-
-		switch (type) {
-			case "undo":
-				executeEditorCommand("undo", commandContext);
-				break;
-			case "redo":
-				executeEditorCommand("redo", commandContext);
-				break;
-			case "indent":
-				executeEditorCommand("indentListItem", commandContext);
-				break;
-			case "outdent":
-				executeEditorCommand("outdentListItem", commandContext);
-				break;
-			case "insertBlock":
-				if (payload?.block) {
-					state.insertBlockAfter(getFocusedIndex(), payload.block as BlockNode);
-				}
-				break;
-			case "loadMarkdown":
-				if (typeof payload?.markdown === "string") {
-					loadMarkdown(payload.markdown);
-				}
-				break;
-			case "updateType":
-				if (payload?.type) {
-					const index = getFocusedIndex();
-					state.updateBlockType(
-						index,
-						payload.type as BlockType,
-						payload.language as string,
-					);
-					if (payload.attributes) {
-						state.updateBlockAttributes(
-							index,
-							payload.attributes as Record<string, unknown>,
-						);
-					}
-				}
-				break;
-		}
-	}, [command, commandContext, loadMarkdown]);
-
-	const theme = themeMode === "light" ? lightTheme : darkTheme;
+	const handleMarkdownChange = useCallback(
+		(nextMarkdown: string) => {
+			if (nextMarkdown === useEditorState.getState().getContent()) {
+				return;
+			}
+			loadMarkdown(nextMarkdown);
+		},
+		[loadMarkdown],
+	);
 
 	return (
-		<ThemeProvider value={theme}>
-			<GestureHandlerRootView style={styles.container}>
-				<EditorScrollProvider>
-					<HybridEditor
-						onInsertTemplateCommand={onInsertTemplateCommand}
-						safeAreaInsets={safeAreaInsets}
-						keyboardHeight={keyboardHeight}
-					/>
-				</EditorScrollProvider>
-			</GestureHandlerRootView>
-		</ThemeProvider>
+		<LexicalMarkdownEditor
+			command={command}
+			keyboardHeight={keyboardHeight}
+			markdown={markdown}
+			onMarkdownChange={handleMarkdownChange}
+			safeAreaInsets={safeAreaInsets}
+			themeMode={themeMode}
+		/>
 	);
 }
-
-const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-	},
-});
