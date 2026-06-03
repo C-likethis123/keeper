@@ -47,7 +47,9 @@ function parseTimestamp(value: string): number | undefined {
 	return parsed;
 }
 
-function parseDocumentPositions(value: string): Record<string, string> | undefined {
+function parseDocumentPositions(
+	value: string,
+): Record<string, string> | undefined {
 	try {
 		const parsed = JSON.parse(value) as unknown;
 		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -184,7 +186,10 @@ export function stringifyFrontmatter(
 	if (note.resourceUrl) {
 		frontmatterLines.push(`resourceUrl: ${JSON.stringify(note.resourceUrl)}`);
 	}
-	if (note.documentPositions && Object.keys(note.documentPositions).length > 0) {
+	if (
+		note.documentPositions &&
+		Object.keys(note.documentPositions).length > 0
+	) {
 		frontmatterLines.push(
 			`documentPositions: ${JSON.stringify(note.documentPositions)}`,
 		);

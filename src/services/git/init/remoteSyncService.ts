@@ -217,9 +217,7 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 			if (!metrics.didHeadChange) {
 				const readStart = performance.now();
 				const lastSyncedOid = await this.stateStore.readLastSyncedOid();
-				metrics.readLastSyncedOidMs = Math.round(
-					performance.now() - readStart,
-				);
+				metrics.readLastSyncedOidMs = Math.round(performance.now() - readStart);
 				telemetry.trace("git.last_synced_oid_read", {
 					durationMs: metrics.readLastSyncedOidMs,
 					hasLastSyncedOid: Boolean(lastSyncedOid),

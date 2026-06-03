@@ -33,11 +33,16 @@ jest.mock("@/components/shared/ErrorScreen", () => {
 	const { Text, View } = require("react-native");
 	return {
 		__esModule: true,
-		default: ({ errorMessage }: { errorMessage: string }) =>
-			React.createElement(View, null, [
+		default: ({ error }: { error: Error }) => {
+			return React.createElement(View, null, [
 				React.createElement(Text, { key: "label" }, "Error screen"),
-				React.createElement(Text, { key: "message" }, errorMessage),
-			]),
+				React.createElement(
+					Text,
+					{ key: "message" },
+					error?.message ?? "No error",
+				),
+			]);
+		},
 	};
 });
 

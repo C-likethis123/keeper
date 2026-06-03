@@ -3,7 +3,13 @@ import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { SlashCommandItem } from "./SlashCommandContext";
+
+export interface SlashCommandItem {
+	id: string;
+	title: string;
+	description: string;
+	keywords: string[];
+}
 
 interface SlashCommandOverlayProps {
 	results: SlashCommandItem[];

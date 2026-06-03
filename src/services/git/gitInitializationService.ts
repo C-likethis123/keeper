@@ -1,11 +1,12 @@
-import { parseFrontmatter } from "@/services/notes/frontmatter";
 import { NOTES_ROOT } from "@/services/notes/Notes";
+import { parseFrontmatter } from "@/services/notes/frontmatter";
 import { NoteService } from "@/services/notes/noteService";
 import {
 	type StartupTelemetry,
 	createNoopStartupTelemetry,
 } from "@/services/startup/startupTelemetry";
 import { getStorageEngine } from "@/services/storage/storageEngine";
+import type { GitConflictFile } from "./engines/GitEngine";
 import { getGitEngine } from "./gitEngine";
 import { GitService } from "./gitService";
 import { DefaultDbSyncService } from "./init/dbSyncService";
@@ -14,7 +15,6 @@ import { DefaultMainReconcileService } from "./init/mainReconcileService";
 import { DefaultRemoteSyncService } from "./init/remoteSyncService";
 import { DefaultRepoBootstrapper } from "./init/repoBootstrapper";
 import { AsyncGitSyncStateStore } from "./init/stateStore";
-import type { GitConflictFile } from "./engines/GitEngine";
 import {
 	type GitHubConfig,
 	type GitInitDependencies,

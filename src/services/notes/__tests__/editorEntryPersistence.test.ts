@@ -45,11 +45,11 @@ describe("persistEditorEntry", () => {
 		expect(mockSaveNote).not.toHaveBeenCalled();
 	});
 
-	it("skips saving notes when markdown only differs by editor normalization", async () => {
+	it("skips saving notes when markdown only differs by line endings", async () => {
 		mockLoadNote.mockResolvedValue({
 			id: "note-1",
 			title: "Draft note",
-			content: "* item",
+			content: "First line\nSecond line",
 			lastUpdated: 1710000000000,
 			isPinned: false,
 			noteType: "note",
@@ -61,7 +61,7 @@ describe("persistEditorEntry", () => {
 		await persistEditorEntry({
 			id: "note-1",
 			title: "Draft note",
-			content: "- item",
+			content: "First line\r\nSecond line",
 			isPinned: false,
 			noteType: "note",
 			status: null,

@@ -72,4 +72,5 @@ mlx-env
 .worktrees/
 
 # serena
+.serena/logs/
 .serena/memories

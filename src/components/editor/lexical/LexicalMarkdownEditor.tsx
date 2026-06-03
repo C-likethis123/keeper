@@ -1,54 +1,81 @@
 "use dom";
 
+import {
+	BlockType,
+	type EditorBlockPayload,
+	getBlockLanguage,
+} from "@/components/editor/utils/blockTypes";
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
 import {
-	type BlockNode,
-	blockToMarkdown,
-} from "@/components/editor/core/BlockNode";
-import { CodeHighlightNode, CodeNode, registerCodeHighlighting } from "@lexical/code";
+	$createCodeNode,
+	CodeHighlightNode,
+	CodeNode,
+} from "@lexical/code";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
 import {
-	ListItemNode,
-	ListNode,
+	$createListItemNode,
+	$createListNode,
 	INSERT_CHECK_LIST_COMMAND,
 	INSERT_ORDERED_LIST_COMMAND,
 	INSERT_UNORDERED_LIST_COMMAND,
+	ListItemNode,
+	ListNode,
 } from "@lexical/list";
 import { CheckListPlugin } from "@lexical/react/LexicalCheckListPlugin";
-import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { LexicalToolbarPlugin } from "./plugins/LexicalToolbarPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
+import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { HeadingNode, QuoteNode, $createHeadingNode } from "@lexical/rich-text";
+import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
+import { $createImageNode, ImageNode } from "./ImageNode";
+import { EquationNode } from "./equations/EquationNode";
+import { EquationPlugin } from "./equations/EquationPlugin";
+import { LexicalCodeBlockPlugin } from "./plugins/LexicalCodeBlockPlugin";
+import { LexicalSlashCommandPlugin } from "./plugins/LexicalSlashCommandPlugin";
+
+import {
+	$createHeadingNode,
+	$createQuoteNode,
+	HeadingNode,
+	QuoteNode,
+} from "@lexical/rich-text";
 import { $setBlocksType } from "@lexical/selection";
 import {
-	$getSelection,
+	INSERT_TABLE_COMMAND,
+	TableCellNode,
+	TableNode,
+	TableRowNode,
+} from "@lexical/table";
+import {
 	$createParagraphNode,
 	$createTextNode,
+	$getSelection,
 	$insertNodes,
 	$isRangeSelection,
 	COMMAND_PRIORITY_EDITOR,
+	type EditorState,
 	INDENT_CONTENT_COMMAND,
 	KEY_TAB_COMMAND,
+	type LexicalEditor,
 	OUTDENT_CONTENT_COMMAND,
 	REDO_COMMAND,
 	UNDO_COMMAND,
-	type EditorState,
-	type LexicalEditor,
 } from "lexical";
 import React, { useEffect, useMemo, useRef } from "react";
 import {
+	KEEPER_MARKDOWN_TRANSFORMERS,
 	exportLexicalToMarkdown,
 	importMarkdownToLexical,
-	KEEPER_MARKDOWN_TRANSFORMERS,
 } from "./markdown";
+import { LexicalWikiLinkPlugin } from "./wikilinks/LexicalWikiLinkPlugin";
 
 export interface LexicalEditorCommand {
 	type: string;
@@ -58,9 +85,19 @@ export interface LexicalEditorCommand {
 
 interface LexicalMarkdownEditorProps {
 	command?: LexicalEditorCommand;
+	hasAttachment?: boolean;
 	keyboardHeight?: number;
 	markdown: string;
 	onMarkdownChange: (markdown: string) => void;
+	onAttachDocument?: () => void;
+	onInsertImage?: () => void;
+	onInsertTemplateCommand?: () => void | Promise<void>;
+	onOpenWikiLink?: (title: string) => void | Promise<void>;
+	onRemoveAttachment?: () => void;
+	onShowVideoModal?: () => void;
+	onToggleActivePanel?: () => void;
+	onToggleArticle?: () => void;
+	onToggleRelatedNotes?: () => void;
 	safeAreaInsets?: {
 		top: number;
 		right: number;
@@ -93,6 +130,9 @@ function CommandPlugin({ command }: { command?: LexicalEditorCommand }) {
 			case "outdent":
 				editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined);
 				break;
+			case "focusEditor":
+				editor.focus(undefined, { defaultSelection: "rootStart" });
+				break;
 			case "loadMarkdown":
 				if (typeof command.payload?.markdown === "string") {
 					editor.update(() =>
@@ -102,6 +142,12 @@ function CommandPlugin({ command }: { command?: LexicalEditorCommand }) {
 				break;
 			case "insertBlock":
 				insertBlockCommand(editor, command.payload);
+				break;
+			case "insertMarkdown":
+				insertMarkdownCommand(editor, command.payload);
+				break;
+			case "insertImage":
+				insertImageCommand(editor, command.payload);
 				break;
 			case "updateType":
 				applyTypeCommand(editor, command.payload);
@@ -133,27 +179,99 @@ function TabIndentationPlugin() {
 	return null;
 }
 
-function CodeHighlightingPlugin() {
-	const [editor] = useLexicalComposerContext();
-
-	useEffect(() => {
-		return registerCodeHighlighting(editor);
-	}, [editor]);
-
-	return null;
-}
-
 function insertBlockCommand(
 	editor: LexicalEditor,
 	payload?: Record<string, unknown>,
 ) {
-	const block = payload?.block as BlockNode | undefined;
+	const block = payload?.block as EditorBlockPayload | undefined;
 	if (!block) return;
 
 	editor.update(() => {
+		if (block.type === BlockType.codeBlock) {
+			const codeNode = $createCodeNode(getBlockLanguage(block));
+			codeNode.append($createTextNode(block.content));
+			$insertNodes([codeNode]);
+			return;
+		}
+
+		if (block.type === BlockType.heading1) {
+			const heading = $createHeadingNode("h1");
+			heading.append($createTextNode(block.content));
+			$insertNodes([heading]);
+			return;
+		}
+		if (block.type === BlockType.heading2) {
+			const heading = $createHeadingNode("h2");
+			heading.append($createTextNode(block.content));
+			$insertNodes([heading]);
+			return;
+		}
+		if (block.type === BlockType.heading3) {
+			const heading = $createHeadingNode("h3");
+			heading.append($createTextNode(block.content));
+			$insertNodes([heading]);
+			return;
+		}
+		if (
+			block.type === BlockType.bulletList ||
+			block.type === BlockType.numberedList ||
+			block.type === BlockType.checkboxList
+		) {
+			const listType =
+				block.type === BlockType.numberedList
+					? "number"
+					: block.type === BlockType.checkboxList
+						? "check"
+						: "bullet";
+			const list = $createListNode(listType);
+			const item = $createListItemNode(
+				block.type === BlockType.checkboxList
+					? !!block.attributes?.checked
+					: undefined,
+			);
+			item.append($createTextNode(block.content));
+			list.append(item);
+			$insertNodes([list]);
+			return;
+		}
+
 		const paragraph = $createParagraphNode();
-		paragraph.append($createTextNode(blockToMarkdown(block)));
+		paragraph.append($createTextNode(block.content));
 		$insertNodes([paragraph]);
+	});
+}
+
+function insertMarkdownCommand(
+	editor: LexicalEditor,
+	payload?: Record<string, unknown>,
+) {
+	const markdown = payload?.markdown;
+	if (typeof markdown !== "string" || markdown.length === 0) return;
+
+	editor.update(() => {
+		if (markdown.startsWith("> ")) {
+			const quote = $createQuoteNode();
+			quote.append($createTextNode(markdown.slice(2)));
+			$insertNodes([quote]);
+			return;
+		}
+
+		const paragraph = $createParagraphNode();
+		paragraph.append($createTextNode(markdown));
+		$insertNodes([paragraph]);
+	});
+}
+
+function insertImageCommand(
+	editor: LexicalEditor,
+	payload?: Record<string, unknown>,
+) {
+	const src = payload?.src;
+	if (typeof src !== "string" || src.length === 0) return;
+	const altText = typeof payload?.altText === "string" ? payload.altText : "";
+
+	editor.update(() => {
+		$insertNodes([$createImageNode(src, altText)]);
 	});
 }
 
@@ -176,13 +294,10 @@ function applyTypeCommand(
 		editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
 		return;
 	}
-	if (type === "collapsibleBlock") {
-		editor.update(() => {
-			const paragraph = $createParagraphNode();
-			paragraph.append(
-				$createTextNode("<details open>\n<summary></summary>\n\n\n\n</details>"),
-			);
-			$insertNodes([paragraph]);
+	if (type === "table") {
+		editor.dispatchCommand(INSERT_TABLE_COMMAND, {
+			columns: "3",
+			rows: "3",
 		});
 		return;
 	}
@@ -194,8 +309,14 @@ function applyTypeCommand(
 		if (type === "paragraph") {
 			$setBlocksType(selection, () => $createParagraphNode());
 		}
+		if (type === "codeBlock") {
+			const language =
+				typeof payload?.language === "string" ? payload.language : undefined;
+			$setBlocksType(selection, () => $createCodeNode(language));
+		}
 		if (type === "heading1" || type === "heading2" || type === "heading3") {
-			const tag = type === "heading1" ? "h1" : type === "heading2" ? "h2" : "h3";
+			const tag =
+				type === "heading1" ? "h1" : type === "heading2" ? "h2" : "h3";
 			$setBlocksType(selection, () => $createHeadingNode(tag));
 		}
 	});
@@ -222,9 +343,19 @@ function ChangePlugin({
 
 export default function LexicalMarkdownEditor({
 	command,
+	hasAttachment = false,
 	keyboardHeight = 0,
 	markdown,
+	onAttachDocument,
+	onInsertImage,
 	onMarkdownChange,
+	onInsertTemplateCommand,
+	onOpenWikiLink,
+	onRemoveAttachment,
+	onShowVideoModal,
+	onToggleActivePanel,
+	onToggleArticle,
+	onToggleRelatedNotes,
 	safeAreaInsets,
 	themeMode,
 }: LexicalMarkdownEditorProps) {
@@ -240,8 +371,15 @@ export default function LexicalMarkdownEditor({
 				CodeNode,
 				CodeHighlightNode,
 				LinkNode,
+
 				AutoLinkNode,
+				TableNode,
+				TableCellNode,
+				TableRowNode,
+				EquationNode,
+				ImageNode,
 			],
+
 			onError(error: Error) {
 				throw error;
 			},
@@ -351,19 +489,37 @@ export default function LexicalMarkdownEditor({
 			`}</style>
 			<LexicalComposer initialConfig={initialConfig}>
 				<div className="keeper-editor-shell">
+					<LexicalToolbarPlugin
+						hasAttachment={hasAttachment}
+						onAttachDocument={onAttachDocument}
+						onInsertImage={onInsertImage}
+						onRemoveAttachment={onRemoveAttachment}
+						onShowVideoModal={onShowVideoModal}
+						onToggleActivePanel={onToggleActivePanel}
+						onToggleArticle={onToggleArticle}
+						onToggleRelatedNotes={onToggleRelatedNotes}
+					/>
 					<RichTextPlugin
 						contentEditable={<ContentEditable className="keeper-editor" />}
-						placeholder={<div className="keeper-placeholder">Start writing</div>}
+						placeholder={
+							<div className="keeper-placeholder">Start writing</div>
+						}
 						ErrorBoundary={LexicalErrorBoundary}
 					/>
-						<HistoryPlugin />
-						<ListPlugin />
-						<CheckListPlugin />
-						<CodeHighlightingPlugin />
-						<LinkPlugin />
-						<MarkdownShortcutPlugin transformers={KEEPER_MARKDOWN_TRANSFORMERS} />
-						<TabIndentationPlugin />
-						<ChangePlugin onMarkdownChange={onMarkdownChange} />
+					<HistoryPlugin />
+					<ListPlugin />
+					<CheckListPlugin />
+					<LexicalCodeBlockPlugin />
+					<LexicalSlashCommandPlugin
+						onInsertTemplateCommand={onInsertTemplateCommand}
+					/>
+					<LinkPlugin />
+					<LexicalWikiLinkPlugin onOpenWikiLink={onOpenWikiLink} />
+					<TablePlugin />
+					<EquationPlugin />
+					<MarkdownShortcutPlugin transformers={KEEPER_MARKDOWN_TRANSFORMERS} />
+					<TabIndentationPlugin />
+					<ChangePlugin onMarkdownChange={onMarkdownChange} />
 					<CommandPlugin command={command} />
 				</div>
 			</LexicalComposer>

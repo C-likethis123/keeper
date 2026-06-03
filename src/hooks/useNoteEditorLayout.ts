@@ -38,13 +38,21 @@ export function useNoteEditorLayout(note: Note) {
 	const isDesktop = Platform.OS === "web";
 
 	const [activePanel, setActivePanel] = useState<EditorSidePanel>(() =>
-		getInitialActivePanel(note.attachment, note.attachedVideo, note.resourceUrl),
+		getInitialActivePanel(
+			note.attachment,
+			note.attachedVideo,
+			note.resourceUrl,
+		),
 	);
 
 	// Reset active panel when note changes (e.g. switching tabs)
 	useEffect(() => {
 		setActivePanel(
-			getInitialActivePanel(note.attachment, note.attachedVideo, note.resourceUrl),
+			getInitialActivePanel(
+				note.attachment,
+				note.attachedVideo,
+				note.resourceUrl,
+			),
 		);
 	}, [note.attachment, note.attachedVideo, note.resourceUrl]);
 	const [splitRatio, setSplitRatio] = useState(isDesktop ? 0.5 : 0.4);

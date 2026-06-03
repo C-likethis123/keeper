@@ -105,5 +105,4 @@ export class AsyncGitSyncStateStore implements GitSyncStateStore {
 	async writeDeviceId(id: string): Promise<void> {
 		return this.write(DEVICE_ID_KEY, id, "deviceId");
 	}
-
 }

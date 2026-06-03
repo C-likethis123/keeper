@@ -5,14 +5,11 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type ErrorScreenProps = {
-	errorMessage: string;
+	error: Error;
 	onRetry?: () => void;
 };
 
-export default function ErrorScreen({
-	errorMessage,
-	onRetry,
-}: ErrorScreenProps) {
+export default function ErrorScreen({ error, onRetry }: ErrorScreenProps) {
 	const styles = useStyles(createStyles);
 
 	return (
@@ -23,7 +20,8 @@ export default function ErrorScreen({
 					size={48}
 					style={styles.errorIcon}
 				/>
-				<Text style={styles.errorMessage}>{errorMessage}</Text>
+				<Text style={styles.errorMessage}>{error.message}</Text>
+				{error.stack && <Text style={styles.stackTrace}>{error.stack}</Text>}
 				{onRetry && (
 					<Pressable
 						style={({ pressed }) => [
@@ -62,6 +60,14 @@ function createStyles(theme: ExtendedTheme) {
 			color: theme.colors.text,
 			textAlign: "center",
 			lineHeight: 22,
+		},
+		stackTrace: {
+			fontSize: 12,
+			color: theme.colors.text,
+			fontFamily: "monospace",
+			textAlign: "left",
+			marginTop: 8,
+			opacity: 0.7,
 		},
 		retryButton: {
 			marginTop: 8,

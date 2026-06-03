@@ -1,5 +1,3 @@
-"use dom";
-
 import { useEditorState } from "@/stores/editorStore";
 import React, { useCallback, useEffect, useRef } from "react";
 import LexicalMarkdownEditor from "./lexical/LexicalMarkdownEditor";
@@ -18,28 +16,47 @@ interface EdgeInsets {
 }
 
 interface DomEditorProps {
+	hasAttachment?: boolean;
 	markdown: string;
 	themeMode: "light" | "dark";
 	safeAreaInsets?: EdgeInsets;
 	keyboardHeight?: number;
+	onAttachDocument?: () => void;
+	onInsertImage?: () => void;
 	onInsertTemplateCommand?: () => void | Promise<void>;
+	onOpenWikiLink?: (title: string) => void | Promise<void>;
+	onRemoveAttachment?: () => void;
+	onShowVideoModal?: () => void;
+	onToggleActivePanel?: () => void;
+	onToggleArticle?: () => void;
+	onToggleRelatedNotes?: () => void;
 	command?: Command;
 	dom?: import("expo/dom").DOMProps;
 }
 
 /**
- * A webview-based wrapper for the HybridEditor that runs as a DOM component.
- * This ensures the same editor stack is used on both mobile (via WebView)
- * and desktop/web (rendered as-is).
+ * App-level wrapper for the Lexical DOM editor.
+ * The Lexical editor itself runs as the DOM component on native.
  */
 export default function DomEditor({
+	hasAttachment = false,
 	markdown,
 	themeMode,
 	safeAreaInsets,
 	keyboardHeight = 0,
 	command,
+	onAttachDocument,
+	onInsertImage,
+	onInsertTemplateCommand,
+	onOpenWikiLink,
+	onRemoveAttachment,
+	onShowVideoModal,
+	onToggleActivePanel,
+	onToggleArticle,
+	onToggleRelatedNotes,
 }: DomEditorProps) {
 	const loadMarkdown = useEditorState((s) => s.loadMarkdown);
+	const setCurrentMarkdown = useEditorState((s) => s.setCurrentMarkdown);
 	const getContent = useEditorState((s) => s.getContent);
 	const loadedMarkdownRef = useRef<string | null>(null);
 
@@ -56,17 +73,27 @@ export default function DomEditor({
 			if (nextMarkdown === useEditorState.getState().getContent()) {
 				return;
 			}
-			loadMarkdown(nextMarkdown);
+			setCurrentMarkdown(nextMarkdown);
 		},
-		[loadMarkdown],
+		[setCurrentMarkdown],
 	);
 
 	return (
 		<LexicalMarkdownEditor
 			command={command}
+			hasAttachment={hasAttachment}
 			keyboardHeight={keyboardHeight}
 			markdown={markdown}
+			onAttachDocument={onAttachDocument}
+			onInsertImage={onInsertImage}
+			onInsertTemplateCommand={onInsertTemplateCommand}
 			onMarkdownChange={handleMarkdownChange}
+			onOpenWikiLink={onOpenWikiLink}
+			onRemoveAttachment={onRemoveAttachment}
+			onShowVideoModal={onShowVideoModal}
+			onToggleActivePanel={onToggleActivePanel}
+			onToggleArticle={onToggleArticle}
+			onToggleRelatedNotes={onToggleRelatedNotes}
 			safeAreaInsets={safeAreaInsets}
 			themeMode={themeMode}
 		/>

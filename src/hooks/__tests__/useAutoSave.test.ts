@@ -1,4 +1,3 @@
-import { createDocumentFromMarkdown } from "@/components/editor/core/Document";
 import {
 	registerPendingDispatchFlusher,
 	unregisterPendingDispatchFlusher,
@@ -50,7 +49,7 @@ describe("useAutoSave", () => {
 		appStateListener = null;
 		useEditorState.getState().resetState();
 		useEditorState.setState({
-			document: createDocumentFromMarkdown("Initial body"),
+			currentMarkdown: "Initial body",
 			preparedMarkdown: null,
 			preparedVersion: null,
 		});
@@ -68,10 +67,12 @@ describe("useAutoSave", () => {
 					typeof InteractionManager.runAfterInteractions
 				>;
 			});
-		jest.spyOn(AppState, "addEventListener").mockImplementation((_type, listener) => {
-			appStateListener = listener;
-			return { remove: jest.fn() };
-		});
+		jest
+			.spyOn(AppState, "addEventListener")
+			.mockImplementation((_type, listener) => {
+				appStateListener = listener;
+				return { remove: jest.fn() };
+			});
 	});
 
 	afterEach(() => {
@@ -194,7 +195,7 @@ describe("useAutoSave", () => {
 		);
 
 		act(() => {
-			useEditorState.getState().loadMarkdown("Updated body");
+			useEditorState.getState().setCurrentMarkdown("Updated body");
 		});
 
 		await act(async () => {
@@ -271,7 +272,7 @@ describe("useAutoSave", () => {
 			}),
 		);
 		registerPendingDispatchFlusher("test-flusher", () => {
-			useEditorState.getState().updateBlockContent(0, "Flushed body", 12);
+			useEditorState.getState().setCurrentMarkdown("Flushed body");
 		});
 
 		try {
@@ -305,7 +306,7 @@ describe("useAutoSave", () => {
 			}),
 		);
 		registerPendingDispatchFlusher("test-flusher", () => {
-			useEditorState.getState().updateBlockContent(0, "Leaving body", 12);
+			useEditorState.getState().setCurrentMarkdown("Leaving body");
 		});
 
 		try {
@@ -350,7 +351,7 @@ describe("useAutoSave", () => {
 		);
 
 		act(() => {
-			useEditorState.getState().loadMarkdown("First edit");
+			useEditorState.getState().setCurrentMarkdown("First edit");
 		});
 		await act(async () => {
 			jest.advanceTimersByTime(0);
@@ -358,7 +359,7 @@ describe("useAutoSave", () => {
 		});
 
 		act(() => {
-			useEditorState.getState().loadMarkdown("Second edit");
+			useEditorState.getState().setCurrentMarkdown("Second edit");
 		});
 		await act(async () => {
 			jest.advanceTimersByTime(0);
@@ -404,7 +405,7 @@ describe("useAutoSave", () => {
 		);
 
 		act(() => {
-			useEditorState.getState().loadMarkdown("First edit");
+			useEditorState.getState().setCurrentMarkdown("First edit");
 		});
 
 		let firstSave: Promise<void> | undefined;
@@ -414,7 +415,7 @@ describe("useAutoSave", () => {
 		});
 
 		act(() => {
-			useEditorState.getState().loadMarkdown("Second edit");
+			useEditorState.getState().setCurrentMarkdown("Second edit");
 		});
 
 		let secondSaveResolved = false;
@@ -462,7 +463,7 @@ describe("useAutoSave", () => {
 		);
 
 		act(() => {
-			useEditorState.getState().loadMarkdown("Updated body");
+			useEditorState.getState().setCurrentMarkdown("Updated body");
 		});
 
 		await act(async () => {

@@ -4,14 +4,19 @@ const withBuildSpeedOptimizations = (config) => {
 	return withGradleProperties(config, (config) => {
 		const props = config.modResults;
 		const set = (key, value) => {
-			const existing = props.find((p) => p.type === "property" && p.key === key);
+			const existing = props.find(
+				(p) => p.type === "property" && p.key === key,
+			);
 			if (existing) {
 				existing.value = value;
 			} else {
 				props.push({ type: "property", key, value });
 			}
 		};
-		set("org.gradle.jvmargs", "-Xmx4096m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8");
+		set(
+			"org.gradle.jvmargs",
+			"-Xmx4096m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8",
+		);
 		set("org.gradle.caching", "true");
 		set("org.gradle.daemon", "true");
 		set("kotlin.incremental", "true");

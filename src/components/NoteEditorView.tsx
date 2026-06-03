@@ -1,17 +1,11 @@
 import NoteEditorHeader from "@/components/NoteEditorHeader";
 import NoteRelatedNotes from "@/components/moc/NoteRelatedNotes";
 import TemplatePickerModal from "@/components/TemplatePickerModal";
-import {
-  BlockType,
-  createImageBlock,
-  createParagraphBlock,
-} from "@/components/editor/core/BlockNode";
 import { FilterChip } from "@/components/shared/FilterChip";
 import { TODO_STATUS_OPTIONS } from "@/constants/noteTypes";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useAutoSave } from "@/hooks/useAutoSave";
-import { useFocusBlock } from "@/hooks/useFocusBlock";
 import { useNoteEditorLayout } from "@/hooks/useNoteEditorLayout";
 import { useRelatedNotes } from "@/hooks/useRelatedNotes";
 import { useStyles } from "@/hooks/useStyles";
@@ -27,7 +21,7 @@ import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { showToast } from "@/services/toast";
-import { type EditorState, useEditorState } from "@/stores/editorStore";
+import { useEditorState } from "@/stores/editorStore";
 import { useTabStore } from "@/stores/tabStore";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import React, {
@@ -49,9 +43,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AttachVideoModal from "./AttachVideoModal";
 import ArticleSplitPanel from "./editor/article/ArticleSplitPanel";
 import DomEditor from "./editor/DomEditor";
-import { EditorToolbar } from "./editor/EditorToolbar";
 import { DocumentPanel } from "./editor/document/DocumentPanel";
 import VideoSplitPanel from "./editor/video/VideoSplitPanel";
+import { resolveOrCreateWikiLinkNoteId } from "./editor/wikilinks/wikiLinkUtils";
 
 export default function NoteEditorView({
   note,
@@ -62,13 +56,13 @@ export default function NoteEditorView({
 }) {
   const navigation = useNavigation();
   const router = useRouter();
-  const { focusBlock } = useFocusBlock();
   const styles = useStyles(createStyles);
   const colorScheme = useColorScheme();
   const safeAreaInsets = useSafeAreaInsets();
   const id = note.id;
   const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
   const [title, setTitle] = useState<string>(note.title);
+  const [noteType, setNoteType] = useState<Note["noteType"]>(note.noteType);
   const [todoStatus, setTodoStatus] = useState<Note["status"]>(
     note.noteType === "todo" ? (note.status ?? "open") : undefined,
   );
@@ -116,8 +110,8 @@ export default function NoteEditorView({
     ...note,
     title,
     isPinned,
-    noteType: deriveNoteType(title),
-    status: deriveNoteType(title) === "todo" ? (todoStatus ?? "open") : null,
+    noteType,
+    status: noteType === "todo" ? (todoStatus ?? "open") : null,
     initialNoteType: note.noteType,
     onPersisted: useCallback(() => {
       isNewEntryRef.current = false;
@@ -162,6 +156,16 @@ export default function NoteEditorView({
       await leaveEditor();
     }
   }, [tabs.length, tab, closeTab, leaveEditor, router, saveAndFlushBeforeExit]);
+
+  const handleOpenWikiLink = useCallback(
+    async (wikiLinkTitle: string) => {
+      const linkedNoteId = await resolveOrCreateWikiLinkNoteId(wikiLinkTitle);
+      if (linkedNoteId) {
+        router.push(`/editor?id=${linkedNoteId}`);
+      }
+    },
+    [router],
+  );
 
   useEffect(() => {
     if (tab && title && tab.title !== title) {
@@ -211,21 +215,18 @@ export default function NoteEditorView({
     !!note.attachedVideo,
   );
   const [isShowVideoModalVisible, setIsShowVideoModalVisible] = useState(false);
-  const loadMarkdown = useEditorState((s: EditorState) => s.loadMarkdown);
+  const loadMarkdown = useEditorState((s) => s.loadMarkdown);
+  const setCurrentMarkdown = useEditorState((s) => s.setCurrentMarkdown);
   const handleApplyTemplate = useCallback(
     (markdown: string) => {
       setEditorMarkdown(markdown);
       setEditorInstanceKey((key) => key + 1);
-      loadMarkdown(markdown);
+      setCurrentMarkdown(markdown);
       sendCommand("loadMarkdown", { markdown });
     },
-    [loadMarkdown, sendCommand],
+    [sendCommand, setCurrentMarkdown],
   );
   const loadedNoteRef = useRef<{ id: string; content: string } | null>(null);
-  const [noteType, setNoteType] = useState<Note["noteType"]>(() =>
-    deriveNoteType(note.title),
-  );
-
   const latestDraftRef = useRef({
     title,
     isPinned,
@@ -235,7 +236,7 @@ export default function NoteEditorView({
   latestDraftRef.current = {
     title,
     isPinned,
-    noteType: deriveNoteType(title),
+    noteType,
     todoStatus,
   };
 
@@ -255,18 +256,19 @@ export default function NoteEditorView({
 
   useEffect(() => {
     const derived = deriveNoteType(title);
-    setNoteType(derived);
+    setNoteType((current) => (derived === "note" ? current : derived));
     setTodoStatus((current) =>
-      derived === "todo" ? (current ?? "open") : undefined,
+      (derived === "note" ? noteType : derived) === "todo"
+        ? (current ?? "open")
+        : undefined,
     );
-  }, [title]);
+  }, [noteType, title]);
 
   const buildCurrentNotePayload = useCallback(
     (overrides?: Partial<NoteSaveInput>): NoteSaveInput => {
       const draft = latestDraftRef.current;
       const content = useEditorState.getState().getContent();
-      const resolvedNoteType =
-        overrides?.noteType ?? deriveNoteType(draft.title);
+      const resolvedNoteType = overrides?.noteType ?? draft.noteType;
       const resolvedIsPinned = overrides?.isPinned ?? draft.isPinned;
       return {
         id,
@@ -371,15 +373,11 @@ export default function NoteEditorView({
     router.back();
   }, [flushGitAndToastOnFailure, id, router]);
 
-  const insertBlockAfter = useEditorState((s) => s.insertBlockAfter);
-
   const handleTextSelected = useCallback(
     (text: string) => {
-      const focusedIndex =
-        useEditorState.getState().getFocusedBlockIndex() ?? 0;
-      insertBlockAfter(focusedIndex, createParagraphBlock(`> ${text}`));
+      sendCommand("insertMarkdown", { markdown: `> ${text}` });
     },
-    [insertBlockAfter],
+    [sendCommand],
   );
 
   const handleAttachDocument = useCallback(async () => {
@@ -557,15 +555,8 @@ export default function NoteEditorView({
       );
     }
     if (path) {
-      sendCommand("insertBlock", { block: createImageBlock(path) });
+      sendCommand("insertImage", { src: path, altText: "" });
     }
-  }, [sendCommand]);
-
-  const handleToolbarInsertCollapsible = useCallback(() => {
-    sendCommand("updateType", {
-      type: BlockType.collapsibleBlock,
-      attributes: { summary: "", isExpanded: true },
-    });
   }, [sendCommand]);
 
   const hasDocAttachment = attachmentPath !== null && attachmentType !== null;
@@ -588,12 +579,13 @@ export default function NoteEditorView({
         onChangeTitle={applyTitleChange}
         onBlurTitle={() => {
           const derived = deriveNoteType(title);
-          setNoteType(derived);
+          const nextNoteType = derived === "note" ? noteType : derived;
+          setNoteType(nextNoteType);
           setTodoStatus((current) =>
-            derived === "todo" ? (current ?? "open") : undefined,
+            nextNoteType === "todo" ? (current ?? "open") : undefined,
           );
         }}
-        onSubmitEditing={() => focusBlock(0)}
+        onSubmitEditing={() => sendCommand("focusEditor")}
         onBack={() => {
           void handleBack();
         }}
@@ -662,41 +654,33 @@ export default function NoteEditorView({
               </View>
             ) : null}
 
-            <EditorToolbar
-              onAttachDocument={() => void handleAttachDocument()}
-              hasAttachment={hasDocAttachment}
-              isAttachmentVisible={showSplit && activePanel === "document"}
-              onShowAttachment={handleShowAttachment}
-              onHideAttachment={handleHideAttachment}
-              onRemoveAttachment={() => void handleRemoveAttachment()}
-              showRelatedNotes={showRelatedNotes}
-              onToggleRelatedNotes={() => setShowRelatedNotes((v) => !v)}
-              onShowVideoModal={() => setIsShowVideoModalVisible(true)}
-              attachedVideo={attachedVideo}
-              resourceUrl={resourceUrl}
-              isArticleVisible={showSplit && activePanel === "article"}
-              onShowArticle={() => {
-                setActivePanel("article");
-                setIsArticleVisible(true);
-              }}
-              onHideArticle={() => setIsArticleVisible(false)}
-              onToggleActivePanel={toggleActivePanel}
-              onUndo={() => sendCommand("undo")}
-              onRedo={() => sendCommand("redo")}
-              onIndent={() => sendCommand("indent")}
-              onOutdent={() => sendCommand("outdent")}
-              onInsertImage={handleToolbarInsertImage}
-              onInsertCollapsible={handleToolbarInsertCollapsible}
-            />
             <DomEditor
               key={editorInstanceKey}
+              hasAttachment={hasDocAttachment}
               markdown={editorMarkdown}
               themeMode={colorScheme ?? "dark"}
               safeAreaInsets={safeAreaInsets}
               keyboardHeight={keyboardHeight}
+              onAttachDocument={() => {
+                if (hasDocAttachment) {
+                  handleShowAttachment();
+                } else {
+                  void handleAttachDocument();
+                }
+              }}
+              onInsertImage={handleToolbarInsertImage}
               onInsertTemplateCommand={async () => {
                 setIsTemplateModalVisible(true);
               }}
+              onOpenWikiLink={handleOpenWikiLink}
+              onRemoveAttachment={() => void handleRemoveAttachment()}
+              onShowVideoModal={() => setIsShowVideoModalVisible(true)}
+              onToggleActivePanel={toggleActivePanel}
+              onToggleArticle={() => {
+                setActivePanel("article");
+                setIsArticleVisible((visible) => !visible);
+              }}
+              onToggleRelatedNotes={() => setShowRelatedNotes((v) => !v)}
               command={lastCommand}
               dom={{
                 scrollEnabled: false,

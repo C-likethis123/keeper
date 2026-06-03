@@ -24,7 +24,9 @@ describe("useShareHandler", () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		global.fetch = jest.fn(() => Promise.reject(new Error("offline"))) as jest.Mock;
+		global.fetch = jest.fn(() =>
+			Promise.reject(new Error("offline")),
+		) as jest.Mock;
 		(useRouter as jest.Mock).mockReturnValue({ push: mockPush });
 	});
 
@@ -64,7 +66,12 @@ describe("useShareHandler", () => {
 		const youtubeUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 		(useShareIntent as jest.Mock).mockReturnValue({
 			hasShareIntent: true,
-			shareIntent: { webUrl: youtubeUrl, text: null, files: null, type: "weburl" },
+			shareIntent: {
+				webUrl: youtubeUrl,
+				text: null,
+				files: null,
+				type: "weburl",
+			},
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});
@@ -124,7 +131,12 @@ describe("useShareHandler", () => {
 	it("creates a resource note when a generic article URL is shared", async () => {
 		(useShareIntent as jest.Mock).mockReturnValue({
 			hasShareIntent: true,
-			shareIntent: { webUrl: "https://example.com", text: null, files: null, type: "weburl" },
+			shareIntent: {
+				webUrl: "https://example.com",
+				text: null,
+				files: null,
+				type: "weburl",
+			},
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});
@@ -187,7 +199,12 @@ describe("useShareHandler", () => {
 	it("resets intent and shows toast when shared text contains no link", async () => {
 		(useShareIntent as jest.Mock).mockReturnValue({
 			hasShareIntent: true,
-			shareIntent: { webUrl: null, text: "no link here", files: null, type: "text" },
+			shareIntent: {
+				webUrl: null,
+				text: "no link here",
+				files: null,
+				type: "text",
+			},
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});

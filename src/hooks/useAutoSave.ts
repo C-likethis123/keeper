@@ -1,11 +1,11 @@
 import type { SaveStatus } from "@/components/SaveIndicator";
+import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import { GitService } from "@/services/git/gitService";
 import {
 	normalizeMarkdownForPersistence,
 	persistEditorEntry,
 } from "@/services/notes/editorEntryPersistence";
 import type { Note } from "@/services/notes/types";
-import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import { useEditorState } from "@/stores/editorStore";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
@@ -57,8 +57,8 @@ export function useAutoSave({
 	const activeForceSaveRef = useRef<Promise<void> | null>(null);
 	const saveAgainRequestedRef = useRef(false);
 	const isNewEntryRef = useRef(!!isNew);
-	const latestDocumentVersionRef = useRef(
-		useEditorState.getState().document.version,
+	const latestMarkdownVersionRef = useRef(
+		useEditorState.getState().markdownVersion,
 	);
 	const latestInitialContentRef = useRef(
 		normalizeMarkdownForPersistence(initialContent),
@@ -90,8 +90,8 @@ export function useAutoSave({
 			};
 			isNewEntryRef.current = !!isNew;
 			hasEditorContentChangedRef.current = false;
-			latestDocumentVersionRef.current =
-				useEditorState.getState().document.version;
+			latestMarkdownVersionRef.current =
+				useEditorState.getState().markdownVersion;
 			setStatus("idle");
 		} else if (
 			title.trim() !== lastSavedRef.current.title ||
@@ -127,8 +127,9 @@ export function useAutoSave({
 
 					const currentNote = latestNoteRef.current;
 					const currentContent = hasEditorContentChangedRef.current
-						? getContentForVersion(latestDocumentVersionRef.current)
-						: (lastSavedRef.current?.content ?? latestInitialContentRef.current);
+						? getContentForVersion(latestMarkdownVersionRef.current)
+						: (lastSavedRef.current?.content ??
+							latestInitialContentRef.current);
 					const trimmedTitle = currentNote.title.trim();
 
 					const previousId = lastSavedRef.current?.id;
@@ -190,7 +191,7 @@ export function useAutoSave({
 						id: currentNote.id,
 						titleLength: trimmedTitle.length,
 						contentLength: currentContent.length,
-						documentVersion: latestDocumentVersionRef.current,
+						markdownVersion: latestMarkdownVersionRef.current,
 						isNewEntry: currentIsNewEntry,
 					});
 					try {
@@ -244,16 +245,16 @@ export function useAutoSave({
 	}, [getContentForVersion, onPersisted]);
 
 	useEffect(() => {
-		let lastDocumentVersion = useEditorState.getState().document.version;
+		let lastMarkdownVersion = useEditorState.getState().markdownVersion;
 		const unsubscribe = useEditorState.subscribe((state) => {
-			const nextDocumentVersion = state.document.version;
-			if (nextDocumentVersion === lastDocumentVersion) {
+			const nextMarkdownVersion = state.markdownVersion;
+			if (nextMarkdownVersion === lastMarkdownVersion) {
 				return;
 			}
-			lastDocumentVersion = nextDocumentVersion;
-			latestDocumentVersionRef.current = nextDocumentVersion;
+			lastMarkdownVersion = nextMarkdownVersion;
+			latestMarkdownVersionRef.current = nextMarkdownVersion;
 
-			const nextContent = state.getContentForVersion(nextDocumentVersion);
+			const nextContent = state.getContentForVersion(nextMarkdownVersion);
 			if (nextContent === latestInitialContentRef.current) {
 				const currentNote = latestNoteRef.current;
 				lastSavedRef.current = {
@@ -281,7 +282,7 @@ export function useAutoSave({
 				const prepareStart = performance.now();
 				prepareContent();
 				console.debug("[AutoSaveProfile] prepareContent", {
-					documentVersion: latestDocumentVersionRef.current,
+					markdownVersion: latestMarkdownVersionRef.current,
 					durationMs: Math.round(performance.now() - prepareStart),
 				});
 			}, 0);

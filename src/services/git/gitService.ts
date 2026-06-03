@@ -82,7 +82,9 @@ export class GitService {
 	/**
 	 * Executes a journal operation sequentially to prevent data loss from concurrent R-M-W.
 	 */
-	private static async enqueueJournalTask<T>(task: () => Promise<T>): Promise<T> {
+	private static async enqueueJournalTask<T>(
+		task: () => Promise<T>,
+	): Promise<T> {
 		return GitService.serialize(
 			GitService.journalQueue,
 			(next) => {
@@ -135,9 +137,18 @@ export class GitService {
 			} else if (previous?.operation === "add" && operation === "delete") {
 				queue.delete(filePath);
 			} else if (previous?.operation === "modify" && operation === "delete") {
-				queue.set(filePath, { filePath, operation: "delete", updatedAt: Date.now() });
+				queue.set(filePath, {
+					filePath,
+					operation: "delete",
+					updatedAt: Date.now(),
+				});
 			} else {
-				queue.set(filePath, { filePath, operation, note, updatedAt: Date.now() });
+				queue.set(filePath, {
+					filePath,
+					operation,
+					note,
+					updatedAt: Date.now(),
+				});
 			}
 
 			await GitService.persistQueue(queue);
@@ -370,7 +381,12 @@ export class GitService {
 
 			const snapshot = await GitService.stateStore.readPendingJournal();
 			if (snapshot.length === 0) {
-				return { success: true, didCommit: false, didPush: false, didRecover: false };
+				return {
+					success: true,
+					didCommit: false,
+					didPush: false,
+					didRecover: false,
+				};
 			}
 
 			let didCommit = false;
@@ -385,7 +401,10 @@ export class GitService {
 						console.warn("[GitService] Failed to export feedback:", error);
 					}
 
-					await gitEngine.commit(NOTES_ROOT, GitService.generateCommitMessage(snapshot, message, recovery));
+					await gitEngine.commit(
+						NOTES_ROOT,
+						GitService.generateCommitMessage(snapshot, message, recovery),
+					);
 					didCommit = true;
 				}
 
@@ -401,15 +420,30 @@ export class GitService {
 				}
 
 				const currentJournal = await GitService.stateStore.readPendingJournal();
-				const snapshotKeys = new Set(snapshot.map((e) => `${e.filePath}:${e.updatedAt}`));
-				const remaining = currentJournal.filter((entry) => !snapshotKeys.has(`${entry.filePath}:${entry.updatedAt}`));
+				const snapshotKeys = new Set(
+					snapshot.map((e) => `${e.filePath}:${e.updatedAt}`),
+				);
+				const remaining = currentJournal.filter(
+					(entry) => !snapshotKeys.has(`${entry.filePath}:${entry.updatedAt}`),
+				);
 				await GitService.stateStore.writePendingJournal(remaining);
 
-				return { success: true, didCommit, didPush: true, didRecover: recovery };
+				return {
+					success: true,
+					didCommit,
+					didPush: true,
+					didRecover: recovery,
+				};
 			} catch (error) {
 				const errorMsg = error instanceof Error ? error.message : String(error);
 				console.warn("[GitService] Commit/push batch failed:", error);
-				return { success: false, didCommit, didPush: false, error: errorMsg, didRecover: recovery };
+				return {
+					success: false,
+					didCommit,
+					didPush: false,
+					error: errorMsg,
+					didRecover: recovery,
+				};
 			}
 		});
 	}

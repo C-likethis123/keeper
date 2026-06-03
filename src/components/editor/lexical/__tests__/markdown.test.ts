@@ -1,13 +1,16 @@
 import { CodeHighlightNode, CodeNode } from "@lexical/code";
-import { LinkNode } from "@lexical/link";
+import { AutoLinkNode, LinkNode } from "@lexical/link";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
+import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
 import { createEditor } from "lexical";
+import { ImageNode } from "../ImageNode";
+import { EquationNode } from "../equations/EquationNode";
 import { exportLexicalToMarkdown, importMarkdownToLexical } from "../markdown";
 
 function roundTripMarkdown(markdown: string): string {
 	const editor = createEditor({
-		namespace: "KeeperLexicalMarkdownTest",
+		namespace: "KeeperMarkdownTest",
 		nodes: [
 			HeadingNode,
 			QuoteNode,
@@ -16,46 +19,44 @@ function roundTripMarkdown(markdown: string): string {
 			CodeNode,
 			CodeHighlightNode,
 			LinkNode,
+			AutoLinkNode,
+			TableNode,
+			TableCellNode,
+			TableRowNode,
+			EquationNode,
+			ImageNode,
 		],
-		onError(error) {
+		onError: (error) => {
 			throw error;
 		},
 	});
-	let exported = "";
+
+	let result = "";
 	editor.update(
 		() => {
 			importMarkdownToLexical(markdown);
-			exported = exportLexicalToMarkdown();
+			result = exportLexicalToMarkdown();
 		},
 		{ discrete: true },
 	);
-	return exported;
+
+	return result;
 }
 
-describe("Lexical markdown serialization", () => {
-	it("round-trips common Keeper markdown blocks", () => {
-		expect(
-			roundTripMarkdown(`# Title
+describe("Keeper Lexical markdown transformers", () => {
+	it("round-trips image markdown through ImageNode", () => {
+		expect(roundTripMarkdown("![Diagram](keeper://asset/image.png)")).toBe(
+			"![Diagram](keeper://asset/image.png)",
+		);
+	});
 
-- First
-- Second
+	it("round-trips block equation markdown through EquationNode", () => {
+		expect(roundTripMarkdown("$$x = y + z$$")).toBe("$$x = y + z$$");
+	});
 
-1. Step one
-2. Step two
-
-\`\`\`ts
-const value = 1;
-\`\`\``),
-		).toBe(`# Title
-
-- First
-- Second
-
-1. Step one
-2. Step two
-
-\`\`\`ts
-const value = 1;
-\`\`\``);
+	it("round-trips inline equation markdown through EquationNode", () => {
+		expect(roundTripMarkdown("Inline $x = y + z$ equation")).toBe(
+			"Inline $x = y + z$ equation",
+		);
 	});
 });

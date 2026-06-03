@@ -1,8 +1,8 @@
-import AddNoteToClusterModal from "@/components/moc/AddNoteToClusterModal";
 import HomeQuickComposer from "@/components/HomeQuickComposer";
 import HomeScreenHeader from "@/components/HomeScreenHeader";
-import RenameClusterModal from "@/components/moc/RenameClusterModal";
 import ResetAppDataModal from "@/components/ResetAppDataModal";
+import AddNoteToClusterModal from "@/components/moc/AddNoteToClusterModal";
+import RenameClusterModal from "@/components/moc/RenameClusterModal";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
@@ -13,11 +13,11 @@ import useNotes from "@/hooks/useNotes";
 import { useStyles } from "@/hooks/useStyles";
 import { logFeedback } from "@/services/notes/clusterFeedbackService";
 import {
-  clusterAddNote,
-  clusterDelete,
-  clusterRemoveNote,
-  clusterRename,
-  importClustersFromFile,
+	clusterAddNote,
+	clusterDelete,
+	clusterRemoveNote,
+	clusterRename,
+	importClustersFromFile,
 } from "@/services/notes/clusterService";
 import type { NoteSection } from "@/services/notes/indexDb/types";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
@@ -30,310 +30,313 @@ import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
 import { router, useFocusEffect, useNavigation } from "expo-router";
 import React, {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+	Suspense,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
 } from "react";
 import {
-  Alert,
-  Platform,
-  StyleSheet,
-  type TextInput,
-  View,
+	Alert,
+	Platform,
+	StyleSheet,
+	type TextInput,
+	View,
 } from "react-native";
 
 const LazyNoteGrid = React.lazy(() => import("@/components/NoteGrid"));
 
 function IndexContent() {
-  const {
-    notes,
-    sections,
-    query,
-    hasMore,
-    isLoading,
-    error,
-    handleRefresh,
-    loadMoreNotes,
-    setQuery,
-  } = useNotes();
-  const reset = useFilterStore((s) => s.reset);
-  const bumpContentVersion = useStorageStore((s) => s.bumpContentVersion);
-  const [isResetting, setIsResetting] = React.useState(false);
-  const [isResetModalVisible, setIsResetModalVisible] = useState(false);
-  const [renameTarget, setRenameTarget] = useState<NoteSection | null>(null);
-  const [addNoteTarget, setAddNoteTarget] = useState<NoteSection | null>(null);
-  const createAndOpenNote = useCreateAndOpenNote();
-  const navigation = useNavigation<DrawerNavigationProp<ParamListBase>>();
+	const {
+		notes,
+		sections,
+		query,
+		hasMore,
+		isLoading,
+		error,
+		handleRefresh,
+		loadMoreNotes,
+		setQuery,
+	} = useNotes();
+	const reset = useFilterStore((s) => s.reset);
+	const bumpContentVersion = useStorageStore((s) => s.bumpContentVersion);
+	const [isResetting, setIsResetting] = React.useState(false);
+	const [isResetModalVisible, setIsResetModalVisible] = useState(false);
+	const [renameTarget, setRenameTarget] = useState<NoteSection | null>(null);
+	const [addNoteTarget, setAddNoteTarget] = useState<NoteSection | null>(null);
+	const createAndOpenNote = useCreateAndOpenNote();
+	const navigation = useNavigation<DrawerNavigationProp<ParamListBase>>();
 
-  const handleMenuPress = useCallback(() => {
-    navigation.openDrawer();
-  }, [navigation]);
+	const handleMenuPress = useCallback(() => {
+		navigation.openDrawer();
+	}, [navigation]);
 
-  const handleDeleteNote = useCallback(
-    async (note: Note) => {
-      try {
-        const success = await NoteService.deleteNote(note.id);
-        if (!success) throw new Error("Failed to delete note");
-        showToast(`Deleted "${note.title}"`);
-        await handleRefresh();
-      } catch (e) {
-        console.warn("Failed to delete note:", e);
-        showToast("Failed to delete note");
-      }
-    },
-    [handleRefresh],
-  );
+	const handleDeleteNote = useCallback(
+		async (note: Note) => {
+			try {
+				const success = await NoteService.deleteNote(note.id);
+				if (!success) throw new Error("Failed to delete note");
+				showToast(`Deleted "${note.title}"`);
+				await handleRefresh();
+			} catch (e) {
+				console.warn("Failed to delete note:", e);
+				showToast("Failed to delete note");
+			}
+		},
+		[handleRefresh],
+	);
 
-  const runReset = useCallback(async () => {
-    if (isResetting) {
-      return;
-    }
-    setIsResetting(true);
-    showToast("Clearing app data...", 1500);
-    try {
-      const { resetAppData } =
-        await import("@/services/app/resetAppDataService");
-      await resetAppData();
-      await handleRefresh();
-      showToast("App data cleared");
-    } catch (error) {
-      console.warn("Failed to reset app data:", error);
-      showToast(
-        error instanceof Error ? error.message : "Failed to clear app data",
-        6000,
-      );
-    } finally {
-      setIsResetting(false);
-    }
-  }, [handleRefresh, isResetting]);
+	const runReset = useCallback(async () => {
+		if (isResetting) {
+			return;
+		}
+		setIsResetting(true);
+		showToast("Clearing app data...", 1500);
+		try {
+			const { resetAppData } = await import(
+				"@/services/app/resetAppDataService"
+			);
+			await resetAppData();
+			await handleRefresh();
+			showToast("App data cleared");
+		} catch (error) {
+			console.warn("Failed to reset app data:", error);
+			showToast(
+				error instanceof Error ? error.message : "Failed to clear app data",
+				6000,
+			);
+		} finally {
+			setIsResetting(false);
+		}
+	}, [handleRefresh, isResetting]);
 
-  const confirmReset = useCallback(() => {
-    if (isResetting) {
-      return;
-    }
-    setIsResetModalVisible(true);
-  }, [isResetting]);
+	const confirmReset = useCallback(() => {
+		if (isResetting) {
+			return;
+		}
+		setIsResetModalVisible(true);
+	}, [isResetting]);
 
-  const closeResetModal = useCallback(() => {
-    if (isResetting) {
-      return;
-    }
-    setIsResetModalVisible(false);
-  }, [isResetting]);
+	const closeResetModal = useCallback(() => {
+		if (isResetting) {
+			return;
+		}
+		setIsResetModalVisible(false);
+	}, [isResetting]);
 
-  const handleConfirmReset = useCallback(() => {
-    setIsResetModalVisible(false);
-    void runReset();
-    reset();
-  }, [runReset, reset]);
+	const handleConfirmReset = useCallback(() => {
+		setIsResetModalVisible(false);
+		void runReset();
+		reset();
+	}, [runReset, reset]);
 
-  const handlePinToggle = useCallback(
-    async (updated: Note) => {
-      await NoteService.saveNote(updated);
-      await handleRefresh();
-    },
-    [handleRefresh],
-  );
+	const handlePinToggle = useCallback(
+		async (updated: Note) => {
+			await NoteService.saveNote(updated);
+			await handleRefresh();
+		},
+		[handleRefresh],
+	);
 
-  const handleRemoveNote = useCallback(
-    async (clusterId: string, noteId: string) => {
-      await clusterRemoveNote(clusterId, noteId);
-      logFeedback(clusterId, "remove_note", { noteId }).catch(() => {});
-      bumpContentVersion();
-      await handleRefresh();
-    },
-    [bumpContentVersion, handleRefresh],
-  );
+	const handleRemoveNote = useCallback(
+		async (clusterId: string, noteId: string) => {
+			await clusterRemoveNote(clusterId, noteId);
+			logFeedback(clusterId, "remove_note", { noteId }).catch(() => {});
+			bumpContentVersion();
+			await handleRefresh();
+		},
+		[bumpContentVersion, handleRefresh],
+	);
 
-  const handleRenameConfirm = useCallback(
-    async (newName: string) => {
-      if (!renameTarget?.clusterId) return;
-      await clusterRename(renameTarget.clusterId, newName);
-      logFeedback(renameTarget.clusterId, "rename", {
-        originalName: renameTarget.title,
-        newName,
-      }).catch(() => {});
-      setRenameTarget(null);
-      bumpContentVersion();
-      await handleRefresh();
-    },
-    [renameTarget, bumpContentVersion, handleRefresh],
-  );
+	const handleRenameConfirm = useCallback(
+		async (newName: string) => {
+			if (!renameTarget?.clusterId) return;
+			await clusterRename(renameTarget.clusterId, newName);
+			logFeedback(renameTarget.clusterId, "rename", {
+				originalName: renameTarget.title,
+				newName,
+			}).catch(() => {});
+			setRenameTarget(null);
+			bumpContentVersion();
+			await handleRefresh();
+		},
+		[renameTarget, bumpContentVersion, handleRefresh],
+	);
 
-  const handleAddNoteConfirm = useCallback(
-    async (noteId: string) => {
-      if (!addNoteTarget?.clusterId) return;
-      await clusterAddNote(addNoteTarget.clusterId, noteId);
-      logFeedback(addNoteTarget.clusterId, "add_note", { noteId }).catch(
-        () => {},
-      );
-      setAddNoteTarget(null);
-      bumpContentVersion();
-      await handleRefresh();
-    },
-    [addNoteTarget, bumpContentVersion, handleRefresh],
-  );
+	const handleAddNoteConfirm = useCallback(
+		async (noteId: string) => {
+			if (!addNoteTarget?.clusterId) return;
+			await clusterAddNote(addNoteTarget.clusterId, noteId);
+			logFeedback(addNoteTarget.clusterId, "add_note", { noteId }).catch(
+				() => {},
+			);
+			setAddNoteTarget(null);
+			bumpContentVersion();
+			await handleRefresh();
+		},
+		[addNoteTarget, bumpContentVersion, handleRefresh],
+	);
 
-  const handleDeleteCluster = useCallback(
-    (section: NoteSection) => {
-      const clusterId = section.clusterId;
-      if (!clusterId) return;
-      const confirmDelete = async () => {
-        await clusterDelete(clusterId);
-        logFeedback(clusterId, "delete", {
-          clusterName: section.title,
-        }).catch(() => {});
-        bumpContentVersion();
-        await handleRefresh();
-      };
-      if (Platform.OS === "web") {
-        if (
-          window.confirm(`Delete "${section.title}"? This cannot be undone.`)
-        ) {
-          void confirmDelete();
-        }
-      } else {
-        Alert.alert(
-          "Delete Cluster",
-          `Delete "${section.title}"? This cannot be undone.`,
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Delete", style: "destructive", onPress: confirmDelete },
-          ],
-        );
-      }
-    },
-    [bumpContentVersion, handleRefresh],
-  );
+	const handleDeleteCluster = useCallback(
+		(section: NoteSection) => {
+			const clusterId = section.clusterId;
+			if (!clusterId) return;
+			const confirmDelete = async () => {
+				await clusterDelete(clusterId);
+				logFeedback(clusterId, "delete", {
+					clusterName: section.title,
+				}).catch(() => {});
+				bumpContentVersion();
+				await handleRefresh();
+			};
+			if (Platform.OS === "web") {
+				if (
+					window.confirm(`Delete "${section.title}"? This cannot be undone.`)
+				) {
+					void confirmDelete();
+				}
+			} else {
+				Alert.alert(
+					"Delete Cluster",
+					`Delete "${section.title}"? This cannot be undone.`,
+					[
+						{ text: "Cancel", style: "cancel" },
+						{ text: "Delete", style: "destructive", onPress: confirmDelete },
+					],
+				);
+			}
+		},
+		[bumpContentVersion, handleRefresh],
+	);
 
-  const safeSections = sections ?? [];
+	const safeSections = sections ?? [];
 
-  const enhancedSections = useMemo(
-    () =>
-      safeSections.map((section) =>
-        section.clusterId
-          ? {
-              ...section,
-              clusterId: section.clusterId,
-              clusterActions: {
-                onRename: () => setRenameTarget(section),
-                onAddNote: () => setAddNoteTarget(section),
-                onDelete: () => handleDeleteCluster(section),
-                onRemoveNote: (noteId: string) =>
-                  void handleRemoveNote(section.clusterId, noteId),
-              },
-            }
-          : section,
-      ),
-    [safeSections, handleDeleteCluster, handleRemoveNote],
-  );
+	const enhancedSections = useMemo(
+		() =>
+			safeSections.map((section) =>
+				section.clusterId
+					? {
+							...section,
+							clusterId: section.clusterId,
+							clusterActions: {
+								onRename: () => setRenameTarget(section),
+								onAddNote: () => setAddNoteTarget(section),
+								onDelete: () => handleDeleteCluster(section),
+								onRemoveNote: (noteId: string) =>
+									void handleRemoveNote(section.clusterId, noteId),
+							},
+						}
+					: section,
+			),
+		[safeSections, handleDeleteCluster, handleRemoveNote],
+	);
 
-  useEffect(() => {
-    void importClustersFromFile();
-  }, []);
+	useEffect(() => {
+		void importClustersFromFile();
+	}, []);
 
-  const searchInputRef = useRef<TextInput>(null);
-  useAppKeyboardShortcuts({
-    onFocusSearch: () => {
-      searchInputRef.current?.focus();
-    },
-    onCreateNote: () => {
-      void createAndOpenNote();
-    },
-  });
+	const searchInputRef = useRef<TextInput>(null);
+	useAppKeyboardShortcuts({
+		onFocusSearch: () => {
+			searchInputRef.current?.focus();
+		},
+		onCreateNote: () => {
+			void createAndOpenNote();
+		},
+	});
 
-  const styles = useStyles(createStyles);
-  const emptySubtitle =
-    "There are no notes that match existing filters. Create a note to get started";
+	const styles = useStyles(createStyles);
+	const emptySubtitle =
+		"There are no notes that match existing filters. Create a note to get started";
 
-  useFocusEffect(
-    useCallback(() => {
-      void handleRefresh();
-    }, [handleRefresh]),
-  );
+	useFocusEffect(
+		useCallback(() => {
+			void handleRefresh();
+		}, [handleRefresh]),
+	);
 
-  return (
-    <View style={styles.container}>
-      <HomeScreenHeader
-        searchQuery={query}
-        setSearchQuery={setQuery}
-        searchInputRef={searchInputRef}
-        onMenuPress={handleMenuPress}
-        onOpenSuggestedMocs={() => router.push("/suggested-mocs")}
-        onReset={confirmReset}
-        resetDisabled={isResetting}
-      />
-      <Suspense fallback={<Loader />}>
-        <LazyNoteGrid
-          notes={notes ?? []}
-          sections={enhancedSections}
-          emptySubtitle={emptySubtitle}
-          onDelete={handleDeleteNote}
-          onPinToggle={handlePinToggle}
-          refreshing={isLoading}
-          onRefresh={handleRefresh}
-          onEndReached={loadMoreNotes}
-          isLoadingMore={isLoading}
-          hasMore={hasMore}
-          listHeaderComponent={<HomeQuickComposer onPress={createAndOpenNote} />}
-        />
-      </Suspense>
-      <ResetAppDataModal
-        visible={isResetModalVisible}
-        isResetting={isResetting}
-        onClose={closeResetModal}
-        onConfirm={handleConfirmReset}
-      />
-      <RenameClusterModal
-        visible={renameTarget !== null}
-        initialName={renameTarget?.title ?? ""}
-        onClose={() => setRenameTarget(null)}
-        onConfirm={handleRenameConfirm}
-      />
-      <AddNoteToClusterModal
-        visible={addNoteTarget !== null}
-        onClose={() => setAddNoteTarget(null)}
-        onConfirm={handleAddNoteConfirm}
-        excludeNoteIds={addNoteTarget?.notes.map((n) => n.id) ?? []}
-      />
-      {error ? (
-        <ErrorScreen errorMessage={error} onRetry={handleRefresh} />
-      ) : null}
-    </View>
-  );
+	return (
+		<View style={styles.container}>
+			<HomeScreenHeader
+				searchQuery={query}
+				setSearchQuery={setQuery}
+				searchInputRef={searchInputRef}
+				onMenuPress={handleMenuPress}
+				onOpenSuggestedMocs={() => router.push("/suggested-mocs")}
+				onReset={confirmReset}
+				resetDisabled={isResetting}
+			/>
+			<Suspense fallback={<Loader />}>
+				<LazyNoteGrid
+					notes={notes ?? []}
+					sections={enhancedSections}
+					emptySubtitle={emptySubtitle}
+					onDelete={handleDeleteNote}
+					onPinToggle={handlePinToggle}
+					refreshing={isLoading}
+					onRefresh={handleRefresh}
+					onEndReached={loadMoreNotes}
+					isLoadingMore={isLoading}
+					hasMore={hasMore}
+					listHeaderComponent={
+						<HomeQuickComposer onPress={createAndOpenNote} />
+					}
+				/>
+			</Suspense>
+			<ResetAppDataModal
+				visible={isResetModalVisible}
+				isResetting={isResetting}
+				onClose={closeResetModal}
+				onConfirm={handleConfirmReset}
+			/>
+			<RenameClusterModal
+				visible={renameTarget !== null}
+				initialName={renameTarget?.title ?? ""}
+				onClose={() => setRenameTarget(null)}
+				onConfirm={handleRenameConfirm}
+			/>
+			<AddNoteToClusterModal
+				visible={addNoteTarget !== null}
+				onClose={() => setAddNoteTarget(null)}
+				onConfirm={handleAddNoteConfirm}
+				excludeNoteIds={addNoteTarget?.notes.map((n) => n.id) ?? []}
+			/>
+			{error ? (
+				<ErrorScreen error={new Error(error)} onRetry={handleRefresh} />
+			) : null}
+		</View>
+	);
 }
 
 export default function Index() {
-  const [retryVersion, setRetryVersion] = useState(0);
+	const [retryVersion, setRetryVersion] = useState(0);
 
-  return (
-    <QueryErrorBoundary
-      fallbackRender={(error, reset) => (
-        <ErrorScreen
-          errorMessage={error.message}
-          onRetry={() => {
-            invalidateNoteQueryCache();
-            reset();
-            setRetryVersion((current) => current + 1);
-          }}
-        />
-      )}
-    >
-      <Suspense fallback={<Loader />}>
-        <IndexContent key={retryVersion} />
-      </Suspense>
-    </QueryErrorBoundary>
-  );
+	return (
+		<QueryErrorBoundary
+			fallbackRender={(error, reset) => (
+				<ErrorScreen
+					error={error}
+					onRetry={() => {
+						invalidateNoteQueryCache();
+						reset();
+						setRetryVersion((current) => current + 1);
+					}}
+				/>
+			)}
+		>
+			<Suspense fallback={<Loader />}>
+				<IndexContent key={retryVersion} />
+			</Suspense>
+		</QueryErrorBoundary>
+	);
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-  });
+	return StyleSheet.create({
+		container: {
+			flex: 1,
+			backgroundColor: theme.colors.background,
+		},
+	});
 }

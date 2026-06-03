@@ -146,21 +146,23 @@ jest.mock("@/hooks/useAppKeyboardShortcuts", () => ({
 	useAppKeyboardShortcuts: jest.fn(),
 }));
 
-jest.mock("@/components/editor/EditorToolbar", () => {
+
+jest.mock("@/components/editor/lexical/plugins/LexicalToolbarPlugin", () => {
 	const React = require("react");
 	const { Text } = require("react-native");
 	return {
-		EditorToolbar: () => React.createElement(Text, null, "Toolbar"),
+		LexicalToolbarPlugin: () => React.createElement(Text, null, "Toolbar"),
 	};
 });
 
-jest.mock("@/components/editor/DomEditor", () => {
+jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 	const React = require("react");
 	const { Pressable, Text } = require("react-native");
 	return {
 		__esModule: true,
 		default: (props: {
 			markdown: string;
+			onMarkdownChange?: (markdown: string) => void;
 			onInsertTemplateCommand?: () => void;
 			command?: { type: string; payload?: Record<string, unknown> };
 		}) => {
@@ -359,7 +361,7 @@ describe("NoteEditorView", () => {
 
 		renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		act(() => {
 			getHeaderTitleInput().props.onChangeText("Todo My tasks");
 		});
@@ -384,7 +386,7 @@ describe("NoteEditorView", () => {
 
 		const result = renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		expect(getHeaderTitleInput().props.editable).toBe(true);
 
 		pressHeaderBack();
@@ -400,7 +402,7 @@ describe("NoteEditorView", () => {
 
 		const result = renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		act(() => {
 			getHeaderTitleInput().props.onChangeText("Renamed note");
 		});
@@ -440,7 +442,7 @@ describe("NoteEditorView", () => {
 
 		const result = renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		act(() => {
 			getHeaderTitleInput().props.onChangeText("Renamed note");
 		});
@@ -481,7 +483,7 @@ describe("NoteEditorView", () => {
 
 		renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		act(() => {
 			getHeaderTitleInput().props.onChangeText("Renamed note");
 		});
@@ -523,7 +525,7 @@ describe("NoteEditorView", () => {
 
 		const result = renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		pressHeaderBack();
 
 		await waitFor(() => {
@@ -537,7 +539,7 @@ describe("NoteEditorView", () => {
 
 		renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		act(() => {
 			getHeaderTitleInput().props.onChangeText("Template: Weekly Review");
 		});
@@ -561,7 +563,7 @@ describe("NoteEditorView", () => {
 		const note = makeNote();
 		const result = renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		await user.press(screen.getByLabelText("Delete note"));
 
 		await waitFor(() => {
@@ -698,7 +700,7 @@ describe("NoteEditorView", () => {
 
 		renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 
 		const titleInput = getHeaderTitleInput();
 		expect(titleInput.props.placeholder).toBe("Title");
@@ -731,9 +733,11 @@ describe("NoteEditorView", () => {
 		});
 
 		await waitFor(() => {
-			const selection = useEditorState.getState().selection;
-			expect(selection).not.toBeNull();
-			expect(selection?.focus.blockIndex).toBe(0);
+			expect(mockDomEditorRender).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					command: expect.objectContaining({ type: "focusEditor" }),
+				}),
+			);
 		});
 	});
 });

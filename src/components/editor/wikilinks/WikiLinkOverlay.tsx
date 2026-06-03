@@ -3,7 +3,13 @@ import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { WikiLinkResult } from "./WikiLinkContext";
+
+export interface WikiLinkResult {
+	id: string;
+	type: "existing" | "create";
+	title: string;
+	noteId?: string;
+}
 
 interface WikiLinkOverlayProps {
 	results: WikiLinkResult[];

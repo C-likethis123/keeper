@@ -1,5 +1,7 @@
-import type { WikiLinkResult } from "@/components/editor/wikilinks/WikiLinkContext";
-import { WikiLinkOverlay } from "@/components/editor/wikilinks/WikiLinkOverlay";
+import {
+	WikiLinkOverlay,
+	type WikiLinkResult,
+} from "@/components/editor/wikilinks/WikiLinkOverlay";
 import { render, screen, userEvent } from "@testing-library/react-native";
 import React from "react";
 

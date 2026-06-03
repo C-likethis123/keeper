@@ -45,7 +45,9 @@ function ExistingNoteEditorContent({
 	const note = useSuspenseLoadNote(id);
 
 	if (!note) {
-		return <ErrorScreen errorMessage="Note not found" onRetry={onRetry} />;
+		return (
+			<ErrorScreen error={new Error("Note not found")} onRetry={onRetry} />
+		);
 	}
 
 	return <NoteEditorView note={note} />;
@@ -134,7 +136,7 @@ export default function NoteEditorScreen() {
 			<View style={styles.screen}>
 				<View style={styles.content}>
 					<ErrorScreen
-						errorMessage="Note not found"
+						error={new Error("Note not found")}
 						onRetry={() => router.replace("/")}
 					/>
 				</View>
@@ -148,7 +150,7 @@ export default function NoteEditorScreen() {
 				<QueryErrorBoundary
 					fallbackRender={(error, reset) => (
 						<ErrorScreen
-							errorMessage={error.message}
+							error={error}
 							onRetry={() => {
 								reset();
 								handleRetry();

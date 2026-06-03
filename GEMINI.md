@@ -38,6 +38,8 @@ Two separate apps with distinct bundle IDs coexist on the same device:
 
 ## Architecture
 
+> **Note**: The editor architecture is currently undergoing a migration to Lexical.
+
 Keeper is a cross-platform block-based markdown note editor (iOS/Android/web/desktop via Tauri) with GitHub-backed storage.
 
 ### Layers
@@ -67,9 +69,9 @@ An **immutable, transaction-based** document model:
 
 ### Rendering
 
-- `HybridEditor` — container: keyboard shortcuts, wiki link overlay, content sync between document model and React state
-- `UnifiedBlock` — single block: `TextInput` for editing + `InlineMarkdown` for formatted preview
-- `BlockRegistry` — maps `BlockType` → specialized component (CodeBlock, MathBlock, etc.)
+- `DomEditor` — DOM component wrapper that renders the Lexical markdown editor and syncs markdown back into the document model
+- `LexicalMarkdownEditor` — canonical editing surface with Lexical plugins for toolbar actions, code blocks, equations, images, and wiki links
+- Legacy `UnifiedBlock` / `BlockRegistry` rendering has been removed; do not add new block UI through that path.
 
 ### Data Persistence (three-tier)
 

@@ -1,7 +1,3 @@
-import {
-	createDocumentFromMarkdown,
-	documentToMarkdown,
-} from "@/components/editor/core/Document";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note, NoteSaveInput, NoteType } from "@/services/notes/types";
 
@@ -99,7 +95,7 @@ function isSamePayload(a: NoteSaveInput, b: NoteSaveInput): boolean {
 }
 
 export function normalizeMarkdownForPersistence(markdown: string): string {
-	return documentToMarkdown(createDocumentFromMarkdown(markdown));
+	return markdown.replace(/\r\n/g, "\n");
 }
 
 export async function persistEditorEntry(
