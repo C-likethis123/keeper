@@ -439,12 +439,15 @@ export default function LexicalMarkdownEditor({
 					line-height: 1.55;
 					white-space: pre-wrap;
 				}
+					.keeper-editor-content {
+						position: relative;
+					}
 					.keeper-placeholder {
 						color: ${palette.text}80;
 						pointer-events: none;
 						position: absolute;
-						top: 18px;
-						left: 18px;
+						top: 0;
+						left: 0;
 						font-size: 17px;
 						line-height: 1.55;
 					}
@@ -499,13 +502,15 @@ export default function LexicalMarkdownEditor({
 						onToggleArticle={onToggleArticle}
 						onToggleRelatedNotes={onToggleRelatedNotes}
 					/>
-					<RichTextPlugin
-						contentEditable={<ContentEditable className="keeper-editor" />}
-						placeholder={
-							<div className="keeper-placeholder">Start writing</div>
-						}
-						ErrorBoundary={LexicalErrorBoundary}
-					/>
+					<div className="keeper-editor-content">
+						<RichTextPlugin
+							contentEditable={<ContentEditable className="keeper-editor" />}
+							placeholder={
+								<div className="keeper-placeholder">Start writing</div>
+							}
+							ErrorBoundary={LexicalErrorBoundary}
+						/>
+					</div>
 					<HistoryPlugin />
 					<ListPlugin />
 					<CheckListPlugin />
