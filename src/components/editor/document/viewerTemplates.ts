@@ -465,8 +465,11 @@ const PDF_JS_SOURCE = ${JSON.stringify(PDF_JS)};
     try {
       setStatus('Opening PDF…', false);
       const pdfjsLib = await loadPdfModule();
+      const loadingSource = source.startsWith('data:application/pdf;base64,')
+        ? { data: base64ToBytes(source.split(',')[1] || '') }
+        : { url: source };
       const loadingTask = pdfjsLib.getDocument({
-        url: source,
+        ...loadingSource,
         disableWorker: true,
       });
       pdfDoc = await loadingTask.promise;
@@ -476,6 +479,15 @@ const PDF_JS_SOURCE = ${JSON.stringify(PDF_JS)};
       setStatus('Failed to open PDF.', true);
       postMsg({ type: 'error', message: String(error) });
     }
+  }
+
+  function base64ToBytes(base64) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
   }
 
   prevButton.addEventListener('click', function () {

@@ -33,15 +33,14 @@ export function DocumentPanel({
   const styles = useStyles(createStyles);
   const webViewRef = useRef<WebView>(null);
   const {
-    epubHtml,
     failedAttachmentType,
     fileUri,
     filename,
     handleOpenExternally,
     handleViewerMessage,
     isLoading,
-    pdfHtml,
     pdfOpenMessage,
+    viewerHtml,
   } = useDocumentPanelState({
     noteId,
     attachmentPath,
@@ -78,11 +77,11 @@ export function DocumentPanel({
       return <DocumentPanelLoading styles={styles} />;
     }
 
-    if (attachmentType === "epub" && epubHtml) {
+    if (attachmentType === "epub" && viewerHtml) {
       return (
         <WebView
           ref={webViewRef}
-          source={{ html: epubHtml, baseUrl: "" }}
+          source={{ html: viewerHtml, baseUrl: "" }}
           originWhitelist={["*"]}
           javaScriptEnabled
           onMessage={handleMessage}
@@ -91,12 +90,12 @@ export function DocumentPanel({
       );
     }
 
-    if (attachmentType === "pdf" && pdfHtml && pdfOpenMessage) {
+    if (attachmentType === "pdf" && viewerHtml && pdfOpenMessage) {
       return (
         <WebView
           ref={webViewRef}
           source={{
-            html: pdfHtml,
+            html: viewerHtml,
             baseUrl: "",
           }}
           originWhitelist={["*"]}
@@ -124,16 +123,15 @@ export function DocumentPanel({
     );
   }, [
     attachmentType,
-    epubHtml,
     failedAttachmentType,
     fileUri,
     handleMessage,
     handleOpenExternally,
     handlePdfLoad,
     isLoading,
-    pdfHtml,
     pdfOpenMessage,
     styles,
+    viewerHtml,
   ]);
 
   return (

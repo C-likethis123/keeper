@@ -37,13 +37,13 @@ export function DocumentPanel({
 	const styles = useStyles(createStyles);
 	const iframeRef = useRef<HTMLIFrameElement>(null);
 	const {
-		epubHtml,
 		filename,
 		handleOpenExternally,
 		handleViewerMessage,
 		isLoading,
 		pdfHtml,
 		pdfOpenMessage,
+		viewerHtml,
 	} = useDocumentPanelState({
 		noteId,
 		attachmentPath,
@@ -87,14 +87,8 @@ export function DocumentPanel({
 		if (isLoading) {
 			return <DocumentPanelLoading styles={styles} />;
 		}
-		const srcDoc =
-			attachmentType === "pdf" && pdfHtml
-				? pdfHtml
-				: attachmentType === "epub" && epubHtml
-					? epubHtml
-					: null;
 
-		if (!srcDoc) {
+		if (!viewerHtml) {
 			return (
 				<DocumentPanelFallback
 					attachmentType={attachmentType}
@@ -108,7 +102,7 @@ export function DocumentPanel({
 		return (
 			<iframe
 				ref={iframeRef}
-				srcDoc={srcDoc}
+				srcDoc={viewerHtml}
 				title={filename}
 				sandbox="allow-scripts allow-same-origin"
 				style={{ width: "100%", height: "100%", border: "none" }}
@@ -116,12 +110,11 @@ export function DocumentPanel({
 		);
 	}, [
 		attachmentType,
-		epubHtml,
 		filename,
 		handleOpenExternally,
 		isLoading,
-		pdfHtml,
 		styles,
+		viewerHtml,
 	]);
 
 	return (

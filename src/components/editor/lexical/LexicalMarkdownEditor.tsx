@@ -76,6 +76,7 @@ import {
 	exportLexicalToMarkdown,
 	importMarkdownToLexical,
 } from "./markdown";
+import { registerChecklistMarkdownPrefixTransform } from "./plugins/checklistMarkdownPrefix";
 import { LexicalWikiLinkPlugin } from "./wikilinks/LexicalWikiLinkPlugin";
 
 interface LexicalEditorCommand {
@@ -175,6 +176,16 @@ function TabIndentationPlugin() {
 			},
 			COMMAND_PRIORITY_EDITOR,
 		);
+	}, [editor]);
+
+	return null;
+}
+
+function ChecklistMarkdownPrefixPlugin() {
+	const [editor] = useLexicalComposerContext();
+
+	useEffect(() => {
+		return registerChecklistMarkdownPrefixTransform(editor);
 	}, [editor]);
 
 	return null;
@@ -439,6 +450,12 @@ export default function LexicalMarkdownEditor({
 				},
 				quote: "keeper-quote",
 				link: "keeper-link",
+				table: "keeper-table",
+				tableCell: "keeper-table-cell",
+				tableCellHeader: "keeper-table-cell-header",
+				tableRow: "keeper-table-row",
+				tableScrollableWrapper: "keeper-table-scroll",
+				tableSelection: "keeper-table-selection",
 				text: {
 					bold: "keeper-text-bold",
 					italic: "keeper-text-italic",
@@ -499,8 +516,73 @@ export default function LexicalMarkdownEditor({
 				.keeper-list { margin: 8px 0; padding-left: 28px; }
 				.keeper-list-item { margin: 4px 0; }
 				.keeper-nested-list-item { list-style-type: none; }
-				.keeper-check-item { list-style: none; margin: 4px 0; }
+				.keeper-checklist { list-style: none; padding-left: 0; }
+				.keeper-check-item {
+					cursor: pointer;
+					list-style: none;
+					margin: 4px 0;
+					min-height: 24px;
+					padding-left: 30px;
+					position: relative;
+				}
+				.keeper-check-item::before {
+					align-items: center;
+					border: 1.5px solid ${palette.border};
+					border-radius: 4px;
+					box-sizing: border-box;
+					content: "";
+					display: flex;
+					height: 18px;
+					justify-content: center;
+					left: 0;
+					position: absolute;
+					top: 4px;
+					width: 18px;
+				}
 				.keeper-check-item-checked { text-decoration: line-through; opacity: 0.7; }
+				.keeper-check-item-checked::before {
+					background: ${palette.primary};
+					border-color: ${palette.primary};
+					color: ${palette.background};
+					content: "\\2713";
+					font-size: 13px;
+					font-weight: 700;
+					line-height: 1;
+					text-decoration: none;
+				}
+				.keeper-table-scroll {
+					margin: 12px 0;
+					overflow-x: auto;
+					width: 100%;
+				}
+				.keeper-table {
+					border-collapse: collapse;
+					border-spacing: 0;
+					color: ${palette.text};
+					table-layout: fixed;
+					width: 100%;
+				}
+				.keeper-table-cell {
+					border: 1px solid ${palette.border};
+					min-width: 96px;
+					padding: 8px 10px;
+					position: relative;
+					vertical-align: top;
+				}
+				.keeper-table-cell > * {
+					margin: 0;
+				}
+				.keeper-table-cell-header {
+					background: ${palette.card};
+					font-weight: 700;
+				}
+				.keeper-table-selection .keeper-table-cell {
+					border-color: ${palette.primary};
+				}
+				.keeper-table-cell:focus-within {
+					box-shadow: inset 0 0 0 1px ${palette.primary};
+					outline: none;
+				}
 				.image-node {
 					margin: 12px 0;
 					max-width: 100%;
@@ -584,6 +666,7 @@ export default function LexicalMarkdownEditor({
 					<TablePlugin />
 					<EquationPlugin />
 					<MarkdownShortcutPlugin transformers={KEEPER_MARKDOWN_TRANSFORMERS} />
+					<ChecklistMarkdownPrefixPlugin />
 					<TabIndentationPlugin />
 					<ChangePlugin onMarkdownChange={onMarkdownChange} />
 					<CommandPlugin command={command} />

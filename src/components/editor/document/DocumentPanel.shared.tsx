@@ -200,6 +200,7 @@ export function useDocumentPanelState({
 					page: savedPosition ?? undefined,
 				})
 			: null;
+	const viewerHtml = attachmentType === "epub" ? epubHtml : pdfHtml;
 
 	const isLoading =
 		!fileUri ||
@@ -222,6 +223,7 @@ export function useDocumentPanelState({
 		pdfHtml,
 		pdfOpenMessage,
 		savedPosition,
+		viewerHtml,
 	};
 }
 

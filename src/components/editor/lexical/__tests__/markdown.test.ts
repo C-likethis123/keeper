@@ -12,6 +12,7 @@ import {
 	exportLexicalToMarkdown,
 	importMarkdownToLexical,
 } from "../markdown";
+import { registerChecklistMarkdownPrefixTransform } from "../plugins/checklistMarkdownPrefix";
 
 function roundTripMarkdown(markdown: string): string {
 	const editor = createEditor({
@@ -89,5 +90,28 @@ describe("Keeper Lexical markdown transformers", () => {
 
 		expect(checklistIndex).toBeGreaterThanOrEqual(0);
 		expect(checklistIndex).toBeLessThan(unorderedListIndex);
+	});
+
+	it("converts a bullet item prefix into a checklist item", () => {
+		const editor = createEditor({
+			namespace: "KeeperChecklistPrefixTest",
+			nodes: [ListNode, ListItemNode],
+			onError: (error) => {
+				throw error;
+			},
+		});
+		const unregister = registerChecklistMarkdownPrefixTransform(editor);
+
+		let result = "";
+		editor.update(
+			() => {
+				importMarkdownToLexical("- [x] test");
+				result = exportLexicalToMarkdown();
+			},
+			{ discrete: true },
+		);
+		unregister();
+
+		expect(result).toBe("- [x] test");
 	});
 });
