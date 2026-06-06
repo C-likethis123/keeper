@@ -260,6 +260,49 @@ describe("useAutoSave", () => {
 		});
 	});
 
+	it("persists attached video metadata changes with the current markdown", async () => {
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		const { rerender } = renderHook(
+			({ attachedVideo }) =>
+				useAutoSave({
+					id: "note-1",
+					title: "Draft note",
+					content: "Initial body",
+					isPinned: false,
+					noteType: "note",
+					attachedVideo,
+				}),
+			{
+				initialProps: { attachedVideo: null as string | null },
+			},
+		);
+
+		act(() => {
+			useEditorState.getState().setCurrentMarkdown("Body after attach");
+		});
+		rerender({
+			attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		});
+
+		await act(async () => {
+			jest.advanceTimersByTime(1500);
+			await Promise.resolve();
+		});
+
+		await waitFor(() => {
+			expect(persistEditorEntry).toHaveBeenCalledWith({
+				id: "note-1",
+				title: "Draft note",
+				content: "Body after attach",
+				isPinned: false,
+				noteType: "note",
+				status: undefined,
+				attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+				isNewEntry: false,
+			});
+		});
+	});
+
 	it("flushes pending editor dispatches before reading content in forceSave", async () => {
 		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
 		const { result } = renderHook(() =>

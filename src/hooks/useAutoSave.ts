@@ -20,6 +20,10 @@ type AutoSaveInput = {
 	isPinned: boolean;
 	noteType: Note["noteType"];
 	status?: Note["status"];
+	attachment?: Note["attachment"];
+	attachedVideo?: Note["attachedVideo"];
+	resourceUrl?: Note["resourceUrl"];
+	documentPositions?: Note["documentPositions"];
 	initialNoteType?: Note["noteType"];
 	onPersisted?: () => void;
 	isNew?: boolean;
@@ -32,6 +36,10 @@ export function useAutoSave({
 	isPinned,
 	noteType,
 	status: noteStatus,
+	attachment,
+	attachedVideo,
+	resourceUrl,
+	documentPositions,
 	initialNoteType,
 	onPersisted,
 	isNew,
@@ -46,6 +54,10 @@ export function useAutoSave({
 		isPinned,
 		noteType,
 		status: noteStatus,
+		attachment,
+		attachedVideo,
+		resourceUrl,
+		documentPositions,
 	});
 	const lastInputAtRef = useRef(Date.now());
 	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -75,6 +87,10 @@ export function useAutoSave({
 			isPinned,
 			noteType,
 			status: noteStatus,
+			attachment,
+			attachedVideo,
+			resourceUrl,
+			documentPositions,
 		};
 		lastInputAtRef.current = Date.now();
 
@@ -87,6 +103,10 @@ export function useAutoSave({
 				lastUpdated: Date.now(),
 				noteType: initialNoteType ?? noteType,
 				status: noteStatus,
+				attachment,
+				attachedVideo,
+				resourceUrl,
+				documentPositions,
 			};
 			isNewEntryRef.current = !!isNew;
 			hasEditorContentChangedRef.current = false;
@@ -97,7 +117,11 @@ export function useAutoSave({
 			title.trim() !== lastSavedRef.current.title ||
 			isPinned !== lastSavedRef.current.isPinned ||
 			noteType !== lastSavedRef.current.noteType ||
-			noteStatus !== lastSavedRef.current.status
+			noteStatus !== lastSavedRef.current.status ||
+			attachment !== lastSavedRef.current.attachment ||
+			attachedVideo !== lastSavedRef.current.attachedVideo ||
+			resourceUrl !== lastSavedRef.current.resourceUrl ||
+			documentPositions !== lastSavedRef.current.documentPositions
 		) {
 			scheduleSaveWhenIdleRef.current?.();
 		}
@@ -108,6 +132,10 @@ export function useAutoSave({
 		isPinned,
 		noteType,
 		noteStatus,
+		attachment,
+		attachedVideo,
+		resourceUrl,
+		documentPositions,
 		initialNoteType,
 		isNew,
 	]);
@@ -138,6 +166,11 @@ export function useAutoSave({
 					const previousIsPinned = lastSavedRef.current?.isPinned;
 					const previousNoteType = lastSavedRef.current?.noteType;
 					const previousStatus = lastSavedRef.current?.status;
+					const previousAttachment = lastSavedRef.current?.attachment;
+					const previousAttachedVideo = lastSavedRef.current?.attachedVideo;
+					const previousResourceUrl = lastSavedRef.current?.resourceUrl;
+					const previousDocumentPositions =
+						lastSavedRef.current?.documentPositions;
 
 					const isMatch =
 						currentNote.id === previousId &&
@@ -145,7 +178,11 @@ export function useAutoSave({
 						currentContent === previousContent &&
 						currentNote.isPinned === previousIsPinned &&
 						currentNote.noteType === previousNoteType &&
-						currentNote.status === previousStatus;
+						currentNote.status === previousStatus &&
+						currentNote.attachment === previousAttachment &&
+						currentNote.attachedVideo === previousAttachedVideo &&
+						currentNote.resourceUrl === previousResourceUrl &&
+						currentNote.documentPositions === previousDocumentPositions;
 
 					if (isMatch) {
 						continue;
@@ -182,6 +219,26 @@ export function useAutoSave({
 							a: currentNote.status,
 							b: previousStatus,
 						},
+						attachment: {
+							match: currentNote.attachment === previousAttachment,
+							a: currentNote.attachment,
+							b: previousAttachment,
+						},
+						attachedVideo: {
+							match: currentNote.attachedVideo === previousAttachedVideo,
+							a: currentNote.attachedVideo,
+							b: previousAttachedVideo,
+						},
+						resourceUrl: {
+							match: currentNote.resourceUrl === previousResourceUrl,
+							a: currentNote.resourceUrl,
+							b: previousResourceUrl,
+						},
+						documentPositions: {
+							match: currentNote.documentPositions === previousDocumentPositions,
+							a: currentNote.documentPositions,
+							b: previousDocumentPositions,
+						},
 					});
 
 					setStatus("saving");
@@ -202,6 +259,18 @@ export function useAutoSave({
 							isPinned: currentNote.isPinned,
 							noteType: currentNote.noteType,
 							status: currentNote.status,
+							...(currentNote.attachment !== undefined
+								? { attachment: currentNote.attachment }
+								: {}),
+							...(currentNote.attachedVideo !== undefined
+								? { attachedVideo: currentNote.attachedVideo }
+								: {}),
+							...(currentNote.resourceUrl !== undefined
+								? { resourceUrl: currentNote.resourceUrl }
+								: {}),
+							...(currentNote.documentPositions !== undefined
+								? { documentPositions: currentNote.documentPositions }
+								: {}),
 							isNewEntry: currentIsNewEntry,
 						});
 						isNewEntryRef.current = false;
@@ -226,6 +295,10 @@ export function useAutoSave({
 						lastUpdated: Date.now(),
 						noteType: currentNote.noteType,
 						status: currentNote.status,
+						attachment: currentNote.attachment,
+						attachedVideo: currentNote.attachedVideo,
+						resourceUrl: currentNote.resourceUrl,
+						documentPositions: currentNote.documentPositions,
 					};
 					onPersisted?.();
 					setStatus("saved");
@@ -265,6 +338,10 @@ export function useAutoSave({
 					lastUpdated: Date.now(),
 					noteType: currentNote.noteType,
 					status: currentNote.status,
+					attachment: currentNote.attachment,
+					attachedVideo: currentNote.attachedVideo,
+					resourceUrl: currentNote.resourceUrl,
+					documentPositions: currentNote.documentPositions,
 				};
 				hasEditorContentChangedRef.current = false;
 				return;

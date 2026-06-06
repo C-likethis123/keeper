@@ -31,6 +31,10 @@ function createRootMock() {
 function createEditorMock(root: ReturnType<typeof createRootMock>) {
 	return {
 		getRootElement: jest.fn(() => root),
+		registerRootListener: jest.fn((listener) => {
+			listener(root, null);
+			return jest.fn();
+		}),
 		registerCommand: jest.fn(() => jest.fn()),
 		registerUpdateListener: jest.fn(() => jest.fn()),
 	};

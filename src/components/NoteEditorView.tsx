@@ -82,7 +82,7 @@ export default function NoteEditorView({
     [],
   );
 
-  const { updateTabTitle, tabs, closeTab } = useTabStore();
+  const { updateTabTitle, tabs, closeTab, openTab } = useTabStore();
   const tab = tabs.find((t) => t.noteId === id);
 
   const flushGitAndToastOnFailure = useCallback(
@@ -106,67 +106,6 @@ export default function NoteEditorView({
   const isLeavingRef = useRef(false);
   const bypassNextBeforeRemoveRef = useRef(false);
   const isNewEntryRef = useRef(!!isNew);
-
-  const { status, forceSave } = useAutoSave({
-    ...note,
-    title,
-    isPinned,
-    noteType,
-    status: noteType === "todo" ? (todoStatus ?? "open") : null,
-    initialNoteType: note.noteType,
-    onPersisted: useCallback(() => {
-      isNewEntryRef.current = false;
-    }, []),
-    isNew,
-  });
-
-  const saveAndFlushBeforeExit = useCallback(async () => {
-    await forceSave();
-    await flushGitAndToastOnFailure("note-exit");
-  }, [flushGitAndToastOnFailure, forceSave]);
-
-  const leaveEditor = useCallback(
-    async (action?: { type: string; payload?: object }) => {
-      if (isLeavingRef.current) {
-        return;
-      }
-
-      isLeavingRef.current = true;
-      try {
-        await saveAndFlushBeforeExit();
-        bypassNextBeforeRemoveRef.current = true;
-        if (action) {
-          navigation.dispatch(action);
-          return;
-        }
-        router.back();
-      } finally {
-        isLeavingRef.current = false;
-      }
-    },
-    [navigation, router, saveAndFlushBeforeExit],
-  );
-
-  const handleBack = useCallback(async () => {
-    if (tabs.length === 1 && tab && !tab.isPinned) {
-      await saveAndFlushBeforeExit();
-      bypassNextBeforeRemoveRef.current = true;
-      closeTab(tab.id);
-      router.replace("/");
-    } else {
-      await leaveEditor();
-    }
-  }, [tabs.length, tab, closeTab, leaveEditor, router, saveAndFlushBeforeExit]);
-
-  const handleOpenWikiLink = useCallback(
-    async (wikiLinkTitle: string) => {
-      const linkedNoteId = await resolveOrCreateWikiLinkNoteId(wikiLinkTitle);
-      if (linkedNoteId) {
-        router.push(`/editor?id=${linkedNoteId}`);
-      }
-    },
-    [router],
-  );
 
   useEffect(() => {
     if (tab && title && tab.title !== title) {
@@ -216,6 +155,72 @@ export default function NoteEditorView({
     !!note.attachedVideo,
   );
   const [isShowVideoModalVisible, setIsShowVideoModalVisible] = useState(false);
+  const { status, forceSave } = useAutoSave({
+    ...note,
+    title,
+    isPinned,
+    noteType,
+    status: noteType === "todo" ? (todoStatus ?? "open") : null,
+    attachment: attachmentPath,
+    attachedVideo,
+    resourceUrl,
+    documentPositions,
+    initialNoteType: note.noteType,
+    onPersisted: useCallback(() => {
+      isNewEntryRef.current = false;
+    }, []),
+    isNew,
+  });
+
+  const saveAndFlushBeforeExit = useCallback(async () => {
+    await forceSave();
+    await flushGitAndToastOnFailure("note-exit");
+  }, [flushGitAndToastOnFailure, forceSave]);
+
+  const leaveEditor = useCallback(
+    async (action?: { type: string; payload?: object }) => {
+      if (isLeavingRef.current) {
+        return;
+      }
+
+      isLeavingRef.current = true;
+      try {
+        await saveAndFlushBeforeExit();
+        bypassNextBeforeRemoveRef.current = true;
+        if (action) {
+          navigation.dispatch(action);
+          return;
+        }
+        router.back();
+      } finally {
+        isLeavingRef.current = false;
+      }
+    },
+    [navigation, router, saveAndFlushBeforeExit],
+  );
+
+  const handleBack = useCallback(async () => {
+    if (tabs.length === 1 && tab && !tab.isPinned) {
+      await saveAndFlushBeforeExit();
+      bypassNextBeforeRemoveRef.current = true;
+      closeTab(tab.id);
+      router.replace("/");
+    } else {
+      await leaveEditor();
+    }
+  }, [tabs.length, tab, closeTab, leaveEditor, router, saveAndFlushBeforeExit]);
+
+  const handleOpenWikiLink = useCallback(
+    async (wikiLinkTitle: string) => {
+      const linkedNoteId = await resolveOrCreateWikiLinkNoteId(wikiLinkTitle);
+      if (linkedNoteId) {
+        openTab(linkedNoteId, wikiLinkTitle);
+        router.push(`/editor?id=${linkedNoteId}`);
+      }
+    },
+    [openTab, router],
+  );
+
   const loadMarkdown = useEditorState((s) => s.loadMarkdown);
   const setCurrentMarkdown = useEditorState((s) => s.setCurrentMarkdown);
   const handleApplyTemplate = useCallback(

@@ -5,6 +5,7 @@ import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import type { Note } from "@/services/notes/types";
 import { useEditorState } from "@/stores/editorStore";
 import { useStorageStore } from "@/stores/storageStore";
+import { useTabStore } from "@/stores/tabStore";
 import {
 	act,
 	fireEvent,
@@ -164,6 +165,7 @@ jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 			markdown: string;
 			onMarkdownChange?: (markdown: string) => void;
 			onInsertTemplateCommand?: () => void;
+			onOpenWikiLink?: (title: string) => void | Promise<void>;
 			command?: { type: string; payload?: Record<string, unknown> };
 		}) => {
 			mockDomEditorRender(props);
@@ -178,6 +180,14 @@ jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 						accessibilityRole: "button",
 					},
 					React.createElement(Text, null, "Trigger insert template"),
+				),
+				React.createElement(
+					Pressable,
+					{
+						onPress: () => props.onOpenWikiLink?.("Project Alpha"),
+						accessibilityRole: "button",
+					},
+					React.createElement(Text, null, "Trigger wiki link"),
 				),
 			);
 		},
@@ -313,6 +323,7 @@ describe("NoteEditorView", () => {
 		latestNavigationOptions = undefined;
 		beforeRemoveListener = undefined;
 		useEditorState.getState().resetState();
+		useTabStore.setState({ tabs: [], activeTabId: null });
 		useStorageStore.setState({
 			initializationStatus: "ready",
 			initializationError: undefined,
@@ -607,6 +618,42 @@ describe("NoteEditorView", () => {
 			noteTypes: ["template"],
 		});
 		expect(screen.getByText("Daily template")).toBeTruthy();
+	});
+
+	it("opens an existing wikilink target in a tab", async () => {
+		const user = userEvent.setup();
+		const note = makeNote();
+		mockIndexListNotes.mockResolvedValue({
+			items: [
+				{
+					noteId: "note-project-alpha",
+					title: "Project Alpha",
+					summary: "",
+					isPinned: false,
+					updatedAt: 1,
+					noteType: "note",
+					status: null,
+				},
+			],
+			cursor: undefined,
+		});
+
+		const result = renderNoteEditor(note);
+
+		await screen.findByText("Mock editor");
+		await user.press(screen.getByText("Trigger wiki link"));
+
+		await waitFor(() => {
+			expect(result.getSearchParams()).toEqual({ id: "note-project-alpha" });
+		});
+		expect(useTabStore.getState().tabs).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					noteId: "note-project-alpha",
+					title: "Project Alpha",
+				}),
+			]),
+		);
 	});
 
 	it("shows templates from fallback note listing when the index is empty", async () => {

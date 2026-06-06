@@ -133,11 +133,6 @@ export function LexicalWikiLinkPlugin({
 			return;
 		}
 
-		const root = editor.getRootElement();
-		if (!root) {
-			return;
-		}
-
 		const handleClick = (event: MouseEvent) => {
 			const title = findWikiLinkTitle(event.target);
 			if (!title) {
@@ -149,11 +144,10 @@ export function LexicalWikiLinkPlugin({
 			void onOpenWikiLink(title);
 		};
 
-		root.addEventListener("click", handleClick);
-
-		return () => {
-			root.removeEventListener("click", handleClick);
-		};
+		return editor.registerRootListener((root, previousRoot) => {
+			previousRoot?.removeEventListener("click", handleClick, true);
+			root?.addEventListener("click", handleClick, true);
+		});
 	}, [editor, onOpenWikiLink]);
 
 	useEffect(() => {
