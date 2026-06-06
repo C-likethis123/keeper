@@ -1,12 +1,17 @@
 import { CodeHighlightNode, CodeNode } from "@lexical/code";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
 import { ListItemNode, ListNode } from "@lexical/list";
+import { CHECK_LIST, UNORDERED_LIST } from "@lexical/markdown";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
 import { createEditor } from "lexical";
 import { ImageNode } from "../ImageNode";
 import { EquationNode } from "../equations/EquationNode";
-import { exportLexicalToMarkdown, importMarkdownToLexical } from "../markdown";
+import {
+	KEEPER_MARKDOWN_TRANSFORMERS,
+	exportLexicalToMarkdown,
+	importMarkdownToLexical,
+} from "../markdown";
 
 function roundTripMarkdown(markdown: string): string {
 	const editor = createEditor({
@@ -64,5 +69,25 @@ describe("Keeper Lexical markdown transformers", () => {
 		const markdown = "```cpp\nint main() {\n\treturn 0;\n}\n```";
 
 		expect(roundTripMarkdown(markdown)).toBe(markdown);
+	});
+
+	it("round-trips unchecked checklist items", () => {
+		expect(roundTripMarkdown("- [ ] Follow up")).toBe("- [ ] Follow up");
+	});
+
+	it("round-trips checked checklist items", () => {
+		expect(roundTripMarkdown("- [x] Done")).toBe("- [x] Done");
+	});
+
+	it("checks checklist markdown before unordered list markdown", () => {
+		const checklistIndex = KEEPER_MARKDOWN_TRANSFORMERS.findIndex(
+			(transformer) => transformer === CHECK_LIST,
+		);
+		const unorderedListIndex = KEEPER_MARKDOWN_TRANSFORMERS.findIndex(
+			(transformer) => transformer === UNORDERED_LIST,
+		);
+
+		expect(checklistIndex).toBeGreaterThanOrEqual(0);
+		expect(checklistIndex).toBeLessThan(unorderedListIndex);
 	});
 });

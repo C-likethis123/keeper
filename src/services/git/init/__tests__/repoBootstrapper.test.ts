@@ -6,6 +6,13 @@ jest.mock("expo-file-system", () => ({
 	Paths: {
 		cache: { uri: "file:///tmp/" },
 		document: { uri: "file:///tmp/" },
+		join: (...parts: string[]) =>
+			parts
+				.map((part, index) =>
+					index === 0 ? part.replace(/\/+$/g, "") : part.replace(/^\/+|\/+$/g, ""),
+				)
+				.filter(Boolean)
+				.join("/"),
 	},
 	Directory: class Directory {
 		exists = mockDirectoryExists;

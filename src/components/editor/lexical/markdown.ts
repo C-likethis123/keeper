@@ -1,6 +1,7 @@
 import {
 	$convertFromMarkdownString,
 	$convertToMarkdownString,
+	CHECK_LIST,
 	TRANSFORMERS,
 	type ElementTransformer,
 	type TextMatchTransformer,
@@ -83,6 +84,7 @@ export const KEEPER_MARKDOWN_TRANSFORMERS = [
 	BLOCK_EQUATION,
 	INLINE_EQUATION,
 	WIKI_LINK,
+	CHECK_LIST,
 	...TRANSFORMERS,
 ];
 

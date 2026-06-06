@@ -4,7 +4,7 @@ import {
 	resolveAttachmentUri,
 } from "@/services/notes/attachmentStorage";
 import { FontAwesome } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	Linking,
 	Pressable,
@@ -68,10 +68,7 @@ export function useDocumentPanelState({
 }: UseDocumentPanelStateOptions) {
 	const [fileUri, setFileUri] = useState<string | null>(null);
 	const [savedPosition, setSavedPosition] = useState<string | null>(null);
-	const [epubBase64, setEpubBase64] = useState<string | null>(null);
-	const [epubHtml, setEpubHtml] = useState<string>("");
-	const [pdfHtml, setPdfHtml] = useState<string>("");
-	const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
+	const [attachmentBase64, setAttachmentBase64] = useState<string | null>(null);
 	const [failedAttachmentType, setFailedAttachmentType] =
 		useState<AttachmentType | null>(null);
 	const positionSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -127,59 +124,22 @@ export function useDocumentPanelState({
 	}, [flushPendingPosition]);
 
 	useEffect(() => {
-		if (attachmentType === "epub") {
-			setEpubHtml(
-				epubBase64 ? buildEpubViewerHtml(theme, epubBase64, savedPosition) : "",
-			);
-			setPdfHtml("");
-		} else if (attachmentType === "pdf") {
-			setPdfHtml(buildPdfViewerHtml(theme));
-			setEpubHtml("");
-		}
-	}, [attachmentType, theme, epubBase64, savedPosition]);
-
-	useEffect(() => {
 		let isCancelled = false;
-		if (!fileUri || attachmentType !== "epub") {
-			setEpubBase64(null);
+		if (!fileUri) {
+			setAttachmentBase64(null);
 			return;
 		}
 
 		setFailedAttachmentType(null);
+		setAttachmentBase64(null);
 		readAttachmentBase64(fileUri)
 			.then((base64) => {
-				if (!isCancelled) setEpubBase64(base64);
+				if (!isCancelled) setAttachmentBase64(base64);
 			})
 			.catch(() => {
 				if (!isCancelled) {
-					setEpubBase64(null);
-					setFailedAttachmentType("epub");
-				}
-			});
-
-		return () => {
-			isCancelled = true;
-		};
-	}, [attachmentType, fileUri, readAttachmentBase64]);
-
-	useEffect(() => {
-		let isCancelled = false;
-		if (!fileUri || attachmentType !== "pdf") {
-			setPdfDataUri(null);
-			return;
-		}
-
-		setFailedAttachmentType(null);
-		readAttachmentBase64(fileUri)
-			.then((base64) => {
-				if (!isCancelled) {
-					setPdfDataUri(`data:application/pdf;base64,${base64}`);
-				}
-			})
-			.catch(() => {
-				if (!isCancelled) {
-					setPdfDataUri(null);
-					setFailedAttachmentType("pdf");
+					setAttachmentBase64(null);
+					setFailedAttachmentType(attachmentType);
 				}
 			});
 
@@ -214,8 +174,26 @@ export function useDocumentPanelState({
 		}
 	}, [fileUri]);
 
+	const epubHtml = useMemo(
+		() =>
+			attachmentType === "epub" && attachmentBase64
+				? buildEpubViewerHtml(theme, attachmentBase64, savedPosition)
+				: "",
+		[attachmentBase64, attachmentType, savedPosition, theme],
+	);
+
+	const pdfHtml = useMemo(
+		() => (attachmentType === "pdf" ? buildPdfViewerHtml(theme) : ""),
+		[attachmentType, theme],
+	);
+
+	const pdfDataUri =
+		attachmentType === "pdf" && attachmentBase64
+			? `data:application/pdf;base64,${attachmentBase64}`
+			: null;
+
 	const pdfOpenMessage =
-		pdfDataUri && attachmentType === "pdf"
+		pdfDataUri
 			? JSON.stringify({
 					type: "open",
 					fileUri: pdfDataUri,
@@ -233,8 +211,8 @@ export function useDocumentPanelState({
 			failedAttachmentType !== "pdf");
 
 	return {
-		epubBase64,
 		epubHtml,
+		failedAttachmentType,
 		fileUri,
 		filename,
 		handleOpenExternally,
