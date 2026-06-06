@@ -750,7 +750,7 @@ export async function deleteCluster(
 
 // ─── Cluster Feedback ───────────────────────────────────────
 
-export interface ClusterFeedbackRow {
+interface ClusterFeedbackRow {
 	id: number;
 	cluster_id: string;
 	event_type: string;

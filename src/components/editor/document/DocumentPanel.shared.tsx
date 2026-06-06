@@ -35,9 +35,9 @@ export interface DocumentPanelProps {
 	theme?: "light" | "dark";
 }
 
-export type ReadAttachmentBase64 = (fileUri: string) => Promise<string>;
+type ReadAttachmentBase64 = (fileUri: string) => Promise<string>;
 
-export type DocumentViewerMessage = {
+type DocumentViewerMessage = {
 	type: string;
 	cfi?: string;
 	page?: string;

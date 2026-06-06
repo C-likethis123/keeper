@@ -1,7 +1,7 @@
 import type { DocumentSelection } from "@/components/editor/core/Selection";
 import { create } from "zustand";
 
-export interface BlockSelection {
+interface BlockSelection {
   readonly start: number;
   readonly end: number;
 }
@@ -22,7 +22,7 @@ interface EditorStoreSlice {
   preparedVersion: number | null;
 }
 
-export interface EditorStoreState extends EditorStoreSlice {
+interface EditorStoreState extends EditorStoreSlice {
   loadMarkdown: (markdown: string) => void;
   setCurrentMarkdown: (markdown: string) => void;
   toMarkdown: () => string;

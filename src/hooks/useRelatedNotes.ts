@@ -6,7 +6,7 @@ import {
 import type { Note } from "@/services/notes/types";
 import { useEffect, useState } from "react";
 
-export interface RelatedNotesResult {
+interface RelatedNotesResult {
 	backlinks: Note[];
 	outgoing: Note[];
 	loading: boolean;

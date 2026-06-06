@@ -59,4 +59,10 @@ describe("Keeper Lexical markdown transformers", () => {
 			"Inline $x = y + z$ equation",
 		);
 	});
+
+	it("round-trips fenced code block language through CodeNode", () => {
+		const markdown = "```cpp\nint main() {\n\treturn 0;\n}\n```";
+
+		expect(roundTripMarkdown(markdown)).toBe(markdown);
+	});
 });

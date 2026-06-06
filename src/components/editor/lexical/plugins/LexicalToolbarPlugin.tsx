@@ -10,7 +10,7 @@ import React from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { IconButton } from "@/components/shared/IconButton";
 
-export interface LexicalToolbarPluginProps {
+interface LexicalToolbarPluginProps {
 	hasAttachment?: boolean;
 	onAttachDocument?: () => void;
 	onInsertImage?: () => void;

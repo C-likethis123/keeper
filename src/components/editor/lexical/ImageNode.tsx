@@ -10,7 +10,7 @@ import { Suspense } from "react";
 
 const ImageComponent = React.lazy(() => import("./ImageComponent"));
 
-export interface SerializedImageNode
+interface SerializedImageNode
 	extends Spread<{ src: string; altText: string }, SerializedLexicalNode> {}
 
 export class ImageNode extends DecoratorNode<JSX.Element> {

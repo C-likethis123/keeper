@@ -57,6 +57,7 @@ import {
 import {
 	$createParagraphNode,
 	$createTextNode,
+	$getRoot,
 	$getSelection,
 	$insertNodes,
 	$isRangeSelection,
@@ -77,7 +78,7 @@ import {
 } from "./markdown";
 import { LexicalWikiLinkPlugin } from "./wikilinks/LexicalWikiLinkPlugin";
 
-export interface LexicalEditorCommand {
+interface LexicalEditorCommand {
 	type: string;
 	payload?: Record<string, unknown>;
 	timestamp: number;
@@ -271,7 +272,15 @@ function insertImageCommand(
 	const altText = typeof payload?.altText === "string" ? payload.altText : "";
 
 	editor.update(() => {
-		$insertNodes([$createImageNode(src, altText)]);
+		const imageNode = $createImageNode(src, altText);
+		const selection = $getSelection();
+
+		if ($isRangeSelection(selection)) {
+			$insertNodes([imageNode]);
+			return;
+		}
+
+		$getRoot().append(imageNode);
 	});
 }
 
@@ -399,6 +408,32 @@ export default function LexicalMarkdownEditor({
 					listitemUnchecked: "keeper-check-item keeper-check-item-unchecked",
 				},
 				code: "keeper-code",
+				codeHighlight: {
+					attr: "keeper-token-attr",
+					boolean: "keeper-token-constant",
+					builtin: "keeper-token-builtin",
+					"class-name": "keeper-token-class",
+					comment: "keeper-token-comment",
+					constant: "keeper-token-constant",
+					deleted: "keeper-token-deleted",
+					doctype: "keeper-token-comment",
+					function: "keeper-token-function",
+					inserted: "keeper-token-inserted",
+					keyword: "keeper-token-keyword",
+					namespace: "keeper-token-namespace",
+					number: "keeper-token-number",
+					operator: "keeper-token-operator",
+					prolog: "keeper-token-comment",
+					property: "keeper-token-property",
+					punctuation: "keeper-token-punctuation",
+					regex: "keeper-token-string",
+					selector: "keeper-token-selector",
+					string: "keeper-token-string",
+					symbol: "keeper-token-symbol",
+					tag: "keeper-token-tag",
+					url: "keeper-token-string",
+					variable: "keeper-token-variable",
+				},
 				quote: "keeper-quote",
 				link: "keeper-link",
 				text: {
@@ -471,6 +506,24 @@ export default function LexicalMarkdownEditor({
 					padding: 12px;
 					white-space: pre;
 				}
+				.keeper-token-comment { color: ${themeMode === "light" ? "#6A737D" : "#8B949E"}; font-style: italic; }
+				.keeper-token-keyword,
+				.keeper-token-selector,
+				.keeper-token-tag { color: ${themeMode === "light" ? "#D73A49" : "#FF7B72"}; }
+				.keeper-token-string,
+				.keeper-token-inserted { color: ${themeMode === "light" ? "#032F62" : "#A5D6FF"}; }
+				.keeper-token-function,
+				.keeper-token-builtin { color: ${themeMode === "light" ? "#6F42C1" : "#D2A8FF"}; }
+				.keeper-token-class,
+				.keeper-token-property,
+				.keeper-token-namespace { color: ${themeMode === "light" ? "#E36209" : "#FFA657"}; }
+				.keeper-token-number,
+				.keeper-token-constant,
+				.keeper-token-symbol,
+				.keeper-token-variable { color: ${themeMode === "light" ? "#005CC5" : "#79C0FF"}; }
+				.keeper-token-operator,
+				.keeper-token-punctuation { color: ${themeMode === "light" ? "#24292E" : "#C9D1D9"}; }
+				.keeper-token-deleted { color: ${themeMode === "light" ? "#B31D28" : "#FFA198"}; }
 					.keeper-inline-code {
 						background: ${palette.card};
 						border-radius: 4px;

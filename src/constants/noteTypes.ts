@@ -1,6 +1,6 @@
 import type { NoteStatus, NoteType } from "@/services/notes/types";
 
-export type FilterOption<T extends string> = {
+type FilterOption<T extends string> = {
 	label: string;
 	value?: T;
 };

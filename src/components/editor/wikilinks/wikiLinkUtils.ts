@@ -7,7 +7,7 @@ import {
 import type { NoteStatus } from "@/services/notes/types";
 import { nanoid } from "nanoid";
 
-export interface WikiLinkActivationEvent {
+interface WikiLinkActivationEvent {
 	nativeEvent?: {
 		metaKey?: boolean;
 		ctrlKey?: boolean;

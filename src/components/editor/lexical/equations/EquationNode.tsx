@@ -10,7 +10,7 @@ import { Suspense } from "react";
 
 const EquationComponent = React.lazy(() => import("./EquationComponent"));
 
-export interface SerializedEquationNode
+interface SerializedEquationNode
 	extends Spread<
 		{ equation: string; inline: boolean },
 		SerializedLexicalNode
