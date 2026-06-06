@@ -40,7 +40,7 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
 	}
 
 	createDOM(_config: EditorConfig): HTMLElement {
-		const element = document.createElement("img");
+		const element = document.createElement("div");
 		element.className = "image-node";
 		return element;
 	}

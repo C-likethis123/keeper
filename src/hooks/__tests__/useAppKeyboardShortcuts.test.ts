@@ -1,20 +1,110 @@
-/**
- * @jest-environment jsdom
- */
-import { act, renderHook } from "@testing-library/react-native";
+import { act, cleanup, renderHook } from "@testing-library/react-native";
 import { Platform } from "react-native";
 import { useAppKeyboardShortcuts } from "../useAppKeyboardShortcuts";
 
+class TestKeyboardEvent extends Event {
+	key: string;
+	code: string;
+	metaKey: boolean;
+	ctrlKey: boolean;
+	altKey: boolean;
+	shiftKey: boolean;
+
+	constructor(
+		type: string,
+		init: KeyboardEventInit & { key: string; code: string },
+	) {
+		super(type, init);
+		this.key = init.key;
+		this.code = init.code;
+		this.metaKey = init.metaKey ?? false;
+		this.ctrlKey = init.ctrlKey ?? false;
+		this.altKey = init.altKey ?? false;
+		this.shiftKey = init.shiftKey ?? false;
+	}
+}
+
+class TestDocument {
+	private listeners = new Set<EventListenerOrEventListenerObject>();
+
+	addEventListener(
+		type: string,
+		listener: EventListenerOrEventListenerObject | null,
+	) {
+		if (type === "keydown" && listener) {
+			this.listeners.add(listener);
+		}
+	}
+
+	removeEventListener(
+		type: string,
+		listener: EventListenerOrEventListenerObject | null,
+	) {
+		if (type === "keydown" && listener) {
+			this.listeners.delete(listener);
+		}
+	}
+
+	dispatchEvent(event: Event) {
+		for (const listener of Array.from(this.listeners)) {
+			if (typeof listener === "function") {
+				listener(event);
+			} else {
+				listener.handleEvent(event);
+			}
+		}
+		return !event.defaultPrevented;
+	}
+}
+
 describe("useAppKeyboardShortcuts", () => {
 	let originalOS: typeof Platform.OS;
+	let originalDocument: typeof globalThis.document;
+	let originalKeyboardEvent: typeof globalThis.KeyboardEvent;
+	let testDocument: Document;
 
 	beforeAll(() => {
 		originalOS = Platform.OS;
+		originalDocument = globalThis.document;
+		originalKeyboardEvent = globalThis.KeyboardEvent;
+		Object.defineProperty(globalThis, "document", {
+			configurable: true,
+			value: undefined,
+			writable: true,
+		});
+		Object.defineProperty(globalThis, "KeyboardEvent", {
+			configurable: true,
+			value: TestKeyboardEvent,
+			writable: true,
+		});
 		(Platform as unknown as { OS: string }).OS = "web";
+	});
+
+	beforeEach(() => {
+		testDocument = new TestDocument() as unknown as Document;
+		Object.defineProperty(globalThis, "document", {
+			configurable: true,
+			value: testDocument,
+			writable: true,
+		});
 	});
 
 	afterAll(() => {
 		(Platform as unknown as { OS: string }).OS = originalOS;
+		Object.defineProperty(globalThis, "document", {
+			configurable: true,
+			value: originalDocument,
+			writable: true,
+		});
+		Object.defineProperty(globalThis, "KeyboardEvent", {
+			configurable: true,
+			value: originalKeyboardEvent,
+			writable: true,
+		});
+	});
+
+	afterEach(() => {
+		cleanup();
 	});
 
 	function fireKey(
@@ -132,7 +222,9 @@ describe("useAppKeyboardShortcuts", () => {
 			useAppKeyboardShortcuts({ onCreateNote }),
 		);
 
-		unmount();
+		act(() => {
+			unmount();
+		});
 		fireKey("n", { metaKey: true });
 
 		expect(onCreateNote).not.toHaveBeenCalled();

@@ -406,6 +406,9 @@ export default function LexicalMarkdownEditor({
 					checklist: "keeper-list keeper-checklist",
 					listitemChecked: "keeper-check-item keeper-check-item-checked",
 					listitemUnchecked: "keeper-check-item keeper-check-item-unchecked",
+					nested: {
+						listitem: "keeper-nested-list-item",
+					},
 				},
 				code: "keeper-code",
 				codeHighlight: {
@@ -495,8 +498,13 @@ export default function LexicalMarkdownEditor({
 				.keeper-heading-h3 { font-size: 20px; }
 				.keeper-list { margin: 8px 0; padding-left: 28px; }
 				.keeper-list-item { margin: 4px 0; }
+				.keeper-nested-list-item { list-style-type: none; }
 				.keeper-check-item { list-style: none; margin: 4px 0; }
 				.keeper-check-item-checked { text-decoration: line-through; opacity: 0.7; }
+				.image-node {
+					margin: 12px 0;
+					max-width: 100%;
+				}
 				.keeper-code {
 					background: ${palette.card};
 					border: 1px solid ${palette.border};

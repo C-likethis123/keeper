@@ -35,6 +35,9 @@ jest.mock("expo-router", () => ({
 		const { Text } = require("react-native");
 		return React.createElement(Text, null, "Stack");
 	},
+	useRouter: () => ({
+		push: jest.fn(),
+	}),
 }));
 
 jest.mock("expo-router/drawer", () => ({
@@ -74,6 +77,10 @@ jest.mock("react-native-gesture-handler", () => ({
 	}: {
 		children: React.ReactNode;
 	}) => children,
+}));
+
+jest.mock("react-native-safe-area-context", () => ({
+	SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 jest.mock("@/components/shared/StartupScreen", () => ({

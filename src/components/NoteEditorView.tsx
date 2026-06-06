@@ -10,6 +10,7 @@ import { useNoteEditorLayout } from "@/hooks/useNoteEditorLayout";
 import { useRelatedNotes } from "@/hooks/useRelatedNotes";
 import { useStyles } from "@/hooks/useStyles";
 import { GitService } from "@/services/git/gitService";
+import { NOTES_ROOT } from "@/services/notes/Notes";
 import {
   type AttachmentType,
   copyPickedAttachmentToNote,
@@ -683,6 +684,9 @@ export default function NoteEditorView({
               onToggleRelatedNotes={() => setShowRelatedNotes((v) => !v)}
               command={lastCommand}
               dom={{
+                allowFileAccess: true,
+                allowFileAccessFromFileURLs: true,
+                allowingReadAccessToURL: NOTES_ROOT,
                 scrollEnabled: false,
                 style: { flex: 1 },
               }}
