@@ -43,11 +43,11 @@ export async function notesIndexDbHasRows(): Promise<boolean> {
 }
 
 export async function notesIndexDbUpsert(_item: NoteIndexItem): Promise<void> {
-	// On desktop, upserts go through TauriStorageEngine.indexUpsert — this path is unreachable.
+	// On desktop, upserts go through PlatformStorageEngine.indexUpsert; this path is unreachable.
 }
 
 export async function notesIndexDbDelete(_noteId: string): Promise<void> {
-	// On desktop, deletes go through TauriStorageEngine.indexDelete — this path is unreachable.
+	// On desktop, deletes go through PlatformStorageEngine.indexDelete; this path is unreachable.
 }
 
 export async function notesIndexDbGetById(

@@ -65,7 +65,9 @@ import {
 	$getSelection,
 	$insertNodes,
 	$isRangeSelection,
+	$isTextNode,
 	COMMAND_PRIORITY_EDITOR,
+	HISTORY_PUSH_TAG,
 	INDENT_CONTENT_COMMAND,
 	KEY_TAB_COMMAND,
 	type LexicalEditor,
@@ -391,6 +393,38 @@ function ChangePlugin({
 	return null;
 }
 
+function InlineCodeMarkdownExitPlugin() {
+	const [editor] = useLexicalComposerContext();
+
+	useEffect(() => {
+		return editor.registerUpdateListener(({ tags }) => {
+			if (!tags.has(HISTORY_PUSH_TAG)) {
+				return;
+			}
+
+			editor.update(() => {
+				const selection = $getSelection();
+				if (
+					!$isRangeSelection(selection) ||
+					!selection.isCollapsed() ||
+					!selection.hasFormat("code")
+				) {
+					return;
+				}
+
+				const anchorNode = selection.anchor.getNode();
+				if (!$isTextNode(anchorNode) || !anchorNode.hasFormat("code")) {
+					return;
+				}
+
+				selection.toggleFormat("code");
+			});
+		});
+	}, [editor]);
+
+	return null;
+}
+
 export default function LexicalMarkdownEditor({
 	command,
 	hasAttachment = false,
@@ -701,6 +735,7 @@ export default function LexicalMarkdownEditor({
 					<TablePlugin />
 					<EquationPlugin />
 					<MarkdownShortcutPlugin transformers={KEEPER_MARKDOWN_TRANSFORMERS} />
+					<InlineCodeMarkdownExitPlugin />
 					<ChecklistMarkdownPrefixPlugin />
 					<TodoTriggerPlugin />
 					<TabIndentationPlugin />

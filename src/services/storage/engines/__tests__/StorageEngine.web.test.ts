@@ -4,7 +4,7 @@ jest.mock("@/services/storage/runtime", () => ({
 	getTauriInvoke: () => mockGetTauriInvoke(),
 }));
 
-describe("TauriStorageEngine", () => {
+describe("StorageEngine.web", () => {
 	beforeEach(() => {
 		jest.resetModules();
 		mockGetTauriInvoke.mockReset();
@@ -22,8 +22,8 @@ describe("TauriStorageEngine", () => {
 		});
 		mockGetTauriInvoke.mockReturnValue(invoke);
 
-		const { TauriStorageEngine } = await import("../TauriStorageEngine");
-		const engine = new TauriStorageEngine();
+		const { PlatformStorageEngine } = await import("../StorageEngine.web");
+		const engine = new PlatformStorageEngine();
 
 		await expect(engine.loadNote("tmpl-1")).resolves.toEqual({
 			id: "tmpl-1",
@@ -42,8 +42,8 @@ describe("TauriStorageEngine", () => {
 		const invoke = jest.fn().mockResolvedValue(456);
 		mockGetTauriInvoke.mockReturnValue(invoke);
 
-		const { TauriStorageEngine } = await import("../TauriStorageEngine");
-		const engine = new TauriStorageEngine();
+		const { PlatformStorageEngine } = await import("../StorageEngine.web");
+		const engine = new PlatformStorageEngine();
 
 		const result = await engine.saveNote({
 			id: "tmpl-1",
@@ -87,8 +87,8 @@ describe("TauriStorageEngine", () => {
 		const invoke = jest.fn().mockResolvedValue(true);
 		mockGetTauriInvoke.mockReturnValue(invoke);
 
-		const { TauriStorageEngine } = await import("../TauriStorageEngine");
-		const engine = new TauriStorageEngine();
+		const { PlatformStorageEngine } = await import("../StorageEngine.web");
+		const engine = new PlatformStorageEngine();
 
 		await expect(engine.deleteNote("tmpl-1")).resolves.toBe(true);
 		expect(invoke).toHaveBeenCalledTimes(1);
@@ -102,8 +102,8 @@ describe("TauriStorageEngine", () => {
 		});
 		mockGetTauriInvoke.mockReturnValue(invoke);
 
-		const { TauriStorageEngine } = await import("../TauriStorageEngine");
-		const engine = new TauriStorageEngine();
+		const { PlatformStorageEngine } = await import("../StorageEngine.web");
+		const engine = new PlatformStorageEngine();
 
 		await engine.indexList("", 100, 0, {
 			noteTypes: ["template"],

@@ -76,22 +76,22 @@ export function useAutoSave({
 		normalizeMarkdownForPersistence(initialContent),
 	);
 	const hasEditorContentChangedRef = useRef(false);
+	latestNoteRef.current = {
+		id,
+		title,
+		isPinned,
+		noteType,
+		status: noteStatus,
+		attachment,
+		attachedVideo,
+		resourceUrl,
+		documentPositions,
+	};
 
 	useEffect(() => {
 		const normalizedInitialContent =
 			normalizeMarkdownForPersistence(initialContent);
 		latestInitialContentRef.current = normalizedInitialContent;
-		latestNoteRef.current = {
-			id,
-			title,
-			isPinned,
-			noteType,
-			status: noteStatus,
-			attachment,
-			attachedVideo,
-			resourceUrl,
-			documentPositions,
-		};
 		lastInputAtRef.current = Date.now();
 
 		if (lastSavedRef.current?.id !== id) {

@@ -1,7 +1,7 @@
-import { MobileStorageEngine } from "@/services/storage/engines/MobileStorageEngine";
-import type { StorageEngine } from "@/services/storage/engines/StorageEngine";
+import { PlatformStorageEngine } from "@/services/storage/engines/StorageEngine";
+import type { StorageEngine } from "@/services/storage/types";
 
-export const storageEngine: StorageEngine = new MobileStorageEngine();
+export const storageEngine: StorageEngine = new PlatformStorageEngine();
 
 // Alias for compatibility
 export const getStorageEngine = () => storageEngine;

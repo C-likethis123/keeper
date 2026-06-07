@@ -1,4 +1,5 @@
 import { Directory, File } from "expo-file-system";
+import { GitService } from "@/services/git/gitService";
 import { NOTES_ROOT } from "./Notes";
 
 export type AttachmentType = "pdf" | "epub";
@@ -46,4 +47,6 @@ export async function deleteAttachment(relativePath: string): Promise<void> {
   if (file.exists) {
     file.delete();
   }
+  await GitService.queueChangeAsync(relativePath, "delete");
+  GitService.scheduleCommitBatch();
 }

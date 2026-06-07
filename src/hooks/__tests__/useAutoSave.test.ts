@@ -266,10 +266,10 @@ describe("useAutoSave", () => {
 
 	it("persists attached video metadata changes with the current markdown", async () => {
 		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
-			const { rerender } = renderHook<
-				UseAutoSaveResult,
-				{ attachedVideo: string | null }
-			>(
+		const { rerender } = renderHook<
+			UseAutoSaveResult,
+			{ attachedVideo: string | null }
+		>(
 			({ attachedVideo }) =>
 				useAutoSave({
 					id: "note-1",
@@ -307,6 +307,52 @@ describe("useAutoSave", () => {
 				attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 				isNewEntry: false,
 			});
+		});
+	});
+
+	it("force saves cleared document metadata from the latest render", async () => {
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		const { result, rerender } = renderHook<
+			UseAutoSaveResult,
+			{
+				attachment: string | null;
+				documentPositions: Record<string, string> | null;
+			}
+		>(
+			({ attachment, documentPositions }) =>
+				useAutoSave({
+					id: "note-1",
+					title: "Draft note",
+					content: "Initial body",
+					isPinned: false,
+					noteType: "note",
+					attachment,
+					documentPositions,
+				}),
+			{
+				initialProps: {
+					attachment: "_attachments/paper.pdf",
+					documentPositions: { "_attachments/paper.pdf": "4" },
+				},
+			},
+		);
+
+		rerender({ attachment: null, documentPositions: null });
+
+		await act(async () => {
+			await result.current.forceSave();
+		});
+
+		expect(persistEditorEntry).toHaveBeenCalledWith({
+			id: "note-1",
+			title: "Draft note",
+			content: "Initial body",
+			isPinned: false,
+			noteType: "note",
+			status: undefined,
+			attachment: null,
+			documentPositions: null,
+			isNewEntry: false,
 		});
 	});
 

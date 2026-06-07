@@ -138,6 +138,23 @@ describe("GitJournal", () => {
 		expect(mockIndexDelete).toHaveBeenCalledWith("deleted-note");
 	});
 
+	it("does not treat deleted attachments as deleted notes during recovery", async () => {
+		const stateStore = new MemoryGitSyncStateStore();
+		stateStore.journal = [
+			{
+				filePath: "_attachments/paper.pdf",
+				operation: "delete",
+				updatedAt: 100,
+			},
+		];
+		const journal = new GitJournal(stateStore);
+
+		await expect(journal.restorePendingChanges()).resolves.toBe(true);
+
+		expect(mockStorageDeleteNote).not.toHaveBeenCalled();
+		expect(mockIndexDelete).not.toHaveBeenCalled();
+	});
+
 	it("removes only entries from the flushed snapshot", async () => {
 		const stateStore = new MemoryGitSyncStateStore();
 		const flushed = {

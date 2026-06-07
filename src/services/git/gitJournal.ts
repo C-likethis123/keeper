@@ -97,6 +97,10 @@ export class GitJournal {
 			let restored = false;
 			for (const entry of journal) {
 				if (entry.operation === "delete") {
+					if (!entry.filePath.endsWith(".md")) {
+						restored = true;
+						continue;
+					}
 					const noteId = entry.filePath.replace(/\.md$/, "");
 					await storageEngine.deleteNote(noteId);
 					await NotesIndexService.deleteNote(noteId);

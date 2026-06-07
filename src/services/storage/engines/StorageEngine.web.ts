@@ -1,15 +1,13 @@
 import type { NotesIndexRebuildMetrics } from "@/services/notes/notesIndexDb";
 import type { Note, NoteSaveInput } from "@/services/notes/types";
-import type {
-	NoteFileEntry,
-	StorageEngine,
-	StorageInitializeResult,
-} from "@/services/storage/engines/StorageEngine";
 import { getTauriInvoke } from "@/services/storage/runtime";
 import type {
+	NoteFileEntry,
 	NoteIndexListResult,
 	NoteIndexPersistenceItem,
 	NoteIndexQueryFilters,
+	StorageEngine,
+	StorageInitializeResult,
 } from "@/services/storage/types";
 
 type ReadEntryResult = {
@@ -31,7 +29,7 @@ type ReadEntryResult = {
 
 type TauriInvoke = NonNullable<ReturnType<typeof getTauriInvoke>>;
 
-export class TauriStorageEngine implements StorageEngine {
+export class PlatformStorageEngine implements StorageEngine {
 	private readonly invoke: TauriInvoke;
 
 	constructor() {
@@ -56,7 +54,7 @@ export class TauriStorageEngine implements StorageEngine {
 
 	async saveNote(note: NoteSaveInput): Promise<Note> {
 		const modified = Date.now();
-		const updatedAt = await this.invoke<number>("write_note", {
+		await this.invoke<number>("write_note", {
 			input: {
 				id: note.id,
 				title: note.title,
