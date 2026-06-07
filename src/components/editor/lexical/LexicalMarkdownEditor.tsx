@@ -77,6 +77,7 @@ import {
 	importMarkdownToLexical,
 } from "./markdown";
 import { registerChecklistMarkdownPrefixTransform } from "./plugins/checklistMarkdownPrefix";
+import { registerTodoTriggerTransform } from "./plugins/todoTriggerTransform";
 import { LexicalWikiLinkPlugin } from "./wikilinks/LexicalWikiLinkPlugin";
 
 interface LexicalEditorCommand {
@@ -186,6 +187,16 @@ function ChecklistMarkdownPrefixPlugin() {
 
 	useEffect(() => {
 		return registerChecklistMarkdownPrefixTransform(editor);
+	}, [editor]);
+
+	return null;
+}
+
+function TodoTriggerPlugin() {
+	const [editor] = useLexicalComposerContext();
+
+	useEffect(() => {
+		return registerTodoTriggerTransform(editor);
 	}, [editor]);
 
 	return null;
@@ -667,6 +678,7 @@ export default function LexicalMarkdownEditor({
 					<EquationPlugin />
 					<MarkdownShortcutPlugin transformers={KEEPER_MARKDOWN_TRANSFORMERS} />
 					<ChecklistMarkdownPrefixPlugin />
+					<TodoTriggerPlugin />
 					<TabIndentationPlugin />
 					<ChangePlugin onMarkdownChange={onMarkdownChange} />
 					<CommandPlugin command={command} />

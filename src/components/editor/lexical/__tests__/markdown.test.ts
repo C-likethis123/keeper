@@ -4,7 +4,7 @@ import { ListItemNode, ListNode } from "@lexical/list";
 import { CHECK_LIST, UNORDERED_LIST } from "@lexical/markdown";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
-import { createEditor } from "lexical";
+import { $getRoot, createEditor } from "lexical";
 import { ImageNode } from "../ImageNode";
 import { EquationNode } from "../equations/EquationNode";
 import {
@@ -13,6 +13,7 @@ import {
 	importMarkdownToLexical,
 } from "../markdown";
 import { registerChecklistMarkdownPrefixTransform } from "../plugins/checklistMarkdownPrefix";
+import { convertTodoTriggerAtSelection } from "../plugins/todoTriggerTransform";
 
 function roundTripMarkdown(markdown: string): string {
 	const editor = createEditor({
@@ -113,5 +114,72 @@ describe("Keeper Lexical markdown transformers", () => {
 		unregister();
 
 		expect(result).toBe("- [x] test");
+	});
+
+	it("does not convert a TODO trigger while text is still being edited", () => {
+		const editor = createEditor({
+			namespace: "KeeperTodoTriggerIdleTest",
+			nodes: [LinkNode],
+			onError: (error) => {
+				throw error;
+			},
+		});
+
+		let result = "";
+		editor.update(
+			() => {
+				importMarkdownToLexical("TODO: B");
+				result = exportLexicalToMarkdown();
+			},
+			{ discrete: true },
+		);
+
+		expect(result).toBe("TODO: B");
+	});
+
+	it("converts a TODO trigger into a wiki link when leaving the paragraph", () => {
+		const editor = createEditor({
+			namespace: "KeeperTodoTriggerTest",
+			nodes: [LinkNode],
+			onError: (error) => {
+				throw error;
+			},
+		});
+
+		let result = "";
+		editor.update(
+			() => {
+				importMarkdownToLexical("TODO: Buy milk");
+				$getRoot().getFirstChild()?.selectEnd();
+				convertTodoTriggerAtSelection();
+				result = exportLexicalToMarkdown();
+			},
+			{ discrete: true },
+		);
+
+		expect(result).toBe("TODO: [[Buy milk]]");
+	});
+
+	it("preserves the accepted TODO trigger keyword and separator", () => {
+		const editor = createEditor({
+			namespace: "KeeperTodoTriggerNoColonTest",
+			nodes: [LinkNode],
+			onError: (error) => {
+				throw error;
+			},
+		});
+
+		let result = "";
+		editor.update(
+			() => {
+				importMarkdownToLexical("todo Call Alice");
+				$getRoot().getFirstChild()?.selectEnd();
+				convertTodoTriggerAtSelection();
+				result = exportLexicalToMarkdown();
+			},
+			{ discrete: true },
+		);
+
+		expect(result).toBe("todo [[Call Alice]]");
 	});
 });
