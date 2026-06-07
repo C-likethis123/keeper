@@ -1,21 +1,6 @@
-import type { DocumentSelection } from "@/components/editor/core/Selection";
 import { create } from "zustand";
 
-interface BlockSelection {
-  readonly start: number;
-  readonly end: number;
-}
-
-interface GapSelection {
-  readonly index: number;
-}
-
 interface EditorStoreSlice {
-  selection: DocumentSelection | null;
-  blockSelection: BlockSelection | null;
-  blockSelectionAnchor: number | null;
-  gapSelection: GapSelection | null;
-  isComposing: boolean;
   currentMarkdown: string | null;
   markdownVersion: number;
   preparedMarkdown: string | null;
@@ -34,11 +19,6 @@ interface EditorStoreState extends EditorStoreSlice {
 }
 
 const initialEditorStoreSlice = (): EditorStoreSlice => ({
-  selection: null,
-  blockSelection: null,
-  blockSelectionAnchor: null,
-  gapSelection: null,
-  isComposing: false,
   currentMarkdown: null,
   markdownVersion: 0,
   preparedMarkdown: null,

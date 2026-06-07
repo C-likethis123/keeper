@@ -66,7 +66,6 @@ describe("editorStore", () => {
 		useEditorState.getState().resetState();
 
 		const state = useEditorState.getState();
-		expect(state.selection).toBeNull();
 		expect(state.currentMarkdown).toBeNull();
 		expect(state.markdownVersion).toBe(0);
 		expect(state.getPreparedContent()).toBeNull();
