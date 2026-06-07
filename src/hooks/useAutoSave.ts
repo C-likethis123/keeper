@@ -329,20 +329,6 @@ export function useAutoSave({
 
 			const nextContent = state.getContentForVersion(nextMarkdownVersion);
 			if (nextContent === latestInitialContentRef.current) {
-				const currentNote = latestNoteRef.current;
-				lastSavedRef.current = {
-					id: currentNote.id,
-					title: currentNote.title.trim(),
-					content: latestInitialContentRef.current,
-					isPinned: currentNote.isPinned,
-					lastUpdated: Date.now(),
-					noteType: currentNote.noteType,
-					status: currentNote.status,
-					attachment: currentNote.attachment,
-					attachedVideo: currentNote.attachedVideo,
-					resourceUrl: currentNote.resourceUrl,
-					documentPositions: currentNote.documentPositions,
-				};
 				hasEditorContentChangedRef.current = false;
 				return;
 			}

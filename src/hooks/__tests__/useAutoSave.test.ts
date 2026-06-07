@@ -184,6 +184,48 @@ describe("useAutoSave", () => {
 		expect(persistEditorEntry).not.toHaveBeenCalled();
 	});
 
+	it("does not mark unsaved title changes as saved when editor reports baseline content", async () => {
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		const { result, rerender } = renderHook<
+			UseAutoSaveResult,
+			{ title: string }
+		>(
+			({ title }) =>
+				useAutoSave({
+					id: "note-1",
+					title,
+					content: "Initial body",
+					isPinned: false,
+					noteType: "note",
+				}),
+			{
+				initialProps: { title: "Draft note" },
+			},
+		);
+
+		rerender({ title: "Renamed note" });
+		act(() => {
+			useEditorState.getState().setCurrentMarkdown("Edited body");
+		});
+		act(() => {
+			useEditorState.getState().setCurrentMarkdown("Initial body");
+		});
+
+		await act(async () => {
+			await result.current.forceSave();
+		});
+
+		expect(persistEditorEntry).toHaveBeenCalledWith({
+			id: "note-1",
+			title: "Renamed note",
+			content: "Initial body",
+			isPinned: false,
+			noteType: "note",
+			status: undefined,
+			isNewEntry: false,
+		});
+	});
+
 	it("persists dirty note changes after the idle interval and returns to idle after saved status", async () => {
 		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
 		const onPersisted = jest.fn();

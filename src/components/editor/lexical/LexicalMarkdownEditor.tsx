@@ -65,7 +65,6 @@ import {
 	$getSelection,
 	$insertNodes,
 	$isRangeSelection,
-	$isTextNode,
 	COMMAND_PRIORITY_EDITOR,
 	HISTORY_PUSH_TAG,
 	INDENT_CONTENT_COMMAND,
@@ -409,11 +408,6 @@ function InlineCodeMarkdownExitPlugin() {
 					!selection.isCollapsed() ||
 					!selection.hasFormat("code")
 				) {
-					return;
-				}
-
-				const anchorNode = selection.anchor.getNode();
-				if (!$isTextNode(anchorNode) || !anchorNode.hasFormat("code")) {
 					return;
 				}
 
