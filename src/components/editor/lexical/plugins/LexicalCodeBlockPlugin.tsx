@@ -18,87 +18,19 @@ import {
 } from "lexical";
 import type React from "react";
 import { useEffect } from "react";
+import {
+	handleBackspace,
+	handleCodeTextInsertion,
+	handleEnter,
+	type SmartEditResult,
+	handleTab,
+} from "./codeBlockSmartEdit";
 
 interface CodeSelectionContext {
 	codeNode: CodeNode;
 	cursorOffset: number;
 	selection: ReturnType<typeof $getSelection>;
 	text: string;
-}
-
-interface SmartEditResult {
-	handled: boolean;
-	newCursorOffset: number;
-	newText: string;
-}
-
-const INDENT = "\t";
-
-function getLineBeforeCursor(text: string, cursorOffset: number) {
-	const lineStart = text.lastIndexOf("\n", cursorOffset - 1) + 1;
-	return text.slice(lineStart, cursorOffset);
-}
-
-function getLineIndent(text: string) {
-	return text.match(/^\s*/)?.[0] ?? "";
-}
-
-function insertTextAtCursor(
-	text: string,
-	cursorOffset: number,
-	insertedText: string,
-): SmartEditResult {
-	return {
-		handled: true,
-		newCursorOffset: cursorOffset + insertedText.length,
-		newText: text.slice(0, cursorOffset) + insertedText + text.slice(cursorOffset),
-	};
-}
-
-function handleTab(
-	text: string,
-	cursorOffset: number,
-	shouldOutdent: boolean,
-): SmartEditResult {
-	if (!shouldOutdent) {
-		return insertTextAtCursor(text, cursorOffset, INDENT);
-	}
-
-	const lineBeforeCursor = getLineBeforeCursor(text, cursorOffset);
-	if (lineBeforeCursor.endsWith(INDENT)) {
-		return {
-			handled: true,
-			newCursorOffset: cursorOffset - INDENT.length,
-			newText:
-				text.slice(0, cursorOffset - INDENT.length) + text.slice(cursorOffset),
-		};
-	}
-
-	return { handled: false, newCursorOffset: cursorOffset, newText: text };
-}
-
-function handleEnter(text: string, cursorOffset: number): SmartEditResult {
-	const lineBeforeCursor = getLineBeforeCursor(text, cursorOffset);
-	const baseIndent = getLineIndent(lineBeforeCursor);
-	const extraIndent = /[{[(]\s*$/.test(lineBeforeCursor) ? INDENT : "";
-	return insertTextAtCursor(text, cursorOffset, `\n${baseIndent}${extraIndent}`);
-}
-
-function handleBackspace(text: string, cursorOffset: number): SmartEditResult {
-	if (cursorOffset < INDENT.length) {
-		return { handled: false, newCursorOffset: cursorOffset, newText: text };
-	}
-
-	const lineBeforeCursor = getLineBeforeCursor(text, cursorOffset);
-	if (!lineBeforeCursor.endsWith(INDENT)) {
-		return { handled: false, newCursorOffset: cursorOffset, newText: text };
-	}
-
-	return {
-		handled: true,
-		newCursorOffset: cursorOffset - INDENT.length,
-		newText: text.slice(0, cursorOffset - INDENT.length) + text.slice(cursorOffset),
-	};
 }
 
 function getCodeSelectionContext(): CodeSelectionContext | null {
@@ -206,7 +138,12 @@ export function LexicalCodeBlockPlugin(): React.ReactElement | null {
 					return false;
 				}
 
-				return false;
+				const result = handleCodeTextInsertion(
+					ctx.text,
+					ctx.cursorOffset,
+					insertedText,
+				);
+				return handleSmartEditResult(ctx, result);
 			},
 			COMMAND_PRIORITY_HIGH,
 		);
