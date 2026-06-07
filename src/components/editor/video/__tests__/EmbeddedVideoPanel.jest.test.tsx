@@ -60,6 +60,7 @@ describe("EmbeddedVideoPanel", () => {
 	});
 
 	afterAll(() => {
+		// @ts-expect-error restoring mocked location
 		window.location = originalLocation;
 	});
 

@@ -5,8 +5,12 @@ import {
 	DocumentPanelFallback,
 	DocumentPanelHeader,
 	DocumentPanelLoading,
+	type ArticleDocumentPanelProps,
+	type AttachmentDocumentPanelProps,
 	type DocumentPanelProps,
 	createDocumentPanelStyles,
+	getAttachmentPanelIcon,
+	openExternalUrl,
 	useDocumentPanelState,
 } from "./DocumentPanel.shared";
 
@@ -24,16 +28,43 @@ async function readAttachmentBase64(fileUri: string) {
 	return btoa(binary);
 }
 
-export function DocumentPanel({
-	noteId,
-	attachmentPath,
-	attachmentType,
-	onTextSelected,
-	onDocumentPositionChange,
-	onDismiss,
-	style,
-	theme = "light",
-}: DocumentPanelProps) {
+export function DocumentPanel(props: DocumentPanelProps) {
+	if (props.variant === "article") {
+		return <ArticleDocumentPanel {...props} />;
+	}
+	return <AttachmentDocumentPanel {...props} />;
+}
+
+function ArticleDocumentPanel(props: ArticleDocumentPanelProps) {
+	const styles = useStyles(createStyles);
+	return (
+		<View style={[styles.panel, props.style]} testID="article-split-panel">
+			<DocumentPanelHeader
+				dismissLabel="Hide article"
+				iconName="newspaper-o"
+				onDismiss={props.onDismiss}
+				onOpenExternally={() => openExternalUrl(props.url)}
+				openExternalLabel="Open article externally"
+				styles={styles}
+				title="Article"
+			/>
+			<View style={styles.viewerContainer}>
+				<iframe
+					src={props.url}
+					title="Article"
+					style={{
+						border: "0",
+						width: "100%",
+						height: "100%",
+						backgroundColor: "#ffffff",
+					}}
+				/>
+			</View>
+		</View>
+	);
+}
+
+function AttachmentDocumentPanel(props: AttachmentDocumentPanelProps) {
 	const styles = useStyles(createStyles);
 	const iframeRef = useRef<HTMLIFrameElement>(null);
 	const {
@@ -43,12 +74,12 @@ export function DocumentPanel({
 		isLoading,
 		viewer,
 	} = useDocumentPanelState({
-		noteId,
-		attachmentPath,
-		attachmentType,
-		onTextSelected,
-		onDocumentPositionChange,
-		theme,
+		noteId: props.noteId,
+		attachmentPath: props.attachmentPath,
+		attachmentType: props.attachmentType,
+		onTextSelected: props.onTextSelected,
+		onDocumentPositionChange: props.onDocumentPositionChange,
+		theme: props.theme,
 		readAttachmentBase64,
 	});
 
@@ -89,7 +120,7 @@ export function DocumentPanel({
 		if (!viewer.html) {
 			return (
 				<DocumentPanelFallback
-					attachmentType={attachmentType}
+					attachmentType={props.attachmentType}
 					message="Unable to load this document."
 					onOpenExternally={handleOpenExternally}
 					styles={styles}
@@ -107,7 +138,7 @@ export function DocumentPanel({
 			/>
 		);
 	}, [
-		attachmentType,
+		props.attachmentType,
 		filename,
 		handleOpenExternally,
 		isLoading,
@@ -116,12 +147,12 @@ export function DocumentPanel({
 	]);
 
 	return (
-		<View style={[styles.panel, style]}>
+		<View style={[styles.panel, props.style]}>
 			<DocumentPanelHeader
-				attachmentType={attachmentType}
-				filename={filename}
-				onDismiss={onDismiss}
+				iconName={getAttachmentPanelIcon(props.attachmentType)}
+				onDismiss={props.onDismiss}
 				styles={styles}
+				title={filename}
 			/>
 			<View style={styles.viewerContainer}>{renderViewer()}</View>
 		</View>

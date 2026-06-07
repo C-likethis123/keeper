@@ -42,7 +42,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AttachVideoModal from "./AttachVideoModal";
-import ArticleSplitPanel from "./editor/article/ArticleSplitPanel";
 import DomEditor from "./editor/DomEditor";
 import { DocumentPanel } from "./editor/document/DocumentPanel";
 import VideoSplitPanel from "./editor/video/VideoSplitPanel";
@@ -624,7 +623,8 @@ export default function NoteEditorView({
                   onDismiss={handleHideAttachment}
                 />
               ) : activePanel === "article" ? (
-                <ArticleSplitPanel
+                <DocumentPanel
+                  variant="article"
                   url={resourceUrl ?? ""}
                   onDismiss={() => setIsArticleVisible(false)}
                 />

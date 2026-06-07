@@ -214,21 +214,21 @@ function IndexContent() {
 
 	const enhancedSections = useMemo(
 		() =>
-			safeSections.map((section) =>
-				section.clusterId
-					? {
-							...section,
-							clusterId: section.clusterId,
-							clusterActions: {
-								onRename: () => setRenameTarget(section),
-								onAddNote: () => setAddNoteTarget(section),
-								onDelete: () => handleDeleteCluster(section),
-								onRemoveNote: (noteId: string) =>
-									void handleRemoveNote(section.clusterId, noteId),
-							},
-						}
-					: section,
-			),
+			safeSections.map((section) => {
+				if (!section.clusterId) return section;
+				const clusterId = section.clusterId;
+				return {
+					...section,
+					clusterId,
+					clusterActions: {
+						onRename: () => setRenameTarget(section),
+						onAddNote: () => setAddNoteTarget(section),
+						onDelete: () => handleDeleteCluster(section),
+						onRemoveNote: (noteId: string) =>
+							void handleRemoveNote(clusterId, noteId),
+					},
+				};
+			}),
 		[safeSections, handleDeleteCluster, handleRemoveNote],
 	);
 

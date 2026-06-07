@@ -16,7 +16,7 @@ interface SerializedEquationNode
 		SerializedLexicalNode
 	> {}
 
-export class EquationNode extends DecoratorNode<JSX.Element> {
+export class EquationNode extends DecoratorNode<React.ReactElement> {
 	__equation: string;
 	__inline: boolean;
 
@@ -65,7 +65,7 @@ export class EquationNode extends DecoratorNode<JSX.Element> {
 		};
 	}
 
-	decorate(): JSX.Element {
+	decorate(): React.ReactElement {
 		return (
 			<Suspense fallback={null}>
 				<EquationComponent equation={this.__equation} inline={this.__inline} />

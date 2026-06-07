@@ -212,59 +212,62 @@ function insertBlockCommand(
 	const block = payload?.block as EditorBlockPayload | undefined;
 	if (!block) return;
 
-	editor.update(() => {
-		if (block.type === BlockType.codeBlock) {
-			const codeNode = $createCodeNode(getBlockLanguage(block));
-			codeNode.append($createTextNode(block.content));
-			$insertNodes([codeNode]);
-			return;
-		}
+	editor.update(
+		() => {
+			if (block.type === BlockType.codeBlock) {
+				const codeNode = $createCodeNode(getBlockLanguage(block));
+				codeNode.append($createTextNode(block.content));
+				$insertNodes([codeNode]);
+				return;
+			}
 
-		if (block.type === BlockType.heading1) {
-			const heading = $createHeadingNode("h1");
-			heading.append($createTextNode(block.content));
-			$insertNodes([heading]);
-			return;
-		}
-		if (block.type === BlockType.heading2) {
-			const heading = $createHeadingNode("h2");
-			heading.append($createTextNode(block.content));
-			$insertNodes([heading]);
-			return;
-		}
-		if (block.type === BlockType.heading3) {
-			const heading = $createHeadingNode("h3");
-			heading.append($createTextNode(block.content));
-			$insertNodes([heading]);
-			return;
-		}
-		if (
-			block.type === BlockType.bulletList ||
-			block.type === BlockType.numberedList ||
-			block.type === BlockType.checkboxList
-		) {
-			const listType =
-				block.type === BlockType.numberedList
-					? "number"
-					: block.type === BlockType.checkboxList
-						? "check"
-						: "bullet";
-			const list = $createListNode(listType);
-			const item = $createListItemNode(
+			if (block.type === BlockType.heading1) {
+				const heading = $createHeadingNode("h1");
+				heading.append($createTextNode(block.content));
+				$insertNodes([heading]);
+				return;
+			}
+			if (block.type === BlockType.heading2) {
+				const heading = $createHeadingNode("h2");
+				heading.append($createTextNode(block.content));
+				$insertNodes([heading]);
+				return;
+			}
+			if (block.type === BlockType.heading3) {
+				const heading = $createHeadingNode("h3");
+				heading.append($createTextNode(block.content));
+				$insertNodes([heading]);
+				return;
+			}
+			if (
+				block.type === BlockType.bulletList ||
+				block.type === BlockType.numberedList ||
 				block.type === BlockType.checkboxList
-					? !!block.attributes?.checked
-					: undefined,
-			);
-			item.append($createTextNode(block.content));
-			list.append(item);
-			$insertNodes([list]);
-			return;
-		}
+			) {
+				const listType =
+					block.type === BlockType.numberedList
+						? "number"
+						: block.type === BlockType.checkboxList
+							? "check"
+							: "bullet";
+				const list = $createListNode(listType);
+				const item = $createListItemNode(
+					block.type === BlockType.checkboxList
+						? !!block.attributes?.checked
+						: undefined,
+				);
+				item.append($createTextNode(block.content));
+				list.append(item);
+				$insertNodes([list]);
+				return;
+			}
 
-		const paragraph = $createParagraphNode();
-		paragraph.append($createTextNode(block.content));
-		$insertNodes([paragraph]);
-	});
+			const paragraph = $createParagraphNode();
+			paragraph.append($createTextNode(block.content));
+			$insertNodes([paragraph]);
+		},
+		{ discrete: true },
+	);
 }
 
 function insertMarkdownCommand(
@@ -274,18 +277,21 @@ function insertMarkdownCommand(
 	const markdown = payload?.markdown;
 	if (typeof markdown !== "string" || markdown.length === 0) return;
 
-	editor.update(() => {
-		if (markdown.startsWith("> ")) {
-			const quote = $createQuoteNode();
-			quote.append($createTextNode(markdown.slice(2)));
-			$insertNodes([quote]);
-			return;
-		}
+	editor.update(
+		() => {
+			if (markdown.startsWith("> ")) {
+				const quote = $createQuoteNode();
+				quote.append($createTextNode(markdown.slice(2)));
+				$insertNodes([quote]);
+				return;
+			}
 
-		const paragraph = $createParagraphNode();
-		paragraph.append($createTextNode(markdown));
-		$insertNodes([paragraph]);
-	});
+			const paragraph = $createParagraphNode();
+			paragraph.append($createTextNode(markdown));
+			$insertNodes([paragraph]);
+		},
+		{ discrete: true },
+	);
 }
 
 function insertImageCommand(
@@ -296,17 +302,20 @@ function insertImageCommand(
 	if (typeof src !== "string" || src.length === 0) return;
 	const altText = typeof payload?.altText === "string" ? payload.altText : "";
 
-	editor.update(() => {
-		const imageNode = $createImageNode(src, altText);
-		const selection = $getSelection();
+	editor.update(
+		() => {
+			const imageNode = $createImageNode(src, altText);
+			const selection = $getSelection();
 
-		if ($isRangeSelection(selection)) {
-			$insertNodes([imageNode]);
-			return;
-		}
+			if ($isRangeSelection(selection)) {
+				$insertNodes([imageNode]);
+				return;
+			}
 
-		$getRoot().append(imageNode);
-	});
+			$getRoot().append(imageNode);
+		},
+		{ discrete: true },
+	);
 }
 
 function applyTypeCommand(
@@ -336,24 +345,27 @@ function applyTypeCommand(
 		return;
 	}
 
-	editor.update(() => {
-		const selection = $getSelection();
-		if (!$isRangeSelection(selection)) return;
+	editor.update(
+		() => {
+			const selection = $getSelection();
+			if (!$isRangeSelection(selection)) return;
 
-		if (type === "paragraph") {
-			$setBlocksType(selection, () => $createParagraphNode());
-		}
-		if (type === "codeBlock") {
-			const language =
-				typeof payload?.language === "string" ? payload.language : undefined;
-			$setBlocksType(selection, () => $createCodeNode(language));
-		}
-		if (type === "heading1" || type === "heading2" || type === "heading3") {
-			const tag =
-				type === "heading1" ? "h1" : type === "heading2" ? "h2" : "h3";
-			$setBlocksType(selection, () => $createHeadingNode(tag));
-		}
-	});
+			if (type === "paragraph") {
+				$setBlocksType(selection, () => $createParagraphNode());
+			}
+			if (type === "codeBlock") {
+				const language =
+					typeof payload?.language === "string" ? payload.language : undefined;
+				$setBlocksType(selection, () => $createCodeNode(language));
+			}
+			if (type === "heading1" || type === "heading2" || type === "heading3") {
+				const tag =
+					type === "heading1" ? "h1" : type === "heading2" ? "h2" : "h3";
+				$setBlocksType(selection, () => $createHeadingNode(tag));
+			}
+		},
+		{ discrete: true },
+	);
 }
 
 function ChangePlugin({

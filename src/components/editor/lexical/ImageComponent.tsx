@@ -5,10 +5,10 @@ import * as React from "react";
 export default function ImageComponent({
 	src,
 	altText,
-}: {
-	src: string;
-	altText: string;
-}): JSX.Element {
+	}: {
+		src: string;
+		altText: string;
+	}): React.ReactElement {
 	const resolvedSrc = resolveImageUri(src);
 	const [aspectRatio, setAspectRatio] = React.useState<number | null>(null);
 
@@ -27,11 +27,11 @@ export default function ImageComponent({
 			contentFit="contain"
 			onLoad={handleLoad}
 			style={[
-				{
-					width: "min(100%, 640px)",
-					maxWidth: "100%",
-					maxHeight: 360,
-					minHeight: 160,
+					{
+						width: "100%",
+						maxWidth: "100%",
+						maxHeight: 360,
+						minHeight: 160,
 					borderRadius: 4,
 				},
 				aspectRatio ? { aspectRatio, minHeight: undefined } : null,

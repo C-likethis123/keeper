@@ -4,7 +4,8 @@ import {
 	resolveAttachmentUri,
 } from "@/services/notes/attachmentStorage";
 import { FontAwesome } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	Linking,
 	Pressable,
@@ -21,19 +22,38 @@ import { buildEpubViewerHtml, buildPdfViewerHtml } from "./viewerTemplates";
 
 const POSITION_SAVE_DEBOUNCE_MS = 1000;
 
-export interface DocumentPanelProps {
-	noteId: string;
-	attachmentPath: string;
-	attachmentType: AttachmentType;
-	onTextSelected?: (text: string) => void;
-	onDocumentPositionChange?: (
-		attachmentPath: string,
-		position: string,
-	) => Promise<void> | void;
+type DocumentPanelBaseProps = {
 	onDismiss: () => void;
 	style?: ViewStyle;
 	theme?: "light" | "dark";
-}
+};
+
+export type DocumentPanelProps =
+	| (DocumentPanelBaseProps & {
+			variant?: "attachment";
+			noteId: string;
+			attachmentPath: string;
+			attachmentType: AttachmentType;
+			onTextSelected?: (text: string) => void;
+			onDocumentPositionChange?: (
+				attachmentPath: string,
+				position: string,
+			) => Promise<void> | void;
+	  })
+	| (DocumentPanelBaseProps & {
+			variant: "article";
+			url: string;
+	  });
+
+export type AttachmentDocumentPanelProps = Extract<
+	DocumentPanelProps,
+	{ variant?: "attachment" }
+>;
+
+export type ArticleDocumentPanelProps = Extract<
+	DocumentPanelProps,
+	{ variant: "article" }
+>;
 
 type ReadAttachmentBase64 = (fileUri: string) => Promise<string>;
 
@@ -93,7 +113,7 @@ const DOCUMENT_VIEWER_ADAPTERS: Record<AttachmentType, DocumentViewerAdapter> = 
 };
 
 type UseDocumentPanelStateOptions = Pick<
-	DocumentPanelProps,
+	AttachmentDocumentPanelProps,
 	| "noteId"
 	| "attachmentPath"
 	| "attachmentType"
@@ -249,33 +269,60 @@ export function useDocumentPanelState({
 }
 
 export function DocumentPanelHeader({
-	attachmentType,
-	filename,
+	dismissLabel = "Close document panel",
+	iconName,
 	onDismiss,
+	onOpenExternally,
+	openExternalLabel = "Open externally",
+	title,
 	styles,
-}: Pick<DocumentPanelProps, "attachmentType" | "onDismiss"> & {
-	filename: string;
+}: {
+	dismissLabel?: string;
+	iconName: React.ComponentProps<typeof FontAwesome>["name"];
+	onDismiss: () => void;
+	onOpenExternally?: () => void;
+	openExternalLabel?: string;
 	styles: ReturnType<typeof createDocumentPanelStyles>;
+	title: string;
 }) {
 	return (
 		<View style={styles.header}>
-			<FontAwesome
-				name={attachmentType === "epub" ? "book" : "file-pdf-o"}
-				size={14}
-				style={styles.headerIcon}
-			/>
+			<FontAwesome name={iconName} size={14} style={styles.headerIcon} />
 			<Text style={styles.filename} numberOfLines={1}>
-				{filename}
+				{title}
 			</Text>
+			{onOpenExternally ? (
+				<Pressable
+					onPress={onOpenExternally}
+					style={styles.dismissButton}
+					accessibilityLabel={openExternalLabel}
+				>
+					<FontAwesome
+						name="external-link"
+						size={14}
+						style={styles.dismissIcon}
+					/>
+				</Pressable>
+			) : null}
 			<Pressable
 				onPress={onDismiss}
 				style={styles.dismissButton}
-				accessibilityLabel="Close document panel"
+				accessibilityLabel={dismissLabel}
 			>
 				<FontAwesome name="times" size={14} style={styles.dismissIcon} />
 			</Pressable>
 		</View>
 	);
+}
+
+export function getAttachmentPanelIcon(attachmentType: AttachmentType) {
+	return attachmentType === "epub" ? "book" : "file-pdf-o";
+}
+
+export function openExternalUrl(url: string) {
+	if (url) {
+		void Linking.openURL(url);
+	}
 }
 
 export function DocumentPanelLoading({
@@ -295,7 +342,7 @@ export function DocumentPanelFallback({
 	message,
 	onOpenExternally,
 	styles,
-}: Pick<DocumentPanelProps, "attachmentType"> & {
+}: Pick<AttachmentDocumentPanelProps, "attachmentType"> & {
 	message: string;
 	onOpenExternally: () => void;
 	styles: ReturnType<typeof createDocumentPanelStyles>;

@@ -72,44 +72,52 @@ function getSlashQuery(): string | null {
 }
 
 function removeSlashToken(editor: LexicalEditor) {
-	editor.update(() => {
-		const selection = $getSelection();
-		if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
-			return;
-		}
+	editor.update(
+		() => {
+			const selection = $getSelection();
+			if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
+				return;
+			}
 
-		const anchor = selection.anchor;
-		const node = anchor.getNode();
-		if (!$isTextNode(node)) {
-			return;
-		}
+			const anchor = selection.anchor;
+			const node = anchor.getNode();
+			if (!$isTextNode(node)) {
+				return;
+			}
 
-		const text = node.getTextContent();
-		const slashStart = findSlashCommandTriggerStart(text, anchor.offset);
-		if (slashStart === null) {
-			return;
-		}
+			const text = node.getTextContent();
+			const slashStart = findSlashCommandTriggerStart(text, anchor.offset);
+			if (slashStart === null) {
+				return;
+			}
 
-		node.setTextContent(`${text.slice(0, slashStart)}${text.slice(anchor.offset)}`);
-		node.select(slashStart, slashStart);
-	});
+			node.setTextContent(
+				`${text.slice(0, slashStart)}${text.slice(anchor.offset)}`,
+			);
+			node.select(slashStart, slashStart);
+		},
+		{ discrete: true },
+	);
 }
 
 function insertCollapsibleBlock(editor: LexicalEditor) {
-	editor.update(() => {
-		const detailsNode = $createDetailsNode();
-		const summaryNode = $createDetailsSummaryNode();
-		const contentNode = $createDetailsContentNode();
-		const paragraphNode = $createParagraphNode();
+	editor.update(
+		() => {
+			const detailsNode = $createDetailsNode();
+			const summaryNode = $createDetailsSummaryNode();
+			const contentNode = $createDetailsContentNode();
+			const paragraphNode = $createParagraphNode();
 
-		summaryNode.append($createTextNode("Title"));
-		paragraphNode.append($createTextNode("Content"));
-		contentNode.append(paragraphNode);
-		detailsNode.append(summaryNode, contentNode);
+			summaryNode.append($createTextNode("Title"));
+			paragraphNode.append($createTextNode("Content"));
+			contentNode.append(paragraphNode);
+			detailsNode.append(summaryNode, contentNode);
 
-		$insertNodes([detailsNode]);
-		paragraphNode.selectEnd();
-	});
+			$insertNodes([detailsNode]);
+			paragraphNode.selectEnd();
+		},
+		{ discrete: true },
+	);
 }
 
 export function LexicalSlashCommandPlugin({

@@ -13,7 +13,7 @@ const ImageComponent = React.lazy(() => import("./ImageComponent"));
 interface SerializedImageNode
 	extends Spread<{ src: string; altText: string }, SerializedLexicalNode> {}
 
-export class ImageNode extends DecoratorNode<JSX.Element> {
+export class ImageNode extends DecoratorNode<React.ReactElement> {
 	__src: string;
 	__altText: string;
 
@@ -62,7 +62,7 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
 		};
 	}
 
-	decorate(): JSX.Element {
+	decorate(): React.ReactElement {
 		return (
 			<Suspense fallback={null}>
 				<ImageComponent src={this.__src} altText={this.__altText} />

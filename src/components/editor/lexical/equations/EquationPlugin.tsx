@@ -6,6 +6,7 @@ import {
 	type LexicalCommand,
 	createCommand,
 } from "lexical";
+import type React from "react";
 import { useEffect } from "react";
 import { $createEquationNode, EquationNode } from "./EquationNode";
 
@@ -14,7 +15,7 @@ export const INSERT_EQUATION_COMMAND: LexicalCommand<{
 	inline: boolean;
 }> = createCommand("INSERT_EQUATION_COMMAND");
 
-export function EquationPlugin(): JSX.Element | null {
+export function EquationPlugin(): React.ReactElement | null {
 	const [editor] = useLexicalComposerContext();
 
 	useEffect(() => {

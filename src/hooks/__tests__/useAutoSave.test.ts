@@ -16,6 +16,7 @@ type InteractionTask = Parameters<
 	typeof InteractionManager.runAfterInteractions
 >[0];
 type AppStateListener = Parameters<typeof AppState.addEventListener>[1];
+type UseAutoSaveResult = ReturnType<typeof useAutoSave>;
 
 let appStateListener: AppStateListener | null = null;
 
@@ -126,7 +127,10 @@ describe("useAutoSave", () => {
 	it("saves metadata changes with loaded note content before editor content changes", async () => {
 		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
 		useEditorState.getState().loadMarkdown("Stale editor body");
-		const { result, rerender } = renderHook(
+			const { result, rerender } = renderHook<
+				UseAutoSaveResult,
+				{ title: string }
+			>(
 			({ title }) =>
 				useAutoSave({
 					id: "note-1",
@@ -226,7 +230,7 @@ describe("useAutoSave", () => {
 
 	it("persists dirty title changes after the idle interval", async () => {
 		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
-		const { rerender } = renderHook(
+			const { rerender } = renderHook<UseAutoSaveResult, { title: string }>(
 			({ title }) =>
 				useAutoSave({
 					id: "note-1",
@@ -262,7 +266,10 @@ describe("useAutoSave", () => {
 
 	it("persists attached video metadata changes with the current markdown", async () => {
 		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
-		const { rerender } = renderHook(
+			const { rerender } = renderHook<
+				UseAutoSaveResult,
+				{ attachedVideo: string | null }
+			>(
 			({ attachedVideo }) =>
 				useAutoSave({
 					id: "note-1",
