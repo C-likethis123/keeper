@@ -7,7 +7,7 @@ import {
 } from "@/services/startup/startupTelemetry";
 import { getStorageEngine } from "@/services/storage/storageEngine";
 import type { GitConflictFile } from "./engines/GitEngine";
-import { getGitEngine } from "./gitEngine";
+import { getGitEngine } from "./GitEngine";
 import { GitService } from "./gitService";
 import { DefaultDbSyncService } from "./init/dbSyncService";
 import { DefaultGitInitErrorMapper } from "./init/errorMapper";
@@ -23,7 +23,6 @@ import {
 	type RemoteSyncMetrics,
 	createEmptyStartupMetrics,
 } from "./init/types";
-import { getGitRuntimeSupport } from "./runtime";
 
 async function createSyncConflictNotes(
 	conflicts: GitConflictFile[],
@@ -175,20 +174,6 @@ export class GitInitializationService {
 			const hasPendingJournal = await dependencies.stateStore
 				.readPendingJournal()
 				.then((entries) => entries.length > 0);
-
-			const runtimeSupport = getGitRuntimeSupport();
-			if (!runtimeSupport.supported) {
-				telemetry.trace("git.runtime_unsupported", {
-					reason: runtimeSupport.reason,
-				});
-				return {
-					success: true,
-					wasCloned: false,
-					supported: false,
-					reason: runtimeSupport.reason,
-					metrics,
-				};
-			}
 
 			console.log(
 				"[GitInitializationService] Checking if local repository exists and is valid...",

@@ -1,4 +1,3 @@
-import { getGitRuntimeSupport } from "@/services/git/runtime";
 import { runStartupStrategy } from "@/services/startup/startupStrategies";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { useEffect, useState } from "react";
@@ -8,12 +7,10 @@ type StartupStatus = "idle" | "running" | "ready" | "error";
 interface AppStartupState {
 	isHydrated: boolean;
 	initError: string | null;
-	runtime: ReturnType<typeof getGitRuntimeSupport>["runtime"];
 	status: StartupStatus;
 	statusMessage: string;
 }
 
-const initialRuntime = getGitRuntimeSupport().runtime;
 let hasTracedHookEntry = false;
 let hasTracedEffectStart = false;
 
@@ -27,7 +24,6 @@ export function useAppStartup(): AppStartupState {
 	if (!hasTracedHookEntry) {
 		hasTracedHookEntry = true;
 		traceStartupBootstrapEvent("bootstrap.use_app_startup_hook_entered", {
-			initialRuntime,
 			executionContextNote:
 				getExecutionContext() === "server"
 					? "SSR render cannot detect Tauri globals"
@@ -37,7 +33,6 @@ export function useAppStartup(): AppStartupState {
 	const [state, setState] = useState<AppStartupState>({
 		isHydrated: false,
 		initError: null,
-		runtime: initialRuntime,
 		status: "idle",
 		statusMessage: "",
 	});
@@ -55,23 +50,14 @@ export function useAppStartup(): AppStartupState {
 				setState(updater);
 			}
 		};
-		const runtimeSupport = getGitRuntimeSupport();
-		traceStartupBootstrapEvent("bootstrap.runtime_support_resolved", {
-			runtime: runtimeSupport.runtime,
-			supported: runtimeSupport.supported,
-		});
 
 		safeSetState((prev) => ({
 			...prev,
-			runtime: runtimeSupport.runtime,
 			status: "running",
 		}));
-		traceStartupBootstrapEvent("bootstrap.run_startup_strategy_invoked", {
-			runtime: runtimeSupport.runtime,
-		});
+		traceStartupBootstrapEvent("bootstrap.run_startup_strategy_invoked");
 
 		void runStartupStrategy({
-			runtimeSupport,
 			setHydrated: () =>
 				safeSetState((prev) => ({
 					...prev,

@@ -106,7 +106,7 @@ describe("GitService", () => {
 			extractSummary: (content: string) => content.slice(0, 50),
 		}));
 
-		jest.doMock("../gitEngine", () => ({
+		jest.doMock("../GitEngine", () => ({
 			getGitEngine: () => ({
 				clone: jest.fn(),
 				fetch: mockFetch,

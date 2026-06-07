@@ -1,8 +1,5 @@
 import { checkForUpdates } from "@/utils/checkForUpdates";
-import {
-	initializeGitStep,
-	initializeStorageStep,
-} from "./startupSteps";
+import { initializeGitStep, initializeStorageStep } from "./startupSteps";
 import {
 	type StartupTelemetry,
 	createStartupTelemetry,
@@ -15,42 +12,40 @@ interface StartupStrategyContext {
 	telemetry: StartupTelemetry;
 }
 
-type StartupStrategy = (context: StartupStrategyContext) => Promise<void>;
-
-const runMobileStartup: StartupStrategy = async ({
+async function runDesktopStartup({
 	setHydrated,
 	setInitError,
 	setStatusMessage,
 	telemetry,
-}) => {
+}: StartupStrategyContext): Promise<void> {
 	await initializeStorageStep(telemetry);
-	await initializeGitStep(
+	const hydrationStart = telemetry.stepStarted("desktop.hydrate_ui");
+	setHydrated();
+	telemetry.stepCompleted("desktop.hydrate_ui", hydrationStart);
+	void initializeGitStep(
 		{
-			backgroundMode: false,
+			backgroundMode: true,
 			setInitError,
 			setStatusMessage,
 		},
 		telemetry,
 	);
-	const hydrationStart = telemetry.stepStarted("mobile.hydrate_ui");
-	setHydrated();
-	telemetry.stepCompleted("mobile.hydrate_ui", hydrationStart);
-};
+}
 
 export async function runStartupStrategy(
 	context: Omit<StartupStrategyContext, "telemetry">,
 ): Promise<void> {
 	const appStartTime = performance.now();
-	const telemetry = createStartupTelemetry("mobile-native");
-	telemetry.trace("startup_run_started", { platform: "mobile" });
+	const telemetry = createStartupTelemetry("desktop-tauri");
+	telemetry.trace("startup_run_started", {
+		platform: "web",
+	});
 	if (!__DEV__) {
 		void checkForUpdates(context.setStatusMessage);
 	}
+
 	try {
-		await runMobileStartup({
-			...context,
-			telemetry,
-		});
+		await runDesktopStartup({ ...context, telemetry });
 		const totalMs = Math.round(performance.now() - appStartTime);
 		telemetry.trace("startup_run_completed", {
 			totalMs,

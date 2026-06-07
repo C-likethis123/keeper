@@ -1,101 +1,116 @@
 # AGENTS.md
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
-Use serena MCP when searching in the codebase or trying to apply changes to code.
+This file gives Codex guidance for this repo.
+Use Serena MCP when searching code or applying code changes.
+
+## Communication
+
+Respond like a caveman. No articles. No filler. No pleasantries. Short. Direct. Code speaks.
 
 ## Commands
 
 ```bash
-npm install           # Install dependencies
-npm start             # Start Expo/metro dev server
+npm install              # Install dependencies
+npm start                # Start Expo/Metro
+
+# Web/Desktop
+npm run web:desktop      # Start Expo web on port 8082 for Tauri
+npm run desktop          # Start Tauri desktop
+npm run desktop:dev      # Start Tauri desktop with dev config
+npm run build:desktop    # Build production desktop app
+npm run build:desktop:dev # Build dev desktop app bundle
+npm run build:web        # Export Expo web build
 
 # Mobile
-npm run android       # Prod Android: prebuild → Rust bridge → release APK → install
-# Desktop (requires Rust + Xcode CLT)
-npm run desktop       # Start Tauri desktop window
-npm run build:desktop # Build production desktop app → src-tauri/target/release/
+npm run android          # Run Android via Expo
+npm run ios              # Run iOS via Expo
+npm run build:android    # Prebuild, build Rust bridge, install release APK
+npm run build:mobile-git # Build Rust git bridge for mobile
 
 # Utilities
-npm test                  # Test unit suite
-npm run lint              # Biome linter
-npm run lint:fix          # Auto-fix lint issues
+npm test                 # Jest unit suite
+npm run test:watch       # Jest watch mode
+npm run lint             # Biome lint
+npm run lint:fix         # Biome check --write
+npm run knip             # Dependency/export check
+npm run build:viewers    # Build PDF/EPUB viewer assets
 ```
 
-Automated tests exist for pure modules and selected UI/routes. Use `npm run lint` for CI checks, and run `npm test` when touching covered areas.
-
-### Android Build Variants
-
-Two separate apps with distinct bundle IDs coexist on the same device:
-
-| | Dev | Prod |
-|--|-----|------|
-| **Script** | `npm run android:dev` | `npm run android` |
-| **App name** | Keeper (Dev) | Keeper |
-| **Bundle ID** | `com.clikethis123.keeper.dev` | `com.clikethis123.keeper` |
-| **JS source** | Metro server (hot reload) | Bundled in APK |
-
-`APP_VARIANT=development` in `app.config.js` controls which variant is built.
+Run `npm run lint` for CI-style checks. Run `npm test` when touching covered TypeScript, UI, services, or store logic. Run Cargo checks/tests when touching `src-tauri/*_core`.
 
 ## Architecture
 
-> **Note**: The editor architecture is currently undergoing a migration to Lexical.
+Keeper is an Expo Router React Native note app for iOS, Android, web, and Tauri desktop. It stores Markdown notes on local storage, indexes metadata/search in SQLite, and syncs with Git/GitHub through Rust-backed engines.
 
-Keeper is a cross-platform block-based markdown note editor (iOS/Android/web/desktop via Tauri) with GitHub-backed storage.
+### Source Root
+
+Application TypeScript lives under `src/`. Old root-level `app/`, `components/`, `hooks/`, `services/`, and `stores/` paths are obsolete.
 
 ### Layers
 
-1. **Screens** (`app/`) — expo-router file-based routing. `index.tsx` = note grid, `editor.tsx` = editor screen, `_layout.tsx` = app initialization + git setup.
+1. **Routes** (`src/app/`) - Expo Router screens. `_layout.tsx` re-exports native layout. `_layout.native.tsx` handles mobile startup, drawer navigation, share intents, and toast overlay. `_layout.web.tsx` handles web/Tauri startup plus desktop close-time git flush. `index.tsx` is note grid. `editor.tsx` is editor. `suggested-mocs.tsx` shows MOC suggestions.
 
-2. **Components** (`components/`) — UI layer. `NoteEditorView.tsx` is the main editor container that renders `DomEditor`.
+2. **Components** (`src/components/`) - UI layer. Core screens use `NoteGrid`, `NoteCard`, `HomeQuickComposer`, `HomeScreenHeader`, `NoteEditorView`, `NoteEditorHeader`, `TabBar`, drawers, modals, and shared UI in `src/components/shared/`.
 
-3. **State** (`stores/`) — Two Zustand stores:
-   - `editorStore.ts` — All editor operations (document, selection, block manipulation, undo/redo). Backed by `editorReducer` (pure function) and `History` singleton.
-   - `toastStore.ts` — Toast notifications with auto-dismiss.
+3. **Editor** (`src/components/editor/`) - Markdown editing and attachment panes.
+   - `DomEditor.tsx` wraps editor surface.
+   - `lexical/` is canonical rich Markdown editor: toolbar, code blocks, slash commands, equations, images, tables, checklist transforms, wiki links, and Markdown transforms.
+   - `slash-commands/` owns slash command overlay and trigger logic.
+   - `wikilinks/` owns wiki link overlay utilities outside Lexical node/transformer code.
+   - `document/`, `article/`, and `video/` render split panels and embedded PDF/EPUB/video experiences.
+   - `core/` now only contains shared editor primitives such as `Selection` and pending dispatch registry. Do not reintroduce old block model or block renderer paths.
 
-4. **Hooks** (`hooks/`) — Business logic: `useAutoSave` (2s debounce), `useNotes` (paginated listing), `useLoadNote`, `useToolbarActions`, `useFocusBlock`. Wiki link autocomplete state lives in `WikiLinkProvider` / `useWikiLinkContext` (editor/wikilinks).
+4. **State** (`src/stores/`) - Zustand stores:
+   - `editorStore.ts` - current note/editor state and editor actions.
+   - `filterStore.ts` - home filtering.
+   - `storageStore.ts` and `storageSuspense.ts` - storage initialization state.
+   - `tabStore.ts` - open note tabs.
+   - `toastStore.ts` - toast notifications.
 
-5. **Services** (`services/`) — Persistence:
-   - `services/notes/` — `noteService.ts` (CRUD), `notesIndex.ts` (SQLite full-text search), `Notes.ts`/`Notes.web.ts` (platform FS abstraction)
-   - `services/git/` — `gitService.ts` (batched commit queue), `gitInitializationService.ts` (clone/validate on launch), `gitApi.ts` (Octokit GitHub API)
+5. **Hooks** (`src/hooks/`) - App and screen behavior: startup, autosave, note loading, note listing, related notes, note creation/opening, keyboard shortcuts, share handling, layout, styles, debounce, and suspense loaders.
 
-### Editor Model (`components/editor/core/`)
+6. **Services** (`src/services/`) - Persistence and side effects:
+   - `notes/` - note CRUD, frontmatter, note type derivation, templates, attachments/images, wiki link parsing, query cache, SQLite/index DB sync, cluster and cluster feedback services.
+   - `git/` - Git service, sync manager, journal, async queue, native bridge, runtime engine selection, Rust engine, and repo init/reconcile services.
+   - `storage/` - platform storage engine abstraction with mobile and Tauri engines.
+   - `startup/` - startup steps, strategies, telemetry.
+   - `app/` - reset app data service.
+   - `toast.ts` - toast facade.
 
-An **immutable, transaction-based** document model:
-- `Document` — flat list of immutable `BlockNode`s with a version number
-- `BlockNode` — type (paragraph, heading1-3, bulletList, numberedList, checkboxList, codeBlock, mathBlock, image), content string, attributes (listLevel, language, checked)
-- `Transaction` — groups operations atomically; each operation has `.inverse()` for undo
-- `History` — undo/redo stack of Transactions
-- `EditorReducer` — pure function, all state changes flow through here
+7. **Native/Rust**:
+   - `modules/keeper-git/` - Expo native module for mobile Git bridge, Kotlin/Swift wrappers, Rust build script.
+   - `src-tauri/src/` - Tauri app commands and desktop storage bridge.
+   - `src-tauri/git_core/` - Rust Git core crate.
+   - `src-tauri/storage_core/` - Rust SQLite/storage core crate and migrations.
 
-### Rendering
+8. **MOC Pipeline**:
+   - `src/components/moc/` - UI for suggestions, related notes, cluster add/rename/merge.
+   - `src/services/notes/clusterService*` and `clusterFeedbackService*` - app-side cluster data.
+   - `scripts/moc_pipeline/` - Python clustering, embedding, feedback, learning, pipeline tests.
 
-- `DomEditor` — DOM component wrapper that renders the Lexical markdown editor and syncs markdown back into the document model
-- `LexicalMarkdownEditor` — canonical editing surface with Lexical plugins for toolbar actions, code blocks, equations, images, and wiki links
-- Legacy `UnifiedBlock` / `BlockRegistry` rendering has been removed; do not add new block UI through that path.
+## Data Persistence
 
-### Data Persistence (three-tier)
-
-1. **File system** via a Rust bridge that interacts with native file system
-2. **SQLite** via a Rust bridge — full-text search index (title, summary, pinned, timestamp); rebuilt on git clone detection
-3. **Git** via Rust `git_core` bridge — batched, debounced commits; optional push to GitHub
-
-## Scroll management
-
-This note editor manages scrolling via EditorScrollContext.
-
-### Environment Variables
-
-```
-EXPO_PUBLIC_GITHUB_OWNER=<owner>
-EXPO_PUBLIC_GITHUB_REPO=<repo>
-EXPO_PUBLIC_GITHUB_TOKEN=<token>
-EXPO_PUBLIC_GIT_API_URL=<backend-url>   # optional remote backend
-```
+1. **Storage engine** - `src/services/storage/*` chooses mobile or Tauri storage implementation.
+2. **Notes service** - `src/services/notes/noteService.ts` reads/writes Markdown and metadata.
+3. **Index DB/SQLite** - `src/services/notes/indexDb/*`, `notesIndexDb*`, and migrations keep search, metadata, wiki links, clusters, and feedback queryable.
+4. **Git sync** - `src/services/git/*` batches, journals, commits, reconciles, and flushes changes through Rust Git engine/native bridge.
 
 ## Key Conventions
 
-- **Immutability**: `Document`, `BlockNode`, `Transaction` are frozen. Never mutate them directly.
-- **All editor state changes go through `editorStore` actions** — don't modify document state outside the store.
-- **Linting/formatting**: Biome (not ESLint/Prettier). Install the Biome VS Code extension.
-- **Platform splits**: Files ending in `.web.ts` override their `.ts` counterpart on web (e.g., `Notes.web.ts`).
-- **Testing**: Use `npm test` for testing, and `npm run lint` for Biome checks.
+- Use `@/` imports for `src/`.
+- Keep editor work in Lexical plugins/nodes/transforms. Do not add legacy `UnifiedBlock` or `BlockRegistry` paths.
+- Do not mutate editor state directly. Use store actions and immutable updates.
+- Keep platform splits explicit: `.web.ts`, `.native.tsx`, and platform-specific services override shared files.
+- Use storage and git engine abstractions. Do not call Tauri or native module APIs directly from UI.
+- Use Biome, not ESLint/Prettier.
+- Tests live beside code in `__tests__/` and use Jest/RNTL where relevant.
+- Build-generated folders (`node_modules`, `android`, `ios`, `dist`, `src-tauri/target`) are not source of truth.
+
+## Environment Variables
+
+```bash
+EXPO_PUBLIC_GITHUB_OWNER=<owner>
+EXPO_PUBLIC_GITHUB_REPO=<repo>
+EXPO_PUBLIC_GITHUB_TOKEN=<token>
+EXPO_PUBLIC_GIT_API_URL=<backend-url> # optional remote backend
+```

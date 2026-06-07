@@ -3,14 +3,11 @@ import {
 	RustGitEngine,
 	isRustGitEngineAvailable,
 } from "@/services/git/engines/RustGitEngine";
-import { getGitRuntimeSupport } from "@/services/git/runtime";
 
 export function getGitEngine(): GitEngine {
 	if (!isRustGitEngineAvailable()) {
-		const support = getGitRuntimeSupport();
 		throw new Error(
-			support.reason ??
-				"Rust git engine unavailable. This runtime does not support git sync.",
+			"Rust git engine is unavailable in this native runtime. Rebuild the app with the Keeper git bridge enabled.",
 		);
 	}
 
