@@ -14,7 +14,7 @@
     "metro.config.js",
     "wdyr.ts",
     "**/*.web.ts",
-    "**/*.android.ts"
+    "**/*.web.tsx"
   ],
   "tags": ["-lintignore"]
 }

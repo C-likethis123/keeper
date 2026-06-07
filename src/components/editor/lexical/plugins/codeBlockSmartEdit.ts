@@ -4,7 +4,7 @@ export interface SmartEditResult {
 	newText: string;
 }
 
-export const INDENT = "\t";
+const INDENT = "\t";
 
 const PAIRS: Record<string, string> = {
 	"(": ")",
@@ -14,7 +14,7 @@ const PAIRS: Record<string, string> = {
 
 const CLOSING_CHARS = new Set(Object.values(PAIRS));
 
-export function getLineBeforeCursor(text: string, cursorOffset: number) {
+function getLineBeforeCursor(text: string, cursorOffset: number) {
 	const lineStart = text.lastIndexOf("\n", cursorOffset - 1) + 1;
 	return text.slice(lineStart, cursorOffset);
 }
@@ -23,7 +23,7 @@ function getLineIndent(text: string) {
 	return text.match(/^\s*/)?.[0] ?? "";
 }
 
-export function insertTextAtCursor(
+function insertTextAtCursor(
 	text: string,
 	cursorOffset: number,
 	insertedText: string,

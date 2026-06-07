@@ -42,7 +42,6 @@
     "@tauri-apps/plugin-dialog": "^2.7.0",
     "epubjs": "^0.3.93",
     "expo": "~54.0.33",
-    "expo-clipboard": "~8.0.3",
     "expo-constants": "~18.0.13",
     "expo-document-picker": "~14.0.8",
     "expo-file-system": "~19.0.21",

@@ -426,8 +426,12 @@ export default function NoteEditorView({
       const relativePath = await copyPickedAttachmentToNote(attachmentUri, id);
       setAttachmentPath(relativePath);
       setAttachmentType(type);
+      setDocumentPositions(null);
       setIsAttachmentVisible(true);
-      await persistCurrentEntry({ attachment: relativePath });
+      await persistCurrentEntry({
+        attachment: relativePath,
+        documentPositions: null,
+      });
     } catch {
       showToast("Failed to attach document.");
     }

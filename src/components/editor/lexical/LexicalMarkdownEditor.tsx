@@ -43,6 +43,7 @@ import {
 import { EquationNode } from "./equations/EquationNode";
 import { EquationPlugin } from "./equations/EquationPlugin";
 import { LexicalCodeBlockPlugin } from "./plugins/LexicalCodeBlockPlugin";
+import { KeeperDraggableBlockPlugin } from "./plugins/KeeperDraggableBlockPlugin";
 import { LexicalSlashCommandPlugin } from "./plugins/LexicalSlashCommandPlugin";
 
 import {
@@ -559,6 +560,65 @@ export default function LexicalMarkdownEditor({
 				}
 					.keeper-editor-content {
 						position: relative;
+						padding-left: 28px;
+					}
+					.keeper-draggable-block-anchor {
+						inset: 0;
+						pointer-events: none;
+						position: absolute;
+					}
+					.keeper-draggable-block-handle {
+						align-items: center;
+						background: transparent;
+						border: 0;
+						border-radius: 6px;
+						color: ${palette.text}8A;
+						cursor: grab;
+						height: 24px;
+						justify-content: center;
+						opacity: 0;
+						padding: 0;
+						pointer-events: auto;
+						position: absolute;
+						transition: opacity 120ms ease, background-color 120ms ease;
+						width: 24px;
+					}
+					.keeper-draggable-block-handle:active {
+						cursor: grabbing;
+					}
+					.keeper-draggable-block-handle:hover,
+					.keeper-draggable-block-handle:focus-visible {
+						background: ${palette.card};
+						opacity: 1;
+					}
+					.keeper-editor-content:hover .keeper-draggable-block-handle {
+						opacity: 1;
+					}
+					.keeper-draggable-block-handle span,
+					.keeper-draggable-block-handle span::before,
+					.keeper-draggable-block-handle span::after {
+						background: currentColor;
+						border-radius: 999px;
+						box-shadow: 6px 0 0 currentColor;
+						content: "";
+						display: block;
+						height: 3px;
+						width: 3px;
+					}
+					.keeper-draggable-block-handle span::before {
+						transform: translateY(-6px);
+					}
+					.keeper-draggable-block-handle span::after {
+						transform: translateY(3px);
+					}
+					.keeper-draggable-block-target-line {
+						background: ${palette.primary};
+						border-radius: 999px;
+						height: 4px;
+						opacity: 0;
+						pointer-events: none;
+						position: absolute;
+						transform: translate(-10000px, -10000px);
 					}
 					.keeper-placeholder {
 						color: ${palette.text}80;
@@ -716,6 +776,7 @@ export default function LexicalMarkdownEditor({
 							}
 							ErrorBoundary={LexicalErrorBoundary}
 						/>
+						<KeeperDraggableBlockPlugin />
 					</div>
 					<HistoryPlugin />
 					<ListPlugin />

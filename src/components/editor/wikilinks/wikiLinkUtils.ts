@@ -4,7 +4,6 @@ import {
 	type NoteIndexItem,
 	NotesIndexService,
 } from "@/services/notes/notesIndex";
-import type { NoteStatus } from "@/services/notes/types";
 import { nanoid } from "nanoid";
 
 interface WikiLinkActivationEvent {
@@ -18,12 +17,6 @@ interface WikiLinkActivationEvent {
 
 export function normalizeWikiLinkTitle(title: string): string {
 	return title.trim().toLocaleLowerCase();
-}
-
-export function extractWikiLinkTitle(content: string): string | null {
-	const match = /^\s*\[\[(.+?)\]\]\s*$/.exec(content);
-	const title = match?.[1]?.trim();
-	return title ? title : null;
 }
 
 export function buildTrackedTodoTitle(taskText: string): string {
@@ -117,38 +110,6 @@ export async function resolveOrCreateTrackedTodoNoteId(
 	return created.id;
 }
 
-export async function updateLinkedTodoNoteStatus(
-	noteId: string,
-	title: string,
-	status: NoteStatus,
-): Promise<void> {
-	const trimmedId = noteId.trim();
-	const trimmedTitle = title.trim();
-	if (trimmedId.length === 0 || trimmedTitle.length === 0) {
-		return;
-	}
-
-	const existing = await NoteService.loadNote(trimmedId);
-	if (!existing) {
-		return;
-	}
-
-	const now = Date.now();
-	await NoteService.saveNote(
-		{
-			id: trimmedId,
-			title: trimmedTitle,
-			content: existing.content,
-			isPinned: existing.isPinned,
-			noteType: "todo",
-			status,
-			createdAt: existing.createdAt ?? now,
-			completedAt: status === "done" ? (existing.completedAt ?? now) : null,
-		},
-		false,
-	);
-}
-
 export function shouldOpenWikiLink(
 	platformOs: string,
 	event?: WikiLinkActivationEvent,
@@ -158,9 +119,4 @@ export function shouldOpenWikiLink(
 	}
 
 	return Boolean(event?.nativeEvent?.metaKey || event?.nativeEvent?.ctrlKey);
-}
-
-export function stopWikiLinkActivation(event?: WikiLinkActivationEvent): void {
-	event?.preventDefault?.();
-	event?.stopPropagation?.();
 }
