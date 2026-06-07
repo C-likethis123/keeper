@@ -91,6 +91,7 @@ interface LexicalEditorCommand {
 
 interface LexicalMarkdownEditorProps {
 	command?: LexicalEditorCommand;
+	dom?: import("expo/dom").DOMProps;
 	hasAttachment?: boolean;
 	keyboardHeight?: number;
 	markdown: string;
@@ -504,7 +505,9 @@ export default function LexicalMarkdownEditor({
 			style={{
 				background: palette.background,
 				color: palette.text,
+				height: "100%",
 				minHeight: "100%",
+				overflowY: "auto",
 				paddingTop: safeAreaInsets?.top ?? 0,
 				paddingRight: safeAreaInsets?.right ?? 0,
 				paddingBottom: Math.max(safeAreaInsets?.bottom ?? 0, keyboardHeight),

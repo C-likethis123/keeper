@@ -692,7 +692,7 @@ export default function NoteEditorView({
                 allowFileAccess: true,
                 allowFileAccessFromFileURLs: true,
                 allowingReadAccessToURL: NOTES_ROOT,
-                scrollEnabled: false,
+                scrollEnabled: true,
                 style: { flex: 1 },
               }}
             />

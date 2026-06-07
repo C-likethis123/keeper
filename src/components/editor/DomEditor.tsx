@@ -54,6 +54,7 @@ export default function DomEditor({
 	onToggleActivePanel,
 	onToggleArticle,
 	onToggleRelatedNotes,
+	dom,
 }: DomEditorProps) {
 	const loadMarkdown = useEditorState((s) => s.loadMarkdown);
 	const setCurrentMarkdown = useEditorState((s) => s.setCurrentMarkdown);
@@ -96,6 +97,7 @@ export default function DomEditor({
 			onToggleRelatedNotes={onToggleRelatedNotes}
 			safeAreaInsets={safeAreaInsets}
 			themeMode={themeMode}
+			dom={dom}
 		/>
 	);
 }
