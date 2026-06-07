@@ -20,6 +20,11 @@ import {
 	type SlashCommandItem,
 } from "@/components/editor/slash-commands/SlashCommandOverlay";
 import { findSlashCommandTriggerStart } from "@/components/editor/slash-commands/SlashCommandTrigger";
+import {
+	$createDetailsContentNode,
+	$createDetailsNode,
+	$createDetailsSummaryNode,
+} from "../DetailsNode";
 
 const COMMANDS: SlashCommandItem[] = [
 	{
@@ -92,23 +97,18 @@ function removeSlashToken(editor: LexicalEditor) {
 
 function insertCollapsibleBlock(editor: LexicalEditor) {
 	editor.update(() => {
-		const nodes = [
-			"<details>",
-			"<summary>Title</summary>",
-			"",
-			"Content",
-			"",
-			"</details>",
-		].map((line) => {
-			const paragraph = $createParagraphNode();
-			if (line.length > 0) {
-				paragraph.append($createTextNode(line));
-			}
-			return paragraph;
-		});
+		const detailsNode = $createDetailsNode();
+		const summaryNode = $createDetailsSummaryNode();
+		const contentNode = $createDetailsContentNode();
+		const paragraphNode = $createParagraphNode();
 
-		$insertNodes(nodes);
-		nodes[3]?.selectEnd();
+		summaryNode.append($createTextNode("Title"));
+		paragraphNode.append($createTextNode("Content"));
+		contentNode.append(paragraphNode);
+		detailsNode.append(summaryNode, contentNode);
+
+		$insertNodes([detailsNode]);
+		paragraphNode.selectEnd();
 	});
 }
 

@@ -6,8 +6,16 @@ import {
 	REDO_COMMAND,
 	UNDO_COMMAND,
 } from "lexical";
-import React from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import React, { useState } from "react";
+import {
+	Modal,
+	Pressable,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TextInput,
+	View,
+} from "react-native";
 import { IconButton } from "@/components/shared/IconButton";
 
 interface LexicalToolbarPluginProps {
@@ -32,9 +40,83 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		gap: 12,
 	},
+	modalBackdrop: {
+		flex: 1,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: "rgba(0, 0, 0, 0.35)",
+		padding: 24,
+	},
+	dialog: {
+		width: "100%",
+		maxWidth: 320,
+		borderRadius: 8,
+		backgroundColor: "#fff",
+		padding: 16,
+		gap: 12,
+	},
+	dialogTitle: {
+		fontSize: 16,
+		fontWeight: "600",
+	},
+	field: {
+		gap: 6,
+	},
+	label: {
+		fontSize: 13,
+		fontWeight: "500",
+	},
+	input: {
+		borderWidth: 1,
+		borderColor: "#d0d0d0",
+		borderRadius: 6,
+		paddingHorizontal: 10,
+		paddingVertical: 8,
+	},
+	headerToggle: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+		paddingVertical: 4,
+	},
+	checkbox: {
+		width: 18,
+		height: 18,
+		alignItems: "center",
+		justifyContent: "center",
+		borderWidth: 1,
+		borderColor: "#777",
+		borderRadius: 3,
+	},
+	actions: {
+		flexDirection: "row",
+		justifyContent: "flex-end",
+		gap: 8,
+	},
+	actionButton: {
+		borderRadius: 6,
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+	},
+	primaryButton: {
+		backgroundColor: "#222",
+	},
+	buttonText: {
+		fontWeight: "600",
+	},
+	primaryButtonText: {
+		color: "#fff",
+	},
 });
 
 const noop = () => {};
+const clampTableSize = (value: string) => {
+	const parsed = Number.parseInt(value, 10);
+	if (Number.isNaN(parsed)) {
+		return 1;
+	}
+	return Math.min(Math.max(parsed, 1), 20);
+};
 
 export function LexicalToolbarPlugin({
 	hasAttachment = false,
@@ -47,6 +129,10 @@ export function LexicalToolbarPlugin({
 	onToggleActivePanel,
 }: LexicalToolbarPluginProps) {
 	const [editor] = useLexicalComposerContext();
+	const [isTableDialogVisible, setIsTableDialogVisible] = useState(false);
+	const [rows, setRows] = useState("2");
+	const [columns, setColumns] = useState("3");
+	const [includeHeaders, setIncludeHeaders] = useState(true);
 
 	const handleUndo = () => editor.dispatchCommand(UNDO_COMMAND, undefined);
 	const handleRedo = () => editor.dispatchCommand(REDO_COMMAND, undefined);
@@ -54,12 +140,15 @@ export function LexicalToolbarPlugin({
 		editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined);
 	const handleOutdent = () =>
 		editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined);
-	const handleInsertTable = () =>
+	const handleInsertTable = () => setIsTableDialogVisible(true);
+	const handleConfirmTable = () => {
 		editor.dispatchCommand(INSERT_TABLE_COMMAND, {
-			columns: "3",
-			includeHeaders: true,
-			rows: "2",
+			columns: String(clampTableSize(columns)),
+			includeHeaders,
+			rows: String(clampTableSize(rows)),
 		});
+		setIsTableDialogVisible(false);
+	};
 
 	return (
 		<View style={styles.toolbar}>
@@ -118,6 +207,63 @@ export function LexicalToolbarPlugin({
 					label="Switch panel"
 				/>
 			</ScrollView>
+			<Modal
+				animationType="fade"
+				transparent
+				visible={isTableDialogVisible}
+				onRequestClose={() => setIsTableDialogVisible(false)}
+			>
+				<View style={styles.modalBackdrop}>
+					<View style={styles.dialog}>
+						<Text style={styles.dialogTitle}>Insert table</Text>
+						<View style={styles.field}>
+							<Text style={styles.label}>Rows</Text>
+							<TextInput
+								keyboardType="number-pad"
+								onChangeText={setRows}
+								style={styles.input}
+								value={rows}
+							/>
+						</View>
+						<View style={styles.field}>
+							<Text style={styles.label}>Columns</Text>
+							<TextInput
+								keyboardType="number-pad"
+								onChangeText={setColumns}
+								style={styles.input}
+								value={columns}
+							/>
+						</View>
+						<Pressable
+							accessibilityRole="checkbox"
+							accessibilityState={{ checked: includeHeaders }}
+							onPress={() => setIncludeHeaders((current) => !current)}
+							style={styles.headerToggle}
+						>
+							<View style={styles.checkbox}>
+								<Text>{includeHeaders ? "x" : ""}</Text>
+							</View>
+							<Text>Header row</Text>
+						</Pressable>
+						<View style={styles.actions}>
+							<Pressable
+								onPress={() => setIsTableDialogVisible(false)}
+								style={styles.actionButton}
+							>
+								<Text style={styles.buttonText}>Cancel</Text>
+							</Pressable>
+							<Pressable
+								onPress={handleConfirmTable}
+								style={[styles.actionButton, styles.primaryButton]}
+							>
+								<Text style={[styles.buttonText, styles.primaryButtonText]}>
+									Insert
+								</Text>
+							</Pressable>
+						</View>
+					</View>
+				</View>
+			</Modal>
 		</View>
 	);
 }

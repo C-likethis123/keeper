@@ -5,6 +5,12 @@ import { CHECK_LIST, UNORDERED_LIST } from "@lexical/markdown";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
 import { $getRoot, createEditor } from "lexical";
+import {
+	$isDetailsNode,
+	DetailsContentNode,
+	DetailsNode,
+	DetailsSummaryNode,
+} from "../DetailsNode";
 import { ImageNode } from "../ImageNode";
 import { EquationNode } from "../equations/EquationNode";
 import {
@@ -30,6 +36,9 @@ function roundTripMarkdown(markdown: string): string {
 			TableNode,
 			TableCellNode,
 			TableRowNode,
+			DetailsContentNode,
+			DetailsNode,
+			DetailsSummaryNode,
 			EquationNode,
 			ImageNode,
 		],
@@ -50,6 +59,44 @@ function roundTripMarkdown(markdown: string): string {
 	return result;
 }
 
+function getFirstImportedNode(markdown: string) {
+	const editor = createEditor({
+		namespace: "KeeperMarkdownNodeTest",
+		nodes: [
+			HeadingNode,
+			QuoteNode,
+			ListNode,
+			ListItemNode,
+			CodeNode,
+			CodeHighlightNode,
+			LinkNode,
+			AutoLinkNode,
+			TableNode,
+			TableCellNode,
+			TableRowNode,
+			DetailsContentNode,
+			DetailsNode,
+			DetailsSummaryNode,
+			EquationNode,
+			ImageNode,
+		],
+		onError: (error) => {
+			throw error;
+		},
+	});
+
+	let node = null;
+	editor.update(
+		() => {
+			importMarkdownToLexical(markdown);
+			node = $getRoot().getFirstChild();
+		},
+		{ discrete: true },
+	);
+
+	return node;
+}
+
 describe("Keeper Lexical markdown transformers", () => {
 	it("round-trips image markdown through ImageNode", () => {
 		expect(roundTripMarkdown("![Diagram](keeper://asset/image.png)")).toBe(
@@ -65,6 +112,23 @@ describe("Keeper Lexical markdown transformers", () => {
 		expect(roundTripMarkdown("Inline $x = y + z$ equation")).toBe(
 			"Inline $x = y + z$ equation",
 		);
+	});
+
+	it("round-trips details markdown through DetailsNode", () => {
+		const markdown = [
+			"<details>",
+			"<summary>Title</summary>",
+			"",
+			"## Heading",
+			"",
+			"- **One**",
+			"- Two",
+			"",
+			"</details>",
+		].join("\n");
+
+		expect(roundTripMarkdown(markdown)).toBe(markdown);
+		expect($isDetailsNode(getFirstImportedNode(markdown))).toBe(true);
 	});
 
 	it("round-trips fenced code block language through CodeNode", () => {

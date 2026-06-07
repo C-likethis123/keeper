@@ -36,6 +36,11 @@ import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
 import { $createImageNode, ImageNode } from "./ImageNode";
+import {
+	DetailsContentNode,
+	DetailsNode,
+	DetailsSummaryNode,
+} from "./DetailsNode";
 import { EquationNode } from "./equations/EquationNode";
 import { EquationPlugin } from "./equations/EquationPlugin";
 import { LexicalCodeBlockPlugin } from "./plugins/LexicalCodeBlockPlugin";
@@ -407,6 +412,9 @@ export default function LexicalMarkdownEditor({
 				TableNode,
 				TableCellNode,
 				TableRowNode,
+				DetailsContentNode,
+				DetailsNode,
+				DetailsSummaryNode,
 				EquationNode,
 				ImageNode,
 			],
