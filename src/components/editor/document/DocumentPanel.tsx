@@ -39,8 +39,7 @@ export function DocumentPanel({
     handleOpenExternally,
     handleViewerMessage,
     isLoading,
-    pdfOpenMessage,
-    viewerHtml,
+    viewer,
   } = useDocumentPanelState({
     noteId,
     attachmentPath,
@@ -51,12 +50,12 @@ export function DocumentPanel({
     readAttachmentBase64,
   });
 
-  const handlePdfLoad = useCallback(() => {
-    if (!pdfOpenMessage) return;
+  const handleViewerLoad = useCallback(() => {
+    if (!viewer.openMessage) return;
     webViewRef.current?.injectJavaScript(
-      `window.dispatchEvent(new MessageEvent('message', { data: ${JSON.stringify(pdfOpenMessage)} })); true;`,
+      `window.dispatchEvent(new MessageEvent('message', { data: ${JSON.stringify(viewer.openMessage)} })); true;`,
     );
-  }, [pdfOpenMessage]);
+  }, [viewer.openMessage]);
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
@@ -77,32 +76,19 @@ export function DocumentPanel({
       return <DocumentPanelLoading styles={styles} />;
     }
 
-    if (attachmentType === "epub" && viewerHtml) {
-      return (
-        <WebView
-          ref={webViewRef}
-          source={{ html: viewerHtml, baseUrl: "" }}
-          originWhitelist={["*"]}
-          javaScriptEnabled
-          onMessage={handleMessage}
-          style={styles.webView}
-        />
-      );
-    }
-
-    if (attachmentType === "pdf" && viewerHtml && pdfOpenMessage) {
+    if (viewer.html && (!viewer.requiresOpenMessage || viewer.openMessage)) {
       return (
         <WebView
           ref={webViewRef}
           source={{
-            html: viewerHtml,
+            html: viewer.html,
             baseUrl: "",
           }}
           originWhitelist={["*"]}
           allowFileAccess
           allowUniversalAccessFromFileURLs
           javaScriptEnabled
-          onLoad={handlePdfLoad}
+          onLoad={viewer.requiresOpenMessage ? handleViewerLoad : undefined}
           onMessage={handleMessage}
           style={styles.webView}
         />
@@ -127,11 +113,10 @@ export function DocumentPanel({
     fileUri,
     handleMessage,
     handleOpenExternally,
-    handlePdfLoad,
+    handleViewerLoad,
     isLoading,
-    pdfOpenMessage,
     styles,
-    viewerHtml,
+    viewer,
   ]);
 
   return (

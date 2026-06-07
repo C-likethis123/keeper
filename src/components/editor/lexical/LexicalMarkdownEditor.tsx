@@ -32,7 +32,6 @@ import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
-import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
 import { $createImageNode, ImageNode } from "./ImageNode";
@@ -67,7 +66,6 @@ import {
 	$insertNodes,
 	$isRangeSelection,
 	COMMAND_PRIORITY_EDITOR,
-	type EditorState,
 	INDENT_CONTENT_COMMAND,
 	KEY_TAB_COMMAND,
 	type LexicalEditor,
@@ -363,18 +361,21 @@ function ChangePlugin({
 }: {
 	onMarkdownChange: (markdown: string) => void;
 }) {
+	const [editor] = useLexicalComposerContext();
 	const lastMarkdownRef = useRef<string | null>(null);
 
-	const handleChange = (editorState: EditorState) => {
-		editorState.read(() => {
-			const markdown = exportLexicalToMarkdown();
-			if (markdown === lastMarkdownRef.current) return;
-			lastMarkdownRef.current = markdown;
-			onMarkdownChange(markdown);
+	useEffect(() => {
+		return editor.registerUpdateListener(({ editorState }) => {
+			editorState.read(() => {
+				const markdown = exportLexicalToMarkdown();
+				if (markdown === lastMarkdownRef.current) return;
+				lastMarkdownRef.current = markdown;
+				onMarkdownChange(markdown);
+			});
 		});
-	};
+	}, [editor, onMarkdownChange]);
 
-	return <OnChangePlugin onChange={handleChange} />;
+	return null;
 }
 
 export default function LexicalMarkdownEditor({

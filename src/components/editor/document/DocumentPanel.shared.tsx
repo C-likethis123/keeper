@@ -45,6 +45,53 @@ type DocumentViewerMessage = {
 	message?: string;
 };
 
+export type DocumentViewerState = {
+	html: string;
+	openMessage: string | null;
+	requiresOpenMessage: boolean;
+};
+
+type DocumentViewerAdapter = {
+	build: (options: {
+		attachmentBase64: string | null;
+		savedPosition: string | null;
+		theme: "light" | "dark";
+	}) => DocumentViewerState;
+	isLoading: (viewer: DocumentViewerState) => boolean;
+};
+
+const DOCUMENT_VIEWER_ADAPTERS: Record<AttachmentType, DocumentViewerAdapter> = {
+	epub: {
+		build: ({ attachmentBase64, savedPosition, theme }) => ({
+			html: attachmentBase64
+				? buildEpubViewerHtml(theme, attachmentBase64, savedPosition)
+				: "",
+			openMessage: null,
+			requiresOpenMessage: false,
+		}),
+		isLoading: (viewer) => !viewer.html,
+	},
+	pdf: {
+		build: ({ attachmentBase64, savedPosition, theme }) => {
+			const dataUri = attachmentBase64
+				? `data:application/pdf;base64,${attachmentBase64}`
+				: null;
+			return {
+				html: buildPdfViewerHtml(theme),
+				openMessage: dataUri
+					? JSON.stringify({
+							type: "open",
+							fileUri: dataUri,
+							page: savedPosition ?? undefined,
+						})
+					: null,
+				requiresOpenMessage: true,
+			};
+		},
+		isLoading: (viewer) => !viewer.html || !viewer.openMessage,
+	},
+};
+
 type UseDocumentPanelStateOptions = Pick<
 	DocumentPanelProps,
 	| "noteId"
@@ -174,56 +221,30 @@ export function useDocumentPanelState({
 		}
 	}, [fileUri]);
 
-	const epubHtml = useMemo(
+	const viewer = useMemo(
 		() =>
-			attachmentType === "epub" && attachmentBase64
-				? buildEpubViewerHtml(theme, attachmentBase64, savedPosition)
-				: "",
+			DOCUMENT_VIEWER_ADAPTERS[attachmentType].build({
+				attachmentBase64,
+				savedPosition,
+				theme,
+			}),
 		[attachmentBase64, attachmentType, savedPosition, theme],
 	);
 
-	const pdfHtml = useMemo(
-		() => (attachmentType === "pdf" ? buildPdfViewerHtml(theme) : ""),
-		[attachmentType, theme],
-	);
-
-	const pdfDataUri =
-		attachmentType === "pdf" && attachmentBase64
-			? `data:application/pdf;base64,${attachmentBase64}`
-			: null;
-
-	const pdfOpenMessage =
-		pdfDataUri
-			? JSON.stringify({
-					type: "open",
-					fileUri: pdfDataUri,
-					page: savedPosition ?? undefined,
-				})
-			: null;
-	const viewerHtml = attachmentType === "epub" ? epubHtml : pdfHtml;
-
 	const isLoading =
 		!fileUri ||
-		(attachmentType === "epub" &&
-			!epubHtml &&
-			failedAttachmentType !== "epub") ||
-		(attachmentType === "pdf" &&
-			(!pdfHtml || !pdfDataUri) &&
-			failedAttachmentType !== "pdf");
+		(DOCUMENT_VIEWER_ADAPTERS[attachmentType].isLoading(viewer) &&
+			failedAttachmentType !== attachmentType);
 
 	return {
-		epubHtml,
 		failedAttachmentType,
 		fileUri,
 		filename,
 		handleOpenExternally,
 		handleViewerMessage,
 		isLoading,
-		pdfDataUri,
-		pdfHtml,
-		pdfOpenMessage,
 		savedPosition,
-		viewerHtml,
+		viewer,
 	};
 }
 

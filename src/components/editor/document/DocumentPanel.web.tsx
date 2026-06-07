@@ -41,9 +41,7 @@ export function DocumentPanel({
 		handleOpenExternally,
 		handleViewerMessage,
 		isLoading,
-		pdfHtml,
-		pdfOpenMessage,
-		viewerHtml,
+		viewer,
 	} = useDocumentPanelState({
 		noteId,
 		attachmentPath,
@@ -56,19 +54,19 @@ export function DocumentPanel({
 
 	useEffect(() => {
 		if (
-			attachmentType !== "pdf" ||
-			!pdfOpenMessage ||
-			!pdfHtml ||
+			!viewer.requiresOpenMessage ||
+			!viewer.openMessage ||
+			!viewer.html ||
 			!iframeRef.current
 		) {
 			return;
 		}
 
 		const timer = setTimeout(() => {
-			iframeRef.current?.contentWindow?.postMessage(pdfOpenMessage, "*");
+			iframeRef.current?.contentWindow?.postMessage(viewer.openMessage, "*");
 		}, 100);
 		return () => clearTimeout(timer);
-	}, [attachmentType, pdfHtml, pdfOpenMessage]);
+	}, [viewer]);
 
 	useEffect(() => {
 		function handleMessage(event: MessageEvent) {
@@ -88,7 +86,7 @@ export function DocumentPanel({
 			return <DocumentPanelLoading styles={styles} />;
 		}
 
-		if (!viewerHtml) {
+		if (!viewer.html) {
 			return (
 				<DocumentPanelFallback
 					attachmentType={attachmentType}
@@ -102,7 +100,7 @@ export function DocumentPanel({
 		return (
 			<iframe
 				ref={iframeRef}
-				srcDoc={viewerHtml}
+				srcDoc={viewer.html}
 				title={filename}
 				sandbox="allow-scripts allow-same-origin"
 				style={{ width: "100%", height: "100%", border: "none" }}
@@ -114,7 +112,7 @@ export function DocumentPanel({
 		handleOpenExternally,
 		isLoading,
 		styles,
-		viewerHtml,
+		viewer,
 	]);
 
 	return (
