@@ -1,6 +1,10 @@
 "use dom";
 
 import {
+	registerPendingDispatchFlusher,
+	unregisterPendingDispatchFlusher,
+} from "@/components/editor/core/pendingDispatchRegistry";
+import {
 	BlockType,
 	type EditorBlockPayload,
 	getBlockLanguage,
@@ -75,7 +79,7 @@ import {
 	REDO_COMMAND,
 	UNDO_COMMAND,
 } from "lexical";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
 	KEEPER_MARKDOWN_TRANSFORMERS,
 	exportLexicalToMarkdown,
@@ -119,50 +123,69 @@ interface LexicalMarkdownEditorProps {
 function CommandPlugin({ command }: { command?: LexicalEditorCommand }) {
 	const [editor] = useLexicalComposerContext();
 	const lastTimestampRef = useRef<number | null>(null);
+	const latestCommandRef = useRef<LexicalEditorCommand | undefined>(command);
+
+	const dispatchCommand = useCallback(
+		(nextCommand?: LexicalEditorCommand) => {
+			if (!nextCommand || nextCommand.timestamp === lastTimestampRef.current) {
+				return;
+			}
+			lastTimestampRef.current = nextCommand.timestamp;
+
+			switch (nextCommand.type) {
+				case "undo":
+					editor.dispatchCommand(UNDO_COMMAND, undefined);
+					break;
+				case "redo":
+					editor.dispatchCommand(REDO_COMMAND, undefined);
+					break;
+				case "indent":
+					editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined);
+					break;
+				case "outdent":
+					editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined);
+					break;
+				case "focusEditor":
+					editor.focus(undefined, { defaultSelection: "rootStart" });
+					break;
+				case "loadMarkdown":
+					if (typeof nextCommand.payload?.markdown === "string") {
+						editor.update(() =>
+							importMarkdownToLexical(nextCommand.payload?.markdown as string),
+						);
+					}
+					break;
+				case "insertBlock":
+					insertBlockCommand(editor, nextCommand.payload);
+					break;
+				case "insertMarkdown":
+					insertMarkdownCommand(editor, nextCommand.payload);
+					break;
+				case "insertImage":
+					insertImageCommand(editor, nextCommand.payload);
+					break;
+				case "updateType":
+					applyTypeCommand(editor, nextCommand.payload);
+					break;
+			}
+		},
+		[editor],
+	);
 
 	useEffect(() => {
-		if (!command || command.timestamp === lastTimestampRef.current) {
-			return;
-		}
-		lastTimestampRef.current = command.timestamp;
+		latestCommandRef.current = command;
+		dispatchCommand(command);
+	}, [command, dispatchCommand]);
 
-		switch (command.type) {
-			case "undo":
-				editor.dispatchCommand(UNDO_COMMAND, undefined);
-				break;
-			case "redo":
-				editor.dispatchCommand(REDO_COMMAND, undefined);
-				break;
-			case "indent":
-				editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined);
-				break;
-			case "outdent":
-				editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined);
-				break;
-			case "focusEditor":
-				editor.focus(undefined, { defaultSelection: "rootStart" });
-				break;
-			case "loadMarkdown":
-				if (typeof command.payload?.markdown === "string") {
-					editor.update(() =>
-						importMarkdownToLexical(command.payload?.markdown as string),
-					);
-				}
-				break;
-			case "insertBlock":
-				insertBlockCommand(editor, command.payload);
-				break;
-			case "insertMarkdown":
-				insertMarkdownCommand(editor, command.payload);
-				break;
-			case "insertImage":
-				insertImageCommand(editor, command.payload);
-				break;
-			case "updateType":
-				applyTypeCommand(editor, command.payload);
-				break;
-		}
-	}, [command, editor]);
+	useEffect(() => {
+		const key = `lexical-command-${editor.getKey()}`;
+		const flush = () => dispatchCommand(latestCommandRef.current);
+		registerPendingDispatchFlusher(key, flush);
+
+		return () => {
+			unregisterPendingDispatchFlusher(key, flush);
+		};
+	}, [dispatchCommand, editor]);
 
 	return null;
 }
@@ -551,6 +574,12 @@ export default function LexicalMarkdownEditor({
 						font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 						position: relative;
 					}
+					.keeper-toolbar-sticky {
+						position: sticky;
+						top: 0;
+						z-index: 10;
+						background: ${palette.background};
+					}
 					.keeper-editor {
 						min-height: calc(100vh - 76px);
 						outline: none;
@@ -758,16 +787,18 @@ export default function LexicalMarkdownEditor({
 			`}</style>
 			<LexicalComposer initialConfig={initialConfig}>
 				<div className="keeper-editor-shell">
-					<LexicalToolbarPlugin
-						hasAttachment={hasAttachment}
-						onAttachDocument={onAttachDocument}
-						onInsertImage={onInsertImage}
-						onRemoveAttachment={onRemoveAttachment}
-						onShowVideoModal={onShowVideoModal}
-						onToggleActivePanel={onToggleActivePanel}
-						onToggleArticle={onToggleArticle}
-						onToggleRelatedNotes={onToggleRelatedNotes}
-					/>
+					<div className="keeper-toolbar-sticky">
+						<LexicalToolbarPlugin
+							hasAttachment={hasAttachment}
+							onAttachDocument={onAttachDocument}
+							onInsertImage={onInsertImage}
+							onRemoveAttachment={onRemoveAttachment}
+							onShowVideoModal={onShowVideoModal}
+							onToggleActivePanel={onToggleActivePanel}
+							onToggleArticle={onToggleArticle}
+							onToggleRelatedNotes={onToggleRelatedNotes}
+						/>
+					</div>
 					<div className="keeper-editor-content">
 						<RichTextPlugin
 							contentEditable={<ContentEditable className="keeper-editor" />}

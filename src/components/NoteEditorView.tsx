@@ -564,9 +564,17 @@ export default function NoteEditorView({
       );
     }
     if (path) {
+      const imageMarkdown = `![](${path})`;
+      const currentMarkdown = useEditorState.getState().getContent();
+      setCurrentMarkdown(
+        currentMarkdown.trim().length > 0
+          ? `${currentMarkdown}\n\n${imageMarkdown}`
+          : imageMarkdown,
+      );
       sendCommand("insertImage", { src: path, altText: "" });
+      await persistCurrentEntry();
     }
-  }, [sendCommand]);
+  }, [persistCurrentEntry, sendCommand, setCurrentMarkdown]);
 
   const hasDocAttachment = attachmentPath !== null && attachmentType !== null;
   const showSplit =
@@ -635,7 +643,9 @@ export default function NoteEditorView({
               ) : (
                 <VideoSplitPanel
                   url={attachedVideo ?? ""}
-                  onDismiss={() => setIsVideoVisible(false)}
+                  onDismiss={() => {
+                    void handleRemoveVideo();
+                  }}
                 />
               )}
             </View>

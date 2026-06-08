@@ -267,7 +267,7 @@ export function LexicalSlashCommandPlugin({
 				left: 18,
 				right: 18,
 				maxWidth: 420,
-				zIndex: 20,
+				zIndex: 100,
 			}}
 		>
 			<SlashCommandOverlay

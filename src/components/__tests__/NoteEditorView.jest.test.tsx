@@ -29,6 +29,8 @@ const mockNavigationSetOptions = jest.fn();
 const mockNavigationDispatch = jest.fn();
 const mockGitFlushPendingChanges = jest.fn();
 const mockDomEditorRender = jest.fn();
+const mockGetDocumentAsync = jest.fn();
+const mockCopyPickedImageToNotes = jest.fn();
 
 let beforeRemoveListener:
 	| ((event: {
@@ -129,6 +131,15 @@ jest.mock("@/services/notes/noteService", () => ({
 	},
 }));
 
+jest.mock("expo-document-picker", () => ({
+	getDocumentAsync: (...args: unknown[]) => mockGetDocumentAsync(...args),
+}));
+
+jest.mock("@/services/notes/imageStorage", () => ({
+	copyPickedImageToNotes: (...args: unknown[]) =>
+		mockCopyPickedImageToNotes(...args),
+}));
+
 jest.mock("@/services/git/gitService", () => ({
 	GitService: {
 		flushPendingChanges: (...args: unknown[]) =>
@@ -164,6 +175,7 @@ jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 		default: (props: {
 			markdown: string;
 			onMarkdownChange?: (markdown: string) => void;
+			onInsertImage?: () => void | Promise<void>;
 			onInsertTemplateCommand?: () => void;
 			onOpenWikiLink?: (title: string) => void | Promise<void>;
 			command?: { type: string; payload?: Record<string, unknown> };
@@ -173,6 +185,14 @@ jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 				React.Fragment,
 				null,
 				React.createElement(Text, null, "Mock editor"),
+				React.createElement(
+					Pressable,
+					{
+						onPress: props.onInsertImage,
+						accessibilityRole: "button",
+					},
+					React.createElement(Text, null, "Trigger insert image"),
+				),
 				React.createElement(
 					Pressable,
 					{
@@ -204,10 +224,15 @@ jest.mock("@/components/editor/document/DocumentPanel", () => {
 
 jest.mock("@/components/editor/video/VideoSplitPanel", () => {
 	const React = require("react");
-	const { Text } = require("react-native");
+	const { Pressable, Text } = require("react-native");
 	return {
 		__esModule: true,
-		default: () => React.createElement(Text, null, "Mock video panel"),
+		default: ({ onDismiss }: { onDismiss: () => void }) =>
+			React.createElement(
+				Pressable,
+				{ accessibilityLabel: "Dismiss video", onPress: onDismiss },
+				React.createElement(Text, null, "Mock video panel"),
+			),
 	};
 });
 
@@ -308,11 +333,18 @@ describe("NoteEditorView", () => {
 		mockGitFlushPendingChanges.mockReset();
 		mockNavigationDispatch.mockReset();
 		mockDomEditorRender.mockReset();
+		mockGetDocumentAsync.mockReset();
+		mockCopyPickedImageToNotes.mockReset();
 		mockLoadNote.mockImplementation(async (id: string) => makeNote({ id }));
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
 		mockListNotesFallback.mockResolvedValue({ items: [], cursor: undefined });
 		mockIndexListNotes.mockResolvedValue({ items: [], cursor: undefined });
+		mockGetDocumentAsync.mockResolvedValue({
+			canceled: false,
+			assets: [{ uri: "file:///tmp/picked.png" }],
+		});
+		mockCopyPickedImageToNotes.mockResolvedValue("assets/image.png");
 		mockGitFlushPendingChanges.mockResolvedValue({
 			success: true,
 			didCommit: true,
@@ -353,6 +385,29 @@ describe("NoteEditorView", () => {
 
 		await screen.findByText("Mock video panel");
 		expect(screen.queryByText("Mock document panel")).toBeNull();
+	});
+
+	it("persists video removal from the split panel dismiss button", async () => {
+		const note = makeNote({
+			attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		});
+		mockLoadNote.mockResolvedValue(note);
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock video panel");
+		fireEvent.press(screen.getByLabelText("Dismiss video"));
+
+		await waitFor(() => {
+			expect(mockSaveNote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: note.id,
+					attachedVideo: null,
+				}),
+				false,
+			);
+		});
+		expect(screen.queryByText("Mock video panel")).toBeNull();
 	});
 
 	it("registers the force-save shortcut in the editor view", async () => {
@@ -739,6 +794,37 @@ describe("NoteEditorView", () => {
 					payload: { markdown: "Full template body\n- with checklist" },
 				}),
 			}),
+		);
+	});
+
+	it("persists inserted image markdown even before the DOM editor reports a change", async () => {
+		const user = userEvent.setup();
+		const note = makeNote({ content: "Initial body" });
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock editor");
+		await user.press(screen.getByText("Trigger insert image"));
+
+		await waitFor(() => {
+			expect(useEditorState.getState().getContent()).toBe(
+				"Initial body\n\n![](assets/image.png)",
+			);
+		});
+
+		pressHeaderBack();
+
+		await waitFor(() => {
+			expect(mockSaveNote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: note.id,
+					content: "Initial body\n\n![](assets/image.png)",
+				}),
+				false,
+			);
+		});
+		expect(mockCopyPickedImageToNotes).toHaveBeenCalledWith(
+			"file:///tmp/picked.png",
 		);
 	});
 
