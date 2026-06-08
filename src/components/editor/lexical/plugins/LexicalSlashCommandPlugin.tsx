@@ -46,6 +46,11 @@ interface SlashCommandSession {
 	selectedIndex: number;
 }
 
+interface OverlayPosition {
+	left: number;
+	top: number;
+}
+
 interface LexicalSlashCommandPluginProps {
 	onInsertTemplateCommand?: () => void | Promise<void>;
 }
@@ -69,6 +74,32 @@ function getSlashQuery(): string | null {
 	}
 
 	return text.slice(slashStart + 1, anchor.offset);
+}
+
+function getOverlayPosition(editor: LexicalEditor): OverlayPosition | null {
+	const rootElement = editor.getRootElement();
+	const shellElement = rootElement?.closest(".keeper-editor-shell");
+	const selection = window.getSelection();
+	if (!rootElement || !shellElement || !selection || selection.rangeCount === 0) {
+		return null;
+	}
+
+	const range = selection.getRangeAt(0);
+	const rangeRect =
+		range.getClientRects()[0] ??
+		(range.getBoundingClientRect().width || range.getBoundingClientRect().height
+			? range.getBoundingClientRect()
+			: null);
+	if (!rangeRect) {
+		return null;
+	}
+
+	const shellRect = shellElement.getBoundingClientRect();
+	const maxLeft = Math.max(18, shellRect.width - 438);
+	return {
+		left: Math.min(Math.max(18, rangeRect.left - shellRect.left), maxLeft),
+		top: rangeRect.bottom - shellRect.top + 8,
+	};
 }
 
 function removeSlashToken(editor: LexicalEditor) {
@@ -125,6 +156,7 @@ export function LexicalSlashCommandPlugin({
 }: LexicalSlashCommandPluginProps) {
 	const [editor] = useLexicalComposerContext();
 	const [session, setSession] = useState<SlashCommandSession | null>(null);
+	const [position, setPosition] = useState<OverlayPosition | null>(null);
 
 	const results = useMemo(() => {
 		const normalizedQuery = session?.query.trim().toLowerCase() ?? "";
@@ -146,8 +178,10 @@ export function LexicalSlashCommandPlugin({
 				const query = getSlashQuery();
 				setSession((current) => {
 					if (query === null) {
+						setPosition(null);
 						return current === null ? current : null;
 					}
+					setPosition(getOverlayPosition(editor));
 					if (current?.query === query) {
 						return current;
 					}
@@ -160,12 +194,14 @@ export function LexicalSlashCommandPlugin({
 	const cancelSession = useCallback(() => {
 		removeSlashToken(editor);
 		setSession(null);
+		setPosition(null);
 	}, [editor]);
 
 	const selectItem = useCallback(
 		(item: SlashCommandItem) => {
 			removeSlashToken(editor);
 			setSession(null);
+			setPosition(null);
 			if (item.id === "insert-collapsible") {
 				insertCollapsibleBlock(editor);
 				return;
@@ -263,8 +299,8 @@ export function LexicalSlashCommandPlugin({
 		<View
 			style={{
 				position: "absolute",
-				top: 64,
-				left: 18,
+				top: position?.top ?? 64,
+				left: position?.left ?? 18,
 				right: 18,
 				maxWidth: 420,
 				zIndex: 100,

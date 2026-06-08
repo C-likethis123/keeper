@@ -595,6 +595,10 @@ export default function LexicalMarkdownEditor({
 						inset: 0;
 						pointer-events: none;
 						position: absolute;
+						z-index: 5;
+					}
+					.keeper-draggable-block-anchor > div {
+						pointer-events: auto;
 					}
 					.keeper-draggable-block-handle {
 						align-items: center;
@@ -609,6 +613,7 @@ export default function LexicalMarkdownEditor({
 						padding: 0;
 						pointer-events: auto;
 						position: absolute;
+						touch-action: none;
 						transition: opacity 120ms ease, background-color 120ms ease;
 						width: 24px;
 					}

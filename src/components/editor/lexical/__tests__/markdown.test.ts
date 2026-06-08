@@ -4,14 +4,14 @@ import { ListItemNode, ListNode } from "@lexical/list";
 import { CHECK_LIST, UNORDERED_LIST } from "@lexical/markdown";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
-import { $getRoot, createEditor } from "lexical";
+import { $createParagraphNode, $getRoot, createEditor } from "lexical";
 import {
 	$isDetailsNode,
 	DetailsContentNode,
 	DetailsNode,
 	DetailsSummaryNode,
 } from "../DetailsNode";
-import { ImageNode } from "../ImageNode";
+import { $createImageNode, ImageNode } from "../ImageNode";
 import { EquationNode } from "../equations/EquationNode";
 import {
 	KEEPER_MARKDOWN_TRANSFORMERS,
@@ -102,6 +102,46 @@ describe("Keeper Lexical markdown transformers", () => {
 		expect(roundTripMarkdown("![Diagram](keeper://asset/image.png)")).toBe(
 			"![Diagram](keeper://asset/image.png)",
 		);
+	});
+
+	it("exports an inserted image instead of empty paragraph text", () => {
+		const editor = createEditor({
+			namespace: "KeeperInsertedImageMarkdownTest",
+			nodes: [
+				HeadingNode,
+				QuoteNode,
+				ListNode,
+				ListItemNode,
+				CodeNode,
+				CodeHighlightNode,
+				LinkNode,
+				AutoLinkNode,
+				TableNode,
+				TableCellNode,
+				TableRowNode,
+				DetailsContentNode,
+				DetailsNode,
+				DetailsSummaryNode,
+				EquationNode,
+				ImageNode,
+			],
+			onError: (error) => {
+				throw error;
+			},
+		});
+
+		let result = "";
+		editor.update(
+			() => {
+				const paragraph = $createParagraphNode();
+				paragraph.append($createImageNode("assets/image.png", ""));
+				$getRoot().append(paragraph);
+				result = exportLexicalToMarkdown();
+			},
+			{ discrete: true },
+		);
+
+		expect(result).toBe("![](assets/image.png)");
 	});
 
 	it("round-trips block equation markdown through EquationNode", () => {

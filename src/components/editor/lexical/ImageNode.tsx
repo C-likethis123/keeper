@@ -39,6 +39,14 @@ export class ImageNode extends DecoratorNode<React.ReactElement> {
 		return this.__altText;
 	}
 
+	getTextContent(): string {
+		return `![${this.__altText}](${this.__src})`;
+	}
+
+	isInline(): false {
+		return false;
+	}
+
 	createDOM(_config: EditorConfig): HTMLElement {
 		const element = document.createElement("div");
 		element.className = "image-node";

@@ -797,7 +797,7 @@ describe("NoteEditorView", () => {
 		);
 	});
 
-	it("persists inserted image markdown even before the DOM editor reports a change", async () => {
+	it("sends inserted image paths to the DOM editor without appending markdown", async () => {
 		const user = userEvent.setup();
 		const note = makeNote({ content: "Initial body" });
 
@@ -807,22 +807,16 @@ describe("NoteEditorView", () => {
 		await user.press(screen.getByText("Trigger insert image"));
 
 		await waitFor(() => {
-			expect(useEditorState.getState().getContent()).toBe(
-				"Initial body\n\n![](assets/image.png)",
-			);
-		});
-
-		pressHeaderBack();
-
-		await waitFor(() => {
-			expect(mockSaveNote).toHaveBeenCalledWith(
+			expect(mockDomEditorRender).toHaveBeenLastCalledWith(
 				expect.objectContaining({
-					id: note.id,
-					content: "Initial body\n\n![](assets/image.png)",
+					command: expect.objectContaining({
+						type: "insertImage",
+						payload: { src: "assets/image.png", altText: "" },
+					}),
 				}),
-				false,
 			);
 		});
+		expect(useEditorState.getState().getContent()).toBe("Initial body");
 		expect(mockCopyPickedImageToNotes).toHaveBeenCalledWith(
 			"file:///tmp/picked.png",
 		);
