@@ -6,7 +6,6 @@ import {
 	persistEditorEntry,
 } from "@/services/notes/editorEntryPersistence";
 import type { Note } from "@/services/notes/types";
-import { useEditorState } from "@/stores/editorStore";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 
@@ -17,6 +16,8 @@ type AutoSaveInput = {
 	id: string;
 	title: string;
 	content: string;
+	currentContent: string;
+	getCurrentContent: () => string;
 	isPinned: boolean;
 	noteType: Note["noteType"];
 	status?: Note["status"];
@@ -33,6 +34,8 @@ export function useAutoSave({
 	id,
 	title,
 	content: initialContent,
+	currentContent,
+	getCurrentContent,
 	isPinned,
 	noteType,
 	status: noteStatus,
@@ -44,8 +47,6 @@ export function useAutoSave({
 	onPersisted,
 	isNew,
 }: AutoSaveInput) {
-	const getContentForVersion = useEditorState((s) => s.getContentForVersion);
-	const prepareContent = useEditorState((s) => s.prepareContent);
 	const [status, setStatus] = useState<SaveStatus>("idle");
 	const lastSavedRef = useRef<Note | null>(null);
 	const latestNoteRef = useRef({
@@ -69,13 +70,13 @@ export function useAutoSave({
 	const activeForceSaveRef = useRef<Promise<void> | null>(null);
 	const saveAgainRequestedRef = useRef(false);
 	const isNewEntryRef = useRef(!!isNew);
-	const latestMarkdownVersionRef = useRef(
-		useEditorState.getState().markdownVersion,
-	);
+	const latestContentRef = useRef(normalizeMarkdownForPersistence(initialContent));
+	const getCurrentContentRef = useRef(getCurrentContent);
 	const latestInitialContentRef = useRef(
 		normalizeMarkdownForPersistence(initialContent),
 	);
 	const hasEditorContentChangedRef = useRef(false);
+	getCurrentContentRef.current = getCurrentContent;
 	latestNoteRef.current = {
 		id,
 		title,
@@ -92,6 +93,7 @@ export function useAutoSave({
 		const normalizedInitialContent =
 			normalizeMarkdownForPersistence(initialContent);
 		latestInitialContentRef.current = normalizedInitialContent;
+		latestContentRef.current = normalizedInitialContent;
 		lastInputAtRef.current = Date.now();
 
 		if (lastSavedRef.current?.id !== id) {
@@ -110,8 +112,6 @@ export function useAutoSave({
 			};
 			isNewEntryRef.current = !!isNew;
 			hasEditorContentChangedRef.current = false;
-			latestMarkdownVersionRef.current =
-				useEditorState.getState().markdownVersion;
 			setStatus("idle");
 		} else if (
 			title.trim() !== lastSavedRef.current.title ||
@@ -154,8 +154,14 @@ export function useAutoSave({
 					flushAllPendingEditorDispatches();
 
 					const currentNote = latestNoteRef.current;
+					const flushedContent = normalizeMarkdownForPersistence(
+						getCurrentContentRef.current(),
+					);
+					latestContentRef.current = flushedContent;
+					hasEditorContentChangedRef.current =
+						flushedContent !== latestInitialContentRef.current;
 					const currentContent = hasEditorContentChangedRef.current
-						? getContentForVersion(latestMarkdownVersionRef.current)
+						? flushedContent
 						: (lastSavedRef.current?.content ??
 							latestInitialContentRef.current);
 					const trimmedTitle = currentNote.title.trim();
@@ -248,7 +254,6 @@ export function useAutoSave({
 						id: currentNote.id,
 						titleLength: trimmedTitle.length,
 						contentLength: currentContent.length,
-						markdownVersion: latestMarkdownVersionRef.current,
 						isNewEntry: currentIsNewEntry,
 					});
 					try {
@@ -315,50 +320,23 @@ export function useAutoSave({
 
 		activeForceSaveRef.current = savePromise;
 		return savePromise;
-	}, [getContentForVersion, onPersisted]);
+	}, [onPersisted]);
 
 	useEffect(() => {
-		let lastMarkdownVersion = useEditorState.getState().markdownVersion;
-		const unsubscribe = useEditorState.subscribe((state) => {
-			const nextMarkdownVersion = state.markdownVersion;
-			if (nextMarkdownVersion === lastMarkdownVersion) {
-				return;
-			}
-			lastMarkdownVersion = nextMarkdownVersion;
-			latestMarkdownVersionRef.current = nextMarkdownVersion;
+		const nextContent = normalizeMarkdownForPersistence(currentContent);
+		if (nextContent === latestContentRef.current) {
+			return;
+		}
+		latestContentRef.current = nextContent;
+		if (nextContent === latestInitialContentRef.current) {
+			hasEditorContentChangedRef.current = false;
+			return;
+		}
 
-			const nextContent = state.getContentForVersion(nextMarkdownVersion);
-			if (nextContent === latestInitialContentRef.current) {
-				hasEditorContentChangedRef.current = false;
-				return;
-			}
-
-			hasEditorContentChangedRef.current = true;
-			lastInputAtRef.current = Date.now();
-			scheduleSaveWhenIdleRef.current?.();
-
-			if (prepareTimeoutRef.current) {
-				clearTimeout(prepareTimeoutRef.current);
-			}
-			prepareTimeoutRef.current = setTimeout(() => {
-				prepareTimeoutRef.current = null;
-				const prepareStart = performance.now();
-				prepareContent();
-				console.debug("[AutoSaveProfile] prepareContent", {
-					markdownVersion: latestMarkdownVersionRef.current,
-					durationMs: Math.round(performance.now() - prepareStart),
-				});
-			}, 0);
-		});
-
-		return () => {
-			unsubscribe();
-			if (prepareTimeoutRef.current) {
-				clearTimeout(prepareTimeoutRef.current);
-				prepareTimeoutRef.current = null;
-			}
-		};
-	}, [prepareContent]);
+		hasEditorContentChangedRef.current = true;
+		lastInputAtRef.current = Date.now();
+		scheduleSaveWhenIdleRef.current?.();
+	}, [currentContent]);
 
 	useEffect(() => {
 		GitService.registerBackgroundSaveHandler(forceSave);

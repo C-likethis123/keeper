@@ -4,7 +4,7 @@ export interface SmartEditResult {
 	newText: string;
 }
 
-const INDENT = "\t";
+const INDENT = "    ";
 
 const PAIRS: Record<string, string> = {
 	"(": ")",
@@ -60,6 +60,17 @@ export function handleTab(
 export function handleEnter(text: string, cursorOffset: number): SmartEditResult {
 	const lineBeforeCursor = getLineBeforeCursor(text, cursorOffset);
 	const baseIndent = getLineIndent(lineBeforeCursor);
+	const previousChar = text[cursorOffset - 1];
+	const nextChar = text[cursorOffset];
+	if (previousChar && PAIRS[previousChar] === nextChar) {
+		const innerIndent = `\n${baseIndent}${INDENT}`;
+		return {
+			handled: true,
+			newCursorOffset: cursorOffset + innerIndent.length,
+			newText: `${text.slice(0, cursorOffset)}${innerIndent}\n${baseIndent}${text.slice(cursorOffset)}`,
+		};
+	}
+
 	const extraIndent = /[{[(]\s*$/.test(lineBeforeCursor) ? INDENT : "";
 	return insertTextAtCursor(text, cursorOffset, `\n${baseIndent}${extraIndent}`);
 }

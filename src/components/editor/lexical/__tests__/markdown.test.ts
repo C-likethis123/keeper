@@ -3,8 +3,20 @@ import { AutoLinkNode, LinkNode } from "@lexical/link";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { CHECK_LIST, UNORDERED_LIST } from "@lexical/markdown";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
-import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
-import { $createParagraphNode, $getRoot, createEditor } from "lexical";
+import {
+	$createTableCellNode,
+	$createTableNode,
+	$createTableRowNode,
+	TableCellNode,
+	TableNode,
+	TableRowNode,
+} from "@lexical/table";
+import {
+	$createParagraphNode,
+	$createTextNode,
+	$getRoot,
+	createEditor,
+} from "lexical";
 import {
 	$isDetailsNode,
 	DetailsContentNode,
@@ -169,6 +181,66 @@ describe("Keeper Lexical markdown transformers", () => {
 
 		expect(roundTripMarkdown(markdown)).toBe(markdown);
 		expect($isDetailsNode(getFirstImportedNode(markdown))).toBe(true);
+	});
+
+	it("round-trips table markdown through TableNode", () => {
+		const markdown = ["| A | B |", "| --- | --- |", "| 1 | 2 |"].join("\n");
+
+		expect(roundTripMarkdown(markdown)).toBe(markdown);
+	});
+
+	it("exports inserted tables to markdown", () => {
+		const editor = createEditor({
+			namespace: "KeeperInsertedTableMarkdownTest",
+			nodes: [
+				HeadingNode,
+				QuoteNode,
+				ListNode,
+				ListItemNode,
+				CodeNode,
+				CodeHighlightNode,
+				LinkNode,
+				AutoLinkNode,
+				TableNode,
+				TableCellNode,
+				TableRowNode,
+				DetailsContentNode,
+				DetailsNode,
+				DetailsSummaryNode,
+				EquationNode,
+				ImageNode,
+			],
+			onError: (error) => {
+				throw error;
+			},
+		});
+
+		let result = "";
+		editor.update(
+			() => {
+				const tableNode = $createTableNode();
+				for (const row of [
+					["A", "B"],
+					["1", "2"],
+					["3", "4"],
+				]) {
+					const rowNode = $createTableRowNode();
+					for (const cell of row) {
+						const cellNode = $createTableCellNode();
+						cellNode.append($createParagraphNode().append($createTextNode(cell)));
+						rowNode.append(cellNode);
+					}
+					tableNode.append(rowNode);
+				}
+				$getRoot().append(tableNode);
+				result = exportLexicalToMarkdown();
+			},
+			{ discrete: true },
+		);
+
+		expect(result).toBe(
+			["| A | B |", "| --- | --- |", "| 1 | 2 |", "| 3 | 4 |"].join("\n"),
+		);
 	});
 
 	it("round-trips fenced code block language through CodeNode", () => {

@@ -3,7 +3,6 @@ import { SaveIndicator } from "@/components/SaveIndicator";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import type { Note } from "@/services/notes/types";
-import { useEditorState } from "@/stores/editorStore";
 import { useStorageStore } from "@/stores/storageStore";
 import { useTabStore } from "@/stores/tabStore";
 import {
@@ -31,6 +30,7 @@ const mockGitFlushPendingChanges = jest.fn();
 const mockDomEditorRender = jest.fn();
 const mockGetDocumentAsync = jest.fn();
 const mockCopyPickedImageToNotes = jest.fn();
+const mockCopyPickedAttachmentToNote = jest.fn();
 
 let beforeRemoveListener:
 	| ((event: {
@@ -140,6 +140,17 @@ jest.mock("@/services/notes/imageStorage", () => ({
 		mockCopyPickedImageToNotes(...args),
 }));
 
+jest.mock("@/services/notes/attachmentStorage", () => ({
+	copyPickedAttachmentToNote: (...args: unknown[]) =>
+		mockCopyPickedAttachmentToNote(...args),
+	deleteAttachment: jest.fn(),
+	inferAttachmentType: (path: string) => {
+		if (path.endsWith(".pdf")) return "pdf";
+		if (path.endsWith(".epub")) return "epub";
+		return null;
+	},
+}));
+
 jest.mock("@/services/git/gitService", () => ({
 	GitService: {
 		flushPendingChanges: (...args: unknown[]) =>
@@ -175,6 +186,7 @@ jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 		default: (props: {
 			markdown: string;
 			onMarkdownChange?: (markdown: string) => void;
+			onAttachDocument?: () => void | Promise<void>;
 			onInsertImage?: () => void | Promise<void>;
 			onInsertTemplateCommand?: () => void;
 			onOpenWikiLink?: (title: string) => void | Promise<void>;
@@ -185,6 +197,14 @@ jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 				React.Fragment,
 				null,
 				React.createElement(Text, null, "Mock editor"),
+				React.createElement(
+					Pressable,
+					{
+						onPress: props.onAttachDocument,
+						accessibilityRole: "button",
+					},
+					React.createElement(Text, null, "Trigger attach document"),
+				),
 				React.createElement(
 					Pressable,
 					{
@@ -335,6 +355,7 @@ describe("NoteEditorView", () => {
 		mockDomEditorRender.mockReset();
 		mockGetDocumentAsync.mockReset();
 		mockCopyPickedImageToNotes.mockReset();
+		mockCopyPickedAttachmentToNote.mockReset();
 		mockLoadNote.mockImplementation(async (id: string) => makeNote({ id }));
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
@@ -342,9 +363,10 @@ describe("NoteEditorView", () => {
 		mockIndexListNotes.mockResolvedValue({ items: [], cursor: undefined });
 		mockGetDocumentAsync.mockResolvedValue({
 			canceled: false,
-			assets: [{ uri: "file:///tmp/picked.png" }],
+			assets: [{ uri: "file:///tmp/picked.png", name: "picked.png" }],
 		});
 		mockCopyPickedImageToNotes.mockResolvedValue("assets/image.png");
+		mockCopyPickedAttachmentToNote.mockResolvedValue("_attachments/picked.pdf");
 		mockGitFlushPendingChanges.mockResolvedValue({
 			success: true,
 			didCommit: true,
@@ -354,7 +376,6 @@ describe("NoteEditorView", () => {
 		(useAppKeyboardShortcuts as jest.Mock).mockReset();
 		latestNavigationOptions = undefined;
 		beforeRemoveListener = undefined;
-		useEditorState.getState().resetState();
 		useTabStore.setState({ tabs: [], activeTabId: null });
 		useStorageStore.setState({
 			initializationStatus: "ready",
@@ -363,14 +384,16 @@ describe("NoteEditorView", () => {
 		});
 	});
 
-	it("loads note markdown into the editor store on mount", async () => {
+	it("loads note markdown into the editor on mount", async () => {
 		const note = makeNote({ content: "# Heading" });
 
 		const result = renderNoteEditor(note);
 
 		await screen.findByText("Mock editor");
 		await waitFor(() => {
-			expect(useEditorState.getState().getContent()).toBe("# Heading");
+			expect(mockDomEditorRender).toHaveBeenLastCalledWith(
+				expect.objectContaining({ markdown: "# Heading" }),
+			);
 		});
 		expect(result.getPathname()).toBe("/editor");
 	});
@@ -385,6 +408,32 @@ describe("NoteEditorView", () => {
 
 		await screen.findByText("Mock video panel");
 		expect(screen.queryByText("Mock document panel")).toBeNull();
+	});
+
+	it("shows the document panel after attaching a document when video was active", async () => {
+		const note = makeNote({
+			attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		});
+		mockGetDocumentAsync.mockResolvedValue({
+			canceled: false,
+			assets: [{ uri: "file:///tmp/picked.pdf", name: "picked.pdf" }],
+		});
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock video panel");
+		fireEvent.press(screen.getByText("Trigger attach document"));
+
+		await screen.findByText("Mock document panel");
+		expect(screen.queryByText("Mock video panel")).toBeNull();
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: note.id,
+				attachment: "_attachments/picked.pdf",
+				documentPositions: null,
+			}),
+			false,
+		);
 	});
 
 	it("persists video removal from the split panel dismiss button", async () => {
@@ -782,8 +831,10 @@ describe("NoteEditorView", () => {
 
 		await waitFor(() => {
 			expect(mockLoadNote).toHaveBeenCalledWith("template-1");
-			expect(useEditorState.getState().getContent()).toBe(
-				"Full template body\n- with checklist",
+			expect(mockDomEditorRender).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					markdown: "Full template body\n- with checklist",
+				}),
 			);
 		});
 		expect(mockDomEditorRender).toHaveBeenLastCalledWith(
@@ -816,7 +867,9 @@ describe("NoteEditorView", () => {
 				}),
 			);
 		});
-		expect(useEditorState.getState().getContent()).toBe("Initial body");
+		expect(mockDomEditorRender).toHaveBeenLastCalledWith(
+			expect.objectContaining({ markdown: "Initial body" }),
+		);
 		expect(mockCopyPickedImageToNotes).toHaveBeenCalledWith(
 			"file:///tmp/picked.png",
 		);

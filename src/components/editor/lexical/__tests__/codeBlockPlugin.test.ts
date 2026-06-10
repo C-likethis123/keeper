@@ -1,4 +1,7 @@
-import { handleCodeTextInsertion } from "../plugins/codeBlockSmartEdit";
+import {
+	handleCodeTextInsertion,
+	handleEnter,
+} from "../plugins/codeBlockSmartEdit";
 
 describe("LexicalCodeBlockPlugin", () => {
 	it("completes opening braces in code blocks", () => {
@@ -22,6 +25,22 @@ describe("LexicalCodeBlockPlugin", () => {
 			handled: false,
 			newCursorOffset: 3,
 			newText: "foo",
+		});
+	});
+
+	it("opens an indented blank line between paired braces", () => {
+		expect(handleEnter("if (ok) {}", 9)).toEqual({
+			handled: true,
+			newCursorOffset: 14,
+			newText: "if (ok) {\n    \n}",
+		});
+	});
+
+	it("keeps closing brace aligned with the current block indent", () => {
+		expect(handleEnter("    if (ok) {}", 13)).toEqual({
+			handled: true,
+			newCursorOffset: 22,
+			newText: "    if (ok) {\n        \n    }",
 		});
 	});
 });

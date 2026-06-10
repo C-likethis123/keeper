@@ -1,5 +1,4 @@
-import { useEditorState } from "@/stores/editorStore";
-import React, { useCallback, useEffect, useRef } from "react";
+import React from "react";
 import LexicalMarkdownEditor from "./lexical/LexicalMarkdownEditor";
 
 interface Command {
@@ -18,6 +17,7 @@ interface EdgeInsets {
 interface DomEditorProps {
 	hasAttachment?: boolean;
 	markdown: string;
+	onMarkdownChange: (markdown: string) => void;
 	themeMode: "light" | "dark";
 	safeAreaInsets?: EdgeInsets;
 	keyboardHeight?: number;
@@ -45,6 +45,7 @@ export default function DomEditor({
 	safeAreaInsets,
 	keyboardHeight = 0,
 	command,
+	onMarkdownChange,
 	onAttachDocument,
 	onInsertImage,
 	onInsertTemplateCommand,
@@ -56,29 +57,6 @@ export default function DomEditor({
 	onToggleRelatedNotes,
 	dom,
 }: DomEditorProps) {
-	const loadMarkdown = useEditorState((s) => s.loadMarkdown);
-	const setCurrentMarkdown = useEditorState((s) => s.setCurrentMarkdown);
-	const getContent = useEditorState((s) => s.getContent);
-	const loadedMarkdownRef = useRef<string | null>(null);
-
-	// Sync initial content or external note updates into the editor store.
-	useEffect(() => {
-		if (markdown !== loadedMarkdownRef.current && markdown !== getContent()) {
-			loadMarkdown(markdown);
-			loadedMarkdownRef.current = markdown;
-		}
-	}, [markdown, loadMarkdown, getContent]);
-
-	const handleMarkdownChange = useCallback(
-		(nextMarkdown: string) => {
-			if (nextMarkdown === useEditorState.getState().getContent()) {
-				return;
-			}
-			setCurrentMarkdown(nextMarkdown);
-		},
-		[setCurrentMarkdown],
-	);
-
 	return (
 		<LexicalMarkdownEditor
 			command={command}
@@ -88,7 +66,7 @@ export default function DomEditor({
 			onAttachDocument={onAttachDocument}
 			onInsertImage={onInsertImage}
 			onInsertTemplateCommand={onInsertTemplateCommand}
-			onMarkdownChange={handleMarkdownChange}
+			onMarkdownChange={onMarkdownChange}
 			onOpenWikiLink={onOpenWikiLink}
 			onRemoveAttachment={onRemoveAttachment}
 			onShowVideoModal={onShowVideoModal}

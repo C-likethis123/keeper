@@ -1,45 +1,41 @@
 import { DraggableBlockPlugin_EXPERIMENTAL } from "@lexical/react/LexicalDraggableBlockPlugin";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 export function KeeperDraggableBlockPlugin() {
-	const menuRef = useRef<HTMLButtonElement | null>(null);
+	const menuRef = useRef<HTMLDivElement | null>(null);
 	const targetLineRef = useRef<HTMLDivElement | null>(null);
 	const [anchorElem, setAnchorElem] = useState<HTMLElement | null>(null);
 
-	const isOnMenu = useCallback((element: HTMLElement) => {
-		return menuRef.current?.contains(element) ?? false;
+	useEffect(() => {
+		const root = document.querySelector<HTMLElement>(".keeper-editor-content");
+		setAnchorElem(root);
 	}, []);
 
+	if (!anchorElem) {
+		return null;
+	}
+
 	return (
-		<>
-			<div
-				className="keeper-draggable-block-anchor"
-				ref={setAnchorElem}
-			/>
-			{anchorElem ? (
-				<DraggableBlockPlugin_EXPERIMENTAL
-					anchorElem={anchorElem}
-					isOnMenu={isOnMenu}
-					menuComponent={
-						<button
-							aria-label="Drag block"
-							className="keeper-draggable-block-handle"
-							ref={menuRef}
-							type="button"
-						>
-							<span aria-hidden="true" />
-						</button>
-					}
-					menuRef={menuRef}
-					targetLineComponent={
-						<div
-							className="keeper-draggable-block-target-line"
-							ref={targetLineRef}
-						/>
-					}
-					targetLineRef={targetLineRef}
+		<DraggableBlockPlugin_EXPERIMENTAL
+			anchorElem={anchorElem}
+			isOnMenu={(element) => menuRef.current?.contains(element) ?? false}
+			menuComponent={
+				<div
+					aria-hidden="true"
+					className="keeper-draggable-block-handle"
+					ref={menuRef}
+				>
+					<span />
+				</div>
+			}
+			menuRef={menuRef}
+			targetLineComponent={
+				<div
+					className="keeper-draggable-block-target-line"
+					ref={targetLineRef}
 				/>
-			) : null}
-		</>
+			}
+			targetLineRef={targetLineRef}
+		/>
 	);
 }

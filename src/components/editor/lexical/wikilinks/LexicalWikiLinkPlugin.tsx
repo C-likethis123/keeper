@@ -31,6 +31,11 @@ interface WikiLinkSession {
 	selectedIndex: number;
 }
 
+interface OverlayPosition {
+	left: number;
+	top: number;
+}
+
 const RESULT_LIMIT = 8;
 
 function findWikiLinkTitle(target: EventTarget | null): string | null {
@@ -67,6 +72,32 @@ function getWikiLinkQuery(): string | null {
 	}
 
 	return query;
+}
+
+function getOverlayPosition(editor: LexicalEditor): OverlayPosition | null {
+	const rootElement = editor.getRootElement();
+	const shellElement = rootElement?.closest(".keeper-editor-shell");
+	const selection = window.getSelection();
+	if (!rootElement || !shellElement || !selection || selection.rangeCount === 0) {
+		return null;
+	}
+
+	const range = selection.getRangeAt(0);
+	const rangeRect =
+		range.getClientRects()[0] ??
+		(range.getBoundingClientRect().width || range.getBoundingClientRect().height
+			? range.getBoundingClientRect()
+			: null);
+	if (!rangeRect) {
+		return null;
+	}
+
+	const shellRect = shellElement.getBoundingClientRect();
+	const maxLeft = Math.max(18, shellRect.width - 438);
+	return {
+		left: Math.min(Math.max(18, rangeRect.left - shellRect.left), maxLeft),
+		top: rangeRect.bottom - shellRect.top + 8,
+	};
 }
 
 function insertWikiLink(editor: LexicalEditor, title: string) {
@@ -118,6 +149,7 @@ export function LexicalWikiLinkPlugin({
 }: LexicalWikiLinkPluginProps) {
 	const [editor] = useLexicalComposerContext();
 	const [session, setSession] = useState<WikiLinkSession | null>(null);
+	const [position, setPosition] = useState<OverlayPosition | null>(null);
 	const [results, setResults] = useState<WikiLinkResult[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 
@@ -156,8 +188,10 @@ export function LexicalWikiLinkPlugin({
 				const query = getWikiLinkQuery();
 				setSession((current) => {
 					if (query === null) {
+						setPosition(null);
 						return current === null ? current : null;
 					}
+					setPosition(getOverlayPosition(editor));
 					if (current?.query === query) {
 						return current;
 					}
@@ -229,12 +263,14 @@ export function LexicalWikiLinkPlugin({
 
 	const cancelSession = useCallback(() => {
 		setSession(null);
+		setPosition(null);
 	}, []);
 
 	const selectResult = useCallback(
 		(result: WikiLinkResult) => {
 			insertWikiLink(editor, result.title);
 			setSession(null);
+			setPosition(null);
 		},
 		[editor],
 	);
@@ -325,8 +361,8 @@ export function LexicalWikiLinkPlugin({
 		<View
 			style={{
 				position: "absolute",
-				top: 64,
-				left: 18,
+				top: position?.top ?? 64,
+				left: position?.left ?? 18,
 				right: 18,
 				maxWidth: 420,
 				zIndex: 100,

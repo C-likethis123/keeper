@@ -1,5 +1,4 @@
 export enum BlockType {
-  paragraph = "paragraph",
   heading1 = "heading1",
   heading2 = "heading2",
   heading3 = "heading3",
@@ -7,7 +6,6 @@ export enum BlockType {
   numberedList = "numberedList",
   checkboxList = "checkboxList",
   codeBlock = "codeBlock",
-  video = "video",
 }
 // image
 // table

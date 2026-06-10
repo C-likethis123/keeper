@@ -48,6 +48,7 @@ import { EquationNode } from "./equations/EquationNode";
 import { EquationPlugin } from "./equations/EquationPlugin";
 import { LexicalCodeBlockPlugin } from "./plugins/LexicalCodeBlockPlugin";
 import { KeeperDraggableBlockPlugin } from "./plugins/KeeperDraggableBlockPlugin";
+import { KeeperTableControlsPlugin } from "./plugins/KeeperTableControlsPlugin";
 import { LexicalSlashCommandPlugin } from "./plugins/LexicalSlashCommandPlugin";
 
 import {
@@ -331,14 +332,18 @@ function insertImageCommand(
 	editor.update(
 		() => {
 			const imageNode = $createImageNode(src, altText);
+			const paragraphNode = $createParagraphNode();
 			const selection = $getSelection();
 
 			if ($isRangeSelection(selection)) {
 				$insertNodes([imageNode]);
+				imageNode.insertAfter(paragraphNode);
+				paragraphNode.selectStart();
 				return;
 			}
 
-			$getRoot().append(imageNode);
+			$getRoot().append(imageNode, paragraphNode);
+			paragraphNode.selectStart();
 		},
 		{ discrete: true },
 	);
@@ -607,17 +612,23 @@ export default function LexicalMarkdownEditor({
 						border-radius: 6px;
 						color: ${palette.text}8A;
 						cursor: grab;
+						display: flex;
+						font-size: 18px;
 						height: 24px;
 						justify-content: center;
-						opacity: 0;
+						line-height: 1;
+						opacity: 1;
 						padding: 0;
 						pointer-events: auto;
 						position: absolute;
 						touch-action: none;
 						transition: opacity 120ms ease, background-color 120ms ease;
+						user-select: none;
+						will-change: transform, opacity;
 						width: 24px;
 					}
-					.keeper-draggable-block-handle:active {
+					.keeper-draggable-block-handle:active,
+					.keeper-draggable-block-handle-active {
 						cursor: grabbing;
 					}
 					.keeper-draggable-block-handle:hover,
@@ -627,6 +638,9 @@ export default function LexicalMarkdownEditor({
 					}
 					.keeper-editor-content:hover .keeper-draggable-block-handle {
 						opacity: 1;
+					}
+					.keeper-draggable-block-dragging {
+						opacity: 0.45;
 					}
 					.keeper-draggable-block-handle span,
 					.keeper-draggable-block-handle span::before,
@@ -652,7 +666,6 @@ export default function LexicalMarkdownEditor({
 						opacity: 0;
 						pointer-events: none;
 						position: absolute;
-						transform: translate(-10000px, -10000px);
 					}
 					.keeper-placeholder {
 						color: ${palette.text}80;
@@ -736,22 +749,55 @@ export default function LexicalMarkdownEditor({
 				.keeper-table-selection .keeper-table-cell {
 					border-color: ${palette.primary};
 				}
-				.keeper-table-cell:focus-within {
-					box-shadow: inset 0 0 0 1px ${palette.primary};
-					outline: none;
-				}
-				.image-node {
-					margin: 12px 0;
-					max-width: 100%;
-				}
+					.keeper-table-cell:focus-within {
+						box-shadow: inset 0 0 0 1px ${palette.primary};
+						outline: none;
+					}
+					.keeper-table-control {
+						align-items: center;
+						background: ${palette.primary};
+						border: 0;
+						border-radius: 999px;
+						box-shadow: 0 8px 18px ${palette.shadow}33;
+						color: #fff;
+						cursor: pointer;
+						display: flex;
+						font-size: 24px;
+						font-weight: 500;
+						height: 32px;
+						justify-content: center;
+						line-height: 1;
+						padding: 0;
+						position: absolute;
+						transform: translate(-50%, -50%);
+						width: 32px;
+						z-index: 6;
+					}
+					.keeper-table-control:hover,
+					.keeper-table-control:focus-visible {
+						filter: brightness(1.08);
+						outline: 2px solid ${palette.primary}66;
+						outline-offset: 2px;
+					}
+					.image-node {
+						margin: 12px 0;
+						max-width: 100%;
+					}
 				.keeper-code {
 					background: ${palette.card};
 					border: 1px solid ${palette.border};
 					border-radius: 6px;
+					box-sizing: border-box;
+					display: block;
 					font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 					font-size: 14px;
+					line-height: 1.45;
+					margin: 12px 0;
+					max-width: 100%;
+					overflow-x: auto;
 					padding: 12px;
 					white-space: pre;
+					width: 100%;
 				}
 				.keeper-token-comment { color: ${themeMode === "light" ? "#6A737D" : "#8B949E"}; font-style: italic; }
 				.keeper-token-keyword,
@@ -806,14 +852,17 @@ export default function LexicalMarkdownEditor({
 					</div>
 					<div className="keeper-editor-content">
 						<RichTextPlugin
-							contentEditable={<ContentEditable className="keeper-editor" />}
+							contentEditable={
+								<ContentEditable className="keeper-editor ContentEditable__root" />
+							}
 							placeholder={
 								<div className="keeper-placeholder">Start writing</div>
 							}
 							ErrorBoundary={LexicalErrorBoundary}
-						/>
-						<KeeperDraggableBlockPlugin />
-					</div>
+							/>
+							<KeeperDraggableBlockPlugin />
+							<KeeperTableControlsPlugin />
+						</div>
 					<HistoryPlugin />
 					<ListPlugin />
 					<CheckListPlugin />

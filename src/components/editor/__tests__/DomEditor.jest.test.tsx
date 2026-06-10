@@ -1,5 +1,4 @@
 import DomEditor from "@/components/editor/DomEditor";
-import { useEditorState } from "@/stores/editorStore";
 import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
 
@@ -30,14 +29,18 @@ jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 
 describe("DomEditor", () => {
 	beforeEach(() => {
-		useEditorState.getState().resetState();
 		mockLexicalEditorRender.mockReset();
 	});
 
-	it("loads incoming markdown into the editor store", () => {
-		render(<DomEditor markdown="initial markdown" themeMode="dark" />);
+	it("passes incoming markdown to Lexical", () => {
+		render(
+			<DomEditor
+				markdown="initial markdown"
+				onMarkdownChange={jest.fn()}
+				themeMode="dark"
+			/>,
+		);
 
-		expect(useEditorState.getState().getContent()).toBe("initial markdown");
 		expect(mockLexicalEditorRender).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				markdown: "initial markdown",
@@ -46,13 +49,18 @@ describe("DomEditor", () => {
 		);
 	});
 
-	it("syncs markdown changes from Lexical back into the editor store", () => {
+	it("emits markdown changes from Lexical", () => {
+		const onMarkdownChange = jest.fn();
 		const { getByRole } = render(
-			<DomEditor markdown="initial markdown" themeMode="dark" />,
+			<DomEditor
+				markdown="initial markdown"
+				onMarkdownChange={onMarkdownChange}
+				themeMode="dark"
+			/>,
 		);
 
 		fireEvent.press(getByRole("button"));
 
-		expect(useEditorState.getState().getContent()).toBe("updated markdown");
+		expect(onMarkdownChange).toHaveBeenCalledWith("updated markdown");
 	});
 });

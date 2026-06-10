@@ -22,7 +22,6 @@ import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { showToast } from "@/services/toast";
-import { useEditorState } from "@/stores/editorStore";
 import { useTabStore } from "@/stores/tabStore";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import React, {
@@ -71,6 +70,7 @@ export default function NoteEditorView({
     | undefined
   >();
   const [editorMarkdown, setEditorMarkdown] = useState(note.content);
+  const editorMarkdownRef = useRef(note.content);
   const [editorInstanceKey, setEditorInstanceKey] = useState(0);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
@@ -78,6 +78,19 @@ export default function NoteEditorView({
     (type: string, payload?: Record<string, unknown>) => {
       setLastCommand({ type, payload, timestamp: Date.now() });
     },
+    [],
+  );
+
+  const handleMarkdownChange = useCallback((markdown: string) => {
+    if (markdown === editorMarkdownRef.current) {
+      return;
+    }
+    editorMarkdownRef.current = markdown;
+    setEditorMarkdown(markdown);
+  }, []);
+
+  const getCurrentEditorMarkdown = useCallback(
+    () => editorMarkdownRef.current,
     [],
   );
 
@@ -156,6 +169,8 @@ export default function NoteEditorView({
   const [isShowVideoModalVisible, setIsShowVideoModalVisible] = useState(false);
   const { status, forceSave } = useAutoSave({
     ...note,
+    currentContent: editorMarkdown,
+    getCurrentContent: getCurrentEditorMarkdown,
     title,
     isPinned,
     noteType,
@@ -220,16 +235,14 @@ export default function NoteEditorView({
     [openTab, router],
   );
 
-  const loadMarkdown = useEditorState((s) => s.loadMarkdown);
-  const setCurrentMarkdown = useEditorState((s) => s.setCurrentMarkdown);
   const handleApplyTemplate = useCallback(
     (markdown: string) => {
+      editorMarkdownRef.current = markdown;
       setEditorMarkdown(markdown);
       setEditorInstanceKey((key) => key + 1);
-      setCurrentMarkdown(markdown);
       sendCommand("loadMarkdown", { markdown });
     },
-    [sendCommand, setCurrentMarkdown],
+    [sendCommand],
   );
   const loadedNoteRef = useRef<{ id: string; content: string } | null>(null);
   const latestDraftRef = useRef({
@@ -272,7 +285,7 @@ export default function NoteEditorView({
   const buildCurrentNotePayload = useCallback(
     (overrides?: Partial<NoteSaveInput>): NoteSaveInput => {
       const draft = latestDraftRef.current;
-      const content = useEditorState.getState().getContent();
+      const content = editorMarkdownRef.current;
       const resolvedNoteType = overrides?.noteType ?? draft.noteType;
       const resolvedIsPinned = overrides?.isPinned ?? draft.isPinned;
       return {
@@ -344,11 +357,10 @@ export default function NoteEditorView({
       const loadedNote = loadedNoteRef.current;
       if (loadedNote?.id !== note.id || loadedNote.content !== note.content) {
         loadedNoteRef.current = { id: note.id, content: note.content };
+        editorMarkdownRef.current = note.content;
         setEditorMarkdown(note.content);
-        loadMarkdown(note.content);
       }
     }, [
-      loadMarkdown,
       note.attachment,
       note.attachedVideo,
       note.content,
@@ -428,6 +440,7 @@ export default function NoteEditorView({
       setAttachmentType(type);
       setDocumentPositions(null);
       setIsAttachmentVisible(true);
+      setActivePanel("document");
       await persistCurrentEntry({
         attachment: relativePath,
         documentPositions: null,
@@ -435,7 +448,7 @@ export default function NoteEditorView({
     } catch {
       showToast("Failed to attach document.");
     }
-  }, [id, persistCurrentEntry]);
+  }, [id, persistCurrentEntry, setActivePanel]);
 
   const handleHideAttachment = useCallback(() => {
     setIsAttachmentVisible(false);
@@ -444,8 +457,9 @@ export default function NoteEditorView({
   const handleShowAttachment = useCallback(() => {
     if (attachmentPath && attachmentType) {
       setIsAttachmentVisible(true);
+      setActivePanel("document");
     }
-  }, [attachmentPath, attachmentType]);
+  }, [attachmentPath, attachmentType, setActivePanel]);
 
   const handleDocumentPositionChange = useCallback(
     async (path: string, position: string) => {
@@ -670,6 +684,7 @@ export default function NoteEditorView({
               key={editorInstanceKey}
               hasAttachment={hasDocAttachment}
               markdown={editorMarkdown}
+              onMarkdownChange={handleMarkdownChange}
               themeMode={colorScheme ?? "dark"}
               safeAreaInsets={safeAreaInsets}
               keyboardHeight={keyboardHeight}

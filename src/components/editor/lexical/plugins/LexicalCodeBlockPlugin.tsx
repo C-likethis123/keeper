@@ -13,6 +13,7 @@ import {
 	COMMAND_PRIORITY_HIGH,
 	CONTROLLED_TEXT_INSERTION_COMMAND,
 	DELETE_CHARACTER_COMMAND,
+	KEY_DOWN_COMMAND,
 	KEY_ENTER_COMMAND,
 	KEY_TAB_COMMAND,
 } from "lexical";
@@ -39,20 +40,23 @@ function getCodeSelectionContext(): CodeSelectionContext | null {
 		return null;
 	}
 
-	const anchorNode = selection.anchor.getNode();
+	const anchor = selection.anchor;
+	const anchorNode = anchor.getNode();
 	const topLevelNode = anchorNode.getTopLevelElementOrThrow();
 	if (!$isCodeNode(topLevelNode)) {
 		return null;
 	}
 
-	let cursorOffset = 0;
-	for (const textNode of topLevelNode.getAllTextNodes()) {
-		if (textNode.getKey() === anchorNode.getKey()) {
-			cursorOffset += selection.anchor.offset;
-			break;
-		}
-		cursorOffset += textNode.getTextContentSize();
-	}
+	const cursorOffset =
+		anchor.type === "element"
+			? topLevelNode
+					.getChildren()
+					.slice(0, anchor.offset)
+					.reduce((offset, child) => offset + child.getTextContentSize(), 0)
+			: anchorNode
+					.getPreviousSiblings()
+					.reduce((offset, sibling) => offset + sibling.getTextContentSize(), 0) +
+				anchor.offset;
 
 	return {
 		codeNode: topLevelNode,
@@ -143,6 +147,31 @@ export function LexicalCodeBlockPlugin(): React.ReactElement | null {
 					ctx.cursorOffset,
 					insertedText,
 				);
+				return handleSmartEditResult(ctx, result);
+			},
+			COMMAND_PRIORITY_HIGH,
+		);
+	}, [editor]);
+
+	useEffect(() => {
+		return editor.registerCommand(
+			KEY_DOWN_COMMAND,
+			(event: KeyboardEvent) => {
+				if (event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1) {
+					return false;
+				}
+
+				const ctx = getCodeSelectionContext();
+				if (!ctx) {
+					return false;
+				}
+
+				const result = handleCodeTextInsertion(ctx.text, ctx.cursorOffset, event.key);
+				if (!result.handled) {
+					return false;
+				}
+
+				event.preventDefault();
 				return handleSmartEditResult(ctx, result);
 			},
 			COMMAND_PRIORITY_HIGH,

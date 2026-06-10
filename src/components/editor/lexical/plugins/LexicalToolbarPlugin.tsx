@@ -1,5 +1,9 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { INSERT_TABLE_COMMAND } from "@lexical/table";
+import {
+	$insertTableColumnAtSelection,
+	$insertTableRowAtSelection,
+	INSERT_TABLE_COMMAND,
+} from "@lexical/table";
 import {
 	INDENT_CONTENT_COMMAND,
 	OUTDENT_CONTENT_COMMAND,
@@ -56,6 +60,7 @@ const styles = StyleSheet.create({
 		gap: 12,
 	},
 	dialogTitle: {
+		color: "#111",
 		fontSize: 16,
 		fontWeight: "600",
 	},
@@ -63,6 +68,7 @@ const styles = StyleSheet.create({
 		gap: 6,
 	},
 	label: {
+		color: "#111",
 		fontSize: 13,
 		fontWeight: "500",
 	},
@@ -70,8 +76,13 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		borderColor: "#d0d0d0",
 		borderRadius: 6,
+		color: "#111",
+		fontSize: 16,
 		paddingHorizontal: 10,
 		paddingVertical: 8,
+	},
+	toggleText: {
+		color: "#111",
 	},
 	headerToggle: {
 		flexDirection: "row",
@@ -102,6 +113,7 @@ const styles = StyleSheet.create({
 		backgroundColor: "#222",
 	},
 	buttonText: {
+		color: "#111",
 		fontWeight: "600",
 	},
 	primaryButtonText: {
@@ -141,6 +153,30 @@ export function LexicalToolbarPlugin({
 	const handleOutdent = () =>
 		editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined);
 	const handleInsertTable = () => setIsTableDialogVisible(true);
+	const handleInsertTableRow = () => {
+		editor.update(
+			() => {
+				try {
+					$insertTableRowAtSelection(true);
+				} catch {
+					return;
+				}
+			},
+			{ discrete: true },
+		);
+	};
+	const handleInsertTableColumn = () => {
+		editor.update(
+			() => {
+				try {
+					$insertTableColumnAtSelection(true);
+				} catch {
+					return;
+				}
+			},
+			{ discrete: true },
+		);
+	};
 	const handleConfirmTable = () => {
 		editor.dispatchCommand(INSERT_TABLE_COMMAND, {
 			columns: String(clampTableSize(columns)),
@@ -162,6 +198,16 @@ export function LexicalToolbarPlugin({
 				<IconButton name="indent" onPress={handleIndent} />
 				<IconButton name="dedent" onPress={handleOutdent} />
 				<IconButton name="table" onPress={handleInsertTable} label="Insert table" />
+				<IconButton
+					name="plus-square-o"
+					onPress={handleInsertTableRow}
+					label="Add table row"
+				/>
+				<IconButton
+					name="columns"
+					onPress={handleInsertTableColumn}
+					label="Add table column"
+				/>
 				<IconButton
 					name="image"
 					onPress={onInsertImage ?? noop}
@@ -241,9 +287,9 @@ export function LexicalToolbarPlugin({
 							style={styles.headerToggle}
 						>
 							<View style={styles.checkbox}>
-								<Text>{includeHeaders ? "x" : ""}</Text>
+								<Text style={styles.toggleText}>{includeHeaders ? "x" : ""}</Text>
 							</View>
-							<Text>Header row</Text>
+							<Text style={styles.toggleText}>Header row</Text>
 						</Pressable>
 						<View style={styles.actions}>
 							<Pressable
