@@ -9,6 +9,17 @@ jest.mock("@lexical/react/LexicalComposerContext", () => ({
 	useLexicalComposerContext: () => mockUseLexicalComposerContext(),
 }));
 
+jest.mock("@lexical/react/LexicalTypeaheadMenuPlugin", () => ({
+	LexicalTypeaheadMenuPlugin: () => null,
+	MenuOption: class {
+		key: string;
+
+		constructor(key: string) {
+			this.key = key;
+		}
+	},
+}));
+
 class TestElement {
 	constructor(private readonly href: string | null = null) {}
 

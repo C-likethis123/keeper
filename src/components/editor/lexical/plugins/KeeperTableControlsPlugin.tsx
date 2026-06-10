@@ -7,8 +7,12 @@ import {
 	$isTableRowNode,
 } from "@lexical/table";
 import {
+	$getSelection,
 	$getNearestNodeFromDOMNode,
 	$getNodeByKey,
+	$isRangeSelection,
+	COMMAND_PRIORITY_LOW,
+	SELECTION_CHANGE_COMMAND,
 	type LexicalNode,
 } from "lexical";
 import React, { useCallback, useEffect, useState } from "react";
@@ -48,17 +52,21 @@ function getNearestTableNode(node: LexicalNode | null): LexicalNode | null {
 	return null;
 }
 
+function getTableKeyFromSelection(): string | null {
+	const selection = $getSelection();
+	if (!$isRangeSelection(selection)) {
+		return null;
+	}
+	const tableNode = getNearestTableNode(selection.anchor.getNode());
+	return tableNode?.getKey() ?? null;
+}
+
 export function KeeperTableControlsPlugin() {
 	const [editor] = useLexicalComposerContext();
 	const [controls, setControls] = useState<TableControlsState | null>(null);
 
 	const updateControls = useCallback(
 		(target: TableTarget | null) => {
-			if (!target) {
-				setControls(null);
-				return;
-			}
-
 			const rootElement = editor.getRootElement();
 			const contentElement = rootElement?.closest(".keeper-editor-content");
 			if (!contentElement) {
@@ -67,20 +75,31 @@ export function KeeperTableControlsPlugin() {
 			}
 
 			let tableKey: string | null = null;
-			editor.getEditorState().read(() => {
-				const tableNode = getNearestTableNode(
-					$getNearestNodeFromDOMNode(target.nodeTarget),
-				);
-				if (tableNode) {
-					tableKey = tableNode.getKey();
+			let tableElement: HTMLTableElement | null = target?.tableElement ?? null;
+			if (target) {
+				editor.getEditorState().read(() => {
+					const tableNode =
+						getNearestTableNode($getNearestNodeFromDOMNode(target.tableElement)) ??
+						getNearestTableNode($getNearestNodeFromDOMNode(target.nodeTarget));
+					if (tableNode) {
+						tableKey = tableNode.getKey();
+					}
+				});
+			} else {
+				editor.getEditorState().read(() => {
+					tableKey = getTableKeyFromSelection();
+				});
+				if (tableKey) {
+					const element = editor.getElementByKey(tableKey);
+					tableElement = element instanceof HTMLTableElement ? element : null;
 				}
-			});
-			if (!tableKey) {
+			}
+			if (!tableKey || !tableElement) {
 				setControls(null);
 				return;
 			}
 
-			const tableRect = target.tableElement.getBoundingClientRect();
+			const tableRect = tableElement.getBoundingClientRect();
 			const contentRect = contentElement.getBoundingClientRect();
 			setControls({
 				height: tableRect.height,
@@ -95,7 +114,8 @@ export function KeeperTableControlsPlugin() {
 
 	useEffect(() => {
 		const rootElement = editor.getRootElement();
-		if (!rootElement) {
+		const contentElement = rootElement?.closest(".keeper-editor-content");
+		if (!rootElement || !contentElement) {
 			return;
 		}
 
@@ -111,14 +131,15 @@ export function KeeperTableControlsPlugin() {
 		const handleFocusIn = (event: FocusEvent) => {
 			updateControls(getTableTarget(event.target));
 		};
+		const handlePointerDown = (event: PointerEvent) => {
+			updateControls(getTableTarget(event.target));
+		};
 		const handleScroll = () => {
 			const tableElement =
 				controls && editor.getElementByKey(controls.tableKey);
-			updateControls(
-				tableElement instanceof HTMLTableElement
-					? { nodeTarget: tableElement, tableElement }
-					: null,
-			);
+			if (tableElement instanceof HTMLTableElement) {
+				updateControls({ nodeTarget: tableElement, tableElement });
+			}
 		};
 		const unregisterUpdateListener = editor.registerUpdateListener(() => {
 			const tableElement = controls
@@ -130,17 +151,30 @@ export function KeeperTableControlsPlugin() {
 					: null,
 			);
 		});
+		const unregisterSelectionListener = editor.registerCommand(
+			SELECTION_CHANGE_COMMAND,
+			() => {
+				updateControls(null);
+				return false;
+			},
+			COMMAND_PRIORITY_LOW,
+		);
 
-		rootElement.addEventListener("pointermove", handlePointerMove);
-		rootElement.addEventListener("focusin", handleFocusIn);
+		contentElement.addEventListener("pointermove", handlePointerMove);
+		contentElement.addEventListener("pointerover", handlePointerMove);
+		contentElement.addEventListener("pointerdown", handlePointerDown);
+		contentElement.addEventListener("focusin", handleFocusIn);
 		window.addEventListener("resize", handleScroll);
 		window.addEventListener("scroll", handleScroll, true);
 		return () => {
-			rootElement.removeEventListener("pointermove", handlePointerMove);
-			rootElement.removeEventListener("focusin", handleFocusIn);
+			contentElement.removeEventListener("pointermove", handlePointerMove);
+			contentElement.removeEventListener("pointerover", handlePointerMove);
+			contentElement.removeEventListener("pointerdown", handlePointerDown);
+			contentElement.removeEventListener("focusin", handleFocusIn);
 			window.removeEventListener("resize", handleScroll);
 			window.removeEventListener("scroll", handleScroll, true);
 			unregisterUpdateListener();
+			unregisterSelectionListener();
 		};
 	}, [controls, editor, updateControls]);
 

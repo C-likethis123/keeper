@@ -1,19 +1,18 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import {
+	LexicalTypeaheadMenuPlugin,
+	MenuOption,
+	type MenuRenderFn,
+	type MenuTextMatch,
+} from "@lexical/react/LexicalTypeaheadMenuPlugin";
 import { $createLinkNode } from "@lexical/link";
 import {
 	$createTextNode,
-	$getSelection,
-	$isRangeSelection,
-	$isTextNode,
 	COMMAND_PRIORITY_LOW,
-	KEY_ARROW_DOWN_COMMAND,
-	KEY_ARROW_UP_COMMAND,
-	KEY_ESCAPE_COMMAND,
-	KEY_ENTER_COMMAND,
-	type LexicalEditor,
+	type TextNode,
 } from "lexical";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View } from "react-native";
+import { createPortal } from "react-dom";
 import {
 	WikiLinkOverlay,
 	type WikiLinkResult,
@@ -26,17 +25,17 @@ interface LexicalWikiLinkPluginProps {
 	onOpenWikiLink?: (title: string) => void | Promise<void>;
 }
 
-interface WikiLinkSession {
-	query: string;
-	selectedIndex: number;
-}
-
-interface OverlayPosition {
-	left: number;
-	top: number;
-}
-
 const RESULT_LIMIT = 8;
+const MENU_WIDTH = 420;
+
+class WikiLinkOption extends MenuOption {
+	result: WikiLinkResult;
+
+	constructor(result: WikiLinkResult) {
+		super(result.id);
+		this.result = result;
+	}
+}
 
 function findWikiLinkTitle(target: EventTarget | null): string | null {
 	if (!(target instanceof Element)) {
@@ -48,117 +47,47 @@ function findWikiLinkTitle(target: EventTarget | null): string | null {
 	return href ? parseWikiLinkUrl(href) : null;
 }
 
-function getWikiLinkQuery(): string | null {
-	const selection = $getSelection();
-	if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
-		return null;
-	}
-
-	const anchor = selection.anchor;
-	const node = anchor.getNode();
-	if (!$isTextNode(node)) {
-		return null;
-	}
-
-	const beforeCursor = node.getTextContent().slice(0, anchor.offset);
-	const triggerStart = beforeCursor.lastIndexOf("[[");
+function wikiLinkTriggerFn(text: string): MenuTextMatch | null {
+	const triggerStart = text.lastIndexOf("[[");
 	if (triggerStart === -1) {
 		return null;
 	}
 
-	const query = beforeCursor.slice(triggerStart + 2);
+	const query = text.slice(triggerStart + 2);
 	if (query.includes("]]") || query.includes("\n")) {
 		return null;
 	}
 
-	return query;
-}
-
-function getOverlayPosition(editor: LexicalEditor): OverlayPosition | null {
-	const rootElement = editor.getRootElement();
-	const shellElement = rootElement?.closest(".keeper-editor-shell");
-	const selection = window.getSelection();
-	if (!rootElement || !shellElement || !selection || selection.rangeCount === 0) {
-		return null;
-	}
-
-	const range = selection.getRangeAt(0);
-	const rangeRect =
-		range.getClientRects()[0] ??
-		(range.getBoundingClientRect().width || range.getBoundingClientRect().height
-			? range.getBoundingClientRect()
-			: null);
-	if (!rangeRect) {
-		return null;
-	}
-
-	const shellRect = shellElement.getBoundingClientRect();
-	const maxLeft = Math.max(18, shellRect.width - 438);
 	return {
-		left: Math.min(Math.max(18, rangeRect.left - shellRect.left), maxLeft),
-		top: rangeRect.bottom - shellRect.top + 8,
+		leadOffset: triggerStart,
+		matchingString: query,
+		replaceableString: `[[${query}`,
 	};
 }
 
-function insertWikiLink(editor: LexicalEditor, title: string) {
-	editor.update(() => {
-		const selection = $getSelection();
-		if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
-			return;
-		}
+function insertWikiLink(textNodeContainingQuery: TextNode | null, title: string) {
+	if (!textNodeContainingQuery) {
+		return;
+	}
 
-		const anchor = selection.anchor;
-		const node = anchor.getNode();
-		if (!$isTextNode(node)) {
-			return;
-		}
-
-		const text = node.getTextContent();
-		const beforeCursor = text.slice(0, anchor.offset);
-		const triggerStart = beforeCursor.lastIndexOf("[[");
-		if (triggerStart === -1) {
-			return;
-		}
-
-		const query = beforeCursor.slice(triggerStart + 2);
-		if (query.includes("]]") || query.includes("\n")) {
-			return;
-		}
-
-		const beforeTrigger = text.slice(0, triggerStart);
-		const afterCursor = text.slice(anchor.offset);
-		const wikiLink = $createLinkNode(createWikiLinkUrl(title));
-		wikiLink.append($createTextNode(title));
-
-		node.setTextContent(beforeTrigger);
-		node.insertAfter(wikiLink);
-
-		if (afterCursor.length > 0) {
-			const trailingText = $createTextNode(afterCursor);
-			wikiLink.insertAfter(trailingText);
-			trailingText.select(0, 0);
-			return;
-		}
-
-		wikiLink.selectNext();
-	});
+	const wikiLink = $createLinkNode(createWikiLinkUrl(title));
+	wikiLink.append($createTextNode(title));
+	textNodeContainingQuery.replace(wikiLink);
+	wikiLink.selectNext();
 }
 
 export function LexicalWikiLinkPlugin({
 	onOpenWikiLink,
 }: LexicalWikiLinkPluginProps) {
 	const [editor] = useLexicalComposerContext();
-	const [session, setSession] = useState<WikiLinkSession | null>(null);
-	const [position, setPosition] = useState<OverlayPosition | null>(null);
+	const [query, setQuery] = useState<string | null>(null);
 	const [results, setResults] = useState<WikiLinkResult[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 
-	const selectedIndex = useMemo(() => {
-		if (!session || results.length === 0) {
-			return 0;
-		}
-		return Math.min(session.selectedIndex, results.length - 1);
-	}, [results.length, session]);
+	const options = useMemo(
+		() => results.map((result) => new WikiLinkOption(result)),
+		[results],
+	);
 
 	useEffect(() => {
 		if (!onOpenWikiLink) {
@@ -183,36 +112,16 @@ export function LexicalWikiLinkPlugin({
 	}, [editor, onOpenWikiLink]);
 
 	useEffect(() => {
-		return editor.registerUpdateListener(({ editorState }) => {
-			editorState.read(() => {
-				const query = getWikiLinkQuery();
-				setSession((current) => {
-					if (query === null) {
-						setPosition(null);
-						return current === null ? current : null;
-					}
-					setPosition(getOverlayPosition(editor));
-					if (current?.query === query) {
-						return current;
-					}
-					return { query, selectedIndex: 0 };
-				});
-			});
-		});
-	}, [editor]);
-
-	useEffect(() => {
-		const rawQuery = session?.query;
-		if (rawQuery === undefined) {
+		if (query === null) {
 			setResults([]);
 			setIsLoading(false);
 			return;
 		}
 
 		let cancelled = false;
-		const query = rawQuery.trim();
+		const trimmedQuery = query.trim();
 		setIsLoading(true);
-		NotesIndexService.listNotes(query, RESULT_LIMIT, 0)
+		NotesIndexService.listNotes(trimmedQuery, RESULT_LIMIT, 0)
 			.then((result) => {
 				if (cancelled) {
 					return;
@@ -226,14 +135,15 @@ export function LexicalWikiLinkPlugin({
 				}));
 
 				const shouldShowCreate =
-					query.length > 0 && !findExactWikiLinkMatch(result.items, query);
+					trimmedQuery.length > 0 &&
+					!findExactWikiLinkMatch(result.items, trimmedQuery);
 				setResults(
 					shouldShowCreate
 						? [
 								...noteResults,
 								{
-									id: `create-${query}`,
-									title: query,
+									id: `create-${trimmedQuery}`,
+									title: trimmedQuery,
 									type: "create",
 								},
 							]
@@ -244,8 +154,14 @@ export function LexicalWikiLinkPlugin({
 				console.warn("[LexicalWikiLinkPlugin] note lookup failed:", error);
 				if (!cancelled) {
 					setResults(
-						query.length > 0
-							? [{ id: `create-${query}`, title: query, type: "create" }]
+						trimmedQuery.length > 0
+							? [
+									{
+										id: `create-${trimmedQuery}`,
+										title: trimmedQuery,
+										type: "create",
+									},
+								]
 							: [],
 					);
 				}
@@ -259,121 +175,57 @@ export function LexicalWikiLinkPlugin({
 		return () => {
 			cancelled = true;
 		};
-	}, [session?.query]);
-
-	const cancelSession = useCallback(() => {
-		setSession(null);
-		setPosition(null);
-	}, []);
+	}, [query]);
 
 	const selectResult = useCallback(
-		(result: WikiLinkResult) => {
-			insertWikiLink(editor, result.title);
-			setSession(null);
-			setPosition(null);
+		(result: WikiLinkResult, textNodeContainingQuery: TextNode | null) => {
+			insertWikiLink(textNodeContainingQuery, result.title);
 		},
-		[editor],
+		[],
 	);
 
-	useEffect(() => {
-		return editor.registerCommand(
-			KEY_ARROW_DOWN_COMMAND,
-			(event: KeyboardEvent) => {
-				if (!session || results.length === 0) {
-					return false;
-				}
-				event.preventDefault();
-				setSession((current) =>
-					current
-						? {
-								...current,
-								selectedIndex: (current.selectedIndex + 1) % results.length,
-							}
-						: current,
-				);
-				return true;
-			},
-			COMMAND_PRIORITY_LOW,
-		);
-	}, [editor, results.length, session]);
-
-	useEffect(() => {
-		return editor.registerCommand(
-			KEY_ARROW_UP_COMMAND,
-			(event: KeyboardEvent) => {
-				if (!session || results.length === 0) {
-					return false;
-				}
-				event.preventDefault();
-				setSession((current) =>
-					current
-						? {
-								...current,
-								selectedIndex:
-									(current.selectedIndex - 1 + results.length) % results.length,
-							}
-						: current,
-				);
-				return true;
-			},
-			COMMAND_PRIORITY_LOW,
-		);
-	}, [editor, results.length, session]);
-
-	useEffect(() => {
-		return editor.registerCommand(
-			KEY_ESCAPE_COMMAND,
-			(event: KeyboardEvent) => {
-				if (!session) {
-					return false;
-				}
-				event.preventDefault();
-				cancelSession();
-				return true;
-			},
-			COMMAND_PRIORITY_LOW,
-		);
-	}, [cancelSession, editor, session]);
-
-	useEffect(() => {
-		return editor.registerCommand(
-			KEY_ENTER_COMMAND,
-			(event: KeyboardEvent | null) => {
-				if (!session || results.length === 0) {
-					return false;
-				}
-				event?.preventDefault();
-				const selected = results[selectedIndex];
-				if (selected) {
-					selectResult(selected);
-				}
-				return true;
-			},
-			COMMAND_PRIORITY_LOW,
-		);
-	}, [editor, results, selectResult, selectedIndex, session]);
-
-	if (!session) {
-		return null;
-	}
+	const menuRenderFn = useCallback<MenuRenderFn<WikiLinkOption>>(
+		(anchorElementRef, { options, selectedIndex, selectOptionAndCleanUp }) =>
+			anchorElementRef.current
+				? createPortal(
+						<div
+							style={{
+								maxWidth: "calc(100vw - 36px)",
+								width: MENU_WIDTH,
+								zIndex: 100,
+							}}
+						>
+							<WikiLinkOverlay
+								results={options.map((option) => option.result)}
+								selectedIndex={selectedIndex ?? 0}
+								isLoading={isLoading}
+								onSelect={(result) => {
+									const option = options.find(
+										(option) => option.result.id === result.id,
+									);
+									if (option) {
+										selectOptionAndCleanUp(option);
+									}
+								}}
+							/>
+						</div>,
+						anchorElementRef.current,
+					)
+				: null,
+		[isLoading],
+	);
 
 	return (
-		<View
-			style={{
-				position: "absolute",
-				top: position?.top ?? 64,
-				left: position?.left ?? 18,
-				right: 18,
-				maxWidth: 420,
-				zIndex: 100,
+		<LexicalTypeaheadMenuPlugin<WikiLinkOption>
+			commandPriority={COMMAND_PRIORITY_LOW}
+			menuRenderFn={menuRenderFn}
+			onQueryChange={setQuery}
+			onSelectOption={(option, textNodeContainingQuery, closeMenu) => {
+				selectResult(option.result, textNodeContainingQuery);
+				closeMenu();
 			}}
-		>
-			<WikiLinkOverlay
-				results={results}
-				selectedIndex={selectedIndex}
-				isLoading={isLoading}
-				onSelect={selectResult}
-			/>
-		</View>
+			options={options}
+			triggerFn={wikiLinkTriggerFn}
+		/>
 	);
 }

@@ -27,6 +27,7 @@ import {
 	ListNode,
 } from "@lexical/list";
 import { CheckListPlugin } from "@lexical/react/LexicalCheckListPlugin";
+import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { LexicalToolbarPlugin } from "./plugins/LexicalToolbarPlugin";
@@ -80,7 +81,7 @@ import {
 	REDO_COMMAND,
 	UNDO_COMMAND,
 } from "lexical";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	KEEPER_MARKDOWN_TRANSFORMERS,
 	exportLexicalToMarkdown,
@@ -467,6 +468,8 @@ export default function LexicalMarkdownEditor({
 	themeMode,
 }: LexicalMarkdownEditorProps) {
 	const palette = themeMode === "light" ? lightTheme.colors : darkTheme.colors;
+	const [editorContentElement, setEditorContentElement] =
+		useState<HTMLDivElement | null>(null);
 	const initialConfig = useMemo(
 		() => ({
 			namespace: "KeeperLexicalEditor",
@@ -850,7 +853,7 @@ export default function LexicalMarkdownEditor({
 							onToggleRelatedNotes={onToggleRelatedNotes}
 						/>
 					</div>
-					<div className="keeper-editor-content">
+					<div className="keeper-editor-content" ref={setEditorContentElement}>
 						<RichTextPlugin
 							contentEditable={
 								<ContentEditable className="keeper-editor ContentEditable__root" />
@@ -860,10 +863,11 @@ export default function LexicalMarkdownEditor({
 							}
 							ErrorBoundary={LexicalErrorBoundary}
 							/>
-							<KeeperDraggableBlockPlugin />
+							<KeeperDraggableBlockPlugin anchorElem={editorContentElement} />
 							<KeeperTableControlsPlugin />
 						</div>
 					<HistoryPlugin />
+					<AutoFocusPlugin />
 					<ListPlugin />
 					<CheckListPlugin />
 					<LexicalCodeBlockPlugin />

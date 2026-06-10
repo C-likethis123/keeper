@@ -218,6 +218,7 @@ pub fn run() {
             storage::index_rebuild_from_disk,
             storage::notes_root_path_command,
             storage::copy_attachment,
+            storage::read_attachment,
             storage::delete_attachment,
             storage::copy_image,
             storage::wiki_links_upsert,

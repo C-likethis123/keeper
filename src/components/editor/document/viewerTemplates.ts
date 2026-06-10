@@ -1,5 +1,6 @@
 import { EPUB_JS } from "./epubJsBundle";
 import { PDF_JS } from "./pdfJsBundle";
+import { PDF_WORKER_JS } from "./pdfWorkerJsBundle";
 
 /**
  * Build the HTML string for the ePub viewer WebView.
@@ -274,12 +275,19 @@ ${EPUB_JS}
 </html>`;
 }
 
-export function buildPdfViewerHtml(theme: "light" | "dark"): string {
+export function buildPdfViewerHtml(
+	theme: "light" | "dark",
+	attachmentBase64: string,
+	savedPage?: string | null,
+): string {
 	const bg = theme === "dark" ? "#101214" : "#eef1f4";
 	const panel = theme === "dark" ? "#1b1f24" : "#ffffff";
 	const fg = theme === "dark" ? "#f5f7fa" : "#16212b";
 	const muted = theme === "dark" ? "#9aa6b2" : "#52606d";
 	const border = theme === "dark" ? "#2e3742" : "#d9e2ec";
+	const inlinePdfJs = PDF_JS.replace(/<\/script/gi, "<\\/script");
+	const inlinePdfWorkerJs = PDF_WORKER_JS.replace(/<\/script/gi, "<\\/script");
+	const pdfDataUri = `data:application/pdf;base64,${attachmentBase64}`;
 	return `<!DOCTYPE html>
 <html>
 <head>
@@ -360,9 +368,13 @@ export function buildPdfViewerHtml(theme: "light" | "dark"): string {
   </div>
 </div>
 <script type="module">
-const PDF_JS_SOURCE = ${JSON.stringify(PDF_JS)};
+${inlinePdfJs}
 
 (function () {
+  GlobalWorkerOptions.workerSrc = URL.createObjectURL(
+    new Blob([${JSON.stringify(inlinePdfWorkerJs)}], { type: 'text/javascript' })
+  );
+
   const statusEl = document.getElementById('status');
   const canvasWrap = document.getElementById('canvas-wrap');
   const canvas = document.getElementById('canvas');
@@ -372,7 +384,6 @@ const PDF_JS_SOURCE = ${JSON.stringify(PDF_JS)};
   const viewer = document.getElementById('viewer');
   const ctx = canvas.getContext('2d', { alpha: false });
 
-  let pdfModulePromise = null;
   let pdfDoc = null;
   let currentPage = 1;
   let renderTask = null;
@@ -383,18 +394,6 @@ const PDF_JS_SOURCE = ${JSON.stringify(PDF_JS)};
     } else if (window.parent !== window) {
       window.parent.postMessage(JSON.stringify(msg), '*');
     }
-  }
-
-  async function loadPdfModule() {
-    if (!pdfModulePromise) {
-      const moduleUrl = URL.createObjectURL(
-        new Blob([PDF_JS_SOURCE], { type: 'text/javascript' })
-      );
-      pdfModulePromise = import(moduleUrl).finally(() => {
-        URL.revokeObjectURL(moduleUrl);
-      });
-    }
-    return pdfModulePromise;
   }
 
   function setStatus(message, isError) {
@@ -464,11 +463,10 @@ const PDF_JS_SOURCE = ${JSON.stringify(PDF_JS)};
   async function openPdf(source, initialPage) {
     try {
       setStatus('Opening PDF…', false);
-      const pdfjsLib = await loadPdfModule();
       const loadingSource = source.startsWith('data:application/pdf;base64,')
         ? { data: base64ToBytes(source.split(',')[1] || '') }
         : { url: source };
-      const loadingTask = pdfjsLib.getDocument({
+      const loadingTask = getDocument({
         ...loadingSource,
         disableWorker: true,
       });
@@ -476,7 +474,7 @@ const PDF_JS_SOURCE = ${JSON.stringify(PDF_JS)};
       currentPage = Number.parseInt(initialPage || '1', 10) || 1;
       await renderPage(currentPage);
     } catch (error) {
-      setStatus('Failed to open PDF.', true);
+      setStatus('Failed to open PDF. ' + String(error), true);
       postMsg({ type: 'error', message: String(error) });
     }
   }
@@ -518,6 +516,8 @@ const PDF_JS_SOURCE = ${JSON.stringify(PDF_JS)};
       postMsg({ type: 'error', message: String(error) });
     }
   });
+
+  openPdf(${JSON.stringify(pdfDataUri)}, ${JSON.stringify(savedPage ?? undefined)});
 })();
 </script>
 </body>

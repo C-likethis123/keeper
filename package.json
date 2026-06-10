@@ -35,7 +35,6 @@
     "@lexical/rich-text": "^0.45.0",
     "@lexical/selection": "^0.45.0",
     "@lexical/table": "^0.45.0",
-    "@lexkit/editor": "^0.0.38",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/drawer": "^7.9.8",
     "@react-navigation/native": "^7.1.8",

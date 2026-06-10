@@ -46,3 +46,6 @@ writeBundle("epubJsBundle.ts", "EPUB_JS", jsZip + epubJs);
 
 const pdfJs = readDist("pdfjs-dist/legacy/build/pdf.min.mjs");
 writeBundle("pdfJsBundle.ts", "PDF_JS", pdfJs);
+
+const pdfWorkerJs = readDist("pdfjs-dist/legacy/build/pdf.worker.min.mjs");
+writeBundle("pdfWorkerJsBundle.ts", "PDF_WORKER_JS", pdfWorkerJs);

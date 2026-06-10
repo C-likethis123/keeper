@@ -1,4 +1,5 @@
 import { useStyles } from "@/hooks/useStyles";
+import { getTauriInvoke } from "@/services/storage/runtime";
 import React, { useCallback, useEffect, useRef } from "react";
 import { View } from "react-native";
 import {
@@ -17,15 +18,23 @@ import {
 const createStyles = (theme: Parameters<typeof createDocumentPanelStyles>[0]) =>
 	createDocumentPanelStyles(theme, { showRightBorder: true });
 
-async function readAttachmentBase64(fileUri: string) {
-	const response = await fetch(fileUri);
-	const buffer = await response.arrayBuffer();
-	const bytes = new Uint8Array(buffer);
+function bytesToBase64(bytes: Uint8Array) {
 	let binary = "";
 	for (let index = 0; index < bytes.byteLength; index++) {
 		binary += String.fromCharCode(bytes[index]);
 	}
 	return btoa(binary);
+}
+
+async function readAttachmentBase64(fileUri: string, relativePath: string) {
+	const invoke = getTauriInvoke();
+	if (invoke) {
+		const bytes = await invoke<number[]>("read_attachment", { relativePath });
+		return bytesToBase64(new Uint8Array(bytes));
+	}
+	const response = await fetch(fileUri);
+	const buffer = await response.arrayBuffer();
+	return bytesToBase64(new Uint8Array(buffer));
 }
 
 export function DocumentPanel(props: DocumentPanelProps) {

@@ -160,6 +160,7 @@ export default function NoteEditorScreen() {
 				>
 					<Suspense key={retryVersion} fallback={<Loader />}>
 						<NoteEditorContent
+							key={noteId}
 							id={noteId}
 							isNew={isNew}
 							initialTitle={initialTitle}

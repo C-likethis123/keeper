@@ -55,7 +55,10 @@ export type ArticleDocumentPanelProps = Extract<
   { variant: "article" }
 >;
 
-type ReadAttachmentBase64 = (fileUri: string) => Promise<string>;
+type ReadAttachmentBase64 = (
+  fileUri: string,
+  relativePath: string,
+) => Promise<string>;
 
 type DocumentViewerMessage = {
   type: string;
@@ -93,23 +96,14 @@ const DOCUMENT_VIEWER_ADAPTERS: Record<AttachmentType, DocumentViewerAdapter> =
       isLoading: (viewer) => !viewer.html,
     },
     pdf: {
-      build: ({ attachmentBase64, savedPosition, theme }) => {
-        const dataUri = attachmentBase64
-          ? `data:application/pdf;base64,${attachmentBase64}`
-          : null;
-        return {
-          html: buildPdfViewerHtml(theme),
-          openMessage: dataUri
-            ? JSON.stringify({
-                type: "open",
-                fileUri: dataUri,
-                page: savedPosition ?? undefined,
-              })
-            : null,
-          requiresOpenMessage: true,
-        };
-      },
-      isLoading: (viewer) => !viewer.html || !viewer.openMessage,
+      build: ({ attachmentBase64, savedPosition, theme }) => ({
+        html: attachmentBase64
+          ? buildPdfViewerHtml(theme, attachmentBase64, savedPosition)
+          : "",
+        openMessage: null,
+        requiresOpenMessage: false,
+      }),
+      isLoading: (viewer) => !viewer.html,
     },
   };
 
@@ -200,7 +194,7 @@ export function useDocumentPanelState({
 
     setFailedAttachmentType(null);
     setAttachmentBase64(null);
-    readAttachmentBase64(fileUri)
+    readAttachmentBase64(fileUri, attachmentPath)
       .then((base64) => {
         if (!isCancelled) setAttachmentBase64(base64);
       })
@@ -214,7 +208,7 @@ export function useDocumentPanelState({
     return () => {
       isCancelled = true;
     };
-  }, [attachmentType, fileUri, readAttachmentBase64]);
+  }, [attachmentPath, attachmentType, fileUri, readAttachmentBase64]);
 
   const handleViewerMessage = useCallback(
     (data: DocumentViewerMessage | string) => {

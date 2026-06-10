@@ -1,15 +1,15 @@
 import { DraggableBlockPlugin_EXPERIMENTAL } from "@lexical/react/LexicalDraggableBlockPlugin";
-import React, { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 
-export function KeeperDraggableBlockPlugin() {
+interface KeeperDraggableBlockPluginProps {
+	anchorElem: HTMLElement | null;
+}
+
+export function KeeperDraggableBlockPlugin({
+	anchorElem,
+}: KeeperDraggableBlockPluginProps) {
 	const menuRef = useRef<HTMLDivElement | null>(null);
 	const targetLineRef = useRef<HTMLDivElement | null>(null);
-	const [anchorElem, setAnchorElem] = useState<HTMLElement | null>(null);
-
-	useEffect(() => {
-		const root = document.querySelector<HTMLElement>(".keeper-editor-content");
-		setAnchorElem(root);
-	}, []);
 
 	if (!anchorElem) {
 		return null;
