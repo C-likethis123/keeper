@@ -1,13 +1,5 @@
-import { render } from "@testing-library/react-native";
-import React from "react";
-import { LexicalWikiLinkPlugin } from "../LexicalWikiLinkPlugin";
+import { WikiLinkExtension } from "../LexicalWikiLinkPlugin";
 import { createWikiLinkUrl } from "../wikiLinkUrl";
-
-const mockUseLexicalComposerContext = jest.fn();
-
-jest.mock("@lexical/react/LexicalComposerContext", () => ({
-	useLexicalComposerContext: () => mockUseLexicalComposerContext(),
-}));
 
 jest.mock("@lexical/react/LexicalTypeaheadMenuPlugin", () => ({
 	LexicalTypeaheadMenuPlugin: () => null,
@@ -51,11 +43,21 @@ function createEditorMock(root: ReturnType<typeof createRootMock>) {
 	};
 }
 
+function registerWikiLinkExtension(
+	editor: ReturnType<typeof createEditorMock>,
+	onOpenWikiLink: (title: string) => void,
+) {
+	WikiLinkExtension.register?.(
+		editor as never,
+		{ getOnOpenWikiLink: () => onOpenWikiLink },
+		{} as never,
+	);
+}
+
 describe("LexicalWikiLinkPlugin interactions", () => {
 	const originalElement = global.Element;
 
 	beforeEach(() => {
-		mockUseLexicalComposerContext.mockReset();
 		global.Element = TestElement as unknown as typeof Element;
 	});
 
@@ -67,9 +69,8 @@ describe("LexicalWikiLinkPlugin interactions", () => {
 		const root = createRootMock();
 		const editor = createEditorMock(root);
 		const onOpenWikiLink = jest.fn();
-		mockUseLexicalComposerContext.mockReturnValue([editor]);
 
-		render(<LexicalWikiLinkPlugin onOpenWikiLink={onOpenWikiLink} />);
+		registerWikiLinkExtension(editor, onOpenWikiLink);
 
 		const handleClick = root.addEventListener.mock.calls.find(
 			([eventName]) => eventName === "click",
@@ -90,9 +91,8 @@ describe("LexicalWikiLinkPlugin interactions", () => {
 		const root = createRootMock();
 		const editor = createEditorMock(root);
 		const onOpenWikiLink = jest.fn();
-		mockUseLexicalComposerContext.mockReturnValue([editor]);
 
-		render(<LexicalWikiLinkPlugin onOpenWikiLink={onOpenWikiLink} />);
+		registerWikiLinkExtension(editor, onOpenWikiLink);
 
 		const handleClick = root.addEventListener.mock.calls.find(
 			([eventName]) => eventName === "click",

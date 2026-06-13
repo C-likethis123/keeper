@@ -16,18 +16,31 @@ import {
 } from "lexical";
 import {
 	ChecklistMarkdownPrefixExtension,
+	CommandExtension,
+	type LexicalEditorCommand,
 	InlineCodeMarkdownExitExtension,
 	TodoTriggerExtension,
+	createDraggableBlockExtension,
+	createMarkdownChangeExtension,
 } from ".";
+import { WikiLinkExtension } from "../wikilinks/LexicalWikiLinkPlugin";
 
 interface CreateKeeperEditorExtensionOptions {
 	editorState: InitialEditorStateType;
+	getCommand: () => LexicalEditorCommand | undefined;
+	getDraggableBlockAnchorElem: () => HTMLElement | null;
+	getOnMarkdownChange: () => (markdown: string) => void;
+	getOnOpenWikiLink: () => ((title: string) => void | Promise<void>) | undefined;
 	nodes: CreateEditorArgs["nodes"];
 	theme: EditorThemeClasses;
 }
 
 export function createKeeperEditorExtension({
 	editorState,
+	getCommand,
+	getDraggableBlockAnchorElem,
+	getOnMarkdownChange,
+	getOnOpenWikiLink,
 	nodes,
 	theme,
 }: CreateKeeperEditorExtensionOptions) {
@@ -77,6 +90,12 @@ export function createKeeperEditorExtension({
 			ChecklistMarkdownPrefixExtension,
 			TodoTriggerExtension,
 			InlineCodeMarkdownExitExtension,
+			configExtension(CommandExtension, { getCommand }),
+			configExtension(WikiLinkExtension, { getOnOpenWikiLink }),
+			createDraggableBlockExtension({
+				getAnchorElem: getDraggableBlockAnchorElem,
+			}),
+			createMarkdownChangeExtension({ getOnMarkdownChange }),
 		],
 	});
 }

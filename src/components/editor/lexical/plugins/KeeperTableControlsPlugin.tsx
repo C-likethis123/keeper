@@ -233,7 +233,10 @@ export function KeeperTableControlsPlugin() {
 			return;
 		}
 
-		const handleTableHover = (event: PointerEvent | MouseEvent) => {
+		const handleTableHover: EventListener = (event) => {
+			if (!(event instanceof MouseEvent)) {
+				return;
+			}
 			if (
 				event.target instanceof HTMLElement &&
 				event.target.closest(".keeper-table-control")

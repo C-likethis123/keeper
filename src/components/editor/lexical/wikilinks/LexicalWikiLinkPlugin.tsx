@@ -5,10 +5,15 @@ import {
 	type MenuRenderFn,
 	type MenuTextMatch,
 } from "@lexical/react/LexicalTypeaheadMenuPlugin";
+import { ReactExtension } from "@lexical/react/ReactExtension";
+import { useExtensionDependency } from "@lexical/react/useExtensionComponent";
 import { $createLinkNode } from "@lexical/link";
 import {
 	$createTextNode,
 	COMMAND_PRIORITY_LOW,
+	configExtension,
+	defineExtension,
+	safeCast,
 	type TextNode,
 } from "lexical";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -21,8 +26,8 @@ import { findExactWikiLinkMatch } from "@/components/editor/wikilinks/wikiLinkUt
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { createWikiLinkUrl, parseWikiLinkUrl } from "./wikiLinkUrl";
 
-interface LexicalWikiLinkPluginProps {
-	onOpenWikiLink?: (title: string) => void | Promise<void>;
+interface WikiLinkExtensionConfig {
+	getOnOpenWikiLink: () => ((title: string) => void | Promise<void>) | undefined;
 }
 
 const RESULT_LIMIT = 8;
@@ -76,10 +81,8 @@ function insertWikiLink(textNodeContainingQuery: TextNode | null, title: string)
 	wikiLink.selectNext();
 }
 
-export function LexicalWikiLinkPlugin({
-	onOpenWikiLink,
-}: LexicalWikiLinkPluginProps) {
-	const [editor] = useLexicalComposerContext();
+function WikiLinkTypeaheadPlugin() {
+	const { config } = useExtensionDependency(WikiLinkExtension);
 	const [query, setQuery] = useState<string | null>(null);
 	const [results, setResults] = useState<WikiLinkResult[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
@@ -88,28 +91,6 @@ export function LexicalWikiLinkPlugin({
 		() => results.map((result) => new WikiLinkOption(result)),
 		[results],
 	);
-
-	useEffect(() => {
-		if (!onOpenWikiLink) {
-			return;
-		}
-
-		const handleClick = (event: MouseEvent) => {
-			const title = findWikiLinkTitle(event.target);
-			if (!title) {
-				return;
-			}
-
-			event.preventDefault();
-			event.stopPropagation();
-			void onOpenWikiLink(title);
-		};
-
-		return editor.registerRootListener((root, previousRoot) => {
-			previousRoot?.removeEventListener("click", handleClick, true);
-			root?.addEventListener("click", handleClick, true);
-		});
-	}, [editor, onOpenWikiLink]);
 
 	useEffect(() => {
 		if (query === null) {
@@ -229,3 +210,37 @@ export function LexicalWikiLinkPlugin({
 		/>
 	);
 }
+
+export const WikiLinkExtension = defineExtension({
+	config: safeCast<WikiLinkExtensionConfig>({
+		getOnOpenWikiLink: () => undefined,
+	}),
+	dependencies: [
+		configExtension(ReactExtension, {
+			decorators: [<WikiLinkTypeaheadPlugin key="keeper-wikilink-typeahead" />],
+		}),
+	],
+	name: "keeper/WikiLink",
+	register(editor, config) {
+		const handleClick = (event: MouseEvent) => {
+			const title = findWikiLinkTitle(event.target);
+			if (!title) {
+				return;
+			}
+
+			const onOpenWikiLink = config.getOnOpenWikiLink();
+			if (!onOpenWikiLink) {
+				return;
+			}
+
+			event.preventDefault();
+			event.stopPropagation();
+			void onOpenWikiLink(title);
+		};
+
+		return editor.registerRootListener((root, previousRoot) => {
+			previousRoot?.removeEventListener("click", handleClick, true);
+			root?.addEventListener("click", handleClick, true);
+		});
+	},
+});

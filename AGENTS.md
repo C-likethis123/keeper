@@ -61,7 +61,6 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
    - `core/` now only contains shared editor primitives such as `Selection` and pending dispatch registry. Do not reintroduce old block model or block renderer paths.
 
 4. **State** (`src/stores/`) - Zustand stores:
-   - `editorStore.ts` - current note/editor state and editor actions.
    - `filterStore.ts` - home filtering.
    - `storageStore.ts` and `storageSuspense.ts` - storage initialization state.
    - `tabStore.ts` - open note tabs.
@@ -98,7 +97,7 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
 ## Key Conventions
 
 - Use `@/` imports for `src/`.
-- Keep editor work in Lexical plugins/nodes/transforms. Do not add legacy `UnifiedBlock` or `BlockRegistry` paths.
+- Keep editor work in Lexical extensions/nodes/transforms.
 - Do not mutate editor state directly. Use store actions and immutable updates.
 - Keep platform splits explicit: `.web.ts`, `.native.tsx`, and platform-specific services override shared files.
 - Use storage and git engine abstractions. Do not call Tauri or native module APIs directly from UI.

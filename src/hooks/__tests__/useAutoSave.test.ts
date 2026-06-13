@@ -250,7 +250,7 @@ describe("useAutoSave", () => {
 		act(() => {
 			currentContent = "Updated body";
 		});
-		rerender();
+		rerender(undefined);
 
 		await act(async () => {
 			jest.advanceTimersByTime(1500);
@@ -511,7 +511,7 @@ describe("useAutoSave", () => {
 		act(() => {
 			currentContent = "First edit";
 		});
-		rerender();
+		rerender(undefined);
 		await act(async () => {
 			jest.advanceTimersByTime(0);
 			await Promise.resolve();
@@ -520,7 +520,7 @@ describe("useAutoSave", () => {
 		act(() => {
 			currentContent = "Second edit";
 		});
-		rerender();
+		rerender(undefined);
 		await act(async () => {
 			jest.advanceTimersByTime(0);
 			await Promise.resolve();
@@ -629,7 +629,7 @@ describe("useAutoSave", () => {
 		act(() => {
 			currentContent = "Updated body";
 		});
-		rerender();
+		rerender(undefined);
 
 		await act(async () => {
 			jest.advanceTimersByTime(61500);
