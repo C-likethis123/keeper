@@ -1,4 +1,5 @@
-import { defineExtension } from "lexical";
+import { effect, namedSignals } from "@lexical/extension";
+import { defineExtension, safeCast } from "lexical";
 import { exportLexicalToMarkdown } from "../markdown";
 
 interface MarkdownChangeExtensionOptions {
@@ -12,15 +13,25 @@ export function createMarkdownChangeExtension({
 
 	return defineExtension({
 		name: "keeper/MarkdownChange",
-		register(editor) {
-			return editor.registerUpdateListener(({ editorState }) => {
-				editorState.read(() => {
-					const markdown = exportLexicalToMarkdown();
-					if (markdown === lastMarkdown) return;
-					lastMarkdown = markdown;
-					getOnMarkdownChange()(markdown);
-				});
-			});
+		config: safeCast<MarkdownChangeExtensionOptions>({
+			getOnMarkdownChange,
+		}),
+		build(_editor, config) {
+			return namedSignals(config);
+		},
+		register(editor, _config, state) {
+			const { getOnMarkdownChange } = state.getOutput();
+
+			return effect(() =>
+				editor.registerUpdateListener(({ editorState }) => {
+					editorState.read(() => {
+						const markdown = exportLexicalToMarkdown();
+						if (markdown === lastMarkdown) return;
+						lastMarkdown = markdown;
+						getOnMarkdownChange.peek()(markdown);
+					});
+				})
+			);
 		},
 	});
 }

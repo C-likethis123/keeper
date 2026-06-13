@@ -4,7 +4,9 @@ import {
 } from "@lexical/react/ReactExtension";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useExtensionDependency } from "@lexical/react/useExtensionComponent";
+import { useSignalValue } from "@lexical/react/useExtensionSignalValue";
 import { INSERT_TABLE_COMMAND } from "@lexical/table";
+import { namedSignals } from "@lexical/extension";
 import {
   configExtension,
   defineExtension,
@@ -45,16 +47,16 @@ const styles = StyleSheet.create({
 const noop = () => {};
 
 function Toolbar() {
-  const { config } = useExtensionDependency(ToolbarExtension);
+  const { output } = useExtensionDependency(ToolbarExtension);
   const [editor] = useLexicalComposerContext();
-  const hasAttachment = config.getHasAttachment();
-  const onAttachDocument = config.getOnAttachDocument();
-  const onInsertImage = config.getOnInsertImage();
-  const onRemoveAttachment = config.getOnRemoveAttachment();
-  const onShowVideoModal = config.getOnShowVideoModal();
-  const onToggleArticle = config.getOnToggleArticle();
-  const onToggleRelatedNotes = config.getOnToggleRelatedNotes();
-  const onToggleActivePanel = config.getOnToggleActivePanel();
+  const hasAttachment = useSignalValue(output.getHasAttachment)();
+  const onAttachDocument = useSignalValue(output.getOnAttachDocument)();
+  const onInsertImage = useSignalValue(output.getOnInsertImage)();
+  const onRemoveAttachment = useSignalValue(output.getOnRemoveAttachment)();
+  const onShowVideoModal = useSignalValue(output.getOnShowVideoModal)();
+  const onToggleArticle = useSignalValue(output.getOnToggleArticle)();
+  const onToggleRelatedNotes = useSignalValue(output.getOnToggleRelatedNotes)();
+  const onToggleActivePanel = useSignalValue(output.getOnToggleActivePanel)();
 
   const handleUndo = () => editor.dispatchCommand(UNDO_COMMAND, undefined);
   const handleRedo = () => editor.dispatchCommand(REDO_COMMAND, undefined);
@@ -170,5 +172,8 @@ export const ToolbarExtension = defineExtension({
       EditorChildrenComponent: ToolbarEditorChildren,
     }),
   ],
+  build(_editor, config) {
+    return namedSignals(config);
+  },
   name: "keeper/Toolbar",
 });

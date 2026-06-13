@@ -6,6 +6,8 @@ import {
 } from "@lexical/react/LexicalTypeaheadMenuPlugin";
 import { ReactExtension } from "@lexical/react/ReactExtension";
 import { useExtensionDependency } from "@lexical/react/useExtensionComponent";
+import { useSignalValue } from "@lexical/react/useExtensionSignalValue";
+import { namedSignals } from "@lexical/extension";
 import {
 	$createParagraphNode,
 	$createTextNode,
@@ -90,7 +92,10 @@ function slashTriggerFn(text: string): MenuTextMatch | null {
 }
 
 function SlashCommandTypeahead() {
-	const { config } = useExtensionDependency(SlashCommandExtension);
+	const { output } = useExtensionDependency(SlashCommandExtension);
+	const getOnInsertTemplateCommand = useSignalValue(
+		output.getOnInsertTemplateCommand,
+	);
 	const [query, setQuery] = useState<string | null>(null);
 
   const options = useMemo(() => {
@@ -115,11 +120,11 @@ function SlashCommandTypeahead() {
         return;
       }
 			if (item.id === "insert-template") {
-				const onInsertTemplateCommand = config.getOnInsertTemplateCommand();
+				const onInsertTemplateCommand = getOnInsertTemplateCommand();
 				void onInsertTemplateCommand?.();
 			}
 		},
-		[config],
+		[getOnInsertTemplateCommand],
 	);
 
   const menuRenderFn = useCallback<MenuRenderFn<SlashCommandOption>>(
@@ -178,5 +183,8 @@ export const SlashCommandExtension = defineExtension({
 			],
 		}),
 	],
+	build(_editor, config) {
+		return namedSignals(config);
+	},
 	name: "keeper/SlashCommand",
 });
