@@ -1,45 +1,39 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
+	$deleteTableColumnAtSelection,
+	$deleteTableRowAtSelection,
 	$insertTableColumnAtSelection,
 	$insertTableRowAtSelection,
 	$isTableCellNode,
 	$isTableNode,
-	$isTableRowNode,
 } from "@lexical/table";
 import {
-	$getSelection,
 	$getNearestNodeFromDOMNode,
 	$getNodeByKey,
-	$isRangeSelection,
-	COMMAND_PRIORITY_LOW,
-	SELECTION_CHANGE_COMMAND,
 	type LexicalNode,
+	type NodeKey,
 } from "lexical";
 import React, { useCallback, useEffect, useState } from "react";
 
 type TableControlsState = {
-	height: number;
+	cellKey: NodeKey;
+	insertAfter: boolean;
 	left: number;
-	tableKey: string;
+	mode: "column" | "row";
 	top: number;
-	width: number;
 };
 
-type TableTarget = {
-	nodeTarget: HTMLElement;
+type TableHitTarget = {
+	cellElement: HTMLTableCellElement;
+	insertAfter: boolean;
+	left: number;
+	mode: "column" | "row";
 	tableElement: HTMLTableElement;
+	top: number;
 };
 
-function getTableTarget(target: EventTarget | null): TableTarget | null {
-	if (!(target instanceof HTMLElement)) {
-		return null;
-	}
-	const tableElement = target.closest("table.keeper-table");
-	if (!(tableElement instanceof HTMLTableElement)) {
-		return null;
-	}
-	return { nodeTarget: target, tableElement };
-}
+const EDGE_HIT_SIZE = 14;
+const CONTROL_OFFSET = 8;
 
 function getNearestTableNode(node: LexicalNode | null): LexicalNode | null {
 	let current: LexicalNode | null = node;
@@ -52,13 +46,141 @@ function getNearestTableNode(node: LexicalNode | null): LexicalNode | null {
 	return null;
 }
 
-function getTableKeyFromSelection(): string | null {
-	const selection = $getSelection();
-	if (!$isRangeSelection(selection)) {
+function getCells(row: HTMLTableRowElement) {
+	return Array.from(row.cells).filter(
+		(cell): cell is HTMLTableCellElement => cell instanceof HTMLTableCellElement,
+	);
+}
+
+function getColumnHitTarget(
+	tableElement: HTMLTableElement,
+	x: number,
+	y: number,
+): TableHitTarget | null {
+	const tableRect = tableElement.getBoundingClientRect();
+	const atTableTopEdge = Math.abs(y - tableRect.top) <= EDGE_HIT_SIZE;
+	const atTableBottomEdge = Math.abs(y - tableRect.bottom) <= EDGE_HIT_SIZE;
+	if (!atTableTopEdge && !atTableBottomEdge) {
 		return null;
 	}
-	const tableNode = getNearestTableNode(selection.anchor.getNode());
-	return tableNode?.getKey() ?? null;
+	const controlTop = atTableTopEdge
+		? tableRect.top - CONTROL_OFFSET
+		: tableRect.bottom + CONTROL_OFFSET;
+
+	const firstRow = tableElement.rows.item(0);
+	if (!firstRow) {
+		return null;
+	}
+
+	const cells = getCells(firstRow);
+	for (let index = 0; index < cells.length; index += 1) {
+		const cell = cells[index];
+		const rect = cell.getBoundingClientRect();
+		const atLeftEdge = Math.abs(x - rect.left) <= EDGE_HIT_SIZE;
+		const atRightEdge = Math.abs(x - rect.right) <= EDGE_HIT_SIZE;
+
+		if (atLeftEdge) {
+			return {
+				cellElement: cell,
+				insertAfter: false,
+				left: rect.left,
+				mode: "column",
+				tableElement,
+				top: controlTop,
+			};
+		}
+		if (atRightEdge) {
+			return {
+				cellElement: cell,
+				insertAfter: true,
+				left: rect.right,
+				mode: "column",
+				tableElement,
+				top: controlTop,
+			};
+		}
+	}
+
+	return null;
+}
+
+function getRowHitTarget(
+	tableElement: HTMLTableElement,
+	x: number,
+	y: number,
+): TableHitTarget | null {
+	const tableRect = tableElement.getBoundingClientRect();
+	const atTableLeftEdge = Math.abs(x - tableRect.left) <= EDGE_HIT_SIZE;
+	const atTableRightEdge = Math.abs(x - tableRect.right) <= EDGE_HIT_SIZE;
+	if (!atTableLeftEdge && !atTableRightEdge) {
+		return null;
+	}
+	const controlLeft = atTableLeftEdge
+		? tableRect.left - CONTROL_OFFSET
+		: tableRect.right + CONTROL_OFFSET;
+
+	for (const row of Array.from(tableElement.rows)) {
+		const firstCell = row.cells.item(0);
+		if (!(firstCell instanceof HTMLTableCellElement)) {
+			continue;
+		}
+
+		const rect = row.getBoundingClientRect();
+		const atTopEdge = Math.abs(y - rect.top) <= EDGE_HIT_SIZE;
+		const atBottomEdge = Math.abs(y - rect.bottom) <= EDGE_HIT_SIZE;
+
+		if (atTopEdge) {
+			return {
+				cellElement: firstCell,
+				insertAfter: false,
+				left: controlLeft,
+				mode: "row",
+				tableElement,
+				top: rect.top,
+			};
+		}
+		if (atBottomEdge) {
+			return {
+				cellElement: firstCell,
+				insertAfter: true,
+				left: controlLeft,
+				mode: "row",
+				tableElement,
+				top: rect.bottom,
+			};
+		}
+	}
+
+	return null;
+}
+
+function findTableHitTarget(
+	contentElement: Element,
+	x: number,
+	y: number,
+): TableHitTarget | null {
+	const tables = Array.from(
+		contentElement.querySelectorAll("table.keeper-table"),
+	).filter(
+		(table): table is HTMLTableElement => table instanceof HTMLTableElement,
+	);
+
+	for (const table of tables) {
+		const rect = table.getBoundingClientRect();
+		const inExpandedBounds =
+			x >= rect.left - EDGE_HIT_SIZE &&
+			x <= rect.right + EDGE_HIT_SIZE &&
+			y >= rect.top - EDGE_HIT_SIZE &&
+			y <= rect.bottom + EDGE_HIT_SIZE;
+
+		if (!inExpandedBounds) {
+			continue;
+		}
+
+		return getColumnHitTarget(table, x, y) ?? getRowHitTarget(table, x, y);
+	}
+
+	return null;
 }
 
 export function KeeperTableControlsPlugin() {
@@ -66,47 +188,39 @@ export function KeeperTableControlsPlugin() {
 	const [controls, setControls] = useState<TableControlsState | null>(null);
 
 	const updateControls = useCallback(
-		(target: TableTarget | null) => {
-			const rootElement = editor.getRootElement();
-			const contentElement = rootElement?.closest(".keeper-editor-content");
-			if (!contentElement) {
+		(target: TableHitTarget | null, contentElement: Element) => {
+			if (!target) {
 				setControls(null);
 				return;
 			}
 
-			let tableKey: string | null = null;
-			let tableElement: HTMLTableElement | null = target?.tableElement ?? null;
-			if (target) {
-				editor.getEditorState().read(() => {
-					const tableNode =
-						getNearestTableNode($getNearestNodeFromDOMNode(target.tableElement)) ??
-						getNearestTableNode($getNearestNodeFromDOMNode(target.nodeTarget));
-					if (tableNode) {
-						tableKey = tableNode.getKey();
-					}
-				});
-			} else {
-				editor.getEditorState().read(() => {
-					tableKey = getTableKeyFromSelection();
-				});
-				if (tableKey) {
-					const element = editor.getElementByKey(tableKey);
-					tableElement = element instanceof HTMLTableElement ? element : null;
-				}
-			}
-			if (!tableKey || !tableElement) {
-				setControls(null);
-				return;
-			}
-
-			const tableRect = tableElement.getBoundingClientRect();
 			const contentRect = contentElement.getBoundingClientRect();
+			let cellKey: NodeKey | null = null;
+			let hasTableNode = false;
+
+			editor.read(() => {
+				const cellNode = $getNearestNodeFromDOMNode(target.cellElement);
+				const tableNode =
+					getNearestTableNode($getNearestNodeFromDOMNode(target.tableElement)) ??
+					getNearestTableNode(cellNode);
+
+				if (cellNode && tableNode) {
+					cellKey = cellNode.getKey();
+					hasTableNode = true;
+				}
+			});
+
+			if (!cellKey || !hasTableNode) {
+				setControls(null);
+				return;
+			}
+
 			setControls({
-				height: tableRect.height,
-				left: tableRect.left - contentRect.left + contentElement.scrollLeft,
-				tableKey,
-				top: tableRect.top - contentRect.top + contentElement.scrollTop,
-				width: tableRect.width,
+				cellKey,
+				insertAfter: target.insertAfter,
+				left: target.left - contentRect.left + contentElement.scrollLeft,
+				mode: target.mode,
+				top: target.top - contentRect.top + contentElement.scrollTop,
 			});
 		},
 		[editor],
@@ -119,137 +233,142 @@ export function KeeperTableControlsPlugin() {
 			return;
 		}
 
-		const handlePointerMove = (event: PointerEvent) => {
+		const handleTableHover = (event: PointerEvent | MouseEvent) => {
 			if (
 				event.target instanceof HTMLElement &&
 				event.target.closest(".keeper-table-control")
 			) {
 				return;
 			}
-			updateControls(getTableTarget(event.target));
-		};
-		const handleFocusIn = (event: FocusEvent) => {
-			updateControls(getTableTarget(event.target));
-		};
-		const handlePointerDown = (event: PointerEvent) => {
-			updateControls(getTableTarget(event.target));
-		};
-		const handleScroll = () => {
-			const tableElement =
-				controls && editor.getElementByKey(controls.tableKey);
-			if (tableElement instanceof HTMLTableElement) {
-				updateControls({ nodeTarget: tableElement, tableElement });
-			}
-		};
-		const unregisterUpdateListener = editor.registerUpdateListener(() => {
-			const tableElement = controls
-				? editor.getElementByKey(controls.tableKey)
-				: null;
 			updateControls(
-				tableElement instanceof HTMLTableElement
-					? { nodeTarget: tableElement, tableElement }
-					: null,
+				findTableHitTarget(contentElement, event.clientX, event.clientY),
+				contentElement,
 			);
+		};
+		const handleScroll = () => setControls(null);
+		const unregisterUpdateListener = editor.registerUpdateListener(() => {
+			setControls(null);
 		});
-		const unregisterSelectionListener = editor.registerCommand(
-			SELECTION_CHANGE_COMMAND,
-			() => {
-				updateControls(null);
-				return false;
-			},
-			COMMAND_PRIORITY_LOW,
-		);
 
-		contentElement.addEventListener("pointermove", handlePointerMove);
-		contentElement.addEventListener("pointerover", handlePointerMove);
-		contentElement.addEventListener("pointerdown", handlePointerDown);
-		contentElement.addEventListener("focusin", handleFocusIn);
+		rootElement.addEventListener("pointermove", handleTableHover);
+		rootElement.addEventListener("pointerover", handleTableHover);
+		rootElement.addEventListener("mousemove", handleTableHover);
+		rootElement.addEventListener("mouseover", handleTableHover);
+		contentElement.addEventListener("pointermove", handleTableHover);
+		contentElement.addEventListener("pointerover", handleTableHover);
+		contentElement.addEventListener("mousemove", handleTableHover);
+		contentElement.addEventListener("mouseover", handleTableHover);
 		window.addEventListener("resize", handleScroll);
 		window.addEventListener("scroll", handleScroll, true);
 		return () => {
-			contentElement.removeEventListener("pointermove", handlePointerMove);
-			contentElement.removeEventListener("pointerover", handlePointerMove);
-			contentElement.removeEventListener("pointerdown", handlePointerDown);
-			contentElement.removeEventListener("focusin", handleFocusIn);
+			rootElement.removeEventListener("pointermove", handleTableHover);
+			rootElement.removeEventListener("pointerover", handleTableHover);
+			rootElement.removeEventListener("mousemove", handleTableHover);
+			rootElement.removeEventListener("mouseover", handleTableHover);
+			contentElement.removeEventListener("pointermove", handleTableHover);
+			contentElement.removeEventListener("pointerover", handleTableHover);
+			contentElement.removeEventListener("mousemove", handleTableHover);
+			contentElement.removeEventListener("mouseover", handleTableHover);
 			window.removeEventListener("resize", handleScroll);
 			window.removeEventListener("scroll", handleScroll, true);
 			unregisterUpdateListener();
-			unregisterSelectionListener();
 		};
-	}, [controls, editor, updateControls]);
+	}, [editor, updateControls]);
 
 	const insertRow = useCallback(() => {
-		if (!controls) {
+		if (!controls || controls.mode !== "row") {
 			return;
 		}
 		editor.update(() => {
-			const tableNode = $getNodeByKey(controls.tableKey);
-			if (!$isTableNode(tableNode)) {
+			const cellNode = $getNodeByKey(controls.cellKey);
+			if (!$isTableCellNode(cellNode)) {
 				return;
 			}
-			const rows = tableNode.getChildren().filter($isTableRowNode);
-			const lastRow = rows.at(-1);
-			const firstCell = lastRow?.getChildren().find($isTableCellNode);
-			if (!firstCell) {
-				return;
-			}
-			firstCell.selectEnd();
-			$insertTableRowAtSelection(true);
+			cellNode.selectEnd();
+			$insertTableRowAtSelection(controls.insertAfter);
 		});
+		setControls(null);
 	}, [controls, editor]);
 
 	const insertColumn = useCallback(() => {
-		if (!controls) {
+		if (!controls || controls.mode !== "column") {
 			return;
 		}
 		editor.update(() => {
-			const tableNode = $getNodeByKey(controls.tableKey);
-			if (!$isTableNode(tableNode)) {
+			const cellNode = $getNodeByKey(controls.cellKey);
+			if (!$isTableCellNode(cellNode)) {
 				return;
 			}
-			const firstRow = tableNode.getChildren().find($isTableRowNode);
-			const cells = firstRow?.getChildren().filter($isTableCellNode) ?? [];
-			const lastCell = cells.at(-1);
-			if (!lastCell) {
-				return;
-			}
-			lastCell.selectEnd();
-			$insertTableColumnAtSelection(true);
+			cellNode.selectEnd();
+			$insertTableColumnAtSelection(controls.insertAfter);
 		});
+		setControls(null);
+	}, [controls, editor]);
+
+	const deleteRow = useCallback(() => {
+		if (!controls || controls.mode !== "row") {
+			return;
+		}
+		editor.update(() => {
+			const cellNode = $getNodeByKey(controls.cellKey);
+			if (!$isTableCellNode(cellNode)) {
+				return;
+			}
+			cellNode.selectEnd();
+			$deleteTableRowAtSelection();
+		});
+		setControls(null);
+	}, [controls, editor]);
+
+	const deleteColumn = useCallback(() => {
+		if (!controls || controls.mode !== "column") {
+			return;
+		}
+		editor.update(() => {
+			const cellNode = $getNodeByKey(controls.cellKey);
+			if (!$isTableCellNode(cellNode)) {
+				return;
+			}
+			cellNode.selectEnd();
+			$deleteTableColumnAtSelection();
+		});
+		setControls(null);
 	}, [controls, editor]);
 
 	if (!controls) {
 		return null;
 	}
 
+	const insertAction = controls.mode === "column" ? insertColumn : insertRow;
+	const deleteAction = controls.mode === "column" ? deleteColumn : deleteRow;
+	const targetName = controls.mode === "column" ? "column" : "row";
+
 	return (
-		<>
+		<div
+			className={`keeper-table-control keeper-table-control-${controls.mode}`}
+			style={{
+				left: controls.left,
+				top: controls.top,
+			}}
+		>
 			<button
-				aria-label="Add table column"
-				className="keeper-table-control keeper-table-control-column"
+				aria-label={`Add table ${targetName}`}
+				className="keeper-table-control-button"
 				onMouseDown={(event) => event.preventDefault()}
-				onClick={insertColumn}
-				style={{
-					left: controls.left + controls.width,
-					top: controls.top - 28,
-				}}
+				onClick={insertAction}
 				type="button"
 			>
 				+
 			</button>
 			<button
-				aria-label="Add table row"
-				className="keeper-table-control keeper-table-control-row"
+				aria-label={`Delete table ${targetName}`}
+				className="keeper-table-control-button keeper-table-control-delete"
 				onMouseDown={(event) => event.preventDefault()}
-				onClick={insertRow}
-				style={{
-					left: controls.left - 42,
-					top: controls.top + controls.height,
-				}}
+				onClick={deleteAction}
 				type="button"
 			>
-				+
+				-
 			</button>
-		</>
+		</div>
 	);
 }

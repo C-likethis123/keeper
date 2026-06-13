@@ -11,11 +11,7 @@ import {
 } from "@/components/editor/utils/blockTypes";
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
-import {
-	$createCodeNode,
-	CodeHighlightNode,
-	CodeNode,
-} from "@lexical/code";
+import { $createCodeNode, CodeHighlightNode, CodeNode } from "@lexical/code";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
 import {
 	$createListItemNode,
@@ -23,22 +19,12 @@ import {
 	INSERT_CHECK_LIST_COMMAND,
 	INSERT_ORDERED_LIST_COMMAND,
 	INSERT_UNORDERED_LIST_COMMAND,
-	ListItemNode,
-	ListNode,
 } from "@lexical/list";
-import { CheckListPlugin } from "@lexical/react/LexicalCheckListPlugin";
-import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
-import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { LexicalExtensionComposer } from "@lexical/react/LexicalExtensionComposer";
 import { LexicalToolbarPlugin } from "./plugins/LexicalToolbarPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
-import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
-import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
-import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
-import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
-import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
-import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
 import { $createImageNode, ImageNode } from "./ImageNode";
 import {
 	DetailsContentNode,
@@ -59,12 +45,7 @@ import {
 	QuoteNode,
 } from "@lexical/rich-text";
 import { $setBlocksType } from "@lexical/selection";
-import {
-	INSERT_TABLE_COMMAND,
-	TableCellNode,
-	TableNode,
-	TableRowNode,
-} from "@lexical/table";
+import { INSERT_TABLE_COMMAND } from "@lexical/table";
 import {
 	$createParagraphNode,
 	$createTextNode,
@@ -72,23 +53,25 @@ import {
 	$getSelection,
 	$insertNodes,
 	$isRangeSelection,
-	COMMAND_PRIORITY_EDITOR,
-	HISTORY_PUSH_TAG,
 	INDENT_CONTENT_COMMAND,
-	KEY_TAB_COMMAND,
 	type LexicalEditor,
 	OUTDENT_CONTENT_COMMAND,
 	REDO_COMMAND,
 	UNDO_COMMAND,
 } from "lexical";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	KEEPER_MARKDOWN_TRANSFORMERS,
 	exportLexicalToMarkdown,
 	importMarkdownToLexical,
 } from "./markdown";
-import { registerChecklistMarkdownPrefixTransform } from "./plugins/checklistMarkdownPrefix";
-import { registerTodoTriggerTransform } from "./plugins/todoTriggerTransform";
+import { createKeeperEditorExtension } from "./extensions/KeeperEditorExtension";
 import { LexicalWikiLinkPlugin } from "./wikilinks/LexicalWikiLinkPlugin";
 
 interface LexicalEditorCommand {
@@ -188,47 +171,6 @@ function CommandPlugin({ command }: { command?: LexicalEditorCommand }) {
 			unregisterPendingDispatchFlusher(key, flush);
 		};
 	}, [dispatchCommand, editor]);
-
-	return null;
-}
-
-function TabIndentationPlugin() {
-	const [editor] = useLexicalComposerContext();
-
-	useEffect(() => {
-		return editor.registerCommand(
-			KEY_TAB_COMMAND,
-			(event: KeyboardEvent) => {
-				event.preventDefault();
-				editor.dispatchCommand(
-					event.shiftKey ? OUTDENT_CONTENT_COMMAND : INDENT_CONTENT_COMMAND,
-					undefined,
-				);
-				return true;
-			},
-			COMMAND_PRIORITY_EDITOR,
-		);
-	}, [editor]);
-
-	return null;
-}
-
-function ChecklistMarkdownPrefixPlugin() {
-	const [editor] = useLexicalComposerContext();
-
-	useEffect(() => {
-		return registerChecklistMarkdownPrefixTransform(editor);
-	}, [editor]);
-
-	return null;
-}
-
-function TodoTriggerPlugin() {
-	const [editor] = useLexicalComposerContext();
-
-	useEffect(() => {
-		return registerTodoTriggerTransform(editor);
-	}, [editor]);
 
 	return null;
 }
@@ -422,31 +364,27 @@ function ChangePlugin({
 	return null;
 }
 
-function InlineCodeMarkdownExitPlugin() {
+function EmptyPlaceholder() {
 	const [editor] = useLexicalComposerContext();
+	const [isEmpty, setIsEmpty] = useState(true);
 
 	useEffect(() => {
-		return editor.registerUpdateListener(({ tags }) => {
-			if (!tags.has(HISTORY_PUSH_TAG)) {
-				return;
-			}
+		editor.getEditorState().read(() => {
+			setIsEmpty($getRoot().isEmpty());
+		});
 
-			editor.update(() => {
-				const selection = $getSelection();
-				if (
-					!$isRangeSelection(selection) ||
-					!selection.isCollapsed() ||
-					!selection.hasFormat("code")
-				) {
-					return;
-				}
-
-				selection.toggleFormat("code");
+		return editor.registerUpdateListener(({ editorState }) => {
+			editorState.read(() => {
+				setIsEmpty($getRoot().isEmpty());
 			});
 		});
 	}, [editor]);
 
-	return null;
+	if (!isEmpty) {
+		return null;
+	}
+
+	return <div className="keeper-placeholder">Start writing</div>;
 }
 
 export default function LexicalMarkdownEditor({
@@ -470,94 +408,82 @@ export default function LexicalMarkdownEditor({
 	const palette = themeMode === "light" ? lightTheme.colors : darkTheme.colors;
 	const [editorContentElement, setEditorContentElement] =
 		useState<HTMLDivElement | null>(null);
-	const initialConfig = useMemo(
-		() => ({
-			namespace: "KeeperLexicalEditor",
-			nodes: [
-				HeadingNode,
-				QuoteNode,
-				ListNode,
-				ListItemNode,
-				CodeNode,
-				CodeHighlightNode,
-				LinkNode,
-
-				AutoLinkNode,
-				TableNode,
-				TableCellNode,
-				TableRowNode,
-				DetailsContentNode,
-				DetailsNode,
-				DetailsSummaryNode,
-				EquationNode,
-				ImageNode,
-			],
-
-			onError(error: Error) {
-				throw error;
-			},
-			editorState: () => importMarkdownToLexical(markdown),
-			theme: {
-				heading: {
-					h1: "keeper-heading keeper-heading-h1",
-					h2: "keeper-heading keeper-heading-h2",
-					h3: "keeper-heading keeper-heading-h3",
-				},
-				list: {
-					ol: "keeper-list keeper-list-ol",
-					ul: "keeper-list keeper-list-ul",
-					listitem: "keeper-list-item",
-					checklist: "keeper-list keeper-checklist",
-					listitemChecked: "keeper-check-item keeper-check-item-checked",
-					listitemUnchecked: "keeper-check-item keeper-check-item-unchecked",
-					nested: {
-						listitem: "keeper-nested-list-item",
+	const initialMarkdownRef = useRef(markdown);
+	const editorExtension = useMemo(
+		() =>
+			createKeeperEditorExtension({
+				nodes: [
+					CodeNode,
+					CodeHighlightNode,
+					AutoLinkNode,
+					DetailsContentNode,
+					DetailsNode,
+					DetailsSummaryNode,
+					EquationNode,
+					ImageNode,
+				],
+				editorState: () => importMarkdownToLexical(initialMarkdownRef.current),
+				theme: {
+					heading: {
+						h1: "keeper-heading keeper-heading-h1",
+						h2: "keeper-heading keeper-heading-h2",
+						h3: "keeper-heading keeper-heading-h3",
+					},
+					list: {
+						ol: "keeper-list keeper-list-ol",
+						ul: "keeper-list keeper-list-ul",
+						listitem: "keeper-list-item",
+						checklist: "keeper-list keeper-checklist",
+						listitemChecked: "keeper-check-item keeper-check-item-checked",
+						listitemUnchecked: "keeper-check-item keeper-check-item-unchecked",
+						nested: {
+							listitem: "keeper-nested-list-item",
+						},
+					},
+					code: "keeper-code",
+					codeHighlight: {
+						attr: "keeper-token-attr",
+						boolean: "keeper-token-constant",
+						builtin: "keeper-token-builtin",
+						"class-name": "keeper-token-class",
+						comment: "keeper-token-comment",
+						constant: "keeper-token-constant",
+						deleted: "keeper-token-deleted",
+						doctype: "keeper-token-comment",
+						function: "keeper-token-function",
+						inserted: "keeper-token-inserted",
+						keyword: "keeper-token-keyword",
+						namespace: "keeper-token-namespace",
+						number: "keeper-token-number",
+						operator: "keeper-token-operator",
+						prolog: "keeper-token-comment",
+						property: "keeper-token-property",
+						punctuation: "keeper-token-punctuation",
+						regex: "keeper-token-string",
+						selector: "keeper-token-selector",
+						string: "keeper-token-string",
+						symbol: "keeper-token-symbol",
+						tag: "keeper-token-tag",
+						url: "keeper-token-string",
+						variable: "keeper-token-variable",
+					},
+					quote: "keeper-quote",
+					link: "keeper-link",
+					table: "keeper-table",
+					tableCell: "keeper-table-cell",
+					tableCellHeader: "keeper-table-cell-header",
+					tableRow: "keeper-table-row",
+					tableScrollableWrapper: "keeper-table-scroll",
+					tableSelection: "keeper-table-selection",
+					text: {
+						bold: "keeper-text-bold",
+						italic: "keeper-text-italic",
+						underline: "keeper-text-underline",
+						code: "keeper-inline-code",
 					},
 				},
-				code: "keeper-code",
-				codeHighlight: {
-					attr: "keeper-token-attr",
-					boolean: "keeper-token-constant",
-					builtin: "keeper-token-builtin",
-					"class-name": "keeper-token-class",
-					comment: "keeper-token-comment",
-					constant: "keeper-token-constant",
-					deleted: "keeper-token-deleted",
-					doctype: "keeper-token-comment",
-					function: "keeper-token-function",
-					inserted: "keeper-token-inserted",
-					keyword: "keeper-token-keyword",
-					namespace: "keeper-token-namespace",
-					number: "keeper-token-number",
-					operator: "keeper-token-operator",
-					prolog: "keeper-token-comment",
-					property: "keeper-token-property",
-					punctuation: "keeper-token-punctuation",
-					regex: "keeper-token-string",
-					selector: "keeper-token-selector",
-					string: "keeper-token-string",
-					symbol: "keeper-token-symbol",
-					tag: "keeper-token-tag",
-					url: "keeper-token-string",
-					variable: "keeper-token-variable",
-				},
-				quote: "keeper-quote",
-				link: "keeper-link",
-				table: "keeper-table",
-				tableCell: "keeper-table-cell",
-				tableCellHeader: "keeper-table-cell-header",
-				tableRow: "keeper-table-row",
-				tableScrollableWrapper: "keeper-table-scroll",
-				tableSelection: "keeper-table-selection",
-				text: {
-					bold: "keeper-text-bold",
-					italic: "keeper-text-italic",
-					underline: "keeper-text-underline",
-					code: "keeper-inline-code",
-				},
-			},
-		}),
-		[markdown],
+			}),
+		[],
 	);
 
 	return (
@@ -589,15 +515,16 @@ export default function LexicalMarkdownEditor({
 						background: ${palette.background};
 					}
 					.keeper-editor {
+						box-sizing: border-box;
 						min-height: calc(100vh - 76px);
 						outline: none;
+						padding-left: 28px;
 						font-size: 17px;
 					line-height: 1.55;
 					white-space: pre-wrap;
 				}
 					.keeper-editor-content {
 						position: relative;
-						padding-left: 28px;
 					}
 					.keeper-draggable-block-anchor {
 						inset: 0;
@@ -607,6 +534,15 @@ export default function LexicalMarkdownEditor({
 					}
 					.keeper-draggable-block-anchor > div {
 						pointer-events: auto;
+					}
+					.keeper-editor-content > div[draggable="true"] {
+						height: 24px;
+						left: 0;
+						overflow: visible;
+						position: absolute;
+						top: 0;
+						width: 24px;
+						z-index: 7;
 					}
 					.keeper-draggable-block-handle {
 						align-items: center;
@@ -619,11 +555,13 @@ export default function LexicalMarkdownEditor({
 						font-size: 18px;
 						height: 24px;
 						justify-content: center;
+						left: 0;
 						line-height: 1;
 						opacity: 1;
 						padding: 0;
 						pointer-events: auto;
 						position: absolute;
+						top: 0;
 						touch-action: none;
 						transition: opacity 120ms ease, background-color 120ms ease;
 						user-select: none;
@@ -666,16 +604,19 @@ export default function LexicalMarkdownEditor({
 						background: ${palette.primary};
 						border-radius: 999px;
 						height: 4px;
+						left: 0;
 						opacity: 0;
 						pointer-events: none;
 						position: absolute;
+						top: 0;
+						z-index: 6;
 					}
 					.keeper-placeholder {
 						color: ${palette.text}80;
 						pointer-events: none;
 						position: absolute;
 						top: 0;
-						left: 0;
+						left: 28px;
 						font-size: 17px;
 						line-height: 1.55;
 					}
@@ -758,6 +699,14 @@ export default function LexicalMarkdownEditor({
 					}
 					.keeper-table-control {
 						align-items: center;
+						display: flex;
+						gap: 4px;
+						position: absolute;
+						transform: translate(-50%, -50%);
+						z-index: 6;
+					}
+					.keeper-table-control-button {
+						align-items: center;
 						background: ${palette.primary};
 						border: 0;
 						border-radius: 999px;
@@ -765,19 +714,19 @@ export default function LexicalMarkdownEditor({
 						color: #fff;
 						cursor: pointer;
 						display: flex;
-						font-size: 24px;
+						font-size: 16px;
 						font-weight: 500;
-						height: 32px;
+						height: 24px;
 						justify-content: center;
 						line-height: 1;
-						padding: 0;
-						position: absolute;
-						transform: translate(-50%, -50%);
-						width: 32px;
-						z-index: 6;
+						padding: 0 0 2px;
+						width: 24px;
 					}
-					.keeper-table-control:hover,
-					.keeper-table-control:focus-visible {
+					.keeper-table-control-delete {
+						background: ${palette.textSecondary};
+					}
+					.keeper-table-control-button:hover,
+					.keeper-table-control-button:focus-visible {
 						filter: brightness(1.08);
 						outline: 2px solid ${palette.primary}66;
 						outline-offset: 2px;
@@ -839,7 +788,10 @@ export default function LexicalMarkdownEditor({
 				.keeper-text-italic { font-style: italic; }
 				.keeper-text-underline { text-decoration: underline; }
 			`}</style>
-			<LexicalComposer initialConfig={initialConfig}>
+			<LexicalExtensionComposer
+				extension={editorExtension}
+				contentEditable={null}
+			>
 				<div className="keeper-editor-shell">
 					<div className="keeper-toolbar-sticky">
 						<LexicalToolbarPlugin
@@ -854,39 +806,22 @@ export default function LexicalMarkdownEditor({
 						/>
 					</div>
 					<div className="keeper-editor-content" ref={setEditorContentElement}>
-						<RichTextPlugin
-							contentEditable={
-								<ContentEditable className="keeper-editor ContentEditable__root" />
-							}
-							placeholder={
-								<div className="keeper-placeholder">Start writing</div>
-							}
-							ErrorBoundary={LexicalErrorBoundary}
-							/>
-							<KeeperDraggableBlockPlugin anchorElem={editorContentElement} />
-							<KeeperTableControlsPlugin />
-						</div>
-					<HistoryPlugin />
-					<AutoFocusPlugin />
-					<ListPlugin />
-					<CheckListPlugin />
+						<ContentEditable className="keeper-editor ContentEditable__root" />
+						<EmptyPlaceholder />
+						<KeeperDraggableBlockPlugin anchorElem={editorContentElement} />
+						<KeeperTableControlsPlugin />
+					</div>
 					<LexicalCodeBlockPlugin />
 					<LexicalSlashCommandPlugin
 						onInsertTemplateCommand={onInsertTemplateCommand}
 					/>
-					<LinkPlugin />
 					<LexicalWikiLinkPlugin onOpenWikiLink={onOpenWikiLink} />
-					<TablePlugin />
 					<EquationPlugin />
 					<MarkdownShortcutPlugin transformers={KEEPER_MARKDOWN_TRANSFORMERS} />
-					<InlineCodeMarkdownExitPlugin />
-					<ChecklistMarkdownPrefixPlugin />
-					<TodoTriggerPlugin />
-					<TabIndentationPlugin />
 					<ChangePlugin onMarkdownChange={onMarkdownChange} />
 					<CommandPlugin command={command} />
 				</div>
-			</LexicalComposer>
+			</LexicalExtensionComposer>
 		</div>
 	);
 }

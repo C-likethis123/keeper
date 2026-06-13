@@ -34,7 +34,29 @@ interface CodeSelectionContext {
 	text: string;
 }
 
+function hasDomSelectionInCodeBlock(): boolean {
+	if (typeof window === "undefined") {
+		return true;
+	}
+
+	const selection = window.getSelection();
+	const anchorNode = selection?.anchorNode;
+	if (!anchorNode) {
+		return false;
+	}
+
+	const anchorElement =
+		anchorNode.nodeType === Node.ELEMENT_NODE
+			? (anchorNode as Element)
+			: anchorNode.parentElement;
+	return Boolean(anchorElement?.closest(".keeper-code"));
+}
+
 function getCodeSelectionContext(): CodeSelectionContext | null {
+	if (!hasDomSelectionInCodeBlock()) {
+		return null;
+	}
+
 	const selection = $getSelection();
 	if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
 		return null;
