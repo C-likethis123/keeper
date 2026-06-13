@@ -70,7 +70,7 @@ An **immutable, transaction-based** document model:
 ### Rendering
 
 - `DomEditor` — DOM component wrapper that renders the Lexical markdown editor and syncs markdown back into the document model
-- `LexicalMarkdownEditor` — canonical editing surface with Lexical plugins for toolbar actions, code blocks, equations, images, and wiki links
+- `LexicalMarkdownEditor` — canonical editing surface with Lexical extensions for toolbar actions, code blocks, equations, images, and wiki links
 - Legacy `UnifiedBlock` / `BlockRegistry` rendering has been removed; do not add new block UI through that path.
 
 ### Data Persistence (three-tier)

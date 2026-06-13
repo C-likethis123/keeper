@@ -41,10 +41,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AttachVideoModal from "./AttachVideoModal";
-import DomEditor from "./editor/DomEditor";
 import { DocumentPanel } from "./editor/document/DocumentPanel";
+import LexicalMarkdownEditor from "./editor/lexical/LexicalMarkdownEditor";
 import VideoSplitPanel from "./editor/video/VideoSplitPanel";
-import { resolveOrCreateWikiLinkNoteId } from "./editor/wikilinks/wikiLinkUtils";
+import { resolveOrCreateWikiLinkNoteId } from "./editor/lexical/wikilinks/wikiLinkUtils";
 
 export default function NoteEditorView({
   note,
@@ -259,9 +259,12 @@ export default function NoteEditorView({
   };
 
   useEffect(() => {
-    const showSubscription = Keyboard.addListener("keyboardDidShow", (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
-    });
+    const showSubscription = Keyboard.addListener(
+      "keyboardDidShow",
+      (event) => {
+        setKeyboardHeight(event.endCoordinates.height);
+      },
+    );
     const hideSubscription = Keyboard.addListener("keyboardDidHide", () => {
       setKeyboardHeight(0);
     });
@@ -680,7 +683,7 @@ export default function NoteEditorView({
               </View>
             ) : null}
 
-            <DomEditor
+            <LexicalMarkdownEditor
               key={editorInstanceKey}
               hasAttachment={hasDocAttachment}
               markdown={editorMarkdown}

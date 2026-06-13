@@ -27,7 +27,7 @@ const mockIndexListNotes = jest.fn();
 const mockNavigationSetOptions = jest.fn();
 const mockNavigationDispatch = jest.fn();
 const mockGitFlushPendingChanges = jest.fn();
-const mockDomEditorRender = jest.fn();
+const mockEditorRender = jest.fn();
 const mockGetDocumentAsync = jest.fn();
 const mockCopyPickedImageToNotes = jest.fn();
 const mockCopyPickedAttachmentToNote = jest.fn();
@@ -170,14 +170,6 @@ jest.mock("@/hooks/useAppKeyboardShortcuts", () => ({
 }));
 
 
-jest.mock("@/components/editor/lexical/plugins/LexicalToolbarPlugin", () => {
-	const React = require("react");
-	const { Text } = require("react-native");
-	return {
-		LexicalToolbarPlugin: () => React.createElement(Text, null, "Toolbar"),
-	};
-});
-
 jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 	const React = require("react");
 	const { Pressable, Text } = require("react-native");
@@ -192,7 +184,7 @@ jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 			onOpenWikiLink?: (title: string) => void | Promise<void>;
 			command?: { type: string; payload?: Record<string, unknown> };
 		}) => {
-			mockDomEditorRender(props);
+			mockEditorRender(props);
 			return React.createElement(
 				React.Fragment,
 				null,
@@ -352,7 +344,7 @@ describe("NoteEditorView", () => {
 		mockIndexListNotes.mockReset();
 		mockGitFlushPendingChanges.mockReset();
 		mockNavigationDispatch.mockReset();
-		mockDomEditorRender.mockReset();
+		mockEditorRender.mockReset();
 		mockGetDocumentAsync.mockReset();
 		mockCopyPickedImageToNotes.mockReset();
 		mockCopyPickedAttachmentToNote.mockReset();
@@ -391,7 +383,7 @@ describe("NoteEditorView", () => {
 
 		await screen.findByText("Mock editor");
 		await waitFor(() => {
-			expect(mockDomEditorRender).toHaveBeenLastCalledWith(
+			expect(mockEditorRender).toHaveBeenLastCalledWith(
 				expect.objectContaining({ markdown: "# Heading" }),
 			);
 		});
@@ -831,13 +823,13 @@ describe("NoteEditorView", () => {
 
 		await waitFor(() => {
 			expect(mockLoadNote).toHaveBeenCalledWith("template-1");
-			expect(mockDomEditorRender).toHaveBeenLastCalledWith(
+			expect(mockEditorRender).toHaveBeenLastCalledWith(
 				expect.objectContaining({
 					markdown: "Full template body\n- with checklist",
 				}),
 			);
 		});
-		expect(mockDomEditorRender).toHaveBeenLastCalledWith(
+		expect(mockEditorRender).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				markdown: "Full template body\n- with checklist",
 				command: expect.objectContaining({
@@ -858,7 +850,7 @@ describe("NoteEditorView", () => {
 		await user.press(screen.getByText("Trigger insert image"));
 
 		await waitFor(() => {
-			expect(mockDomEditorRender).toHaveBeenLastCalledWith(
+			expect(mockEditorRender).toHaveBeenLastCalledWith(
 				expect.objectContaining({
 					command: expect.objectContaining({
 						type: "insertImage",
@@ -867,7 +859,7 @@ describe("NoteEditorView", () => {
 				}),
 			);
 		});
-		expect(mockDomEditorRender).toHaveBeenLastCalledWith(
+		expect(mockEditorRender).toHaveBeenLastCalledWith(
 			expect.objectContaining({ markdown: "Initial body" }),
 		);
 		expect(mockCopyPickedImageToNotes).toHaveBeenCalledWith(
@@ -913,7 +905,7 @@ describe("NoteEditorView", () => {
 		});
 
 		await waitFor(() => {
-			expect(mockDomEditorRender).toHaveBeenLastCalledWith(
+			expect(mockEditorRender).toHaveBeenLastCalledWith(
 				expect.objectContaining({
 					command: expect.objectContaining({ type: "focusEditor" }),
 				}),

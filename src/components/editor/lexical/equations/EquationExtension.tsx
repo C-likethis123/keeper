@@ -1,13 +1,11 @@
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
 	$createParagraphNode,
 	$insertNodes,
 	COMMAND_PRIORITY_EDITOR,
 	type LexicalCommand,
 	createCommand,
+	defineExtension,
 } from "lexical";
-import type React from "react";
-import { useEffect } from "react";
 import { $createEquationNode, EquationNode } from "./EquationNode";
 
 export const INSERT_EQUATION_COMMAND: LexicalCommand<{
@@ -15,12 +13,11 @@ export const INSERT_EQUATION_COMMAND: LexicalCommand<{
 	inline: boolean;
 }> = createCommand("INSERT_EQUATION_COMMAND");
 
-export function EquationPlugin(): React.ReactElement | null {
-	const [editor] = useLexicalComposerContext();
-
-	useEffect(() => {
+export const EquationExtension = defineExtension({
+	name: "keeper/Equation",
+	register(editor) {
 		if (!editor.hasNodes([EquationNode])) {
-			throw new Error("EquationPlugin: EquationNode not registered on editor");
+			throw new Error("EquationExtension: EquationNode not registered on editor");
 		}
 
 		return editor.registerCommand<{ equation: string; inline: boolean }>(
@@ -38,7 +35,5 @@ export function EquationPlugin(): React.ReactElement | null {
 			},
 			COMMAND_PRIORITY_EDITOR,
 		);
-	}, [editor]);
-
-	return null;
-}
+	},
+});

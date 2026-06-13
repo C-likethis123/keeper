@@ -1,4 +1,4 @@
-import { WikiLinkExtension } from "../LexicalWikiLinkPlugin";
+import { WikiLinkExtension } from "../WikiLinkExtension";
 import { createWikiLinkUrl } from "../wikiLinkUrl";
 
 jest.mock("@lexical/react/LexicalTypeaheadMenuPlugin", () => ({
@@ -54,7 +54,7 @@ function registerWikiLinkExtension(
 	);
 }
 
-describe("LexicalWikiLinkPlugin interactions", () => {
+describe("WikiLinkExtension interactions", () => {
 	const originalElement = global.Element;
 
 	beforeEach(() => {

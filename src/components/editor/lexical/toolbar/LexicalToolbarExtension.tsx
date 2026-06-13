@@ -1,24 +1,32 @@
+import {
+  ReactExtension,
+  type EditorChildrenComponentProps,
+} from "@lexical/react/ReactExtension";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useExtensionDependency } from "@lexical/react/useExtensionComponent";
 import { INSERT_TABLE_COMMAND } from "@lexical/table";
 import {
+  configExtension,
+  defineExtension,
   INDENT_CONTENT_COMMAND,
   OUTDENT_CONTENT_COMMAND,
   REDO_COMMAND,
+  safeCast,
   UNDO_COMMAND,
 } from "lexical";
 import React from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { IconButton } from "@/components/shared/IconButton";
 
-interface LexicalToolbarPluginProps {
-  hasAttachment?: boolean;
-  onAttachDocument?: () => void;
-  onInsertImage?: () => void;
-  onRemoveAttachment?: () => void;
-  onShowVideoModal?: () => void;
-  onToggleArticle?: () => void;
-  onToggleRelatedNotes?: () => void;
-  onToggleActivePanel?: () => void;
+export interface ToolbarExtensionConfig {
+  getHasAttachment: () => boolean;
+  getOnAttachDocument: () => (() => void) | undefined;
+  getOnInsertImage: () => (() => void) | undefined;
+  getOnRemoveAttachment: () => (() => void) | undefined;
+  getOnShowVideoModal: () => (() => void) | undefined;
+  getOnToggleArticle: () => (() => void) | undefined;
+  getOnToggleRelatedNotes: () => (() => void) | undefined;
+  getOnToggleActivePanel: () => (() => void) | undefined;
 }
 
 const styles = StyleSheet.create({
@@ -36,17 +44,17 @@ const styles = StyleSheet.create({
 
 const noop = () => {};
 
-export function LexicalToolbarPlugin({
-  hasAttachment = false,
-  onAttachDocument,
-  onInsertImage,
-  onRemoveAttachment,
-  onShowVideoModal,
-  onToggleArticle,
-  onToggleRelatedNotes,
-  onToggleActivePanel,
-}: LexicalToolbarPluginProps) {
+function Toolbar() {
+  const { config } = useExtensionDependency(ToolbarExtension);
   const [editor] = useLexicalComposerContext();
+  const hasAttachment = config.getHasAttachment();
+  const onAttachDocument = config.getOnAttachDocument();
+  const onInsertImage = config.getOnInsertImage();
+  const onRemoveAttachment = config.getOnRemoveAttachment();
+  const onShowVideoModal = config.getOnShowVideoModal();
+  const onToggleArticle = config.getOnToggleArticle();
+  const onToggleRelatedNotes = config.getOnToggleRelatedNotes();
+  const onToggleActivePanel = config.getOnToggleActivePanel();
 
   const handleUndo = () => editor.dispatchCommand(UNDO_COMMAND, undefined);
   const handleRedo = () => editor.dispatchCommand(REDO_COMMAND, undefined);
@@ -128,3 +136,39 @@ export function LexicalToolbarPlugin({
     </View>
   );
 }
+
+function ToolbarEditorChildren({
+  contentEditable,
+  children,
+}: EditorChildrenComponentProps) {
+  return (
+    <>
+      {contentEditable}
+      <div className="keeper-editor-shell">
+        <div className="keeper-toolbar-sticky">
+          <Toolbar />
+        </div>
+        {children}
+      </div>
+    </>
+  );
+}
+
+export const ToolbarExtension = defineExtension({
+  config: safeCast<ToolbarExtensionConfig>({
+    getHasAttachment: () => false,
+    getOnAttachDocument: () => undefined,
+    getOnInsertImage: () => undefined,
+    getOnRemoveAttachment: () => undefined,
+    getOnShowVideoModal: () => undefined,
+    getOnToggleArticle: () => undefined,
+    getOnToggleRelatedNotes: () => undefined,
+    getOnToggleActivePanel: () => undefined,
+  }),
+  dependencies: [
+    configExtension(ReactExtension, {
+      EditorChildrenComponent: ToolbarEditorChildren,
+    }),
+  ],
+  name: "keeper/Toolbar",
+});
