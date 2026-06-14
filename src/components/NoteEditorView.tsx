@@ -368,9 +368,13 @@ export default function NoteEditorView({
 
       const loadedNote = loadedNoteRef.current;
       if (loadedNote?.id !== note.id || loadedNote.content !== note.content) {
+        const shouldRemountEditor = loadedNote !== null;
         loadedNoteRef.current = { id: note.id, content: note.content };
         editorMarkdownRef.current = note.content;
         setEditorMarkdown(note.content);
+        if (shouldRemountEditor) {
+          setEditorInstanceKey((key) => key + 1);
+        }
       }
     }, [
       note.attachment,
