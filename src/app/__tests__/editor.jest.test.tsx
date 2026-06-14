@@ -1,5 +1,6 @@
 import NoteEditorScreen from "@/app/editor";
 import type { Note } from "@/services/notes/types";
+import { useTabStore } from "@/stores/tabStore";
 import { renderRouter, screen } from "expo-router/testing-library";
 import React from "react";
 
@@ -52,7 +53,11 @@ jest.mock("@/components/NoteEditorView", () => {
 	return {
 		__esModule: true,
 		default: ({ note }: { note: Note }) =>
-			React.createElement(Text, null, `Loaded note: ${note.title}`),
+			React.createElement(
+				Text,
+				null,
+				`Loaded note: ${note.title} / ${note.content}`,
+			),
 	};
 });
 
@@ -72,6 +77,7 @@ function makeNote(overrides?: Partial<Note>): Note {
 describe("NoteEditorScreen", () => {
 	beforeEach(() => {
 		mockUseSuspenseLoadNote.mockReset();
+		useTabStore.setState({ tabs: [], activeTabId: null });
 	});
 
 	it("shows the loading state while the note request is pending", async () => {
@@ -137,7 +143,43 @@ describe("NoteEditorScreen", () => {
 			{ initialUrl: "/editor?id=note-1" },
 		);
 
-		expect(await screen.findByText("Loaded note: Loaded draft")).toBeTruthy();
+		expect(
+			await screen.findByText("Loaded note: Loaded draft / Initial body"),
+		).toBeTruthy();
 		expect(result.getPathname()).toBe("/editor");
+	});
+
+	it("loads persisted content when a restored new-note route still has isNew", async () => {
+		mockUseSuspenseLoadNote.mockReturnValue(
+			makeNote({ title: "Persisted draft", content: "Saved body" }),
+		);
+
+		renderRouter(
+			{
+				index: () => null,
+				editor: NoteEditorScreen,
+			},
+			{ initialUrl: "/editor?id=note-1&isNew=true" },
+		);
+
+		expect(
+			await screen.findByText("Loaded note: Persisted draft / Saved body"),
+		).toBeTruthy();
+		expect(mockUseSuspenseLoadNote).toHaveBeenCalledWith("note-1");
+	});
+
+	it("creates an empty virtual note when a new-note route is not persisted yet", async () => {
+		mockUseSuspenseLoadNote.mockReturnValue(null);
+
+		renderRouter(
+			{
+				index: () => null,
+				editor: NoteEditorScreen,
+			},
+			{ initialUrl: "/editor?id=new-note&isNew=true&title=Draft" },
+		);
+
+		expect(await screen.findByText("Loaded note: Draft / ")).toBeTruthy();
+		expect(mockUseSuspenseLoadNote).toHaveBeenCalledWith("new-note");
 	});
 });

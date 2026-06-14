@@ -6,6 +6,7 @@ import { TODO_STATUS_OPTIONS } from "@/constants/noteTypes";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useAutoSave } from "@/hooks/useAutoSave";
+import { useEditorKeyboardHeight } from "@/hooks/useEditorKeyboardHeight";
 import { useNoteEditorLayout } from "@/hooks/useNoteEditorLayout";
 import { useRelatedNotes } from "@/hooks/useRelatedNotes";
 import { useStyles } from "@/hooks/useStyles";
@@ -32,7 +33,6 @@ import React, {
   useState,
 } from "react";
 import {
-  Keyboard,
   type LayoutChangeEvent,
   Platform,
   StyleSheet,
@@ -42,9 +42,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AttachVideoModal from "./AttachVideoModal";
-import { DocumentPanel } from "./editor/document/DocumentPanel";
+import { EditorSidePanelHost } from "./editor/EditorSidePanelHost";
 import LexicalMarkdownEditor from "./editor/lexical/LexicalMarkdownEditor";
-import VideoSplitPanel from "./editor/video/VideoSplitPanel";
 import { resolveOrCreateWikiLinkNoteId } from "./editor/lexical/wikilinks/wikiLinkUtils";
 
 export default function NoteEditorView({
@@ -73,7 +72,7 @@ export default function NoteEditorView({
   const [editorMarkdown, setEditorMarkdown] = useState(note.content);
   const editorMarkdownRef = useRef(note.content);
   const [editorInstanceKey, setEditorInstanceKey] = useState(0);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardHeight = useEditorKeyboardHeight();
   const [editorHostHeight, setEditorHostHeight] = useState<number | null>(null);
 
   const sendCommand = useCallback(
@@ -266,23 +265,6 @@ export default function NoteEditorView({
     noteType,
     todoStatus,
   };
-
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener(
-      "keyboardDidShow",
-      (event) => {
-        setKeyboardHeight(event.endCoordinates.height);
-      },
-    );
-    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
 
   useEffect(() => {
     const derived = deriveNoteType(title);
@@ -638,44 +620,31 @@ export default function NoteEditorView({
 
       <View style={[styles.splitContainer, { flexDirection: splitFlexDir }]}>
         {showSplit && (
-          <>
-            <View
-              style={[
-                styles.documentPane,
-                splitFlexDir === "row"
-                  ? { width: `${splitRatio * 100}%` as unknown as number }
-                  : { height: `${splitRatio * 100}%` as unknown as number },
-              ]}
-            >
-              {activePanel === "document" ? (
-                <DocumentPanel
-                  noteId={id}
-                  attachmentPath={attachmentPath as string}
-                  attachmentType={attachmentType as AttachmentType}
-                  onTextSelected={handleTextSelected}
-                  onDocumentPositionChange={handleDocumentPositionChange}
-                  onDismiss={handleHideAttachment}
-                />
-              ) : activePanel === "article" ? (
-                <DocumentPanel
-                  variant="article"
-                  url={resourceUrl ?? ""}
-                  onDismiss={() => setIsArticleVisible(false)}
-                />
-              ) : (
-                <VideoSplitPanel
-                  url={attachedVideo ?? ""}
-                  onDismiss={() => {
-                    void handleRemoveVideo();
-                  }}
-                />
-              )}
-            </View>
-            <View
-              style={splitFlexDir === "row" ? styles.dividerV : styles.dividerH}
-              {...panResponder.panHandlers}
-            />
-          </>
+          <EditorSidePanelHost
+            activePanel={activePanel}
+            articleUrl={resourceUrl ?? ""}
+            attachmentPath={attachmentPath}
+            attachmentType={attachmentType}
+            dividerStyle={
+              splitFlexDir === "row" ? styles.dividerV : styles.dividerH
+            }
+            noteId={id}
+            onArticleDismiss={() => setIsArticleVisible(false)}
+            onAttachmentDismiss={handleHideAttachment}
+            onDocumentPositionChange={handleDocumentPositionChange}
+            onTextSelected={handleTextSelected}
+            onVideoDismiss={() => {
+              void handleRemoveVideo();
+            }}
+            paneStyle={[
+              styles.documentPane,
+              splitFlexDir === "row"
+                ? { width: `${splitRatio * 100}%` as unknown as number }
+                : { height: `${splitRatio * 100}%` as unknown as number },
+            ]}
+            panHandlers={panResponder.panHandlers}
+            videoUrl={attachedVideo ?? ""}
+          />
         )}
 
         <View style={styles.editorPane}>

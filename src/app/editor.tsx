@@ -24,6 +24,11 @@ function NewNoteEditorContent({
 	initialTitle?: string;
 	initialNoteType?: string;
 }) {
+	const existingNote = useSuspenseLoadNote(id);
+	if (existingNote) {
+		return <NoteEditorView note={existingNote} />;
+	}
+
 	const virtualNote: Note = {
 		id,
 		title: initialTitle ?? "",

@@ -3,19 +3,10 @@
 import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
-import { CodeHighlightNode, CodeNode } from "@lexical/code";
-import { AutoLinkNode } from "@lexical/link";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { LexicalExtensionComposer } from "@lexical/react/LexicalExtensionComposer";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
-import { ImageNode } from "./image/ImageNode";
-import {
-  DetailsContentNode,
-  DetailsNode,
-  DetailsSummaryNode,
-} from "./DetailsNode";
-import { EquationNode } from "./equations/EquationNode";
 
 import { $getRoot } from "lexical";
 import React, {
@@ -31,6 +22,8 @@ import {
 } from "./markdown";
 import type { LexicalEditorCommand } from "./extensions/CommandExtension";
 import { createKeeperEditorExtension } from "./extensions/KeeperEditorExtension";
+import { KEEPER_EDITOR_NODES } from "./keeperEditorNodes";
+import { KEEPER_EDITOR_THEME } from "./keeperEditorTheme";
 
 interface LexicalMarkdownEditorProps {
   command?: LexicalEditorCommand;
@@ -80,6 +73,16 @@ function EmptyPlaceholder() {
   return <div className="keeper-placeholder">Start writing</div>;
 }
 
+function useLatestGetter<T>(value: T) {
+  const ref = useRef(value);
+
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+
+  return useCallback(() => ref.current, []);
+}
+
 export default function LexicalMarkdownEditor({
   command,
   hasAttachment = false,
@@ -102,17 +105,17 @@ export default function LexicalMarkdownEditor({
   const editorContentElementRef = useRef<HTMLDivElement | null>(null);
   const initialMarkdownRef = useRef(markdown);
   const commandRef = useRef<LexicalEditorCommand | undefined>(command);
-  const onMarkdownChangeRef = useRef(onMarkdownChange);
-  const onInsertTemplateCommandRef = useRef(onInsertTemplateCommand);
-  const onOpenWikiLinkRef = useRef(onOpenWikiLink);
-  const hasAttachmentRef = useRef(hasAttachment ?? false);
-  const onAttachDocumentRef = useRef(onAttachDocument);
-  const onInsertImageRef = useRef(onInsertImage);
-  const onRemoveAttachmentRef = useRef(onRemoveAttachment);
-  const onShowVideoModalRef = useRef(onShowVideoModal);
-  const onToggleActivePanelRef = useRef(onToggleActivePanel);
-  const onToggleArticleRef = useRef(onToggleArticle);
-  const onToggleRelatedNotesRef = useRef(onToggleRelatedNotes);
+  const getOnMarkdownChange = useLatestGetter(onMarkdownChange);
+  const getOnInsertTemplateCommand = useLatestGetter(onInsertTemplateCommand);
+  const getOnOpenWikiLink = useLatestGetter(onOpenWikiLink);
+  const getHasAttachment = useLatestGetter(hasAttachment ?? false);
+  const getOnAttachDocument = useLatestGetter(onAttachDocument);
+  const getOnInsertImage = useLatestGetter(onInsertImage);
+  const getOnRemoveAttachment = useLatestGetter(onRemoveAttachment);
+  const getOnShowVideoModal = useLatestGetter(onShowVideoModal);
+  const getOnToggleActivePanel = useLatestGetter(onToggleActivePanel);
+  const getOnToggleArticle = useLatestGetter(onToggleArticle);
+  const getOnToggleRelatedNotes = useLatestGetter(onToggleRelatedNotes);
   const setEditorContentElement = useCallback(
     (element: HTMLDivElement | null) => {
       editorContentElementRef.current = element;
@@ -125,126 +128,39 @@ export default function LexicalMarkdownEditor({
     flushAllPendingEditorDispatches();
   }, [command]);
 
-  useEffect(() => {
-    onMarkdownChangeRef.current = onMarkdownChange;
-  }, [onMarkdownChange]);
-
-  useEffect(() => {
-    onInsertTemplateCommandRef.current = onInsertTemplateCommand;
-  }, [onInsertTemplateCommand]);
-
-  useEffect(() => {
-    onOpenWikiLinkRef.current = onOpenWikiLink;
-  }, [onOpenWikiLink]);
-
-  useEffect(() => {
-    hasAttachmentRef.current = hasAttachment ?? false;
-    onAttachDocumentRef.current = onAttachDocument;
-    onInsertImageRef.current = onInsertImage;
-    onRemoveAttachmentRef.current = onRemoveAttachment;
-    onShowVideoModalRef.current = onShowVideoModal;
-    onToggleActivePanelRef.current = onToggleActivePanel;
-    onToggleArticleRef.current = onToggleArticle;
-    onToggleRelatedNotesRef.current = onToggleRelatedNotes;
-  }, [
-    hasAttachment,
-    onAttachDocument,
-    onInsertImage,
-    onRemoveAttachment,
-    onShowVideoModal,
-    onToggleActivePanel,
-    onToggleArticle,
-    onToggleRelatedNotes,
-  ]);
-
   const editorExtension = useMemo(
     () =>
       createKeeperEditorExtension({
         getCommand: () => commandRef.current,
         getDraggableBlockAnchorElem: () => editorContentElementRef.current,
-        getOnInsertTemplateCommand: () => onInsertTemplateCommandRef.current,
-        getOnMarkdownChange: () => onMarkdownChangeRef.current,
-        getOnOpenWikiLink: () => onOpenWikiLinkRef.current,
-        getHasAttachment: () => hasAttachmentRef.current,
-        getOnAttachDocument: () => onAttachDocumentRef.current,
-        getOnInsertImage: () => onInsertImageRef.current,
-        getOnRemoveAttachment: () => onRemoveAttachmentRef.current,
-        getOnShowVideoModal: () => onShowVideoModalRef.current,
-        getOnToggleActivePanel: () => onToggleActivePanelRef.current,
-        getOnToggleArticle: () => onToggleArticleRef.current,
-        getOnToggleRelatedNotes: () => onToggleRelatedNotesRef.current,
-        nodes: [
-          CodeNode,
-          CodeHighlightNode,
-          AutoLinkNode,
-          DetailsContentNode,
-          DetailsNode,
-          DetailsSummaryNode,
-          EquationNode,
-          ImageNode,
-        ],
+        getOnInsertTemplateCommand,
+        getOnMarkdownChange,
+        getOnOpenWikiLink,
+        getHasAttachment,
+        getOnAttachDocument,
+        getOnInsertImage,
+        getOnRemoveAttachment,
+        getOnShowVideoModal,
+        getOnToggleActivePanel,
+        getOnToggleArticle,
+        getOnToggleRelatedNotes,
+        nodes: KEEPER_EDITOR_NODES,
         editorState: () => importMarkdownToLexical(initialMarkdownRef.current),
-        theme: {
-          heading: {
-            h1: "keeper-heading keeper-heading-h1",
-            h2: "keeper-heading keeper-heading-h2",
-            h3: "keeper-heading keeper-heading-h3",
-          },
-          list: {
-            ol: "keeper-list keeper-list-ol",
-            ul: "keeper-list keeper-list-ul",
-            listitem: "keeper-list-item",
-            checklist: "keeper-list keeper-checklist",
-            listitemChecked: "keeper-check-item keeper-check-item-checked",
-            listitemUnchecked: "keeper-check-item keeper-check-item-unchecked",
-            nested: {
-              listitem: "keeper-nested-list-item",
-            },
-          },
-          code: "keeper-code",
-          codeHighlight: {
-            attr: "keeper-token-attr",
-            boolean: "keeper-token-constant",
-            builtin: "keeper-token-builtin",
-            "class-name": "keeper-token-class",
-            comment: "keeper-token-comment",
-            constant: "keeper-token-constant",
-            deleted: "keeper-token-deleted",
-            doctype: "keeper-token-comment",
-            function: "keeper-token-function",
-            inserted: "keeper-token-inserted",
-            keyword: "keeper-token-keyword",
-            namespace: "keeper-token-namespace",
-            number: "keeper-token-number",
-            operator: "keeper-token-operator",
-            prolog: "keeper-token-comment",
-            property: "keeper-token-property",
-            punctuation: "keeper-token-punctuation",
-            regex: "keeper-token-string",
-            selector: "keeper-token-selector",
-            string: "keeper-token-string",
-            symbol: "keeper-token-symbol",
-            tag: "keeper-token-tag",
-            url: "keeper-token-string",
-            variable: "keeper-token-variable",
-          },
-          quote: "keeper-quote",
-          link: "keeper-link",
-          table: "keeper-table",
-          tableCell: "keeper-table-cell",
-          tableCellHeader: "keeper-table-cell-header",
-          tableRow: "keeper-table-row",
-          tableScrollableWrapper: "keeper-table-scroll",
-          tableSelection: "keeper-table-selection",
-          text: {
-            bold: "keeper-text-bold",
-            italic: "keeper-text-italic",
-            underline: "keeper-text-underline",
-            code: "keeper-inline-code",
-          },
-        },
+        theme: KEEPER_EDITOR_THEME,
       }),
-    [],
+    [
+      getHasAttachment,
+      getOnAttachDocument,
+      getOnInsertImage,
+      getOnInsertTemplateCommand,
+      getOnMarkdownChange,
+      getOnOpenWikiLink,
+      getOnRemoveAttachment,
+      getOnShowVideoModal,
+      getOnToggleActivePanel,
+      getOnToggleArticle,
+      getOnToggleRelatedNotes,
+    ],
   );
 
   return (
