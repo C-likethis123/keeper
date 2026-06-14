@@ -7,7 +7,6 @@ import {
 	getOrphanedNotes,
 	getOutgoingLinks,
 	getRecentlyEditedNotes,
-	getTransitiveBacklinks,
 	hasRows,
 	listAll,
 	upsertItem,
@@ -73,14 +72,6 @@ export async function notesIndexDbGetOutgoingLinks(
 ): Promise<string[]> {
 	const database = await getNotesIndexDb();
 	return getOutgoingLinks(database, noteId);
-}
-
-export async function notesIndexDbGetTransitiveBacklinks(
-	noteId: string,
-	maxDepth = 3,
-): Promise<{ noteId: string; depth: number }[]> {
-	const database = await getNotesIndexDb();
-	return getTransitiveBacklinks(database, noteId, maxDepth);
 }
 
 export async function notesIndexDbGetOrphanedNotes(): Promise<string[]> {

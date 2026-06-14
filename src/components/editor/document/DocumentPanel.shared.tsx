@@ -18,7 +18,6 @@ import {
   loadDocumentPosition,
   saveDocumentPosition,
 } from "./documentPositionStore";
-import { buildEpubViewerHtml, buildPdfViewerHtml } from "./viewerTemplates";
 
 const POSITION_SAVE_DEBOUNCE_MS = 1000;
 
@@ -75,37 +74,74 @@ type DocumentViewerState = {
 };
 
 type DocumentViewerAdapter = {
-  build: (options: {
-    attachmentBase64: string | null;
-    savedPosition: string | null;
-    theme: "light" | "dark";
-  }) => DocumentViewerState;
-  isLoading: (viewer: DocumentViewerState) => boolean;
+  build: (options: DocumentViewerBuildOptions) => DocumentViewerState;
 };
 
-const DOCUMENT_VIEWER_ADAPTERS: Record<AttachmentType, DocumentViewerAdapter> =
-  {
-    epub: {
-      build: ({ attachmentBase64, savedPosition, theme }) => ({
-        html: attachmentBase64
-          ? buildEpubViewerHtml(theme, attachmentBase64, savedPosition)
-          : "",
+type DocumentViewerBuildOptions = {
+  attachmentBase64: string | null;
+  fileUri: string | null;
+  preferFileUri: boolean;
+  savedPosition: string | null;
+  theme: "light" | "dark";
+};
+
+const EMPTY_VIEWER: DocumentViewerState = {
+  html: "",
+  openMessage: null,
+  requiresOpenMessage: false,
+};
+
+async function loadDocumentViewerAdapter(
+  attachmentType: AttachmentType,
+): Promise<DocumentViewerAdapter> {
+  const { buildEpubViewerHtml, buildPdfViewerHtml } = await import(
+    "./viewerTemplates"
+  );
+
+  if (attachmentType === "epub") {
+    return {
+      build: ({ attachmentBase64, fileUri, preferFileUri, savedPosition, theme }) => {
+        if (preferFileUri && fileUri) {
+          return {
+            html: buildEpubViewerHtml(theme, null, savedPosition),
+            openMessage: JSON.stringify({
+              type: "open",
+              fileUri,
+              cfi: savedPosition,
+              theme,
+            }),
+            requiresOpenMessage: true,
+          };
+        }
+
+        return {
+          html: attachmentBase64
+            ? buildEpubViewerHtml(theme, attachmentBase64, savedPosition)
+            : "",
+          openMessage: null,
+          requiresOpenMessage: false,
+        };
+      },
+    };
+  }
+
+  return {
+    build: ({ attachmentBase64, fileUri, preferFileUri, savedPosition, theme }) => {
+      const pdfSource =
+        preferFileUri && fileUri
+          ? fileUri
+          : attachmentBase64
+            ? `data:application/pdf;base64,${attachmentBase64}`
+            : null;
+
+      return {
+        html: pdfSource ? buildPdfViewerHtml(theme, pdfSource, savedPosition) : "",
         openMessage: null,
         requiresOpenMessage: false,
-      }),
-      isLoading: (viewer) => !viewer.html,
-    },
-    pdf: {
-      build: ({ attachmentBase64, savedPosition, theme }) => ({
-        html: attachmentBase64
-          ? buildPdfViewerHtml(theme, attachmentBase64, savedPosition)
-          : "",
-        openMessage: null,
-        requiresOpenMessage: false,
-      }),
-      isLoading: (viewer) => !viewer.html,
+      };
     },
   };
+}
 
 type UseDocumentPanelStateOptions = Pick<
   AttachmentDocumentPanelProps,
@@ -117,6 +153,7 @@ type UseDocumentPanelStateOptions = Pick<
   | "theme"
 > & {
   readAttachmentBase64: ReadAttachmentBase64;
+  preferFileUri?: boolean;
 };
 
 export function useDocumentPanelState({
@@ -127,10 +164,12 @@ export function useDocumentPanelState({
   onDocumentPositionChange,
   theme = "light",
   readAttachmentBase64,
+  preferFileUri = false,
 }: UseDocumentPanelStateOptions) {
   const [fileUri, setFileUri] = useState<string | null>(null);
   const [savedPosition, setSavedPosition] = useState<string | null>(null);
   const [attachmentBase64, setAttachmentBase64] = useState<string | null>(null);
+  const [viewer, setViewer] = useState<DocumentViewerState>(EMPTY_VIEWER);
   const [failedAttachmentType, setFailedAttachmentType] =
     useState<AttachmentType | null>(null);
   const positionSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -194,6 +233,12 @@ export function useDocumentPanelState({
 
     setFailedAttachmentType(null);
     setAttachmentBase64(null);
+    if (preferFileUri) {
+      return () => {
+        isCancelled = true;
+      };
+    }
+
     readAttachmentBase64(fileUri, attachmentPath)
       .then((base64) => {
         if (!isCancelled) setAttachmentBase64(base64);
@@ -208,7 +253,13 @@ export function useDocumentPanelState({
     return () => {
       isCancelled = true;
     };
-  }, [attachmentPath, attachmentType, fileUri, readAttachmentBase64]);
+  }, [
+    attachmentPath,
+    attachmentType,
+    fileUri,
+    preferFileUri,
+    readAttachmentBase64,
+  ]);
 
   const handleViewerMessage = useCallback(
     (data: DocumentViewerMessage | string) => {
@@ -236,20 +287,38 @@ export function useDocumentPanelState({
     }
   }, [fileUri]);
 
-  const viewer = useMemo(
-    () =>
-      DOCUMENT_VIEWER_ADAPTERS[attachmentType].build({
+  useEffect(() => {
+    let isCancelled = false;
+    setViewer(EMPTY_VIEWER);
+
+    void loadDocumentViewerAdapter(attachmentType).then((adapter) => {
+      if (isCancelled) return;
+      setViewer(
+        adapter.build({
+          fileUri,
+          preferFileUri,
         attachmentBase64,
         savedPosition,
         theme,
-      }),
-    [attachmentBase64, attachmentType, savedPosition, theme],
-  );
+        }),
+      );
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    attachmentBase64,
+    attachmentType,
+    fileUri,
+    preferFileUri,
+    savedPosition,
+    theme,
+  ]);
 
   const isLoading =
     !fileUri ||
-    (DOCUMENT_VIEWER_ADAPTERS[attachmentType].isLoading(viewer) &&
-      failedAttachmentType !== attachmentType);
+    (!viewer.html && failedAttachmentType !== attachmentType);
 
   return {
     failedAttachmentType,

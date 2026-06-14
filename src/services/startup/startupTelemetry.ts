@@ -11,6 +11,15 @@ type StartupTelemetryPayload = Record<string, StartupTelemetryValue>;
 
 const STARTUP_TRACE_RUN_ID_KEY = "__keeperStartupTraceRunId";
 
+function shouldLogStartupTrace(): boolean {
+	return typeof __DEV__ === "undefined" ? false : __DEV__;
+}
+
+function logStartupTrace(payload: StartupTelemetryPayload): void {
+	if (!shouldLogStartupTrace()) return;
+	console.log("[StartupTrace]", payload);
+}
+
 function getExecutionContext(): "server" | "client" {
 	return typeof window === "undefined" || typeof document === "undefined"
 		? "server"
@@ -74,7 +83,7 @@ export function traceStartupBootstrapEvent(
 	event: string,
 	payload: StartupTelemetryPayload = {},
 ): void {
-	console.log("[StartupTrace]", {
+	logStartupTrace({
 		runId: getOrCreateRunId(),
 		runtime: "bootstrap",
 		event,
@@ -123,47 +132,47 @@ export function createStartupTelemetry(runtime: string): StartupTelemetry {
 
 	return {
 		runId,
-		runtime,
-		trace(event, payload = {}) {
-			console.log("[StartupTrace]", {
-				runId,
-				runtime,
-				event,
+			runtime,
+			trace(event, payload = {}) {
+				logStartupTrace({
+					runId,
+					runtime,
+					event,
 				timestampMs: currentTimestampMs(),
 				executionContext: getExecutionContext(),
 				...payload,
 			});
-		},
-		stepStarted(step, payload = {}) {
-			const startedAt = performance.now();
-			console.log("[StartupTrace]", {
-				runId,
-				runtime,
-				event: "step_started",
+			},
+			stepStarted(step, payload = {}) {
+				const startedAt = performance.now();
+				logStartupTrace({
+					runId,
+					runtime,
+					event: "step_started",
 				step,
 				timestampMs: currentTimestampMs(),
 				executionContext: getExecutionContext(),
 				...payload,
 			});
 			return startedAt;
-		},
-		stepCompleted(step, startedAt, payload = {}) {
-			console.log("[StartupTrace]", {
-				runId,
-				runtime,
-				event: "step_completed",
+			},
+			stepCompleted(step, startedAt, payload = {}) {
+				logStartupTrace({
+					runId,
+					runtime,
+					event: "step_completed",
 				step,
 				durationMs: Math.round(performance.now() - startedAt),
 				timestampMs: currentTimestampMs(),
 				executionContext: getExecutionContext(),
 				...payload,
 			});
-		},
-		stepFailed(step, startedAt, error, payload = {}) {
-			console.log("[StartupTrace]", {
-				runId,
-				runtime,
-				event: "step_failed",
+			},
+			stepFailed(step, startedAt, error, payload = {}) {
+				logStartupTrace({
+					runId,
+					runtime,
+					event: "step_failed",
 				step,
 				durationMs: Math.round(performance.now() - startedAt),
 				timestampMs: currentTimestampMs(),

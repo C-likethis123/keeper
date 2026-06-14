@@ -111,14 +111,6 @@ export async function notesIndexDbGetOutgoingLinks(
 	return invoke<string[]>("wiki_links_get_outgoing", { noteId });
 }
 
-export async function notesIndexDbGetTransitiveBacklinks(
-	_noteId: string,
-	_maxDepth = 3,
-): Promise<{ noteId: string; depth: number }[]> {
-	// No Tauri equivalent — return empty on desktop.
-	return [];
-}
-
 export async function notesIndexDbGetOrphanedNotes(): Promise<string[]> {
 	return invoke<string[]>("wiki_links_get_orphaned_notes");
 }

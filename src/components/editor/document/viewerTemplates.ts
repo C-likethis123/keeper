@@ -277,7 +277,7 @@ ${EPUB_JS}
 
 export function buildPdfViewerHtml(
 	theme: "light" | "dark",
-	attachmentBase64: string,
+	pdfSource: string,
 	savedPage?: string | null,
 ): string {
 	const bg = theme === "dark" ? "#101214" : "#eef1f4";
@@ -287,7 +287,6 @@ export function buildPdfViewerHtml(
 	const border = theme === "dark" ? "#2e3742" : "#d9e2ec";
 	const inlinePdfJs = PDF_JS.replace(/<\/script/gi, "<\\/script");
 	const inlinePdfWorkerJs = PDF_WORKER_JS.replace(/<\/script/gi, "<\\/script");
-	const pdfDataUri = `data:application/pdf;base64,${attachmentBase64}`;
 	return `<!DOCTYPE html>
 <html>
 <head>
@@ -517,7 +516,7 @@ ${inlinePdfJs}
     }
   });
 
-  openPdf(${JSON.stringify(pdfDataUri)}, ${JSON.stringify(savedPage ?? undefined)});
+  openPdf(${JSON.stringify(pdfSource)}, ${JSON.stringify(savedPage ?? undefined)});
 })();
 </script>
 </body>

@@ -20,7 +20,7 @@ import React from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { IconButton } from "@/components/shared/IconButton";
 
-export interface ToolbarExtensionConfig {
+interface ToolbarExtensionConfig {
   getHasAttachment: () => boolean;
   getOnAttachDocument: () => (() => void) | undefined;
   getOnInsertImage: () => (() => void) | undefined;

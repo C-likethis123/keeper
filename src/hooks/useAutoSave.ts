@@ -194,68 +194,73 @@ export function useAutoSave({
 						continue;
 					}
 
-					console.debug("[AutoSave] Dirty detected:", {
-						id: {
-							match: currentNote.id === previousId,
-							a: currentNote.id,
-							b: previousId,
-						},
-						title: {
-							match: trimmedTitle === previousTitle,
-							a: trimmedTitle,
-							b: previousTitle,
-						},
-						content: {
-							match: currentContent === previousContent,
-							aLen: currentContent?.length,
-							bLen: previousContent?.length,
-						},
-						pinned: {
-							match: currentNote.isPinned === previousIsPinned,
-							a: currentNote.isPinned,
-							b: previousIsPinned,
-						},
-						type: {
-							match: currentNote.noteType === previousNoteType,
-							a: currentNote.noteType,
-							b: previousNoteType,
-						},
-						status: {
-							match: currentNote.status === previousStatus,
-							a: currentNote.status,
-							b: previousStatus,
-						},
-						attachment: {
-							match: currentNote.attachment === previousAttachment,
-							a: currentNote.attachment,
-							b: previousAttachment,
-						},
-						attachedVideo: {
-							match: currentNote.attachedVideo === previousAttachedVideo,
-							a: currentNote.attachedVideo,
-							b: previousAttachedVideo,
-						},
-						resourceUrl: {
-							match: currentNote.resourceUrl === previousResourceUrl,
-							a: currentNote.resourceUrl,
-							b: previousResourceUrl,
-						},
-						documentPositions: {
-							match: currentNote.documentPositions === previousDocumentPositions,
-							a: currentNote.documentPositions,
-							b: previousDocumentPositions,
-						},
-					});
+					if (__DEV__) {
+						console.debug("[AutoSave] Dirty detected:", {
+							id: {
+								match: currentNote.id === previousId,
+								a: currentNote.id,
+								b: previousId,
+							},
+							title: {
+								match: trimmedTitle === previousTitle,
+								a: trimmedTitle,
+								b: previousTitle,
+							},
+							content: {
+								match: currentContent === previousContent,
+								aLen: currentContent?.length,
+								bLen: previousContent?.length,
+							},
+							pinned: {
+								match: currentNote.isPinned === previousIsPinned,
+								a: currentNote.isPinned,
+								b: previousIsPinned,
+							},
+							type: {
+								match: currentNote.noteType === previousNoteType,
+								a: currentNote.noteType,
+								b: previousNoteType,
+							},
+							status: {
+								match: currentNote.status === previousStatus,
+								a: currentNote.status,
+								b: previousStatus,
+							},
+							attachment: {
+								match: currentNote.attachment === previousAttachment,
+								a: currentNote.attachment,
+								b: previousAttachment,
+							},
+							attachedVideo: {
+								match: currentNote.attachedVideo === previousAttachedVideo,
+								a: currentNote.attachedVideo,
+								b: previousAttachedVideo,
+							},
+							resourceUrl: {
+								match: currentNote.resourceUrl === previousResourceUrl,
+								a: currentNote.resourceUrl,
+								b: previousResourceUrl,
+							},
+							documentPositions: {
+								match:
+									currentNote.documentPositions === previousDocumentPositions,
+								a: currentNote.documentPositions,
+								b: previousDocumentPositions,
+							},
+						});
+					}
 
 					setStatus("saving");
 					const saveStart = performance.now();
 					const currentIsNewEntry = isNewEntryRef.current;
-					console.debug("[AutoSaveProfile] saveNote:start", {
-						id: currentNote.id,
-						titleLength: trimmedTitle.length,
-						contentLength: currentContent.length,
-						isNewEntry: currentIsNewEntry,
-					});
+					if (__DEV__) {
+						console.debug("[AutoSaveProfile] saveNote:start", {
+							id: currentNote.id,
+							titleLength: trimmedTitle.length,
+							contentLength: currentContent.length,
+							isNewEntry: currentIsNewEntry,
+						});
+					}
 					try {
 						await persistEditorEntry({
 							id: currentNote.id,
@@ -280,17 +285,21 @@ export function useAutoSave({
 						});
 						isNewEntryRef.current = false;
 					} catch {
-						console.debug("[AutoSaveProfile] saveNote:error", {
-							id: currentNote.id,
-							durationMs: Math.round(performance.now() - saveStart),
-						});
+						if (__DEV__) {
+							console.debug("[AutoSaveProfile] saveNote:error", {
+								id: currentNote.id,
+								durationMs: Math.round(performance.now() - saveStart),
+							});
+						}
 						setStatus("idle");
 						return;
 					}
-					console.debug("[AutoSaveProfile] saveNote:done", {
-						id: currentNote.id,
-						durationMs: Math.round(performance.now() - saveStart),
-					});
+					if (__DEV__) {
+						console.debug("[AutoSaveProfile] saveNote:done", {
+							id: currentNote.id,
+							durationMs: Math.round(performance.now() - saveStart),
+						});
+					}
 
 					lastSavedRef.current = {
 						id: currentNote.id,

@@ -33,6 +33,7 @@ import React, {
 } from "react";
 import {
   Keyboard,
+  type LayoutChangeEvent,
   Platform,
   StyleSheet,
   Text,
@@ -73,6 +74,7 @@ export default function NoteEditorView({
   const editorMarkdownRef = useRef(note.content);
   const [editorInstanceKey, setEditorInstanceKey] = useState(0);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [editorHostHeight, setEditorHostHeight] = useState<number | null>(null);
 
   const sendCommand = useCallback(
     (type: string, payload?: Record<string, unknown>) => {
@@ -93,6 +95,13 @@ export default function NoteEditorView({
     () => editorMarkdownRef.current,
     [],
   );
+
+  const handleEditorHostLayout = useCallback((event: LayoutChangeEvent) => {
+    const nextHeight = event.nativeEvent.layout.height;
+    setEditorHostHeight((current) =>
+      Math.abs((current ?? 0) - nextHeight) > 1 ? nextHeight : current,
+    );
+  }, []);
 
   const { updateTabTitle, tabs, closeTab, openTab } = useTabStore();
   const tab = tabs.find((t) => t.noteId === id);
@@ -683,43 +692,50 @@ export default function NoteEditorView({
               </View>
             ) : null}
 
-            <LexicalMarkdownEditor
-              key={editorInstanceKey}
-              hasAttachment={hasDocAttachment}
-              markdown={editorMarkdown}
-              onMarkdownChange={handleMarkdownChange}
-              themeMode={colorScheme ?? "dark"}
-              safeAreaInsets={safeAreaInsets}
-              keyboardHeight={keyboardHeight}
-              onAttachDocument={() => {
-                if (hasDocAttachment) {
-                  handleShowAttachment();
-                } else {
-                  void handleAttachDocument();
-                }
-              }}
-              onInsertImage={handleToolbarInsertImage}
-              onInsertTemplateCommand={async () => {
-                setIsTemplateModalVisible(true);
-              }}
-              onOpenWikiLink={handleOpenWikiLink}
-              onRemoveAttachment={() => void handleRemoveAttachment()}
-              onShowVideoModal={() => setIsShowVideoModalVisible(true)}
-              onToggleActivePanel={toggleActivePanel}
-              onToggleArticle={() => {
-                setActivePanel("article");
-                setIsArticleVisible((visible) => !visible);
-              }}
-              onToggleRelatedNotes={() => setShowRelatedNotes((v) => !v)}
-              command={lastCommand}
-              dom={{
-                allowFileAccess: true,
-                allowFileAccessFromFileURLs: true,
-                allowingReadAccessToURL: NOTES_ROOT,
-                scrollEnabled: true,
-                style: { flex: 1 },
-              }}
-            />
+            <View style={styles.editorHost} onLayout={handleEditorHostLayout}>
+              <LexicalMarkdownEditor
+                key={editorInstanceKey}
+                hasAttachment={hasDocAttachment}
+                markdown={editorMarkdown}
+                onMarkdownChange={handleMarkdownChange}
+                themeMode={colorScheme ?? "dark"}
+                safeAreaInsets={safeAreaInsets}
+                keyboardHeight={keyboardHeight}
+                onAttachDocument={() => {
+                  if (hasDocAttachment) {
+                    handleShowAttachment();
+                  } else {
+                    void handleAttachDocument();
+                  }
+                }}
+                onInsertImage={handleToolbarInsertImage}
+                onInsertTemplateCommand={async () => {
+                  setIsTemplateModalVisible(true);
+                }}
+                onOpenWikiLink={handleOpenWikiLink}
+                onRemoveAttachment={() => void handleRemoveAttachment()}
+                onShowVideoModal={() => setIsShowVideoModalVisible(true)}
+                onToggleActivePanel={toggleActivePanel}
+                onToggleArticle={() => {
+                  setActivePanel("article");
+                  setIsArticleVisible((visible) => !visible);
+                }}
+                onToggleRelatedNotes={() => setShowRelatedNotes((v) => !v)}
+                command={lastCommand}
+                dom={{
+                  allowFileAccess: true,
+                  allowFileAccessFromFileURLs: true,
+                  allowingReadAccessToURL: NOTES_ROOT,
+                  scrollEnabled: true,
+                  style: [
+                    styles.domEditor,
+                    Platform.OS === "android" && editorHostHeight !== null
+                      ? { height: editorHostHeight }
+                      : null,
+                  ],
+                }}
+              />
+            </View>
           </View>
 
           {showRelatedNotes && (
@@ -762,6 +778,7 @@ function createStyles(theme: ExtendedTheme) {
     },
     splitContainer: {
       flex: 1,
+      minHeight: 0,
     },
     documentPane: {
       overflow: "hidden",
@@ -776,13 +793,25 @@ function createStyles(theme: ExtendedTheme) {
     },
     editorPane: {
       flex: 1,
+      minHeight: 0,
       overflow: "hidden",
     },
     content: {
       flex: 1,
+      minHeight: 0,
       paddingHorizontal: 16,
       backgroundColor: theme.colors.background,
       gap: 8,
+    },
+    editorHost: {
+      flex: 1,
+      minHeight: 0,
+      overflow: "hidden",
+    },
+    domEditor: {
+      flex: 1,
+      width: "100%",
+      height: "100%",
     },
     metadataGroup: {
       gap: 6,

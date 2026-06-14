@@ -87,10 +87,11 @@ function AttachmentDocumentPanel(props: AttachmentDocumentPanelProps) {
 		attachmentPath: props.attachmentPath,
 		attachmentType: props.attachmentType,
 		onTextSelected: props.onTextSelected,
-		onDocumentPositionChange: props.onDocumentPositionChange,
-		theme: props.theme,
-		readAttachmentBase64,
-	});
+			onDocumentPositionChange: props.onDocumentPositionChange,
+			theme: props.theme,
+			readAttachmentBase64,
+			preferFileUri: true,
+		});
 
 	useEffect(() => {
 		if (

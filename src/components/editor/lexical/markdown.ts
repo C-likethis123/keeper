@@ -81,7 +81,7 @@ function createTableRow(cells: string[]): TableRowNode {
   return rowNode;
 }
 
-export const IMAGE: ElementTransformer = {
+const IMAGE: ElementTransformer = {
   dependencies: [ImageNode],
   export: (node) => {
     if (!$isImageNode(node)) {
@@ -104,7 +104,7 @@ export const IMAGE: ElementTransformer = {
   type: "element",
 };
 
-export const BLOCK_EQUATION: ElementTransformer = {
+const BLOCK_EQUATION: ElementTransformer = {
   dependencies: [EquationNode],
   export: (node) => {
     if (!$isEquationNode(node) || node.isInline()) {
@@ -125,7 +125,7 @@ export const BLOCK_EQUATION: ElementTransformer = {
   type: "element",
 };
 
-export const DETAILS: MultilineElementTransformer = {
+const DETAILS: MultilineElementTransformer = {
   dependencies: [DetailsContentNode, DetailsNode, DetailsSummaryNode],
   export: (node) => {
     if (!$isDetailsNode(node)) {
@@ -183,7 +183,7 @@ export const DETAILS: MultilineElementTransformer = {
   type: "multiline-element",
 };
 
-export const TABLE: MultilineElementTransformer = {
+const TABLE: MultilineElementTransformer = {
   dependencies: [TableNode, TableCellNode, TableRowNode],
   export: (node) => {
     if (!$isTableNode(node)) {
@@ -253,7 +253,7 @@ export const TABLE: MultilineElementTransformer = {
   type: "multiline-element",
 };
 
-export const INLINE_EQUATION: TextMatchTransformer = {
+const INLINE_EQUATION: TextMatchTransformer = {
   dependencies: [EquationNode],
   export: (node) => {
     if (!$isEquationNode(node) || !node.isInline()) {

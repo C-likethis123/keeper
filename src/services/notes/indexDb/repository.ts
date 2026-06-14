@@ -337,16 +337,6 @@ export async function setContentHash(
 	);
 }
 
-export async function deleteContentHash(
-	database: SQLiteDatabase,
-	noteId: string,
-): Promise<void> {
-	await database.runAsync(
-		"DELETE FROM content_hashes WHERE note_id = ?",
-		noteId,
-	);
-}
-
 // ─── Graph Queries (Recursive CTEs) ───────────────────────────
 
 /**
@@ -375,38 +365,6 @@ export async function getOutgoingLinks(
 		noteId,
 	);
 	return (rows ?? []).map((r) => r.target_id);
-}
-
-/**
- * Get transitive backlinks using recursive CTE (notes that link to notes that link to this note).
- * Depth capped at 3 to avoid runaway queries.
- * TODO: debug this
- */
-export async function getTransitiveBacklinks(
-	database: SQLiteDatabase,
-	noteId: string,
-	maxDepth = 3,
-): Promise<{ noteId: string; depth: number }[]> {
-	const rows = await database.getAllAsync<{ source_id: string; depth: number }>(
-		`
-		WITH RECURSIVE backlinks(source_id, depth) AS (
-			SELECT source_id, 1 FROM wiki_links WHERE target_id = ?
-			UNION
-			SELECT wl.source_id, bl.depth + 1
-			FROM wiki_links wl
-			JOIN backlinks bl ON wl.target_id = bl.source_id
-			WHERE bl.depth < ?
-		)
-		SELECT DISTINCT source_id, MIN(depth) as depth
-		FROM backlinks
-		WHERE source_id != ?
-		GROUP BY source_id
-		`,
-		noteId,
-		maxDepth,
-		noteId,
-	);
-	return (rows ?? []).map((r) => ({ noteId: r.source_id, depth: r.depth }));
 }
 
 /**

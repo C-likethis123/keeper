@@ -8,7 +8,7 @@ import {
 } from "lexical";
 import { $createEquationNode, EquationNode } from "./EquationNode";
 
-export const INSERT_EQUATION_COMMAND: LexicalCommand<{
+const INSERT_EQUATION_COMMAND: LexicalCommand<{
 	equation: string;
 	inline: boolean;
 }> = createCommand("INSERT_EQUATION_COMMAND");
