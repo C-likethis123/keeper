@@ -183,6 +183,7 @@ jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 			onInsertTemplateCommand?: () => void;
 			onOpenWikiLink?: (title: string) => void | Promise<void>;
 			command?: { type: string; payload?: Record<string, unknown> };
+			dom?: { containerStyle?: unknown[]; style?: unknown[] };
 		}) => {
 			mockEditorRender(props);
 			return React.createElement(
@@ -388,6 +389,26 @@ describe("NoteEditorView", () => {
 			);
 		});
 		expect(result.getPathname()).toBe("/editor");
+	});
+
+	it("passes an explicit native height to the DOM editor", async () => {
+		renderNoteEditor(makeNote());
+
+		await screen.findByText("Mock editor");
+		await waitFor(() => {
+			expect(mockEditorRender).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					dom: expect.objectContaining({
+						containerStyle: expect.arrayContaining([
+							expect.objectContaining({ height: expect.any(Number) }),
+						]),
+						style: expect.arrayContaining([
+							expect.objectContaining({ height: expect.any(Number) }),
+						]),
+					}),
+				}),
+			);
+		});
 	});
 
 	it("shows the saved video panel on mount when a note has both a document and attached video", async () => {

@@ -39,12 +39,17 @@ import {
   Text,
   View,
   useColorScheme,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AttachVideoModal from "./AttachVideoModal";
 import { EditorSidePanelHost } from "./editor/EditorSidePanelHost";
 import LexicalMarkdownEditor from "./editor/lexical/LexicalMarkdownEditor";
 import { resolveOrCreateWikiLinkNoteId } from "./editor/lexical/wikilinks/wikiLinkUtils";
+import {
+  pickEditorDocument,
+  pickEditorImage,
+} from "./noteEditorFilePickers";
 
 export default function NoteEditorView({
   note,
@@ -58,6 +63,7 @@ export default function NoteEditorView({
   const styles = useStyles(createStyles);
   const colorScheme = useColorScheme();
   const safeAreaInsets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const id = note.id;
   const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
   const [title, setTitle] = useState<string>(note.title);
@@ -74,6 +80,11 @@ export default function NoteEditorView({
   const [editorInstanceKey, setEditorInstanceKey] = useState(0);
   const keyboardHeight = useEditorKeyboardHeight();
   const [editorHostHeight, setEditorHostHeight] = useState<number | null>(null);
+  const editorNativeHeight = Math.max(
+    320,
+    editorHostHeight ??
+      windowHeight - safeAreaInsets.top - safeAreaInsets.bottom - 160,
+  );
 
   const sendCommand = useCallback(
     (type: string, payload?: Record<string, unknown>) => {
@@ -396,46 +407,20 @@ export default function NoteEditorView({
   );
 
   const handleAttachDocument = useCallback(async () => {
-    let pickedUri: string | null = null;
-    let pickedName: string | null = null;
-
-    if (Platform.OS === "web") {
-      // Tauri desktop: use @tauri-apps/plugin-dialog
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const selected = await open({
-        multiple: false,
-        filters: [{ name: "Documents", extensions: ["pdf", "epub"] }],
-      });
-      if (!selected) return;
-      pickedUri = Array.isArray(selected) ? selected[0] : selected;
-      pickedName = pickedUri?.split(/[\\/]/).pop() ?? pickedUri;
-    } else {
-      // Mobile: use expo-document-picker
-      const documentPickerModule = await import("expo-document-picker");
-      const result = await documentPickerModule.getDocumentAsync({
-        type: ["application/pdf", "application/epub+zip"],
-        copyToCacheDirectory: true,
-      });
-      if (result.canceled) return;
-      const asset = result.assets[0];
-      pickedUri = asset.uri;
-      pickedName = asset.name ?? asset.uri;
-    }
-
-    const type = inferAttachmentType(pickedName ?? pickedUri ?? "");
-    if (!type) {
+    const pickedDocument = await pickEditorDocument();
+    if (pickedDocument.status === "cancelled") return;
+    if (pickedDocument.status === "unsupported") {
       showToast("Unsupported file type. Please pick a PDF or ePub.");
       return;
     }
+
     try {
-      const attachmentUri = pickedUri;
-      if (!attachmentUri) {
-        showToast("Failed to attach document.");
-        return;
-      }
-      const relativePath = await copyPickedAttachmentToNote(attachmentUri, id);
+      const relativePath = await copyPickedAttachmentToNote(
+        pickedDocument.uri,
+        id,
+      );
       setAttachmentPath(relativePath);
-      setAttachmentType(type);
+      setAttachmentType(pickedDocument.type);
       setDocumentPositions(null);
       setIsAttachmentVisible(true);
       setActivePanel("document");
@@ -534,47 +519,7 @@ export default function NoteEditorView({
   );
 
   const handleToolbarInsertImage = useCallback(async () => {
-    let path: string | null = null;
-    if (Platform.OS === "web") {
-      const [dialogModule, imageStorageModule] = await Promise.all([
-        import("@tauri-apps/plugin-dialog"),
-        import("@/services/notes/imageStorage.web"),
-      ]);
-      const selected = await dialogModule.open({
-        title: "Select Image",
-        multiple: false,
-        filters: [
-          {
-            name: "Images",
-            extensions: [
-              "png",
-              "jpg",
-              "jpeg",
-              "gif",
-              "webp",
-              "bmp",
-              "svg",
-              "ico",
-            ],
-          },
-        ],
-      });
-      if (selected === null || Array.isArray(selected)) return;
-      path = await imageStorageModule.copyPickedImageToNotes(selected);
-    } else {
-      const [documentPickerModule, imageStorageModule] = await Promise.all([
-        import("expo-document-picker"),
-        import("@/services/notes/imageStorage"),
-      ]);
-      const result = await documentPickerModule.getDocumentAsync({
-        type: "image/*",
-        copyToCacheDirectory: true,
-      });
-      if (result.canceled) return;
-      path = await imageStorageModule.copyPickedImageToNotes(
-        result.assets[0].uri,
-      );
-    }
+    const path = await pickEditorImage();
     if (path) {
       sendCommand("insertImage", { src: path, altText: "" });
     }
@@ -700,10 +645,16 @@ export default function NoteEditorView({
                   allowFileAccessFromFileURLs: true,
                   allowingReadAccessToURL: NOTES_ROOT,
                   scrollEnabled: true,
+                  containerStyle: [
+                    styles.domEditor,
+                    Platform.OS !== "web"
+                      ? { height: editorNativeHeight }
+                      : null,
+                  ],
                   style: [
                     styles.domEditor,
-                    Platform.OS === "android" && editorHostHeight !== null
-                      ? { height: editorHostHeight }
+                    Platform.OS !== "web"
+                      ? { height: editorNativeHeight }
                       : null,
                   ],
                 }}
