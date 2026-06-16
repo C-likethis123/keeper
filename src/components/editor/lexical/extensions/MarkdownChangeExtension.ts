@@ -1,4 +1,8 @@
-import { effect, namedSignals } from "@lexical/extension";
+import {
+	registerPendingDispatchFlusher,
+	unregisterPendingDispatchFlusher,
+} from "@/components/editor/core/pendingDispatchRegistry";
+import { namedSignals } from "@lexical/extension";
 import { defineExtension, safeCast } from "lexical";
 import { exportLexicalToMarkdown } from "../markdown";
 
@@ -21,17 +25,31 @@ export function createMarkdownChangeExtension({
 		},
 		register(editor, _config, state) {
 			const { getOnMarkdownChange } = state.getOutput();
+			const emitCurrentMarkdown = () => {
+				editor.getEditorState().read(() => {
+					const markdown = exportLexicalToMarkdown();
+					lastMarkdown = markdown;
+					getOnMarkdownChange.peek()()(markdown);
+				});
+			};
+			const key = `lexical-markdown-change-${editor.getKey()}`;
+			registerPendingDispatchFlusher(key, emitCurrentMarkdown);
 
-			return effect(() =>
-				editor.registerUpdateListener(({ editorState }) => {
+			const unregisterUpdateListener = editor.registerUpdateListener(
+				({ editorState }) => {
 					editorState.read(() => {
 						const markdown = exportLexicalToMarkdown();
 						if (markdown === lastMarkdown) return;
 						lastMarkdown = markdown;
-						getOnMarkdownChange.peek()(markdown);
+						getOnMarkdownChange.peek()()(markdown);
 					});
-				})
+				},
 			);
+
+			return () => {
+				unregisterPendingDispatchFlusher(key, emitCurrentMarkdown);
+				unregisterUpdateListener();
+			};
 		},
 	});
 }

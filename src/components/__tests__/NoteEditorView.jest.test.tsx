@@ -173,9 +173,46 @@ jest.mock("@/hooks/useAppKeyboardShortcuts", () => ({
 jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 	const React = require("react");
 	const { Pressable, Text } = require("react-native");
-	return {
-		__esModule: true,
-		default: (props: {
+	const getDomHeight = (dom?: { style?: unknown[] }) => {
+		const item = dom?.style?.find(
+			(style) => style && typeof style === "object" && "height" in style,
+		) as { height?: unknown } | undefined;
+		return item?.height;
+	};
+	const propsEqual = (
+		previous: {
+			markdown: string;
+			command?: { type: string; payload?: Record<string, unknown> };
+			dom?: { scrollEnabled?: boolean; style?: unknown[] };
+			safeAreaInsets?: {
+				top: number;
+				right: number;
+				bottom: number;
+				left: number;
+			};
+		},
+		next: {
+			markdown: string;
+			command?: { type: string; payload?: Record<string, unknown> };
+			dom?: { scrollEnabled?: boolean; style?: unknown[] };
+			safeAreaInsets?: {
+				top: number;
+				right: number;
+				bottom: number;
+				left: number;
+			};
+		},
+	) =>
+		previous.markdown === next.markdown &&
+		previous.command === next.command &&
+		previous.dom?.scrollEnabled === next.dom?.scrollEnabled &&
+		getDomHeight(previous.dom) === getDomHeight(next.dom) &&
+		previous.safeAreaInsets?.top === next.safeAreaInsets?.top &&
+		previous.safeAreaInsets?.right === next.safeAreaInsets?.right &&
+		previous.safeAreaInsets?.bottom === next.safeAreaInsets?.bottom &&
+		previous.safeAreaInsets?.left === next.safeAreaInsets?.left;
+	const MockLexicalMarkdownEditor = React.memo(
+		(props: {
 			markdown: string;
 			onMarkdownChange?: (markdown: string) => void;
 			onAttachDocument?: () => void | Promise<void>;
@@ -183,7 +220,12 @@ jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 			onInsertTemplateCommand?: () => void;
 			onOpenWikiLink?: (title: string) => void | Promise<void>;
 			command?: { type: string; payload?: Record<string, unknown> };
-			dom?: { containerStyle?: unknown[]; style?: unknown[] };
+			dom?: {
+				containerStyle?: unknown[];
+				scrollEnabled?: boolean;
+				style?: unknown[];
+			};
+			isNativeDom?: boolean;
 		}) => {
 			mockEditorRender(props);
 			return React.createElement(
@@ -224,6 +266,12 @@ jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 				),
 			);
 		},
+		propsEqual,
+	);
+
+	return {
+		__esModule: true,
+		default: MockLexicalMarkdownEditor,
 	};
 });
 
@@ -391,7 +439,7 @@ describe("NoteEditorView", () => {
 		expect(result.getPathname()).toBe("/editor");
 	});
 
-	it("passes an explicit native height to the DOM editor", async () => {
+	it("passes native DOM sizing and lets the inner editor own scrolling", async () => {
 		renderNoteEditor(makeNote());
 
 		await screen.findByText("Mock editor");
@@ -405,10 +453,51 @@ describe("NoteEditorView", () => {
 						style: expect.arrayContaining([
 							expect.objectContaining({ height: expect.any(Number) }),
 						]),
+						scrollEnabled: false,
 					}),
+					isNativeDom: true,
+					notesRoot: expect.any(String),
 				}),
 			);
 		});
+	});
+
+	it("does not re-render the editor for save status changes", async () => {
+		const note = makeNote();
+		const saveDeferred = createDeferred<void>();
+		mockSaveNote.mockImplementation(async () => {
+			await saveDeferred.promise;
+			return undefined;
+		});
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock editor");
+		const initialRenderCount = mockEditorRender.mock.calls.length;
+		const initialProps =
+			mockEditorRender.mock.calls[initialRenderCount - 1]?.[0];
+
+		await act(async () => {
+			initialProps.onMarkdownChange?.("Changed body");
+		});
+		await waitFor(() => {
+			expect(mockEditorRender).toHaveBeenCalledTimes(initialRenderCount + 1);
+		});
+		const contentChangeRenderCount = mockEditorRender.mock.calls.length;
+
+		act(() => {
+			jest.advanceTimersByTime(2000);
+		});
+		await screen.findByText("Saving…");
+		expect(mockEditorRender).toHaveBeenCalledTimes(contentChangeRenderCount);
+
+		await act(async () => {
+			saveDeferred.resolve();
+			await saveDeferred.promise;
+			await Promise.resolve();
+		});
+		await screen.findByText("Saved");
+		expect(mockEditorRender).toHaveBeenCalledTimes(contentChangeRenderCount);
 	});
 
 	it("shows the saved video panel on mount when a note has both a document and attached video", async () => {

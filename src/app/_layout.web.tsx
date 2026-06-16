@@ -27,6 +27,40 @@ traceStartupBootstrapEvent("bootstrap.layout_module_evaluated");
 export default function RootLayout() {
 	useEffect(() => {
 		traceStartupBootstrapEvent("bootstrap.root_layout_first_render");
+		const saveAndFlushForExit = async () => {
+			try {
+				await GitService.saveCurrentEditorBeforeBackgroundFlush();
+				await GitService.flushPendingChanges({
+					reason: "app-background",
+					timeoutMs: 5000,
+				});
+			} catch (error) {
+				console.warn("[Web] Failed to save on app exit:", error);
+			}
+		};
+		const handlePageHide = () => {
+			void saveAndFlushForExit();
+		};
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === "hidden") {
+				void saveAndFlushForExit();
+			}
+		};
+		const browserWindow =
+			typeof window !== "undefined" &&
+			typeof window.addEventListener === "function"
+				? window
+				: null;
+		const browserDocument =
+			typeof document !== "undefined" &&
+			typeof document.addEventListener === "function"
+				? document
+				: null;
+		browserWindow?.addEventListener("pagehide", handlePageHide);
+		browserDocument?.addEventListener(
+			"visibilitychange",
+			handleVisibilityChange,
+		);
 
 		// Tauri desktop: handle window close to flush pending git changes
 		if (getTauriInvoke() !== null) {
@@ -42,12 +76,7 @@ export default function RootLayout() {
 						isClosing = true;
 						try {
 							console.log("[Tauri] Saving editor state...");
-							await GitService.saveCurrentEditorBeforeBackgroundFlush();
-							console.log("[Tauri] Flushing changes...");
-							await GitService.flushPendingChanges({
-								reason: "app-background",
-								timeoutMs: 5000,
-							});
+							await saveAndFlushForExit();
 							console.log("[Tauri] Flush complete.");
 						} catch (e) {
 							console.warn("[Tauri] Failed to flush on close:", e);
@@ -67,8 +96,20 @@ export default function RootLayout() {
 
 			return () => {
 				if (unlisten) unlisten();
+				browserWindow?.removeEventListener("pagehide", handlePageHide);
+				browserDocument?.removeEventListener(
+					"visibilitychange",
+					handleVisibilityChange,
+				);
 			};
 		}
+		return () => {
+			browserWindow?.removeEventListener("pagehide", handlePageHide);
+			browserDocument?.removeEventListener(
+				"visibilitychange",
+				handleVisibilityChange,
+			);
+		};
 	}, []);
 	const themeMode = useColorScheme();
 	const { isHydrated, initError, statusMessage } = useAppStartup();

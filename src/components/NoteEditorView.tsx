@@ -18,6 +18,10 @@ import {
   deleteAttachment,
   inferAttachmentType,
 } from "@/services/notes/attachmentStorage";
+import {
+  clearEditorDraft,
+  readEditorDraft,
+} from "@/services/notes/editorDraftStore";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
@@ -29,6 +33,7 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -65,6 +70,7 @@ export default function NoteEditorView({
   const safeAreaInsets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const id = note.id;
+  const initialEditorMarkdown = readEditorDraft(id) ?? note.content;
   const [isPinned, setIsPinned] = useState<boolean>(!!note.isPinned);
   const [title, setTitle] = useState<string>(note.title);
   const [noteType, setNoteType] = useState<Note["noteType"]>(note.noteType);
@@ -75,8 +81,8 @@ export default function NoteEditorView({
     | { type: string; payload?: Record<string, unknown>; timestamp: number }
     | undefined
   >();
-  const [editorMarkdown, setEditorMarkdown] = useState(note.content);
-  const editorMarkdownRef = useRef(note.content);
+  const [editorMarkdown, setEditorMarkdown] = useState(initialEditorMarkdown);
+  const editorMarkdownRef = useRef(initialEditorMarkdown);
   const [editorInstanceKey, setEditorInstanceKey] = useState(0);
   const keyboardHeight = useEditorKeyboardHeight();
   const [editorHostHeight, setEditorHostHeight] = useState<number | null>(null);
@@ -201,13 +207,20 @@ export default function NoteEditorView({
     initialNoteType: note.noteType,
     onPersisted: useCallback(() => {
       isNewEntryRef.current = false;
-    }, []),
+      clearEditorDraft(id, editorMarkdownRef.current);
+    }, [id]),
     isNew,
   });
 
   const saveAndFlushBeforeExit = useCallback(async () => {
-    await forceSave();
+    try {
+      await forceSave();
+    } catch {
+      showToast("Failed to save note.");
+      return false;
+    }
     await flushGitAndToastOnFailure("note-exit");
+    return true;
   }, [flushGitAndToastOnFailure, forceSave]);
 
   const leaveEditor = useCallback(
@@ -218,7 +231,9 @@ export default function NoteEditorView({
 
       isLeavingRef.current = true;
       try {
-        await saveAndFlushBeforeExit();
+        if (!(await saveAndFlushBeforeExit())) {
+          return;
+        }
         bypassNextBeforeRemoveRef.current = true;
         if (action) {
           navigation.dispatch(action);
@@ -234,7 +249,9 @@ export default function NoteEditorView({
 
   const handleBack = useCallback(async () => {
     if (tabs.length === 1 && tab && !tab.isPinned) {
-      await saveAndFlushBeforeExit();
+      if (!(await saveAndFlushBeforeExit())) {
+        return;
+      }
       bypassNextBeforeRemoveRef.current = true;
       closeTab(tab.id);
       router.replace("/");
@@ -360,11 +377,15 @@ export default function NoteEditorView({
       setIsVideoVisible(!!note.attachedVideo);
 
       const loadedNote = loadedNoteRef.current;
-      if (loadedNote?.id !== note.id || loadedNote.content !== note.content) {
+      const nextEditorContent = readEditorDraft(note.id) ?? note.content;
+      if (
+        loadedNote?.id !== note.id ||
+        loadedNote.content !== nextEditorContent
+      ) {
         const shouldRemountEditor = loadedNote !== null;
-        loadedNoteRef.current = { id: note.id, content: note.content };
-        editorMarkdownRef.current = note.content;
-        setEditorMarkdown(note.content);
+        loadedNoteRef.current = { id: note.id, content: nextEditorContent };
+        editorMarkdownRef.current = nextEditorContent;
+        setEditorMarkdown(nextEditorContent);
         if (shouldRemountEditor) {
           setEditorInstanceKey((key) => key + 1);
         }
@@ -511,7 +532,9 @@ export default function NoteEditorView({
 
   const handleNavigateToNote = useCallback(
     async (noteId: string) => {
-      await saveAndFlushBeforeExit();
+      if (!(await saveAndFlushBeforeExit())) {
+        return;
+      }
       bypassNextBeforeRemoveRef.current = true;
       router.push(`/editor?id=${noteId}`);
     },
@@ -526,6 +549,36 @@ export default function NoteEditorView({
   }, [sendCommand]);
 
   const hasDocAttachment = attachmentPath !== null && attachmentType !== null;
+
+  const handleEditorAttachDocument = useCallback(() => {
+    if (hasDocAttachment) {
+      handleShowAttachment();
+    } else {
+      void handleAttachDocument();
+    }
+  }, [handleAttachDocument, handleShowAttachment, hasDocAttachment]);
+
+  const handleInsertTemplateCommand = useCallback(() => {
+    setIsTemplateModalVisible(true);
+  }, []);
+
+  const handleEditorRemoveAttachment = useCallback(() => {
+    void handleRemoveAttachment();
+  }, [handleRemoveAttachment]);
+
+  const handleShowVideoModal = useCallback(() => {
+    setIsShowVideoModalVisible(true);
+  }, []);
+
+  const handleToggleArticle = useCallback(() => {
+    setActivePanel("article");
+    setIsArticleVisible((visible) => !visible);
+  }, [setActivePanel]);
+
+  const handleToggleRelatedNotes = useCallback(() => {
+    setShowRelatedNotes((visible) => !visible);
+  }, []);
+
   const showSplit =
     activePanel === "document"
       ? hasDocAttachment && isAttachmentVisible
@@ -534,6 +587,37 @@ export default function NoteEditorView({
         : !!attachedVideo && isVideoVisible;
   const splitFlexDir =
     activePanel === "video" ? "column" : isDesktop ? "row" : "column";
+  const editorSafeAreaInsets = useMemo(
+    () => ({
+      top: safeAreaInsets.top,
+      right: safeAreaInsets.right,
+      bottom: safeAreaInsets.bottom,
+      left: safeAreaInsets.left,
+    }),
+    [
+      safeAreaInsets.bottom,
+      safeAreaInsets.left,
+      safeAreaInsets.right,
+      safeAreaInsets.top,
+    ],
+  );
+  const editorDomProps = useMemo(
+    () => ({
+      allowFileAccess: true,
+      allowFileAccessFromFileURLs: true,
+      allowingReadAccessToURL: NOTES_ROOT,
+      scrollEnabled: Platform.OS === "web",
+      containerStyle: [
+        styles.domEditor,
+        Platform.OS !== "web" ? { height: editorNativeHeight } : null,
+      ],
+      style: [
+        styles.domEditor,
+        Platform.OS !== "web" ? { height: editorNativeHeight } : null,
+      ],
+    }),
+    [editorNativeHeight, styles.domEditor],
+  );
 
   return (
     <View style={styles.screen}>
@@ -615,49 +699,24 @@ export default function NoteEditorView({
                 key={editorInstanceKey}
                 hasAttachment={hasDocAttachment}
                 markdown={editorMarkdown}
+                noteId={id}
                 onMarkdownChange={handleMarkdownChange}
                 themeMode={colorScheme ?? "dark"}
-                safeAreaInsets={safeAreaInsets}
+                safeAreaInsets={editorSafeAreaInsets}
                 keyboardHeight={keyboardHeight}
-                onAttachDocument={() => {
-                  if (hasDocAttachment) {
-                    handleShowAttachment();
-                  } else {
-                    void handleAttachDocument();
-                  }
-                }}
+                notesRoot={NOTES_ROOT}
+                onAttachDocument={handleEditorAttachDocument}
                 onInsertImage={handleToolbarInsertImage}
-                onInsertTemplateCommand={async () => {
-                  setIsTemplateModalVisible(true);
-                }}
+                onInsertTemplateCommand={handleInsertTemplateCommand}
                 onOpenWikiLink={handleOpenWikiLink}
-                onRemoveAttachment={() => void handleRemoveAttachment()}
-                onShowVideoModal={() => setIsShowVideoModalVisible(true)}
+                onRemoveAttachment={handleEditorRemoveAttachment}
+                onShowVideoModal={handleShowVideoModal}
                 onToggleActivePanel={toggleActivePanel}
-                onToggleArticle={() => {
-                  setActivePanel("article");
-                  setIsArticleVisible((visible) => !visible);
-                }}
-                onToggleRelatedNotes={() => setShowRelatedNotes((v) => !v)}
+                onToggleArticle={handleToggleArticle}
+                onToggleRelatedNotes={handleToggleRelatedNotes}
                 command={lastCommand}
-                dom={{
-                  allowFileAccess: true,
-                  allowFileAccessFromFileURLs: true,
-                  allowingReadAccessToURL: NOTES_ROOT,
-                  scrollEnabled: true,
-                  containerStyle: [
-                    styles.domEditor,
-                    Platform.OS !== "web"
-                      ? { height: editorNativeHeight }
-                      : null,
-                  ],
-                  style: [
-                    styles.domEditor,
-                    Platform.OS !== "web"
-                      ? { height: editorNativeHeight }
-                      : null,
-                  ],
-                }}
+                isNativeDom={Platform.OS !== "web"}
+                dom={editorDomProps}
               />
             </View>
           </View>

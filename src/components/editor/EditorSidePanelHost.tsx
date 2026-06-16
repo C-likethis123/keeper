@@ -1,10 +1,10 @@
 import type { AttachmentType } from "@/services/notes/attachmentStorage";
 import type React from "react";
+import type { ComponentProps } from "react";
 import {
-  type ComponentProps,
-  type StyleProp,
-  View,
-  type ViewStyle,
+	type StyleProp,
+	View,
+	type ViewStyle,
 } from "react-native";
 import { DocumentPanel } from "./document/DocumentPanel";
 import VideoSplitPanel from "./video/VideoSplitPanel";

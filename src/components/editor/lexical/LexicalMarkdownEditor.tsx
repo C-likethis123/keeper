@@ -3,10 +3,12 @@
 import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
+import { writeEditorDraft } from "@/services/notes/editorDraftStore";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { LexicalExtensionComposer } from "@lexical/react/LexicalExtensionComposer";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
+import { NOTES_ROOT, setNotesRoot } from "@/services/notes/Notes";
 
 import { $getRoot } from "lexical";
 import React, {
@@ -29,8 +31,11 @@ interface LexicalMarkdownEditorProps {
   command?: LexicalEditorCommand;
   dom?: import("expo/dom").DOMProps;
   hasAttachment?: boolean;
+  isNativeDom?: boolean;
   keyboardHeight?: number;
   markdown: string;
+  noteId: string;
+  notesRoot?: string;
   onMarkdownChange: (markdown: string) => void;
   onAttachDocument?: () => void;
   onInsertImage?: () => void;
@@ -48,6 +53,70 @@ interface LexicalMarkdownEditorProps {
     left: number;
   };
   themeMode: "light" | "dark";
+}
+
+function getDomStyleHeight(dom?: LexicalMarkdownEditorProps["dom"]) {
+  const style = dom?.style;
+  if (!Array.isArray(style)) {
+    return undefined;
+  }
+  for (const item of style) {
+    if (item && typeof item === "object" && "height" in item) {
+      return (item as { height?: unknown }).height;
+    }
+  }
+  return undefined;
+}
+
+function safeAreaInsetsEqual(
+  previous?: LexicalMarkdownEditorProps["safeAreaInsets"],
+  next?: LexicalMarkdownEditorProps["safeAreaInsets"],
+) {
+  return (
+    previous?.top === next?.top &&
+    previous?.right === next?.right &&
+    previous?.bottom === next?.bottom &&
+    previous?.left === next?.left
+  );
+}
+
+function domPropsEqual(
+  previous?: LexicalMarkdownEditorProps["dom"],
+  next?: LexicalMarkdownEditorProps["dom"],
+) {
+  return (
+    previous?.allowingReadAccessToURL === next?.allowingReadAccessToURL &&
+    previous?.scrollEnabled === next?.scrollEnabled &&
+    getDomStyleHeight(previous) === getDomStyleHeight(next)
+  );
+}
+
+function editorPropsEqual(
+  previous: LexicalMarkdownEditorProps,
+  next: LexicalMarkdownEditorProps,
+) {
+  return (
+    previous.command === next.command &&
+    previous.hasAttachment === next.hasAttachment &&
+    previous.isNativeDom === next.isNativeDom &&
+    previous.keyboardHeight === next.keyboardHeight &&
+    previous.markdown === next.markdown &&
+    previous.noteId === next.noteId &&
+    previous.notesRoot === next.notesRoot &&
+    previous.onAttachDocument === next.onAttachDocument &&
+    previous.onInsertImage === next.onInsertImage &&
+    previous.onInsertTemplateCommand === next.onInsertTemplateCommand &&
+    previous.onMarkdownChange === next.onMarkdownChange &&
+    previous.onOpenWikiLink === next.onOpenWikiLink &&
+    previous.onRemoveAttachment === next.onRemoveAttachment &&
+    previous.onShowVideoModal === next.onShowVideoModal &&
+    previous.onToggleActivePanel === next.onToggleActivePanel &&
+    previous.onToggleArticle === next.onToggleArticle &&
+    previous.onToggleRelatedNotes === next.onToggleRelatedNotes &&
+    previous.themeMode === next.themeMode &&
+    safeAreaInsetsEqual(previous.safeAreaInsets, next.safeAreaInsets) &&
+    domPropsEqual(previous.dom, next.dom)
+  );
 }
 
 function EmptyPlaceholder() {
@@ -83,11 +152,14 @@ function useLatestGetter<T>(value: T) {
   return useCallback(() => ref.current, []);
 }
 
-export default function LexicalMarkdownEditor({
+function LexicalMarkdownEditor({
   command,
   hasAttachment = false,
+  isNativeDom = false,
   keyboardHeight = 0,
   markdown,
+  noteId,
+  notesRoot,
   onAttachDocument,
   onInsertImage,
   onMarkdownChange,
@@ -101,11 +173,22 @@ export default function LexicalMarkdownEditor({
   safeAreaInsets,
   themeMode,
 }: LexicalMarkdownEditorProps) {
+  if (notesRoot && NOTES_ROOT !== notesRoot) {
+    setNotesRoot(notesRoot);
+  }
+
   const palette = themeMode === "light" ? lightTheme.colors : darkTheme.colors;
   const editorContentElementRef = useRef<HTMLDivElement | null>(null);
   const initialMarkdownRef = useRef(markdown);
   const commandRef = useRef<LexicalEditorCommand | undefined>(command);
-  const getOnMarkdownChange = useLatestGetter(onMarkdownChange);
+  const handleMarkdownChange = useCallback(
+    (nextMarkdown: string) => {
+      writeEditorDraft(noteId, nextMarkdown);
+      onMarkdownChange(nextMarkdown);
+    },
+    [noteId, onMarkdownChange],
+  );
+  const getOnMarkdownChange = useLatestGetter(handleMarkdownChange);
   const getOnInsertTemplateCommand = useLatestGetter(onInsertTemplateCommand);
   const getOnOpenWikiLink = useLatestGetter(onOpenWikiLink);
   const getHasAttachment = useLatestGetter(hasAttachment ?? false);
@@ -168,7 +251,7 @@ export default function LexicalMarkdownEditor({
       style={{
         background: palette.background,
         color: palette.text,
-        height: "100%",
+        height: isNativeDom ? "100vh" : "100%",
         minHeight: "100%",
         overflowY: "auto",
         paddingTop: safeAreaInsets?.top ?? 0,
@@ -478,3 +561,5 @@ export default function LexicalMarkdownEditor({
     </div>
   );
 }
+
+export default React.memo(LexicalMarkdownEditor, editorPropsEqual);

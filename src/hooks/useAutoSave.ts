@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 
 const AUTO_SAVE_INTERVAL_MS = 60000;
+const AUTO_SAVE_DEBOUNCE_MS = 2000;
 const SAVE_INDICATOR_DELAY_MS = 1000;
 
 type AutoSaveInput = {
@@ -147,6 +148,7 @@ export function useAutoSave({
 		}
 
 		const savePromise = (async () => {
+			await Promise.resolve();
 			isSavingRef.current = true;
 			try {
 				do {
@@ -160,10 +162,7 @@ export function useAutoSave({
 					latestContentRef.current = flushedContent;
 					hasEditorContentChangedRef.current =
 						flushedContent !== latestInitialContentRef.current;
-					const currentContent = hasEditorContentChangedRef.current
-						? flushedContent
-						: (lastSavedRef.current?.content ??
-							latestInitialContentRef.current);
+					const currentContent = flushedContent;
 					const trimmedTitle = currentNote.title.trim();
 
 					const previousId = lastSavedRef.current?.id;
@@ -284,7 +283,7 @@ export function useAutoSave({
 							isNewEntry: currentIsNewEntry,
 						});
 						isNewEntryRef.current = false;
-					} catch {
+					} catch (error) {
 						if (__DEV__) {
 							console.debug("[AutoSaveProfile] saveNote:error", {
 								id: currentNote.id,
@@ -292,7 +291,7 @@ export function useAutoSave({
 							});
 						}
 						setStatus("idle");
-						return;
+						throw error;
 					}
 					if (__DEV__) {
 						console.debug("[AutoSaveProfile] saveNote:done", {
@@ -337,7 +336,9 @@ export function useAutoSave({
 			return;
 		}
 		latestContentRef.current = nextContent;
-		if (nextContent === latestInitialContentRef.current) {
+		const savedContent =
+			lastSavedRef.current?.content ?? latestInitialContentRef.current;
+		if (nextContent === savedContent) {
 			hasEditorContentChangedRef.current = false;
 			return;
 		}
@@ -358,7 +359,9 @@ export function useAutoSave({
 	useEffect(() => {
 		const subscription = AppState.addEventListener("change", (nextState) => {
 			if (nextState !== "active") {
-				void forceSave();
+				void forceSave().catch((error) => {
+					console.warn("[AutoSave] Failed to save on app background:", error);
+				});
 			}
 		});
 
@@ -397,8 +400,10 @@ export function useAutoSave({
 
 			idleTimeoutRef.current = setTimeout(() => {
 				idleTimeoutRef.current = null;
-				void forceSave();
-			}, 0);
+				void forceSave().catch((error) => {
+					console.warn("[AutoSave] Failed to autosave:", error);
+				});
+			}, AUTO_SAVE_DEBOUNCE_MS);
 		};
 
 		intervalRef.current = setInterval(

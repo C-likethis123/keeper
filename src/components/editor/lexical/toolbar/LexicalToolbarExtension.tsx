@@ -16,9 +16,9 @@ import {
   safeCast,
   UNDO_COMMAND,
 } from "lexical";
-import React from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
-import { IconButton } from "@/components/shared/IconButton";
+import { FontAwesome } from "@expo/vector-icons";
+import type React from "react";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 interface ToolbarExtensionConfig {
   getHasAttachment: () => boolean;
@@ -42,9 +42,57 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
+  toolbarButton: {
+    alignItems: "center",
+    borderRadius: 18,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  toolbarButtonPressed: {
+    opacity: 0.7,
+  },
+  toolbarIcon: {
+    color: "#8e8e93",
+  },
+  toolbarIconDisabled: {
+    color: "#4d4d4d",
+  },
 });
 
 const noop = () => {};
+type ToolbarIconName = React.ComponentProps<typeof FontAwesome>["name"];
+
+function ToolbarIconButton({
+  disabled = false,
+  label,
+  name,
+  onPress,
+}: {
+  disabled?: boolean;
+  label?: string;
+  name: ToolbarIconName;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.toolbarButton,
+        pressed && styles.toolbarButtonPressed,
+      ]}
+    >
+      <FontAwesome
+        name={name}
+        size={20}
+        style={[styles.toolbarIcon, disabled && styles.toolbarIconDisabled]}
+      />
+    </Pressable>
+  );
+}
 
 function Toolbar() {
   const { output } = useExtensionDependency(ToolbarExtension);
@@ -79,16 +127,16 @@ function Toolbar() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.toolbarContent}
       >
-        <IconButton name="undo" onPress={handleUndo} />
-        <IconButton name="repeat" onPress={handleRedo} />
-        <IconButton name="indent" onPress={handleIndent} />
-        <IconButton name="dedent" onPress={handleOutdent} />
-        <IconButton
+        <ToolbarIconButton name="undo" onPress={handleUndo} />
+        <ToolbarIconButton name="repeat" onPress={handleRedo} />
+        <ToolbarIconButton name="indent" onPress={handleIndent} />
+        <ToolbarIconButton name="dedent" onPress={handleOutdent} />
+        <ToolbarIconButton
           name="table"
           onPress={handleInsertTable}
           label="Insert table"
         />
-        <IconButton
+        <ToolbarIconButton
           name="image"
           onPress={onInsertImage ?? noop}
           disabled={!onInsertImage}
@@ -96,39 +144,39 @@ function Toolbar() {
         />
 
         {hasAttachment ? (
-          <IconButton
+          <ToolbarIconButton
             name="trash-o"
             onPress={onRemoveAttachment ?? noop}
             disabled={!onRemoveAttachment}
             label="Remove attachment"
           />
         ) : (
-          <IconButton
+          <ToolbarIconButton
             name="paperclip"
             onPress={onAttachDocument ?? noop}
             disabled={!onAttachDocument}
             label="Attach PDF or ePub"
           />
         )}
-        <IconButton
+        <ToolbarIconButton
           name="video-camera"
           onPress={onShowVideoModal ?? noop}
           disabled={!onShowVideoModal}
           label="Attach video"
         />
-        <IconButton
+        <ToolbarIconButton
           name="newspaper-o"
           onPress={onToggleArticle ?? noop}
           disabled={!onToggleArticle}
           label="View article"
         />
-        <IconButton
+        <ToolbarIconButton
           name="link"
           onPress={onToggleRelatedNotes ?? noop}
           disabled={!onToggleRelatedNotes}
           label="Show related notes"
         />
-        <IconButton
+        <ToolbarIconButton
           name="exchange"
           onPress={onToggleActivePanel ?? noop}
           disabled={!onToggleActivePanel}

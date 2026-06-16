@@ -123,6 +123,46 @@ describe("useAutoSave", () => {
 		expect(persistEditorEntry).not.toHaveBeenCalled();
 	});
 
+	it("allows a later dirty save after a clean forceSave", async () => {
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		const { result, rerender } = renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Initial body",
+				currentContent,
+				getCurrentContent: () => currentContent,
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+
+		await act(async () => {
+			await result.current.forceSave();
+		});
+
+		expect(persistEditorEntry).not.toHaveBeenCalled();
+
+		act(() => {
+			currentContent = "Updated body";
+		});
+		rerender(undefined);
+
+		await act(async () => {
+			await result.current.forceSave();
+		});
+
+		expect(persistEditorEntry).toHaveBeenCalledWith({
+			id: "note-1",
+			title: "Draft note",
+			content: "Updated body",
+			isPinned: false,
+			noteType: "note",
+			status: undefined,
+			isNewEntry: false,
+		});
+	});
+
 	it("saves metadata changes with loaded note content before editor content changes", async () => {
 		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
 		currentContent = "Fresh loaded body";
@@ -231,6 +271,50 @@ describe("useAutoSave", () => {
 		});
 	});
 
+	it("force saves content reverted to the loaded baseline after a saved edit", async () => {
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		const { result, rerender } = renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Initial body",
+				currentContent,
+				getCurrentContent: () => currentContent,
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+
+		act(() => {
+			currentContent = "Updated body";
+		});
+		rerender(undefined);
+
+		await act(async () => {
+			await result.current.forceSave();
+		});
+
+		act(() => {
+			currentContent = "Initial body";
+		});
+		rerender(undefined);
+
+		await act(async () => {
+			await result.current.forceSave();
+		});
+
+		expect(persistEditorEntry).toHaveBeenLastCalledWith({
+			id: "note-1",
+			title: "Draft note",
+			content: "Initial body",
+			isPinned: false,
+			noteType: "note",
+			status: undefined,
+			isNewEntry: false,
+		});
+		expect(persistEditorEntry).toHaveBeenCalledTimes(2);
+	});
+
 	it("persists dirty note changes after the idle interval and returns to idle after saved status", async () => {
 		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
 		const onPersisted = jest.fn();
@@ -253,7 +337,14 @@ describe("useAutoSave", () => {
 		rerender(undefined);
 
 		await act(async () => {
-			jest.advanceTimersByTime(1500);
+			jest.advanceTimersByTime(1999);
+			await Promise.resolve();
+		});
+
+		expect(persistEditorEntry).not.toHaveBeenCalled();
+
+		await act(async () => {
+			jest.advanceTimersByTime(1);
 			await Promise.resolve();
 		});
 
@@ -299,7 +390,7 @@ describe("useAutoSave", () => {
 		rerender({ title: "Renamed note" });
 
 		await act(async () => {
-			jest.advanceTimersByTime(1500);
+			jest.advanceTimersByTime(2000);
 			await Promise.resolve();
 		});
 
@@ -346,7 +437,7 @@ describe("useAutoSave", () => {
 		});
 
 		await act(async () => {
-			jest.advanceTimersByTime(1500);
+			jest.advanceTimersByTime(2000);
 			await Promise.resolve();
 		});
 
@@ -513,7 +604,7 @@ describe("useAutoSave", () => {
 		});
 		rerender(undefined);
 		await act(async () => {
-			jest.advanceTimersByTime(0);
+			jest.advanceTimersByTime(2000);
 			await Promise.resolve();
 		});
 
@@ -641,6 +732,31 @@ describe("useAutoSave", () => {
 		});
 		expect(result.current.status).toBe("idle");
 		expect(onPersisted).not.toHaveBeenCalled();
+	});
+
+	it("rejects forceSave when persistence fails", async () => {
+		const saveError = new Error("Save failed");
+		(persistEditorEntry as jest.Mock).mockRejectedValue(saveError);
+		const { result } = renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Initial body",
+				currentContent,
+				getCurrentContent: () => currentContent,
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+
+		act(() => {
+			currentContent = "Updated body";
+		});
+
+		await act(async () => {
+			await expect(result.current.forceSave()).rejects.toBe(saveError);
+		});
+		expect(result.current.status).toBe("idle");
 	});
 
 	it("registers and clears the background save handler with the current forceSave callback", async () => {

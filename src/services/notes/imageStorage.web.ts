@@ -1,6 +1,21 @@
 import { getTauriInvoke } from "@/services/storage/runtime";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { NOTES_ROOT } from "./Notes";
+
+type TauriConvertFileSrc = (path: string) => string;
+
+function getTauriConvertFileSrc(): TauriConvertFileSrc | null {
+	const tauriInternals = (
+		globalThis as {
+			__TAURI_INTERNALS__?: {
+				convertFileSrc?: TauriConvertFileSrc;
+			};
+		}
+	).__TAURI_INTERNALS__;
+
+	return typeof tauriInternals?.convertFileSrc === "function"
+		? tauriInternals.convertFileSrc
+		: null;
+}
 
 function getExtension(uri: string): string {
 	const match = uri.match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
@@ -29,5 +44,7 @@ export function resolveImageUri(relativePath: string): string {
 	}
 
 	const base = NOTES_ROOT.endsWith("/") ? NOTES_ROOT.slice(0, -1) : NOTES_ROOT;
-	return convertFileSrc(`${base}/${relativePath}`);
+	const absolutePath = `${base}/${relativePath}`;
+	const convertFileSrc = getTauriConvertFileSrc();
+	return convertFileSrc ? convertFileSrc(absolutePath) : absolutePath;
 }
