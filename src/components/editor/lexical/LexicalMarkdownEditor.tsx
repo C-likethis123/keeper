@@ -263,7 +263,7 @@ function LexicalMarkdownEditor({
       <style>{`
 					.keeper-editor-shell {
 						min-height: 100vh;
-						padding: 18px 18px 40px;
+						padding: ${isNativeDom ? "0 18px 40px" : "18px 18px 40px"};
 						box-sizing: border-box;
 						font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 						position: relative;

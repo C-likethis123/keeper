@@ -84,6 +84,7 @@ function assertGitHubConfig(): GitHubConfig {
 
 function createGitInitDependencies(config: GitHubConfig): GitInitDependencies {
 	const gitEngine = getGitEngine();
+	gitEngine.configureCredentials?.(config.token);
 	const stateStore = new AsyncGitSyncStateStore();
 	const errorMapper = new DefaultGitInitErrorMapper();
 	const repoBootstrapper = new DefaultRepoBootstrapper(

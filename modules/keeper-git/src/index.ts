@@ -17,6 +17,7 @@ interface GitMergeOptions {
 }
 
 interface KeeperGitBridgeNativeModule {
+	setGitHubToken(token: string): boolean | undefined;
 	clone(url: string, path: string): Promise<void>;
 	fetch(repoPath: string): Promise<void>;
 	checkout(

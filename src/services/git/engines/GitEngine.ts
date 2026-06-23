@@ -37,6 +37,7 @@ export interface GitChangedPaths {
 export type ConflictResolutionStrategy = "ours" | "theirs" | "base" | "manual";
 
 export interface GitEngine {
+	configureCredentials?(token: string): void;
 	clone(url: string, dir: string): Promise<void>;
 	fetch(dir: string): Promise<void>;
 	checkout(

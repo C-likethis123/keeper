@@ -589,7 +589,7 @@ export default function NoteEditorView({
     activePanel === "video" ? "column" : isDesktop ? "row" : "column";
   const editorSafeAreaInsets = useMemo(
     () => ({
-      top: safeAreaInsets.top,
+      top: Platform.OS === "web" ? safeAreaInsets.top : 0,
       right: safeAreaInsets.right,
       bottom: safeAreaInsets.bottom,
       left: safeAreaInsets.left,

@@ -16,6 +16,7 @@ class KeeperGitBridgeModule : Module() {
 
   private external fun git_clone(url: String, path: String): Int
   private external fun git_last_error_message(): String?
+  private external fun git_set_github_token(token: String): Int
   private external fun git_fetch(repoPath: String): Int
   private external fun git_checkout_ex(
     repoPath: String,
@@ -53,6 +54,15 @@ class KeeperGitBridgeModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("KeeperGitBridge")
+
+    Function("setGitHubToken") { token: String ->
+      val code = git_set_github_token(token)
+      if (code != 0) {
+        val detail = consumeLastRustError()?.let { ": $it" } ?: ""
+        throw RuntimeException("Rust git credential setup failed with code=$code$detail")
+      }
+      null
+    }
 
     AsyncFunction("clone") { url: String, path: String, promise: Promise ->
       settleCode("clone", git_clone(url, path), promise)
