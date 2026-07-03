@@ -9,6 +9,7 @@ import { useCallback, useMemo } from "react";
 import {
 	ActivityIndicator,
 	FlatList,
+	type ListRenderItemInfo,
 	Pressable,
 	RefreshControl,
 	StyleSheet,
@@ -17,6 +18,14 @@ import {
 	useWindowDimensions,
 } from "react-native";
 import EmptyState from "./shared/EmptyState";
+
+type NoteGridRow =
+	| { type: "header"; section: NoteSection }
+	| {
+			type: "note-row";
+			notes: Note[];
+			clusterActions?: NoteSection["clusterActions"];
+	  };
 
 export default function NoteGrid({
 	notes,
@@ -70,14 +79,7 @@ export default function NoteGrid({
 		};
 
 		if (sections && sections.length > 0) {
-			const items: Array<
-				| { type: "header"; section: NoteSection }
-				| {
-						type: "note-row";
-						notes: Note[];
-						clusterActions?: NoteSection["clusterActions"];
-				  }
-			> = [];
+			const items: NoteGridRow[] = [];
 			for (const section of sections) {
 				items.push({ type: "header", section });
 				for (const row of chunkNotes(section.notes)) {
@@ -99,22 +101,114 @@ export default function NoteGrid({
 	}, [notes, numColumns, sections]);
 
 	const isEmpty = rowData.length === 0;
+	const keyExtractor = useCallback((item: NoteGridRow, index: number) => {
+		if (item.type === "header") return `header-${item.section.id}`;
+		return `note-row-${item.notes.map((note) => note.id).join("-")}-${index}`;
+	}, []);
 
 	const listHeader = useMemo(() => {
 		if (!listHeaderComponent) return null;
 		return <View style={styles.headerWrapper}>{listHeaderComponent}</View>;
 	}, [listHeaderComponent, styles.headerWrapper]);
 
+	const renderItem = useCallback(
+		({ item }: ListRenderItemInfo<NoteGridRow>) => {
+			if (item.type === "header") {
+				return (
+					<View style={styles.sectionHeader}>
+						<Text style={styles.sectionHeaderText}>{item.section.title}</Text>
+						{item.section.clusterActions && (
+							<View style={styles.sectionHeaderActions}>
+								<Pressable
+									onPress={item.section.clusterActions.onRename}
+									hitSlop={8}
+									accessibilityRole="button"
+									accessibilityLabel="Rename cluster"
+								>
+									<FontAwesome
+										name="pencil"
+										size={14}
+										color={theme.colors.textSecondary}
+									/>
+								</Pressable>
+								<Pressable
+									onPress={item.section.clusterActions.onAddNote}
+									hitSlop={8}
+									accessibilityRole="button"
+									accessibilityLabel="Add note to cluster"
+								>
+									<FontAwesome
+										name="plus"
+										size={14}
+										color={theme.colors.textSecondary}
+									/>
+								</Pressable>
+								<Pressable
+									onPress={item.section.clusterActions.onDelete}
+									hitSlop={8}
+									accessibilityRole="button"
+									accessibilityLabel="Delete cluster"
+								>
+									<FontAwesome
+										name="trash"
+										size={14}
+										color={theme.colors.textSecondary}
+									/>
+								</Pressable>
+							</View>
+						)}
+					</View>
+				);
+			}
+
+			return (
+				<View style={styles.noteRow}>
+					{item.notes.map((note) => (
+						<View key={note.id} style={styles.noteCell}>
+							<NoteCard
+								note={note}
+								onDelete={onDelete}
+								onPinToggle={onPinToggle}
+								onRemoveFromCluster={
+									item.clusterActions
+										? () => item.clusterActions?.onRemoveNote(note.id)
+										: undefined
+								}
+							/>
+						</View>
+					))}
+					{Array.from(
+						{ length: Math.max(0, numColumns - item.notes.length) },
+						(_, offset) => item.notes.length + offset + 1,
+					).map((columnNumber) => (
+						<View
+							key={`empty-column-${columnNumber}`}
+							style={styles.noteCell}
+							pointerEvents="none"
+						/>
+					))}
+				</View>
+			);
+		},
+		[
+			numColumns,
+			onDelete,
+			onPinToggle,
+			styles.noteCell,
+			styles.noteRow,
+			styles.sectionHeader,
+			styles.sectionHeaderActions,
+			styles.sectionHeaderText,
+			theme.colors.textSecondary,
+		],
+	);
+
 	return (
 		<View style={styles.root}>
-			<FlatList
-				data={rowData}
-				key={`note-grid-${numColumns}`}
-				keyExtractor={(item, index) =>
-					item.type === "header"
-						? `header-${item.section.id}`
-						: `note-row-${item.notes.map((note) => note.id).join("-")}-${index}`
-				}
+				<FlatList
+					data={rowData}
+					key={`note-grid-${numColumns}`}
+					keyExtractor={keyExtractor}
 				contentContainerStyle={styles.contentContainer}
 				ListHeaderComponent={listHeader}
 				ListEmptyComponent={
@@ -140,87 +234,8 @@ export default function NoteGrid({
 						</View>
 					) : null
 				}
-				renderItem={({ item }) => {
-					if (item.type === "header") {
-						return (
-							<View style={styles.sectionHeader}>
-								<Text style={styles.sectionHeaderText}>
-									{item.section.title}
-								</Text>
-								{item.section.clusterActions && (
-									<View style={styles.sectionHeaderActions}>
-										<Pressable
-											onPress={item.section.clusterActions.onRename}
-											hitSlop={8}
-											accessibilityRole="button"
-											accessibilityLabel="Rename cluster"
-										>
-											<FontAwesome
-												name="pencil"
-												size={14}
-												color={theme.colors.textSecondary}
-											/>
-										</Pressable>
-										<Pressable
-											onPress={item.section.clusterActions.onAddNote}
-											hitSlop={8}
-											accessibilityRole="button"
-											accessibilityLabel="Add note to cluster"
-										>
-											<FontAwesome
-												name="plus"
-												size={14}
-												color={theme.colors.textSecondary}
-											/>
-										</Pressable>
-										<Pressable
-											onPress={item.section.clusterActions.onDelete}
-											hitSlop={8}
-											accessibilityRole="button"
-											accessibilityLabel="Delete cluster"
-										>
-											<FontAwesome
-												name="trash"
-												size={14}
-												color={theme.colors.textSecondary}
-											/>
-										</Pressable>
-									</View>
-								)}
-							</View>
-						);
-					}
-
-					return (
-						<View style={styles.noteRow}>
-							{item.notes.map((note) => (
-								<View key={note.id} style={styles.noteCell}>
-									<NoteCard
-										note={note}
-										onDelete={onDelete}
-										onPinToggle={onPinToggle}
-										onRemoveFromCluster={
-											item.clusterActions
-												? () => item.clusterActions?.onRemoveNote(note.id)
-												: undefined
-										}
-									/>
-								</View>
-							))}
-							{Array.from(
-								{ length: Math.max(0, numColumns - item.notes.length) },
-								(_, offset) => item.notes.length + offset + 1,
-							).map((columnNumber) => (
-								<View
-									key={`empty-column-${columnNumber}`}
-									style={styles.noteCell}
-									pointerEvents="none"
-								/>
-							))}
-						</View>
-					);
-				}}
-			/>
+					renderItem={renderItem}
+				/>
 		</View>
 	);
 }

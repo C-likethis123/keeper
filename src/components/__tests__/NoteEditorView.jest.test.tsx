@@ -3,8 +3,8 @@ import { SaveIndicator } from "@/components/SaveIndicator";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import type { Note } from "@/services/notes/types";
-import { useEditorState } from "@/stores/editorStore";
 import { useStorageStore } from "@/stores/storageStore";
+import { useTabStore } from "@/stores/tabStore";
 import {
 	act,
 	fireEvent,
@@ -27,7 +27,10 @@ const mockIndexListNotes = jest.fn();
 const mockNavigationSetOptions = jest.fn();
 const mockNavigationDispatch = jest.fn();
 const mockGitFlushPendingChanges = jest.fn();
-const mockDomEditorRender = jest.fn();
+const mockEditorRender = jest.fn();
+const mockGetDocumentAsync = jest.fn();
+const mockCopyPickedImageToNotes = jest.fn();
+const mockCopyPickedAttachmentToNote = jest.fn();
 
 let beforeRemoveListener:
 	| ((event: {
@@ -128,6 +131,26 @@ jest.mock("@/services/notes/noteService", () => ({
 	},
 }));
 
+jest.mock("expo-document-picker", () => ({
+	getDocumentAsync: (...args: unknown[]) => mockGetDocumentAsync(...args),
+}));
+
+jest.mock("@/services/notes/imageStorage", () => ({
+	copyPickedImageToNotes: (...args: unknown[]) =>
+		mockCopyPickedImageToNotes(...args),
+}));
+
+jest.mock("@/services/notes/attachmentStorage", () => ({
+	copyPickedAttachmentToNote: (...args: unknown[]) =>
+		mockCopyPickedAttachmentToNote(...args),
+	deleteAttachment: jest.fn(),
+	inferAttachmentType: (path: string) => {
+		if (path.endsWith(".pdf")) return "pdf";
+		if (path.endsWith(".epub")) return "epub";
+		return null;
+	},
+}));
+
 jest.mock("@/services/git/gitService", () => ({
 	GitService: {
 		flushPendingChanges: (...args: unknown[]) =>
@@ -146,29 +169,85 @@ jest.mock("@/hooks/useAppKeyboardShortcuts", () => ({
 	useAppKeyboardShortcuts: jest.fn(),
 }));
 
-jest.mock("@/components/editor/EditorToolbar", () => {
-	const React = require("react");
-	const { Text } = require("react-native");
-	return {
-		EditorToolbar: () => React.createElement(Text, null, "Toolbar"),
-	};
-});
 
-jest.mock("@/components/editor/DomEditor", () => {
+jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 	const React = require("react");
 	const { Pressable, Text } = require("react-native");
-	return {
-		__esModule: true,
-		default: (props: {
+	const getDomHeight = (dom?: { style?: unknown[] }) => {
+		const item = dom?.style?.find(
+			(style) => style && typeof style === "object" && "height" in style,
+		) as { height?: unknown } | undefined;
+		return item?.height;
+	};
+	const propsEqual = (
+		previous: {
 			markdown: string;
-			onInsertTemplateCommand?: () => void;
 			command?: { type: string; payload?: Record<string, unknown> };
+			dom?: { scrollEnabled?: boolean; style?: unknown[] };
+			safeAreaInsets?: {
+				top: number;
+				right: number;
+				bottom: number;
+				left: number;
+			};
+		},
+		next: {
+			markdown: string;
+			command?: { type: string; payload?: Record<string, unknown> };
+			dom?: { scrollEnabled?: boolean; style?: unknown[] };
+			safeAreaInsets?: {
+				top: number;
+				right: number;
+				bottom: number;
+				left: number;
+			};
+		},
+	) =>
+		previous.markdown === next.markdown &&
+		previous.command === next.command &&
+		previous.dom?.scrollEnabled === next.dom?.scrollEnabled &&
+		getDomHeight(previous.dom) === getDomHeight(next.dom) &&
+		previous.safeAreaInsets?.top === next.safeAreaInsets?.top &&
+		previous.safeAreaInsets?.right === next.safeAreaInsets?.right &&
+		previous.safeAreaInsets?.bottom === next.safeAreaInsets?.bottom &&
+		previous.safeAreaInsets?.left === next.safeAreaInsets?.left;
+	const MockLexicalMarkdownEditor = React.memo(
+		(props: {
+			markdown: string;
+			onMarkdownChange?: (markdown: string) => void;
+			onAttachDocument?: () => void | Promise<void>;
+			onInsertImage?: () => void | Promise<void>;
+			onInsertTemplateCommand?: () => void;
+			onOpenWikiLink?: (title: string) => void | Promise<void>;
+			command?: { type: string; payload?: Record<string, unknown> };
+			dom?: {
+				containerStyle?: unknown[];
+				scrollEnabled?: boolean;
+				style?: unknown[];
+			};
+			isNativeDom?: boolean;
 		}) => {
-			mockDomEditorRender(props);
+			mockEditorRender(props);
 			return React.createElement(
 				React.Fragment,
 				null,
 				React.createElement(Text, null, "Mock editor"),
+				React.createElement(
+					Pressable,
+					{
+						onPress: props.onAttachDocument,
+						accessibilityRole: "button",
+					},
+					React.createElement(Text, null, "Trigger attach document"),
+				),
+				React.createElement(
+					Pressable,
+					{
+						onPress: props.onInsertImage,
+						accessibilityRole: "button",
+					},
+					React.createElement(Text, null, "Trigger insert image"),
+				),
 				React.createElement(
 					Pressable,
 					{
@@ -177,8 +256,22 @@ jest.mock("@/components/editor/DomEditor", () => {
 					},
 					React.createElement(Text, null, "Trigger insert template"),
 				),
+				React.createElement(
+					Pressable,
+					{
+						onPress: () => props.onOpenWikiLink?.("Project Alpha"),
+						accessibilityRole: "button",
+					},
+					React.createElement(Text, null, "Trigger wiki link"),
+				),
 			);
 		},
+		propsEqual,
+	);
+
+	return {
+		__esModule: true,
+		default: MockLexicalMarkdownEditor,
 	};
 });
 
@@ -192,10 +285,15 @@ jest.mock("@/components/editor/document/DocumentPanel", () => {
 
 jest.mock("@/components/editor/video/VideoSplitPanel", () => {
 	const React = require("react");
-	const { Text } = require("react-native");
+	const { Pressable, Text } = require("react-native");
 	return {
 		__esModule: true,
-		default: () => React.createElement(Text, null, "Mock video panel"),
+		default: ({ onDismiss }: { onDismiss: () => void }) =>
+			React.createElement(
+				Pressable,
+				{ accessibilityLabel: "Dismiss video", onPress: onDismiss },
+				React.createElement(Text, null, "Mock video panel"),
+			),
 	};
 });
 
@@ -295,12 +393,21 @@ describe("NoteEditorView", () => {
 		mockIndexListNotes.mockReset();
 		mockGitFlushPendingChanges.mockReset();
 		mockNavigationDispatch.mockReset();
-		mockDomEditorRender.mockReset();
+		mockEditorRender.mockReset();
+		mockGetDocumentAsync.mockReset();
+		mockCopyPickedImageToNotes.mockReset();
+		mockCopyPickedAttachmentToNote.mockReset();
 		mockLoadNote.mockImplementation(async (id: string) => makeNote({ id }));
 		mockSaveNote.mockResolvedValue(undefined);
 		mockDeleteNote.mockResolvedValue(undefined);
 		mockListNotesFallback.mockResolvedValue({ items: [], cursor: undefined });
 		mockIndexListNotes.mockResolvedValue({ items: [], cursor: undefined });
+		mockGetDocumentAsync.mockResolvedValue({
+			canceled: false,
+			assets: [{ uri: "file:///tmp/picked.png", name: "picked.png" }],
+		});
+		mockCopyPickedImageToNotes.mockResolvedValue("assets/image.png");
+		mockCopyPickedAttachmentToNote.mockResolvedValue("_attachments/picked.pdf");
 		mockGitFlushPendingChanges.mockResolvedValue({
 			success: true,
 			didCommit: true,
@@ -310,7 +417,7 @@ describe("NoteEditorView", () => {
 		(useAppKeyboardShortcuts as jest.Mock).mockReset();
 		latestNavigationOptions = undefined;
 		beforeRemoveListener = undefined;
-		useEditorState.getState().resetState();
+		useTabStore.setState({ tabs: [], activeTabId: null });
 		useStorageStore.setState({
 			initializationStatus: "ready",
 			initializationError: undefined,
@@ -318,16 +425,79 @@ describe("NoteEditorView", () => {
 		});
 	});
 
-	it("loads note markdown into the editor store on mount", async () => {
+	it("loads note markdown into the editor on mount", async () => {
 		const note = makeNote({ content: "# Heading" });
 
 		const result = renderNoteEditor(note);
 
 		await screen.findByText("Mock editor");
 		await waitFor(() => {
-			expect(useEditorState.getState().getContent()).toBe("# Heading");
+			expect(mockEditorRender).toHaveBeenLastCalledWith(
+				expect.objectContaining({ markdown: "# Heading" }),
+			);
 		});
 		expect(result.getPathname()).toBe("/editor");
+	});
+
+	it("passes native DOM sizing and lets the inner editor own scrolling", async () => {
+		renderNoteEditor(makeNote());
+
+		await screen.findByText("Mock editor");
+		await waitFor(() => {
+			expect(mockEditorRender).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					dom: expect.objectContaining({
+						containerStyle: expect.arrayContaining([
+							expect.objectContaining({ height: expect.any(Number) }),
+						]),
+						style: expect.arrayContaining([
+							expect.objectContaining({ height: expect.any(Number) }),
+						]),
+						scrollEnabled: false,
+					}),
+					isNativeDom: true,
+					notesRoot: expect.any(String),
+				}),
+			);
+		});
+	});
+
+	it("does not re-render the editor for save status changes", async () => {
+		const note = makeNote();
+		const saveDeferred = createDeferred<void>();
+		mockSaveNote.mockImplementation(async () => {
+			await saveDeferred.promise;
+			return undefined;
+		});
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock editor");
+		const initialRenderCount = mockEditorRender.mock.calls.length;
+		const initialProps =
+			mockEditorRender.mock.calls[initialRenderCount - 1]?.[0];
+
+		await act(async () => {
+			initialProps.onMarkdownChange?.("Changed body");
+		});
+		await waitFor(() => {
+			expect(mockEditorRender).toHaveBeenCalledTimes(initialRenderCount + 1);
+		});
+		const contentChangeRenderCount = mockEditorRender.mock.calls.length;
+
+		act(() => {
+			jest.advanceTimersByTime(2000);
+		});
+		await screen.findByText("Saving…");
+		expect(mockEditorRender).toHaveBeenCalledTimes(contentChangeRenderCount);
+
+		await act(async () => {
+			saveDeferred.resolve();
+			await saveDeferred.promise;
+			await Promise.resolve();
+		});
+		await screen.findByText("Saved");
+		expect(mockEditorRender).toHaveBeenCalledTimes(contentChangeRenderCount);
 	});
 
 	it("shows the saved video panel on mount when a note has both a document and attached video", async () => {
@@ -340,6 +510,55 @@ describe("NoteEditorView", () => {
 
 		await screen.findByText("Mock video panel");
 		expect(screen.queryByText("Mock document panel")).toBeNull();
+	});
+
+	it("shows the document panel after attaching a document when video was active", async () => {
+		const note = makeNote({
+			attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		});
+		mockGetDocumentAsync.mockResolvedValue({
+			canceled: false,
+			assets: [{ uri: "file:///tmp/picked.pdf", name: "picked.pdf" }],
+		});
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock video panel");
+		fireEvent.press(screen.getByText("Trigger attach document"));
+
+		await screen.findByText("Mock document panel");
+		expect(screen.queryByText("Mock video panel")).toBeNull();
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: note.id,
+				attachment: "_attachments/picked.pdf",
+				documentPositions: null,
+			}),
+			false,
+		);
+	});
+
+	it("persists video removal from the split panel dismiss button", async () => {
+		const note = makeNote({
+			attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		});
+		mockLoadNote.mockResolvedValue(note);
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock video panel");
+		fireEvent.press(screen.getByLabelText("Dismiss video"));
+
+		await waitFor(() => {
+			expect(mockSaveNote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: note.id,
+					attachedVideo: null,
+				}),
+				false,
+			);
+		});
+		expect(screen.queryByText("Mock video panel")).toBeNull();
 	});
 
 	it("registers the force-save shortcut in the editor view", async () => {
@@ -359,7 +578,7 @@ describe("NoteEditorView", () => {
 
 		renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		act(() => {
 			getHeaderTitleInput().props.onChangeText("Todo My tasks");
 		});
@@ -384,7 +603,7 @@ describe("NoteEditorView", () => {
 
 		const result = renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		expect(getHeaderTitleInput().props.editable).toBe(true);
 
 		pressHeaderBack();
@@ -400,7 +619,7 @@ describe("NoteEditorView", () => {
 
 		const result = renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		act(() => {
 			getHeaderTitleInput().props.onChangeText("Renamed note");
 		});
@@ -440,7 +659,7 @@ describe("NoteEditorView", () => {
 
 		const result = renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		act(() => {
 			getHeaderTitleInput().props.onChangeText("Renamed note");
 		});
@@ -481,7 +700,7 @@ describe("NoteEditorView", () => {
 
 		renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		act(() => {
 			getHeaderTitleInput().props.onChangeText("Renamed note");
 		});
@@ -523,7 +742,7 @@ describe("NoteEditorView", () => {
 
 		const result = renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		pressHeaderBack();
 
 		await waitFor(() => {
@@ -537,7 +756,7 @@ describe("NoteEditorView", () => {
 
 		renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		act(() => {
 			getHeaderTitleInput().props.onChangeText("Template: Weekly Review");
 		});
@@ -561,7 +780,7 @@ describe("NoteEditorView", () => {
 		const note = makeNote();
 		const result = renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 		await user.press(screen.getByLabelText("Delete note"));
 
 		await waitFor(() => {
@@ -605,6 +824,42 @@ describe("NoteEditorView", () => {
 			noteTypes: ["template"],
 		});
 		expect(screen.getByText("Daily template")).toBeTruthy();
+	});
+
+	it("opens an existing wikilink target in a tab", async () => {
+		const user = userEvent.setup();
+		const note = makeNote();
+		mockIndexListNotes.mockResolvedValue({
+			items: [
+				{
+					noteId: "note-project-alpha",
+					title: "Project Alpha",
+					summary: "",
+					isPinned: false,
+					updatedAt: 1,
+					noteType: "note",
+					status: null,
+				},
+			],
+			cursor: undefined,
+		});
+
+		const result = renderNoteEditor(note);
+
+		await screen.findByText("Mock editor");
+		await user.press(screen.getByText("Trigger wiki link"));
+
+		await waitFor(() => {
+			expect(result.getSearchParams()).toEqual({ id: "note-project-alpha" });
+		});
+		expect(useTabStore.getState().tabs).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					noteId: "note-project-alpha",
+					title: "Project Alpha",
+				}),
+			]),
+		);
 	});
 
 	it("shows templates from fallback note listing when the index is empty", async () => {
@@ -678,11 +933,13 @@ describe("NoteEditorView", () => {
 
 		await waitFor(() => {
 			expect(mockLoadNote).toHaveBeenCalledWith("template-1");
-			expect(useEditorState.getState().getContent()).toBe(
-				"Full template body\n- with checklist",
+			expect(mockEditorRender).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					markdown: "Full template body\n- with checklist",
+				}),
 			);
 		});
-		expect(mockDomEditorRender).toHaveBeenLastCalledWith(
+		expect(mockEditorRender).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				markdown: "Full template body\n- with checklist",
 				command: expect.objectContaining({
@@ -693,12 +950,39 @@ describe("NoteEditorView", () => {
 		);
 	});
 
+	it("sends inserted image paths to the DOM editor without appending markdown", async () => {
+		const user = userEvent.setup();
+		const note = makeNote({ content: "Initial body" });
+
+		renderNoteEditor(note);
+
+		await screen.findByText("Mock editor");
+		await user.press(screen.getByText("Trigger insert image"));
+
+		await waitFor(() => {
+			expect(mockEditorRender).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					command: expect.objectContaining({
+						type: "insertImage",
+						payload: { src: "assets/image.png", altText: "" },
+					}),
+				}),
+			);
+		});
+		expect(mockEditorRender).toHaveBeenLastCalledWith(
+			expect.objectContaining({ markdown: "Initial body" }),
+		);
+		expect(mockCopyPickedImageToNotes).toHaveBeenCalledWith(
+			"file:///tmp/picked.png",
+		);
+	});
+
 	it("renders the note title input in the navigation header and keeps save status on the left", async () => {
 		const note = makeNote();
 
 		renderNoteEditor(note);
 
-		await screen.findByText("Toolbar");
+		await screen.findByText("Mock editor");
 
 		const titleInput = getHeaderTitleInput();
 		expect(titleInput.props.placeholder).toBe("Title");
@@ -731,9 +1015,11 @@ describe("NoteEditorView", () => {
 		});
 
 		await waitFor(() => {
-			const selection = useEditorState.getState().selection;
-			expect(selection).not.toBeNull();
-			expect(selection?.focus.blockIndex).toBe(0);
+			expect(mockEditorRender).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					command: expect.objectContaining({ type: "focusEditor" }),
+				}),
+			);
 		});
 	});
 });

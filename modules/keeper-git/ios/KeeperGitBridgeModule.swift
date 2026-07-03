@@ -68,11 +68,18 @@ public final class KeeperGitBridgeModule: Module {
   @_silgen_name("git_last_error_message")
   private func git_last_error_message() -> UnsafeMutablePointer<CChar>?
 
+  @_silgen_name("git_set_github_token")
+  private func git_set_github_token(_ token: UnsafePointer<CChar>) -> Int32
+
   @_silgen_name("git_string_free")
   private func git_string_free(_ ptr: UnsafeMutablePointer<CChar>?)
 
   public func definition() -> ModuleDefinition {
     Name("KeeperGitBridge")
+
+    Function("setGitHubToken") { (token: String) -> Bool in
+      token.withCString { git_set_github_token($0) } == 0
+    }
 
     AsyncFunction("clone") { (url: String, path: String, promise: Promise) in
       let code = url.withCString { urlPtr in

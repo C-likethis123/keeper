@@ -9,7 +9,7 @@ import {
 
 const FEEDBACK_FILENAME = ".moc_feedback.json";
 
-export interface FeedbackEvent {
+interface FeedbackEvent {
 	clusterId: string;
 	eventType: string;
 	eventData: Record<string, unknown> | null;

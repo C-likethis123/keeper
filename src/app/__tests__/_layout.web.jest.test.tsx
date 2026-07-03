@@ -76,26 +76,6 @@ jest.mock("react-native-safe-area-context", () => ({
 	SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-jest.mock("@/components/shared/StartupScreen", () => ({
-	__esModule: true,
-	default: ({
-		mode,
-		message,
-	}: {
-		mode: "loading" | "error";
-		message?: string;
-	}) => {
-		const React = require("react");
-		const { Text, View } = require("react-native");
-		return React.createElement(View, null, [
-			React.createElement(Text, { key: "title" }, "Keeper"),
-			mode === "loading"
-				? React.createElement(Text, { key: "loading" }, "Loading")
-				: React.createElement(Text, { key: "error" }, message),
-		]);
-	},
-}));
-
 jest.mock("@/hooks/useAppStartup", () => ({
 	useAppStartup: () => mockUseAppStartup(),
 }));
@@ -137,6 +117,28 @@ import RootLayout from "@/app/_layout.web";
 describe("RootLayout (web)", () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		if (typeof document === "undefined") {
+			Object.defineProperty(globalThis, "document", {
+				configurable: true,
+				value: {},
+			});
+		}
+		Object.defineProperty(window, "addEventListener", {
+			configurable: true,
+			value: jest.fn(),
+		});
+		Object.defineProperty(window, "removeEventListener", {
+			configurable: true,
+			value: jest.fn(),
+		});
+		Object.defineProperty(document, "addEventListener", {
+			configurable: true,
+			value: jest.fn(),
+		});
+		Object.defineProperty(document, "removeEventListener", {
+			configurable: true,
+			value: jest.fn(),
+		});
 		mockGetTauriInvoke.mockReturnValue(null);
 		mockSaveCurrentEditorBeforeBackgroundFlush.mockResolvedValue(undefined);
 		mockFlushPendingChanges.mockResolvedValue({
@@ -209,5 +211,35 @@ describe("RootLayout (web)", () => {
 			mockSaveCurrentEditorBeforeBackgroundFlush.mock.invocationCallOrder[0],
 		).toBeLessThan(mockFlushPendingChanges.mock.invocationCallOrder[0]);
 		expect(mockClose).toHaveBeenCalledTimes(1);
+	});
+
+	it("saves the editor before flushing git on browser page hide", async () => {
+		mockUseAppStartup.mockReturnValue({
+			isHydrated: true,
+			initError: null,
+			runtime: "web",
+			status: "ready",
+		});
+
+		render(<RootLayout />);
+
+		const pageHideHandler = (
+			window.addEventListener as jest.Mock
+		).mock.calls.find(([eventName]) => eventName === "pagehide")?.[1];
+		expect(pageHideHandler).toEqual(expect.any(Function));
+
+		await act(async () => {
+			pageHideHandler();
+			await Promise.resolve();
+		});
+
+		expect(mockSaveCurrentEditorBeforeBackgroundFlush).toHaveBeenCalledTimes(1);
+		expect(mockFlushPendingChanges).toHaveBeenCalledWith({
+			reason: "app-background",
+			timeoutMs: 5000,
+		});
+		expect(
+			mockSaveCurrentEditorBeforeBackgroundFlush.mock.invocationCallOrder[0],
+		).toBeLessThan(mockFlushPendingChanges.mock.invocationCallOrder[0]);
 	});
 });

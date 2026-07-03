@@ -74,7 +74,7 @@ export function buildVideoEmbedHtml(embedUrl: string, origin: string): string {
 	return `<!DOCTYPE html><html><head><base href="${origin}"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="margin:0;padding:0;background:#000;height:100vh;display:flex;justify-content:center;align-items:center"><iframe src="${embedUrl}" style="width:100%;height:100%;border:0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></body></html>`;
 }
 
-export type VideoMode = "minimised" | "normal";
+type VideoMode = "minimised" | "normal";
 
 export function extractVideoUrlFromMarkdown(markdown: string): string | null {
 	// Match ![] (url) syntax, capturing the URL

@@ -1,4 +1,5 @@
 import { getTauriInvoke } from "@/services/storage/runtime";
+import { GitService } from "@/services/git/gitService";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { NOTES_ROOT } from "./Notes";
 
@@ -45,4 +46,6 @@ export async function deleteAttachment(relativePath: string): Promise<void> {
 	const invoke = getTauriInvoke();
 	if (!invoke) return;
 	await invoke("delete_attachment", { relativePath });
+	await GitService.queueChangeAsync(relativePath, "delete");
+	GitService.scheduleCommitBatch();
 }

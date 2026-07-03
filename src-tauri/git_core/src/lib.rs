@@ -61,6 +61,24 @@ fn last_error_slot() -> &'static Mutex<Option<String>> {
     LAST_ERROR.get_or_init(|| Mutex::new(None))
 }
 
+fn github_token_slot() -> &'static Mutex<Option<String>> {
+    static GITHUB_TOKEN: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+    GITHUB_TOKEN.get_or_init(|| Mutex::new(None))
+}
+
+fn set_github_token_override(token: Option<String>) {
+    if let Ok(mut slot) = github_token_slot().lock() {
+        *slot = token;
+    }
+}
+
+fn get_github_token_override() -> Option<String> {
+    github_token_slot()
+        .lock()
+        .ok()
+        .and_then(|slot| slot.clone())
+}
+
 #[cfg(target_os = "android")]
 fn ssl_cert_file_slot() -> &'static Mutex<Option<String>> {
     static SSL_CERT_FILE: OnceLock<Mutex<Option<String>>> = OnceLock::new();
@@ -210,8 +228,8 @@ fn resolve_git_credential(key: &str) -> Option<String> {
         "EXPO_PUBLIC_GITHUB_OWNER" => env::var(key)
             .ok()
             .or_else(|| option_env!("EXPO_PUBLIC_GITHUB_OWNER").map(str::to_string)),
-        "EXPO_PUBLIC_GITHUB_TOKEN" => env::var(key)
-            .ok()
+        "EXPO_PUBLIC_GITHUB_TOKEN" => get_github_token_override()
+            .or_else(|| env::var(key).ok())
             .or_else(|| option_env!("EXPO_PUBLIC_GITHUB_TOKEN").map(str::to_string)),
         _ => env::var(key).ok(),
     }
@@ -230,6 +248,19 @@ pub fn configure_ssl_cert_file(path: &str) -> Result<(), String> {
         set_ssl_cert_file_override(path.to_string());
         Ok(())
     })
+}
+
+pub fn configure_github_token(token: Option<String>) -> Result<(), String> {
+    let token = token.and_then(|value| {
+        let trimmed = value.trim().to_string();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed)
+        }
+    });
+    set_github_token_override(token);
+    Ok(())
 }
 
 #[cfg(not(target_os = "android"))]
@@ -942,6 +973,22 @@ pub extern "C" fn git_set_ssl_cert_file(path: *const c_char) -> i32 {
 }
 
 #[no_mangle]
+pub extern "C" fn git_set_github_token(token: *const c_char) -> i32 {
+    let token = match c_string_arg(token) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+
+    match configure_github_token(Some(token)) {
+        Ok(()) => 0,
+        Err(err) => {
+            set_last_error(err);
+            -1
+        }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn clone_git(url: *const c_char, path: *const c_char) -> i32 {
     let url = match c_string_arg(url) {
         Ok(value) => value,
@@ -1350,6 +1397,28 @@ pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule
         Err(code) => return code,
     };
     if configure_ssl_cert_file(&path).is_ok() {
+        0
+    } else {
+        -1
+    }
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_clikethis123_keeper_KeeperGitBridgeModule_git_1set_1github_1token(
+    env: *mut RawJniEnv,
+    _: jobject,
+    token: jstring,
+) -> jint {
+    let mut env = match android_env(env) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    let token = match android_jstring_arg(&mut env, token) {
+        Ok(value) => value,
+        Err(code) => return code,
+    };
+    if configure_github_token(Some(token)).is_ok() {
         0
     } else {
         -1

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PanResponder, Platform, useWindowDimensions } from "react-native";
 
 const SPLIT_RATIO_KEY = "doc-split-ratio";
-export type EditorSidePanel = "document" | "video" | "article";
+type EditorSidePanel = "document" | "video" | "article";
 
 function getInitialActivePanel(
 	attachment: Note["attachment"],
@@ -38,13 +38,21 @@ export function useNoteEditorLayout(note: Note) {
 	const isDesktop = Platform.OS === "web";
 
 	const [activePanel, setActivePanel] = useState<EditorSidePanel>(() =>
-		getInitialActivePanel(note.attachment, note.attachedVideo, note.resourceUrl),
+		getInitialActivePanel(
+			note.attachment,
+			note.attachedVideo,
+			note.resourceUrl,
+		),
 	);
 
 	// Reset active panel when note changes (e.g. switching tabs)
 	useEffect(() => {
 		setActivePanel(
-			getInitialActivePanel(note.attachment, note.attachedVideo, note.resourceUrl),
+			getInitialActivePanel(
+				note.attachment,
+				note.attachedVideo,
+				note.resourceUrl,
+			),
 		);
 	}, [note.attachment, note.attachedVideo, note.resourceUrl]);
 	const [splitRatio, setSplitRatio] = useState(isDesktop ? 0.5 : 0.4);

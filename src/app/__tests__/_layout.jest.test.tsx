@@ -35,6 +35,9 @@ jest.mock("expo-router", () => ({
 		const { Text } = require("react-native");
 		return React.createElement(Text, null, "Stack");
 	},
+	useRouter: () => ({
+		push: jest.fn(),
+	}),
 }));
 
 jest.mock("expo-router/drawer", () => ({
@@ -76,24 +79,8 @@ jest.mock("react-native-gesture-handler", () => ({
 	}) => children,
 }));
 
-jest.mock("@/components/shared/StartupScreen", () => ({
-	__esModule: true,
-	default: ({
-		mode,
-		message,
-	}: {
-		mode: "loading" | "error";
-		message?: string;
-	}) => {
-		const React = require("react");
-		const { Text, View } = require("react-native");
-		return React.createElement(View, null, [
-			React.createElement(Text, { key: "title" }, "Keeper"),
-			mode === "loading"
-				? React.createElement(Text, { key: "loading" }, "Loading")
-				: React.createElement(Text, { key: "error" }, message),
-		]);
-	},
+jest.mock("react-native-safe-area-context", () => ({
+	SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 jest.mock("@/hooks/useAppStartup", () => ({

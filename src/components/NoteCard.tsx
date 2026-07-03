@@ -4,6 +4,7 @@ import type { Note } from "@/services/notes/types";
 import { useTabStore } from "@/stores/tabStore";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { memo, useCallback, useMemo } from "react";
 import {
 	Alert,
 	type GestureResponderEvent,
@@ -25,7 +26,7 @@ function formatNoteType(note: Note): string | null {
 	return note.noteType.toUpperCase();
 }
 
-export default function NoteCard({
+function NoteCard({
 	note,
 	onDelete,
 	onPinToggle,
@@ -38,27 +39,31 @@ export default function NoteCard({
 }) {
 	const router = useRouter();
 	const styles = useStyles(createStyles);
-	const typeLabel = formatNoteType(note);
-	const openNote = () => {
+	const typeLabel = useMemo(() => formatNoteType(note), [note]);
+	const formattedDate = useMemo(
+		() => new Date(note.lastUpdated).toLocaleDateString(),
+		[note.lastUpdated],
+	);
+	const openNote = useCallback(() => {
 		useTabStore.getState().openTab(note.id, note.title);
 		router.push(`/editor?id=${note.id}`);
-	};
+	}, [note.id, note.title, router]);
 
-	const handlePinToggle = () => {
+	const handlePinToggle = useCallback(() => {
 		const updated = { ...note, isPinned: !note.isPinned };
 		onPinToggle?.(updated);
-	};
-	const stopCardPress = (event?: GestureResponderEvent) => {
+	}, [note, onPinToggle]);
+	const stopCardPress = useCallback((event?: GestureResponderEvent) => {
 		event?.stopPropagation?.();
-	};
+	}, []);
 
-	const handleLongPress = () => {
+	const handleLongPress = useCallback(() => {
 		if (!onRemoveFromCluster) return;
 		Alert.alert("Remove from cluster", "Remove this note from the cluster?", [
 			{ text: "Cancel", style: "cancel" },
 			{ text: "Remove", style: "destructive", onPress: onRemoveFromCluster },
 		]);
-	};
+	}, [onRemoveFromCluster]);
 
 	return (
 		<Pressable
@@ -116,10 +121,8 @@ export default function NoteCard({
 				</View>
 			)}
 
-			<View style={styles.footer}>
-				<Text style={styles.date}>
-					{new Date(note.lastUpdated).toLocaleDateString()}
-				</Text>
+				<View style={styles.footer}>
+					<Text style={styles.date}>{formattedDate}</Text>
 
 				<View style={styles.actions}>
 					{onRemoveFromCluster && (
@@ -236,3 +239,5 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 	});
 }
+
+export default memo(NoteCard);

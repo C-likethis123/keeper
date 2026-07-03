@@ -13,6 +13,11 @@ jest.mock("nanoid", () => ({
 	nanoid: () => "test-id",
 }));
 
+type TestMock = jest.Mock & {
+	mockRejectedValue(value: unknown): jest.Mock;
+	mockResolvedValue(value: unknown): jest.Mock;
+};
+
 const mockShowToast = jest.fn();
 jest.mock("@/services/toast", () => ({
 	showToast: (...args: unknown[]) => mockShowToast(...args),
@@ -24,7 +29,9 @@ describe("useShareHandler", () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		global.fetch = jest.fn(() => Promise.reject(new Error("offline"))) as jest.Mock;
+		global.fetch = jest.fn(() =>
+			Promise.reject(new Error("offline")),
+		) as unknown as typeof fetch;
 		(useRouter as jest.Mock).mockReturnValue({ push: mockPush });
 	});
 
@@ -64,12 +71,17 @@ describe("useShareHandler", () => {
 		const youtubeUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 		(useShareIntent as jest.Mock).mockReturnValue({
 			hasShareIntent: true,
-			shareIntent: { webUrl: youtubeUrl, text: null, files: null, type: "weburl" },
+			shareIntent: {
+				webUrl: youtubeUrl,
+				text: null,
+				files: null,
+				type: "weburl",
+			},
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});
 
-		(NoteService.saveNote as jest.Mock).mockResolvedValue({ id: "test-id" });
+		(NoteService.saveNote as unknown as TestMock).mockResolvedValue({ id: "test-id" });
 
 		renderHook(() => useShareHandler(true));
 
@@ -105,7 +117,7 @@ describe("useShareHandler", () => {
 			error: null,
 		});
 
-		(NoteService.saveNote as jest.Mock).mockResolvedValue({ id: "test-id" });
+		(NoteService.saveNote as unknown as TestMock).mockResolvedValue({ id: "test-id" });
 
 		renderHook(() => useShareHandler(true));
 
@@ -124,11 +136,16 @@ describe("useShareHandler", () => {
 	it("creates a resource note when a generic article URL is shared", async () => {
 		(useShareIntent as jest.Mock).mockReturnValue({
 			hasShareIntent: true,
-			shareIntent: { webUrl: "https://example.com", text: null, files: null, type: "weburl" },
+			shareIntent: {
+				webUrl: "https://example.com",
+				text: null,
+				files: null,
+				type: "weburl",
+			},
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});
-		(NoteService.saveNote as jest.Mock).mockResolvedValue({ id: "test-id" });
+		(NoteService.saveNote as unknown as TestMock).mockResolvedValue({ id: "test-id" });
 
 		renderHook(() => useShareHandler(true));
 
@@ -153,7 +170,7 @@ describe("useShareHandler", () => {
 	});
 
 	it("uses page metadata for generic article titles", async () => {
-		(global.fetch as jest.Mock).mockResolvedValue({
+		(global.fetch as unknown as TestMock).mockResolvedValue({
 			ok: true,
 			text: async () =>
 				'<html><head><meta property="og:title" content="Deep Article &amp; Notes"></head></html>',
@@ -169,7 +186,7 @@ describe("useShareHandler", () => {
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});
-		(NoteService.saveNote as jest.Mock).mockResolvedValue({ id: "test-id" });
+		(NoteService.saveNote as unknown as TestMock).mockResolvedValue({ id: "test-id" });
 
 		renderHook(() => useShareHandler(true));
 
@@ -187,7 +204,12 @@ describe("useShareHandler", () => {
 	it("resets intent and shows toast when shared text contains no link", async () => {
 		(useShareIntent as jest.Mock).mockReturnValue({
 			hasShareIntent: true,
-			shareIntent: { webUrl: null, text: "no link here", files: null, type: "text" },
+			shareIntent: {
+				webUrl: null,
+				text: "no link here",
+				files: null,
+				type: "text",
+			},
 			resetShareIntent: mockResetShareIntent,
 			error: null,
 		});
@@ -216,7 +238,7 @@ describe("useShareHandler", () => {
 			error: null,
 		});
 
-		(NoteService.saveNote as jest.Mock).mockRejectedValue(
+		(NoteService.saveNote as unknown as TestMock).mockRejectedValue(
 			new Error("Save failed"),
 		);
 

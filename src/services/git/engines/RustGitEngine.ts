@@ -18,6 +18,7 @@ type TauriInvoke = <T = unknown>(
 ) => Promise<T>;
 
 interface RustNativeBridge {
+	setGitHubToken(token: string): boolean | undefined;
 	clone(url: string, path: string): Promise<void>;
 	fetch(repoPath: string): Promise<void>;
 	checkout(
@@ -116,6 +117,15 @@ export class RustGitEngine implements GitEngine {
 		}
 
 		throw new Error("RustGitEngine is unavailable in this runtime");
+	}
+
+	configureCredentials(token: string): void {
+		if (this.bridge.kind === "native") {
+			const configured = this.bridge.module.setGitHubToken(token);
+			if (configured === false) {
+				throw new Error("Rust git credential setup failed");
+			}
+		}
 	}
 
 	clone(url: string, dir: string): Promise<void> {

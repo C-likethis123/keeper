@@ -22,3 +22,12 @@ export async function copyPickedImageToNotes(uri: string): Promise<string> {
 	source.copy(dest);
 	return `assets/${filename}`;
 }
+
+export function resolveImageUri(relativePath: string): string {
+	if (/^[a-z][a-z0-9+.-]*:/i.test(relativePath)) {
+		return relativePath;
+	}
+
+	const base = NOTES_ROOT.endsWith("/") ? NOTES_ROOT : `${NOTES_ROOT}/`;
+	return `${base}${relativePath}`;
+}

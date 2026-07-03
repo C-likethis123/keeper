@@ -8,6 +8,7 @@ import type {
 import nativeBridgeModule from "../../../../modules/keeper-git";
 
 interface KeeperGitBridgeSpec {
+	setGitHubToken(token: string): boolean | undefined;
 	clone(url: string, path: string): Promise<void>;
 	fetch(repoPath: string): Promise<void>;
 	checkout(
@@ -75,6 +76,7 @@ function parseMaybeJson<T>(payload: unknown): T {
 
 const nativeBridge: KeeperGitBridgeSpec | undefined = nativeBridgeRaw
 	? {
+			setGitHubToken: nativeBridgeRaw.setGitHubToken.bind(nativeBridgeRaw),
 			clone: nativeBridgeRaw.clone.bind(nativeBridgeRaw),
 			fetch: nativeBridgeRaw.fetch.bind(nativeBridgeRaw),
 			checkout: nativeBridgeRaw.checkout.bind(nativeBridgeRaw),

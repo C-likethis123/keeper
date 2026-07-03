@@ -1,10 +1,3 @@
-jest.mock("@/services/git/runtime", () => ({
-	getGitRuntimeSupport: jest.fn(() => ({
-		runtime: "desktop-tauri",
-		supported: true,
-	})),
-}));
-
 jest.mock("@/services/startup/startupStrategies", () => ({
 	runStartupStrategy: jest.fn(),
 }));
@@ -13,7 +6,6 @@ jest.mock("@/services/startup/startupTelemetry", () => ({
 	traceStartupBootstrapEvent: jest.fn(),
 }));
 
-import { getGitRuntimeSupport } from "@/services/git/runtime";
 import { runStartupStrategy } from "@/services/startup/startupStrategies";
 import { renderHook, waitFor } from "@testing-library/react-native";
 import { useAppStartup } from "../useAppStartup";
@@ -21,10 +13,6 @@ import { useAppStartup } from "../useAppStartup";
 describe("useAppStartup", () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		(getGitRuntimeSupport as jest.Mock).mockReturnValue({
-			runtime: "desktop-tauri",
-			supported: true,
-		});
 	});
 
 	it("reports ready after the startup strategy hydrates successfully", async () => {
@@ -45,7 +33,6 @@ describe("useAppStartup", () => {
 		});
 		expect(result.current.isHydrated).toBe(true);
 		expect(result.current.initError).toBeNull();
-		expect(result.current.runtime).toBe("desktop-tauri");
 	});
 
 	it("moves to error state when startup surfaces an init error", async () => {

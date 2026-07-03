@@ -91,7 +91,10 @@ async function fetchVideoTitle(url: string): Promise<string> {
 	}
 }
 
-function getSharedUrl(webUrl?: string | null, text?: string | null): string | null {
+function getSharedUrl(
+	webUrl?: string | null,
+	text?: string | null,
+): string | null {
 	return extractFirstHttpUrl(webUrl) ?? extractFirstHttpUrl(text);
 }
 

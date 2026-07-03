@@ -25,7 +25,7 @@ import {
 	upsertSuperClustersFromJson,
 } from "./indexDb/repository";
 
-export type { ClusterRow, ClusterMemberRow, SuperClusterRow };
+export type { ClusterRow };
 
 const CLUSTERS_FILENAME = ".moc_clusters.json";
 

@@ -1,25 +1,31 @@
 import type { SaveStatus } from "@/components/SaveIndicator";
+import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import { GitService } from "@/services/git/gitService";
 import {
 	normalizeMarkdownForPersistence,
 	persistEditorEntry,
 } from "@/services/notes/editorEntryPersistence";
 import type { Note } from "@/services/notes/types";
-import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
-import { useEditorState } from "@/stores/editorStore";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 
 const AUTO_SAVE_INTERVAL_MS = 60000;
+const AUTO_SAVE_DEBOUNCE_MS = 2000;
 const SAVE_INDICATOR_DELAY_MS = 1000;
 
 type AutoSaveInput = {
 	id: string;
 	title: string;
 	content: string;
+	currentContent: string;
+	getCurrentContent: () => string;
 	isPinned: boolean;
 	noteType: Note["noteType"];
 	status?: Note["status"];
+	attachment?: Note["attachment"];
+	attachedVideo?: Note["attachedVideo"];
+	resourceUrl?: Note["resourceUrl"];
+	documentPositions?: Note["documentPositions"];
 	initialNoteType?: Note["noteType"];
 	onPersisted?: () => void;
 	isNew?: boolean;
@@ -29,15 +35,19 @@ export function useAutoSave({
 	id,
 	title,
 	content: initialContent,
+	currentContent,
+	getCurrentContent,
 	isPinned,
 	noteType,
 	status: noteStatus,
+	attachment,
+	attachedVideo,
+	resourceUrl,
+	documentPositions,
 	initialNoteType,
 	onPersisted,
 	isNew,
 }: AutoSaveInput) {
-	const getContentForVersion = useEditorState((s) => s.getContentForVersion);
-	const prepareContent = useEditorState((s) => s.prepareContent);
 	const [status, setStatus] = useState<SaveStatus>("idle");
 	const lastSavedRef = useRef<Note | null>(null);
 	const latestNoteRef = useRef({
@@ -46,6 +56,10 @@ export function useAutoSave({
 		isPinned,
 		noteType,
 		status: noteStatus,
+		attachment,
+		attachedVideo,
+		resourceUrl,
+		documentPositions,
 	});
 	const lastInputAtRef = useRef(Date.now());
 	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -57,25 +71,30 @@ export function useAutoSave({
 	const activeForceSaveRef = useRef<Promise<void> | null>(null);
 	const saveAgainRequestedRef = useRef(false);
 	const isNewEntryRef = useRef(!!isNew);
-	const latestDocumentVersionRef = useRef(
-		useEditorState.getState().document.version,
-	);
+	const latestContentRef = useRef(normalizeMarkdownForPersistence(initialContent));
+	const getCurrentContentRef = useRef(getCurrentContent);
 	const latestInitialContentRef = useRef(
 		normalizeMarkdownForPersistence(initialContent),
 	);
 	const hasEditorContentChangedRef = useRef(false);
+	getCurrentContentRef.current = getCurrentContent;
+	latestNoteRef.current = {
+		id,
+		title,
+		isPinned,
+		noteType,
+		status: noteStatus,
+		attachment,
+		attachedVideo,
+		resourceUrl,
+		documentPositions,
+	};
 
 	useEffect(() => {
 		const normalizedInitialContent =
 			normalizeMarkdownForPersistence(initialContent);
 		latestInitialContentRef.current = normalizedInitialContent;
-		latestNoteRef.current = {
-			id,
-			title,
-			isPinned,
-			noteType,
-			status: noteStatus,
-		};
+		latestContentRef.current = normalizedInitialContent;
 		lastInputAtRef.current = Date.now();
 
 		if (lastSavedRef.current?.id !== id) {
@@ -87,17 +106,23 @@ export function useAutoSave({
 				lastUpdated: Date.now(),
 				noteType: initialNoteType ?? noteType,
 				status: noteStatus,
+				attachment,
+				attachedVideo,
+				resourceUrl,
+				documentPositions,
 			};
 			isNewEntryRef.current = !!isNew;
 			hasEditorContentChangedRef.current = false;
-			latestDocumentVersionRef.current =
-				useEditorState.getState().document.version;
 			setStatus("idle");
 		} else if (
 			title.trim() !== lastSavedRef.current.title ||
 			isPinned !== lastSavedRef.current.isPinned ||
 			noteType !== lastSavedRef.current.noteType ||
-			noteStatus !== lastSavedRef.current.status
+			noteStatus !== lastSavedRef.current.status ||
+			attachment !== lastSavedRef.current.attachment ||
+			attachedVideo !== lastSavedRef.current.attachedVideo ||
+			resourceUrl !== lastSavedRef.current.resourceUrl ||
+			documentPositions !== lastSavedRef.current.documentPositions
 		) {
 			scheduleSaveWhenIdleRef.current?.();
 		}
@@ -108,6 +133,10 @@ export function useAutoSave({
 		isPinned,
 		noteType,
 		noteStatus,
+		attachment,
+		attachedVideo,
+		resourceUrl,
+		documentPositions,
 		initialNoteType,
 		isNew,
 	]);
@@ -119,6 +148,7 @@ export function useAutoSave({
 		}
 
 		const savePromise = (async () => {
+			await Promise.resolve();
 			isSavingRef.current = true;
 			try {
 				do {
@@ -126,9 +156,13 @@ export function useAutoSave({
 					flushAllPendingEditorDispatches();
 
 					const currentNote = latestNoteRef.current;
-					const currentContent = hasEditorContentChangedRef.current
-						? getContentForVersion(latestDocumentVersionRef.current)
-						: (lastSavedRef.current?.content ?? latestInitialContentRef.current);
+					const flushedContent = normalizeMarkdownForPersistence(
+						getCurrentContentRef.current(),
+					);
+					latestContentRef.current = flushedContent;
+					hasEditorContentChangedRef.current =
+						flushedContent !== latestInitialContentRef.current;
+					const currentContent = flushedContent;
 					const trimmedTitle = currentNote.title.trim();
 
 					const previousId = lastSavedRef.current?.id;
@@ -137,6 +171,11 @@ export function useAutoSave({
 					const previousIsPinned = lastSavedRef.current?.isPinned;
 					const previousNoteType = lastSavedRef.current?.noteType;
 					const previousStatus = lastSavedRef.current?.status;
+					const previousAttachment = lastSavedRef.current?.attachment;
+					const previousAttachedVideo = lastSavedRef.current?.attachedVideo;
+					const previousResourceUrl = lastSavedRef.current?.resourceUrl;
+					const previousDocumentPositions =
+						lastSavedRef.current?.documentPositions;
 
 					const isMatch =
 						currentNote.id === previousId &&
@@ -144,55 +183,83 @@ export function useAutoSave({
 						currentContent === previousContent &&
 						currentNote.isPinned === previousIsPinned &&
 						currentNote.noteType === previousNoteType &&
-						currentNote.status === previousStatus;
+						currentNote.status === previousStatus &&
+						currentNote.attachment === previousAttachment &&
+						currentNote.attachedVideo === previousAttachedVideo &&
+						currentNote.resourceUrl === previousResourceUrl &&
+						currentNote.documentPositions === previousDocumentPositions;
 
 					if (isMatch) {
 						continue;
 					}
 
-					console.debug("[AutoSave] Dirty detected:", {
-						id: {
-							match: currentNote.id === previousId,
-							a: currentNote.id,
-							b: previousId,
-						},
-						title: {
-							match: trimmedTitle === previousTitle,
-							a: trimmedTitle,
-							b: previousTitle,
-						},
-						content: {
-							match: currentContent === previousContent,
-							aLen: currentContent?.length,
-							bLen: previousContent?.length,
-						},
-						pinned: {
-							match: currentNote.isPinned === previousIsPinned,
-							a: currentNote.isPinned,
-							b: previousIsPinned,
-						},
-						type: {
-							match: currentNote.noteType === previousNoteType,
-							a: currentNote.noteType,
-							b: previousNoteType,
-						},
-						status: {
-							match: currentNote.status === previousStatus,
-							a: currentNote.status,
-							b: previousStatus,
-						},
-					});
+					if (__DEV__) {
+						console.debug("[AutoSave] Dirty detected:", {
+							id: {
+								match: currentNote.id === previousId,
+								a: currentNote.id,
+								b: previousId,
+							},
+							title: {
+								match: trimmedTitle === previousTitle,
+								a: trimmedTitle,
+								b: previousTitle,
+							},
+							content: {
+								match: currentContent === previousContent,
+								aLen: currentContent?.length,
+								bLen: previousContent?.length,
+							},
+							pinned: {
+								match: currentNote.isPinned === previousIsPinned,
+								a: currentNote.isPinned,
+								b: previousIsPinned,
+							},
+							type: {
+								match: currentNote.noteType === previousNoteType,
+								a: currentNote.noteType,
+								b: previousNoteType,
+							},
+							status: {
+								match: currentNote.status === previousStatus,
+								a: currentNote.status,
+								b: previousStatus,
+							},
+							attachment: {
+								match: currentNote.attachment === previousAttachment,
+								a: currentNote.attachment,
+								b: previousAttachment,
+							},
+							attachedVideo: {
+								match: currentNote.attachedVideo === previousAttachedVideo,
+								a: currentNote.attachedVideo,
+								b: previousAttachedVideo,
+							},
+							resourceUrl: {
+								match: currentNote.resourceUrl === previousResourceUrl,
+								a: currentNote.resourceUrl,
+								b: previousResourceUrl,
+							},
+							documentPositions: {
+								match:
+									currentNote.documentPositions === previousDocumentPositions,
+								a: currentNote.documentPositions,
+								b: previousDocumentPositions,
+							},
+						});
+					}
 
 					setStatus("saving");
 					const saveStart = performance.now();
 					const currentIsNewEntry = isNewEntryRef.current;
-					console.debug("[AutoSaveProfile] saveNote:start", {
-						id: currentNote.id,
-						titleLength: trimmedTitle.length,
-						contentLength: currentContent.length,
-						documentVersion: latestDocumentVersionRef.current,
-						isNewEntry: currentIsNewEntry,
-					});
+					if (__DEV__) {
+						console.debug("[AutoSaveProfile] saveNote:start", {
+							id: currentNote.id,
+							titleLength: trimmedTitle.length,
+							contentLength: currentContent.length,
+							isNewEntry: currentIsNewEntry,
+						});
+					}
 					try {
 						await persistEditorEntry({
 							id: currentNote.id,
@@ -201,21 +268,37 @@ export function useAutoSave({
 							isPinned: currentNote.isPinned,
 							noteType: currentNote.noteType,
 							status: currentNote.status,
+							...(currentNote.attachment !== undefined
+								? { attachment: currentNote.attachment }
+								: {}),
+							...(currentNote.attachedVideo !== undefined
+								? { attachedVideo: currentNote.attachedVideo }
+								: {}),
+							...(currentNote.resourceUrl !== undefined
+								? { resourceUrl: currentNote.resourceUrl }
+								: {}),
+							...(currentNote.documentPositions !== undefined
+								? { documentPositions: currentNote.documentPositions }
+								: {}),
 							isNewEntry: currentIsNewEntry,
 						});
 						isNewEntryRef.current = false;
-					} catch {
-						console.debug("[AutoSaveProfile] saveNote:error", {
+					} catch (error) {
+						if (__DEV__) {
+							console.debug("[AutoSaveProfile] saveNote:error", {
+								id: currentNote.id,
+								durationMs: Math.round(performance.now() - saveStart),
+							});
+						}
+						setStatus("idle");
+						throw error;
+					}
+					if (__DEV__) {
+						console.debug("[AutoSaveProfile] saveNote:done", {
 							id: currentNote.id,
 							durationMs: Math.round(performance.now() - saveStart),
 						});
-						setStatus("idle");
-						return;
 					}
-					console.debug("[AutoSaveProfile] saveNote:done", {
-						id: currentNote.id,
-						durationMs: Math.round(performance.now() - saveStart),
-					});
 
 					lastSavedRef.current = {
 						id: currentNote.id,
@@ -225,6 +308,10 @@ export function useAutoSave({
 						lastUpdated: Date.now(),
 						noteType: currentNote.noteType,
 						status: currentNote.status,
+						attachment: currentNote.attachment,
+						attachedVideo: currentNote.attachedVideo,
+						resourceUrl: currentNote.resourceUrl,
+						documentPositions: currentNote.documentPositions,
 					};
 					onPersisted?.();
 					setStatus("saved");
@@ -241,60 +328,25 @@ export function useAutoSave({
 
 		activeForceSaveRef.current = savePromise;
 		return savePromise;
-	}, [getContentForVersion, onPersisted]);
+	}, [onPersisted]);
 
 	useEffect(() => {
-		let lastDocumentVersion = useEditorState.getState().document.version;
-		const unsubscribe = useEditorState.subscribe((state) => {
-			const nextDocumentVersion = state.document.version;
-			if (nextDocumentVersion === lastDocumentVersion) {
-				return;
-			}
-			lastDocumentVersion = nextDocumentVersion;
-			latestDocumentVersionRef.current = nextDocumentVersion;
+		const nextContent = normalizeMarkdownForPersistence(currentContent);
+		if (nextContent === latestContentRef.current) {
+			return;
+		}
+		latestContentRef.current = nextContent;
+		const savedContent =
+			lastSavedRef.current?.content ?? latestInitialContentRef.current;
+		if (nextContent === savedContent) {
+			hasEditorContentChangedRef.current = false;
+			return;
+		}
 
-			const nextContent = state.getContentForVersion(nextDocumentVersion);
-			if (nextContent === latestInitialContentRef.current) {
-				const currentNote = latestNoteRef.current;
-				lastSavedRef.current = {
-					id: currentNote.id,
-					title: currentNote.title.trim(),
-					content: latestInitialContentRef.current,
-					isPinned: currentNote.isPinned,
-					lastUpdated: Date.now(),
-					noteType: currentNote.noteType,
-					status: currentNote.status,
-				};
-				hasEditorContentChangedRef.current = false;
-				return;
-			}
-
-			hasEditorContentChangedRef.current = true;
-			lastInputAtRef.current = Date.now();
-			scheduleSaveWhenIdleRef.current?.();
-
-			if (prepareTimeoutRef.current) {
-				clearTimeout(prepareTimeoutRef.current);
-			}
-			prepareTimeoutRef.current = setTimeout(() => {
-				prepareTimeoutRef.current = null;
-				const prepareStart = performance.now();
-				prepareContent();
-				console.debug("[AutoSaveProfile] prepareContent", {
-					documentVersion: latestDocumentVersionRef.current,
-					durationMs: Math.round(performance.now() - prepareStart),
-				});
-			}, 0);
-		});
-
-		return () => {
-			unsubscribe();
-			if (prepareTimeoutRef.current) {
-				clearTimeout(prepareTimeoutRef.current);
-				prepareTimeoutRef.current = null;
-			}
-		};
-	}, [prepareContent]);
+		hasEditorContentChangedRef.current = true;
+		lastInputAtRef.current = Date.now();
+		scheduleSaveWhenIdleRef.current?.();
+	}, [currentContent]);
 
 	useEffect(() => {
 		GitService.registerBackgroundSaveHandler(forceSave);
@@ -307,7 +359,9 @@ export function useAutoSave({
 	useEffect(() => {
 		const subscription = AppState.addEventListener("change", (nextState) => {
 			if (nextState !== "active") {
-				void forceSave();
+				void forceSave().catch((error) => {
+					console.warn("[AutoSave] Failed to save on app background:", error);
+				});
 			}
 		});
 
@@ -346,8 +400,10 @@ export function useAutoSave({
 
 			idleTimeoutRef.current = setTimeout(() => {
 				idleTimeoutRef.current = null;
-				void forceSave();
-			}, 0);
+				void forceSave().catch((error) => {
+					console.warn("[AutoSave] Failed to autosave:", error);
+				});
+			}, AUTO_SAVE_DEBOUNCE_MS);
 		};
 
 		intervalRef.current = setInterval(

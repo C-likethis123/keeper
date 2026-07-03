@@ -1,9 +1,7 @@
-import type { GitRuntimeSupport } from "@/services/git/runtime";
 import { checkForUpdates } from "@/utils/checkForUpdates";
 import {
 	initializeGitStep,
 	initializeStorageStep,
-	initializeUnsupportedRuntimeStep,
 } from "./startupSteps";
 import {
 	type StartupTelemetry,
@@ -11,7 +9,6 @@ import {
 } from "./startupTelemetry";
 
 interface StartupStrategyContext {
-	runtimeSupport: GitRuntimeSupport;
 	setHydrated: () => void;
 	setInitError: (error: string) => void;
 	setStatusMessage: (message: string) => void;
@@ -19,26 +16,6 @@ interface StartupStrategyContext {
 }
 
 type StartupStrategy = (context: StartupStrategyContext) => Promise<void>;
-
-const runDesktopStartup: StartupStrategy = async ({
-	setHydrated,
-	setInitError,
-	setStatusMessage,
-	telemetry,
-}) => {
-	await initializeStorageStep(telemetry);
-	const hydrationStart = telemetry.stepStarted("desktop.hydrate_ui");
-	setHydrated();
-	telemetry.stepCompleted("desktop.hydrate_ui", hydrationStart);
-	void initializeGitStep(
-		{
-			backgroundMode: true,
-			setInitError,
-			setStatusMessage,
-		},
-		telemetry,
-	);
-};
 
 const runMobileStartup: StartupStrategy = async ({
 	setHydrated,
@@ -60,39 +37,17 @@ const runMobileStartup: StartupStrategy = async ({
 	telemetry.stepCompleted("mobile.hydrate_ui", hydrationStart);
 };
 
-const runUnsupportedStartup: StartupStrategy = async ({
-	runtimeSupport,
-	setHydrated,
-	telemetry,
-}) => {
-	await initializeStorageStep(telemetry);
-	await initializeUnsupportedRuntimeStep(runtimeSupport, telemetry);
-	const hydrationStart = telemetry.stepStarted("unsupported.hydrate_ui");
-	setHydrated();
-	telemetry.stepCompleted("unsupported.hydrate_ui", hydrationStart);
-};
-
-const startupStrategies: Record<GitRuntimeSupport["runtime"], StartupStrategy> =
-	{
-		"desktop-tauri": runDesktopStartup,
-		"mobile-native": runMobileStartup,
-		unsupported: runUnsupportedStartup,
-	};
-
 export async function runStartupStrategy(
 	context: Omit<StartupStrategyContext, "telemetry">,
 ): Promise<void> {
 	const appStartTime = performance.now();
-	const telemetry = createStartupTelemetry(context.runtimeSupport.runtime);
-	telemetry.trace("startup_run_started", {
-		supported: context.runtimeSupport.supported,
-	});
+	const telemetry = createStartupTelemetry("mobile-native");
+	telemetry.trace("startup_run_started", { platform: "mobile" });
 	if (!__DEV__) {
 		void checkForUpdates(context.setStatusMessage);
 	}
-	const run = startupStrategies[context.runtimeSupport.runtime];
 	try {
-		await run({
+		await runMobileStartup({
 			...context,
 			telemetry,
 		});

@@ -1,0 +1,565 @@
+"use dom";
+
+import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
+import { darkTheme } from "@/constants/themes/darkTheme";
+import { lightTheme } from "@/constants/themes/lightTheme";
+import { writeEditorDraft } from "@/services/notes/editorDraftStore";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { LexicalExtensionComposer } from "@lexical/react/LexicalExtensionComposer";
+import { ContentEditable } from "@lexical/react/LexicalContentEditable";
+import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
+import { NOTES_ROOT, setNotesRoot } from "@/services/notes/Notes";
+
+import { $getRoot } from "lexical";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  KEEPER_MARKDOWN_TRANSFORMERS,
+  importMarkdownToLexical,
+} from "./markdown";
+import type { LexicalEditorCommand } from "./extensions/CommandExtension";
+import { createKeeperEditorExtension } from "./extensions/KeeperEditorExtension";
+import { KEEPER_EDITOR_NODES } from "./keeperEditorNodes";
+import { KEEPER_EDITOR_THEME } from "./keeperEditorTheme";
+
+interface LexicalMarkdownEditorProps {
+  command?: LexicalEditorCommand;
+  dom?: import("expo/dom").DOMProps;
+  hasAttachment?: boolean;
+  isNativeDom?: boolean;
+  keyboardHeight?: number;
+  markdown: string;
+  noteId: string;
+  notesRoot?: string;
+  onMarkdownChange: (markdown: string) => void;
+  onAttachDocument?: () => void;
+  onInsertImage?: () => void;
+  onInsertTemplateCommand?: () => void | Promise<void>;
+  onOpenWikiLink?: (title: string) => void | Promise<void>;
+  onRemoveAttachment?: () => void;
+  onShowVideoModal?: () => void;
+  onToggleActivePanel?: () => void;
+  onToggleArticle?: () => void;
+  onToggleRelatedNotes?: () => void;
+  safeAreaInsets?: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+  };
+  themeMode: "light" | "dark";
+}
+
+function getDomStyleHeight(dom?: LexicalMarkdownEditorProps["dom"]) {
+  const style = dom?.style;
+  if (!Array.isArray(style)) {
+    return undefined;
+  }
+  for (const item of style) {
+    if (item && typeof item === "object" && "height" in item) {
+      return (item as { height?: unknown }).height;
+    }
+  }
+  return undefined;
+}
+
+function safeAreaInsetsEqual(
+  previous?: LexicalMarkdownEditorProps["safeAreaInsets"],
+  next?: LexicalMarkdownEditorProps["safeAreaInsets"],
+) {
+  return (
+    previous?.top === next?.top &&
+    previous?.right === next?.right &&
+    previous?.bottom === next?.bottom &&
+    previous?.left === next?.left
+  );
+}
+
+function domPropsEqual(
+  previous?: LexicalMarkdownEditorProps["dom"],
+  next?: LexicalMarkdownEditorProps["dom"],
+) {
+  return (
+    previous?.allowingReadAccessToURL === next?.allowingReadAccessToURL &&
+    previous?.scrollEnabled === next?.scrollEnabled &&
+    getDomStyleHeight(previous) === getDomStyleHeight(next)
+  );
+}
+
+function editorPropsEqual(
+  previous: LexicalMarkdownEditorProps,
+  next: LexicalMarkdownEditorProps,
+) {
+  return (
+    previous.command === next.command &&
+    previous.hasAttachment === next.hasAttachment &&
+    previous.isNativeDom === next.isNativeDom &&
+    previous.keyboardHeight === next.keyboardHeight &&
+    previous.markdown === next.markdown &&
+    previous.noteId === next.noteId &&
+    previous.notesRoot === next.notesRoot &&
+    previous.onAttachDocument === next.onAttachDocument &&
+    previous.onInsertImage === next.onInsertImage &&
+    previous.onInsertTemplateCommand === next.onInsertTemplateCommand &&
+    previous.onMarkdownChange === next.onMarkdownChange &&
+    previous.onOpenWikiLink === next.onOpenWikiLink &&
+    previous.onRemoveAttachment === next.onRemoveAttachment &&
+    previous.onShowVideoModal === next.onShowVideoModal &&
+    previous.onToggleActivePanel === next.onToggleActivePanel &&
+    previous.onToggleArticle === next.onToggleArticle &&
+    previous.onToggleRelatedNotes === next.onToggleRelatedNotes &&
+    previous.themeMode === next.themeMode &&
+    safeAreaInsetsEqual(previous.safeAreaInsets, next.safeAreaInsets) &&
+    domPropsEqual(previous.dom, next.dom)
+  );
+}
+
+function EmptyPlaceholder() {
+  const [editor] = useLexicalComposerContext();
+  const [isEmpty, setIsEmpty] = useState(true);
+
+  useEffect(() => {
+    editor.getEditorState().read(() => {
+      setIsEmpty($getRoot().isEmpty());
+    });
+
+    return editor.registerUpdateListener(({ editorState }) => {
+      editorState.read(() => {
+        setIsEmpty($getRoot().isEmpty());
+      });
+    });
+  }, [editor]);
+
+  if (!isEmpty) {
+    return null;
+  }
+
+  return <div className="keeper-placeholder">Start writing</div>;
+}
+
+function useLatestGetter<T>(value: T) {
+  const ref = useRef(value);
+
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+
+  return useCallback(() => ref.current, []);
+}
+
+function LexicalMarkdownEditor({
+  command,
+  hasAttachment = false,
+  isNativeDom = false,
+  keyboardHeight = 0,
+  markdown,
+  noteId,
+  notesRoot,
+  onAttachDocument,
+  onInsertImage,
+  onMarkdownChange,
+  onInsertTemplateCommand,
+  onOpenWikiLink,
+  onRemoveAttachment,
+  onShowVideoModal,
+  onToggleActivePanel,
+  onToggleArticle,
+  onToggleRelatedNotes,
+  safeAreaInsets,
+  themeMode,
+}: LexicalMarkdownEditorProps) {
+  if (notesRoot && NOTES_ROOT !== notesRoot) {
+    setNotesRoot(notesRoot);
+  }
+
+  const palette = themeMode === "light" ? lightTheme.colors : darkTheme.colors;
+  const editorContentElementRef = useRef<HTMLDivElement | null>(null);
+  const initialMarkdownRef = useRef(markdown);
+  const commandRef = useRef<LexicalEditorCommand | undefined>(command);
+  const handleMarkdownChange = useCallback(
+    (nextMarkdown: string) => {
+      writeEditorDraft(noteId, nextMarkdown);
+      onMarkdownChange(nextMarkdown);
+    },
+    [noteId, onMarkdownChange],
+  );
+  const getOnMarkdownChange = useLatestGetter(handleMarkdownChange);
+  const getOnInsertTemplateCommand = useLatestGetter(onInsertTemplateCommand);
+  const getOnOpenWikiLink = useLatestGetter(onOpenWikiLink);
+  const getHasAttachment = useLatestGetter(hasAttachment ?? false);
+  const getOnAttachDocument = useLatestGetter(onAttachDocument);
+  const getOnInsertImage = useLatestGetter(onInsertImage);
+  const getOnRemoveAttachment = useLatestGetter(onRemoveAttachment);
+  const getOnShowVideoModal = useLatestGetter(onShowVideoModal);
+  const getOnToggleActivePanel = useLatestGetter(onToggleActivePanel);
+  const getOnToggleArticle = useLatestGetter(onToggleArticle);
+  const getOnToggleRelatedNotes = useLatestGetter(onToggleRelatedNotes);
+  const setEditorContentElement = useCallback(
+    (element: HTMLDivElement | null) => {
+      editorContentElementRef.current = element;
+    },
+    [],
+  );
+
+  useEffect(() => {
+    commandRef.current = command;
+    flushAllPendingEditorDispatches();
+  }, [command]);
+
+  const editorExtension = useMemo(
+    () =>
+      createKeeperEditorExtension({
+        getCommand: () => commandRef.current,
+        getDraggableBlockAnchorElem: () => editorContentElementRef.current,
+        getOnInsertTemplateCommand,
+        getOnMarkdownChange,
+        getOnOpenWikiLink,
+        getHasAttachment,
+        getOnAttachDocument,
+        getOnInsertImage,
+        getOnRemoveAttachment,
+        getOnShowVideoModal,
+        getOnToggleActivePanel,
+        getOnToggleArticle,
+        getOnToggleRelatedNotes,
+        nodes: KEEPER_EDITOR_NODES,
+        editorState: () => importMarkdownToLexical(initialMarkdownRef.current),
+        theme: KEEPER_EDITOR_THEME,
+      }),
+    [
+      getHasAttachment,
+      getOnAttachDocument,
+      getOnInsertImage,
+      getOnInsertTemplateCommand,
+      getOnMarkdownChange,
+      getOnOpenWikiLink,
+      getOnRemoveAttachment,
+      getOnShowVideoModal,
+      getOnToggleActivePanel,
+      getOnToggleArticle,
+      getOnToggleRelatedNotes,
+    ],
+  );
+
+  return (
+    <div
+      style={{
+        background: palette.background,
+        color: palette.text,
+        height: isNativeDom ? "100vh" : "100%",
+        minHeight: "100%",
+        overflowY: "auto",
+        paddingTop: safeAreaInsets?.top ?? 0,
+        paddingRight: safeAreaInsets?.right ?? 0,
+        paddingBottom: Math.max(safeAreaInsets?.bottom ?? 0, keyboardHeight),
+        paddingLeft: safeAreaInsets?.left ?? 0,
+      }}
+    >
+      <style>{`
+					.keeper-editor-shell {
+						min-height: 100vh;
+						padding: ${isNativeDom ? "0 18px 40px" : "18px 18px 40px"};
+						box-sizing: border-box;
+						font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+						position: relative;
+					}
+					.keeper-toolbar-sticky {
+						position: sticky;
+						top: 0;
+						z-index: 10;
+						background: ${palette.background};
+					}
+					.keeper-editor {
+						box-sizing: border-box;
+						min-height: calc(100vh - 76px);
+						outline: none;
+						padding-left: 28px;
+						font-size: 17px;
+					line-height: 1.55;
+					white-space: pre-wrap;
+				}
+					.keeper-editor-content {
+						position: relative;
+					}
+					.keeper-draggable-block-anchor {
+						inset: 0;
+						pointer-events: none;
+						position: absolute;
+						z-index: 5;
+					}
+					.keeper-draggable-block-anchor > div {
+						pointer-events: auto;
+					}
+					.keeper-editor-content > div[draggable="true"] {
+						height: 24px;
+						left: 0;
+						overflow: visible;
+						position: absolute;
+						top: 0;
+						width: 24px;
+						z-index: 7;
+					}
+					.keeper-draggable-block-handle {
+						align-items: center;
+						background: transparent;
+						border: 0;
+						border-radius: 6px;
+						color: ${palette.text}8A;
+						cursor: grab;
+						display: flex;
+						font-size: 18px;
+						height: 24px;
+						justify-content: center;
+						left: 0;
+						line-height: 1;
+						opacity: 1;
+						padding: 0;
+						pointer-events: auto;
+						position: absolute;
+						top: 0;
+						touch-action: none;
+						transition: opacity 120ms ease, background-color 120ms ease;
+						user-select: none;
+						will-change: transform, opacity;
+						width: 24px;
+					}
+					.keeper-draggable-block-handle:active,
+					.keeper-draggable-block-handle-active {
+						cursor: grabbing;
+					}
+					.keeper-draggable-block-handle:hover,
+					.keeper-draggable-block-handle:focus-visible {
+						background: ${palette.card};
+						opacity: 1;
+					}
+					.keeper-editor-content:hover .keeper-draggable-block-handle {
+						opacity: 1;
+					}
+					.keeper-draggable-block-dragging {
+						opacity: 0.45;
+					}
+					.keeper-draggable-block-handle span,
+					.keeper-draggable-block-handle span::before,
+					.keeper-draggable-block-handle span::after {
+						background: currentColor;
+						border-radius: 999px;
+						box-shadow: 6px 0 0 currentColor;
+						content: "";
+						display: block;
+						height: 3px;
+						width: 3px;
+					}
+					.keeper-draggable-block-handle span::before {
+						transform: translateY(-6px);
+					}
+					.keeper-draggable-block-handle span::after {
+						transform: translateY(3px);
+					}
+					.keeper-draggable-block-target-line {
+						background: ${palette.primary};
+						border-radius: 999px;
+						height: 4px;
+						left: 0;
+						opacity: 0;
+						pointer-events: none;
+						position: absolute;
+						top: 0;
+						z-index: 6;
+					}
+					.keeper-placeholder {
+						color: ${palette.text}80;
+						pointer-events: none;
+						position: absolute;
+						top: 0;
+						left: 28px;
+						font-size: 17px;
+						line-height: 1.55;
+					}
+				.keeper-heading {
+					font-weight: 700;
+					margin: 16px 0 8px;
+				}
+				.keeper-heading-h1 { font-size: 30px; }
+				.keeper-heading-h2 { font-size: 24px; }
+				.keeper-heading-h3 { font-size: 20px; }
+				.keeper-list { margin: 8px 0; padding-left: 28px; }
+				.keeper-list-item { margin: 4px 0; }
+				.keeper-nested-list-item { list-style-type: none; }
+				.keeper-checklist { list-style: none; padding-left: 0; }
+				.keeper-check-item {
+					cursor: pointer;
+					list-style: none;
+					margin: 4px 0;
+					min-height: 24px;
+					padding-left: 30px;
+					position: relative;
+				}
+				.keeper-check-item::before {
+					align-items: center;
+					border: 1.5px solid ${palette.border};
+					border-radius: 4px;
+					box-sizing: border-box;
+					content: "";
+					display: flex;
+					height: 18px;
+					justify-content: center;
+					left: 0;
+					position: absolute;
+					top: 4px;
+					width: 18px;
+				}
+				.keeper-check-item-checked { text-decoration: line-through; opacity: 0.7; }
+				.keeper-check-item-checked::before {
+					background: ${palette.primary};
+					border-color: ${palette.primary};
+					color: ${palette.background};
+					content: "\\2713";
+					font-size: 13px;
+					font-weight: 700;
+					line-height: 1;
+					text-decoration: none;
+				}
+				.keeper-table-scroll {
+					margin: 12px 0;
+					overflow-x: auto;
+					width: 100%;
+				}
+				.keeper-table {
+					border-collapse: collapse;
+					border-spacing: 0;
+					color: ${palette.text};
+					table-layout: fixed;
+					width: 100%;
+				}
+				.keeper-table-cell {
+					border: 1px solid ${palette.border};
+					min-width: 96px;
+					padding: 8px 10px;
+					position: relative;
+					vertical-align: top;
+				}
+				.keeper-table-cell > * {
+					margin: 0;
+				}
+				.keeper-table-cell-header {
+					background: ${palette.card};
+					font-weight: 700;
+				}
+				.keeper-table-selection .keeper-table-cell {
+					border-color: ${palette.primary};
+				}
+					.keeper-table-cell:focus-within {
+						box-shadow: inset 0 0 0 1px ${palette.primary};
+						outline: none;
+					}
+					.keeper-table-control {
+						align-items: center;
+						display: flex;
+						gap: 4px;
+						position: absolute;
+						transform: translate(-50%, -50%);
+						z-index: 6;
+					}
+					.keeper-table-control-button {
+						align-items: center;
+						background: ${palette.primary};
+						border: 0;
+						border-radius: 999px;
+						box-shadow: 0 8px 18px ${palette.shadow}33;
+						color: #fff;
+						cursor: pointer;
+						display: flex;
+						font-size: 16px;
+						font-weight: 500;
+						height: 24px;
+						justify-content: center;
+						line-height: 1;
+						padding: 0 0 2px;
+						width: 24px;
+					}
+					.keeper-table-control-delete {
+						background: ${palette.textSecondary};
+					}
+					.keeper-table-control-button:hover,
+					.keeper-table-control-button:focus-visible {
+						filter: brightness(1.08);
+						outline: 2px solid ${palette.primary}66;
+						outline-offset: 2px;
+					}
+					.image-node {
+						margin: 12px 0;
+						max-width: 100%;
+					}
+				.keeper-code {
+					background: ${palette.card};
+					border: 1px solid ${palette.border};
+					border-radius: 6px;
+					box-sizing: border-box;
+					display: block;
+					font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+					font-size: 14px;
+					line-height: 1.45;
+					margin: 12px 0;
+					max-width: 100%;
+					overflow-x: auto;
+					padding: 12px;
+					white-space: pre;
+					width: 100%;
+				}
+				.keeper-token-comment { color: ${themeMode === "light" ? "#6A737D" : "#8B949E"}; font-style: italic; }
+				.keeper-token-keyword,
+				.keeper-token-selector,
+				.keeper-token-tag { color: ${themeMode === "light" ? "#D73A49" : "#FF7B72"}; }
+				.keeper-token-string,
+				.keeper-token-inserted { color: ${themeMode === "light" ? "#032F62" : "#A5D6FF"}; }
+				.keeper-token-function,
+				.keeper-token-builtin { color: ${themeMode === "light" ? "#6F42C1" : "#D2A8FF"}; }
+				.keeper-token-class,
+				.keeper-token-property,
+				.keeper-token-namespace { color: ${themeMode === "light" ? "#E36209" : "#FFA657"}; }
+				.keeper-token-number,
+				.keeper-token-constant,
+				.keeper-token-symbol,
+				.keeper-token-variable { color: ${themeMode === "light" ? "#005CC5" : "#79C0FF"}; }
+				.keeper-token-operator,
+				.keeper-token-punctuation { color: ${themeMode === "light" ? "#24292E" : "#C9D1D9"}; }
+				.keeper-token-deleted { color: ${themeMode === "light" ? "#B31D28" : "#FFA198"}; }
+					.keeper-inline-code {
+						background: ${palette.card};
+						border-radius: 4px;
+						font-size: 0.9em;
+						font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+						line-height: 1.2;
+						padding: 1px 4px 2px;
+					}
+				.keeper-quote {
+					border-left: 3px solid ${palette.border};
+					margin: 8px 0;
+					padding-left: 12px;
+					opacity: 0.85;
+				}
+				.keeper-link { color: ${palette.primary}; }
+				.keeper-text-bold { font-weight: 700; }
+				.keeper-text-italic { font-style: italic; }
+				.keeper-text-underline { text-decoration: underline; }
+			`}</style>
+      <LexicalExtensionComposer
+        extension={editorExtension}
+        contentEditable={null}
+      >
+        <div className="keeper-editor-content" ref={setEditorContentElement}>
+          <ContentEditable className="keeper-editor ContentEditable__root" />
+          <EmptyPlaceholder />
+        </div>
+        <MarkdownShortcutPlugin transformers={KEEPER_MARKDOWN_TRANSFORMERS} />
+      </LexicalExtensionComposer>
+    </div>
+  );
+}
+
+export default React.memo(LexicalMarkdownEditor, editorPropsEqual);

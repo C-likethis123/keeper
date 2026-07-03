@@ -531,46 +531,49 @@ Integrate the local Python clustering pipeline into the repository's continuous 
 
 ---
 
-### Phase 16: YouTube Sharing Integration ✅
+### Phase 17: Refactor Git Sync Service for Modularity
 
-Allow users to share YouTube videos to the app. A shared YouTube video will automatically create a resource note with the link attached.
+Improve the maintainability and testability of the Git syncing infrastructure by refactoring the monolithic `GitService` into modular, domain-specific components.
 
-**Status**: Implemented
-**Task file**: `tasks/004-youtube-sharing.md`
+**Status**: Planned
 **Objectives**:
-- Handle incoming share intents (Android `SEND`) and Share Extensions (iOS)
-- Detect and validate shared YouTube URLs
-- Automatically create a new note with `noteType: "resource"`
-- Pre-populate note content with the YouTube video block
-- Navigate the user to the editor for the new note
-- Support both background and cold-start sharing
 
-**Key files**:
-- `app.config.js`: `expo-share-intent` plugin configuration
-- `src/app/_layout.tsx`: Share intent listener and navigation logic
-- `src/hooks/useShareHandler.ts`: Processing shared URLs
-- `src/services/notes/NoteService.ts`: Automatic note creation
-- `src/components/editor/video/videoUtils.ts`: URL validation
+- **Decouple Journaling**: Extract pending journal management (`AsyncGitSyncStateStore` logic) into a `GitJournal` service.
+- **Isolate Sync Management**: Move app-lifecycle, background-flush, and recovery logic into a dedicated `GitSyncManager`.
+- **Modularize Native Bridge**: Abstract native module interaction into a cleaner `GitNativeBridge` interface to facilitate future engine swaps (e.g., to `isomorphic-git` if desired).
+- **Improve Testability**: Create clear boundaries to allow unit testing of journal logic without requiring actual Git or filesystem operations.
+
+**Key files to target**:
+
+- `src/services/git/gitService.ts` (the primary target for decomposition)
+- `src/services/git/init/stateStore.ts`
+- `modules/keeper-git/src/` (interface review)
+
 
 ---
 
-### Tabs
-
-Use tabs to toggle between different views without leaving the current workspace context.
-
-**Scope**:
-
-- Toggle between different views with tabs
-- Being able to spawn new tabs
-- Being able to pin existing tabs
-
-### Future Ideas from Google Keep
+### Future Ideas
 
 - Drawings (low priority)
-- Fix code editor issues
-- Logseq-style bottom toolbar
-- Flashcards
+- Tabs
 - Backlinks
+- Flashcards
+- Logseq-style bottom toolbar
+
+### Integrate Indentation and Brace Completion with Lexical/Code
+
+Port existing smart-editing logic (indentation and brace completion) from the current hand-rolled `CodeBlock` component into Lexical plugins to be used with `@lexical/code`.
+
+**Key objectives:**
+- Implement Lexical command listeners for smart indentation on `Enter`.
+- Implement Lexical command listeners for brace completion on text insertion.
+- Maintain parity with current brace/indent logic.
+- Ensure compatibility with `@lexical/code` node structure.
+
+**Key files to target:**
+- `src/components/editor/blocks/CodeBlock.tsx` (for extracting logic)
+- `src/components/editor/code/` (for existing logic)
+
 
 ---
 
@@ -582,9 +585,16 @@ iOS native support now comes from the local Expo module in `modules/keeper-git`.
 
 Dev/prod variants use the same `APP_VARIANT` pattern as Android (`com.clikethis123.keeper.dev` vs `com.clikethis123.keeper`).
 
+
 ---
 
-## Architecture Notes
+## Lexical Editor Migration
+
+- [ ] Phase 1: Hybrid Mode - Initialize Lexical alongside existing editor.
+- [ ] Phase 2: Block Mapping - Implement Lexical Nodes for existing block types.
+- [ ] Phase 3: Content Migration - Migrate block rendering to Lexical Nodes.
+- [ ] Phase 4: Cleanup - Remove legacy editor infrastructure (Store, Reducer, History).
+
 
 See `CLAUDE.md` for:
 

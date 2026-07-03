@@ -25,19 +25,3 @@ export async function loadDocumentPosition(
 	const note = await NoteService.loadNote(noteId);
 	return note?.documentPositions?.[attachmentPath] ?? null;
 }
-
-export async function clearDocumentPosition(
-	noteId: string,
-	attachmentPath: string,
-): Promise<void> {
-	const note = await NoteService.loadNote(noteId);
-	if (!note?.documentPositions?.[attachmentPath]) return;
-
-	const documentPositions = { ...note.documentPositions };
-	delete documentPositions[attachmentPath];
-	await NoteService.saveNote({
-		...note,
-		documentPositions:
-			Object.keys(documentPositions).length > 0 ? documentPositions : null,
-	});
-}

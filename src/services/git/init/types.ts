@@ -112,7 +112,6 @@ export interface GitSyncStateStore {
 	writePendingJournal(entries: GitJournalEntry[]): Promise<void>;
 	readDeviceId(): Promise<string | undefined>;
 	writeDeviceId(id: string): Promise<void>;
-
 }
 
 export interface RepoBootstrapper {

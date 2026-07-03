@@ -1,5 +1,4 @@
 import { GitInitializationService } from "@/services/git/gitInitializationService";
-import type { GitRuntimeSupport } from "@/services/git/runtime";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { StorageInitializationService } from "@/services/storage/storageInitializationService";
 import { showToast } from "@/services/toast";
@@ -120,17 +119,5 @@ export async function initializeGitStep(
 				? error.message
 				: "Rust git initialization failed unexpectedly.",
 		);
-	}
-}
-
-export async function initializeUnsupportedRuntimeStep(
-	runtimeSupport: GitRuntimeSupport,
-	telemetry: StartupTelemetry,
-): Promise<void> {
-	if (runtimeSupport.reason) {
-		telemetry.trace("runtime.unsupported_reason", {
-			reason: runtimeSupport.reason,
-		});
-		showToast(runtimeSupport.reason, 6000);
 	}
 }

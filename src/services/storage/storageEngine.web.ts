@@ -1,11 +1,11 @@
-import type { StorageEngine } from "@/services/storage/engines/StorageEngine";
-import { TauriStorageEngine } from "@/services/storage/engines/TauriStorageEngine";
+import { PlatformStorageEngine } from "@/services/storage/engines/StorageEngine";
+import type { StorageEngine } from "@/services/storage/types";
 
 let _engine: StorageEngine | null = null;
 
 function getEngine(): StorageEngine {
 	if (!_engine) {
-		_engine = new TauriStorageEngine();
+		_engine = new PlatformStorageEngine();
 	}
 	return _engine;
 }

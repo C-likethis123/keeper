@@ -5,7 +5,6 @@ import { useStorageStore } from "@/stores/storageStore";
 import {
 	initializeGitStep,
 	initializeStorageStep,
-	initializeUnsupportedRuntimeStep,
 } from "../startupSteps";
 
 const mockShowToast = jest.fn();
@@ -121,21 +120,4 @@ describe("startupSteps", () => {
 		expect(setInitError).toHaveBeenCalledWith("Sync exploded");
 	});
 
-	it("reports unsupported runtimes through a toast and telemetry", async () => {
-		const telemetry = createTelemetry();
-
-		await initializeUnsupportedRuntimeStep(
-			{
-				runtime: "unsupported",
-				supported: false,
-				reason: "Desktop-only feature",
-			},
-			telemetry as never,
-		);
-
-		expect(mockShowToast).toHaveBeenCalledWith("Desktop-only feature", 6000);
-		expect(telemetry.trace).toHaveBeenCalledWith("runtime.unsupported_reason", {
-			reason: "Desktop-only feature",
-		});
-	});
 });

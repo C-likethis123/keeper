@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 use tauri::Manager;
 
 pub use storage_core::{
@@ -114,6 +114,7 @@ pub fn copy_attachment(
     note_id: String,
     filename: String,
 ) -> Result<String, String> {
+    let _ = note_id;
     let notes_root = notes_root_path(&app)?;
     let attachments_dir = notes_root.join("_attachments");
     std::fs::create_dir_all(&attachments_dir)
@@ -122,6 +123,21 @@ pub fn copy_attachment(
     std::fs::copy(&source_path, &dest)
         .map_err(|e| format!("failed to copy attachment: {e}"))?;
     Ok(format!("_attachments/{}", filename))
+}
+
+#[tauri::command]
+pub fn read_attachment(app: tauri::AppHandle, relative_path: String) -> Result<Vec<u8>, String> {
+    let notes_root = notes_root_path(&app)?;
+    let relative_path_ref = Path::new(&relative_path);
+    if relative_path_ref.is_absolute()
+        || relative_path_ref
+            .components()
+            .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        return Err("attachment path escapes notes root".to_string());
+    }
+    let full_path = notes_root.join(relative_path_ref);
+    std::fs::read(&full_path).map_err(|e| format!("failed to read attachment: {e}"))
 }
 
 #[tauri::command]
