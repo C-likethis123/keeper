@@ -21,6 +21,11 @@ describe("appShortcutRegistry", () => {
 		expect(getAppShortcutCommand("Ctrl+S")).toBe("forceSave");
 	});
 
+	it("maps Cmd/Ctrl+F to openFindReplace", () => {
+		expect(getAppShortcutCommand("Meta+F")).toBe("openFindReplace");
+		expect(getAppShortcutCommand("Ctrl+F")).toBe("openFindReplace");
+	});
+
 	it("returns null for chords already owned by the editor", () => {
 		expect(getAppShortcutCommand("Meta+Z")).toBeNull();
 		expect(getAppShortcutCommand("Ctrl+B")).toBeNull();

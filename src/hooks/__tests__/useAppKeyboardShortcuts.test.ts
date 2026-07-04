@@ -190,6 +190,25 @@ describe("useAppKeyboardShortcuts", () => {
 		expect(onForceSave).toHaveBeenCalledTimes(1);
 	});
 
+	it("calls onOpenFindReplace when Cmd+F is pressed", () => {
+		const onOpenFindReplace = jest.fn();
+		renderHook(() => useAppKeyboardShortcuts({ onOpenFindReplace }));
+
+		const event = fireKey("f", { metaKey: true });
+
+		expect(onOpenFindReplace).toHaveBeenCalledTimes(1);
+		expect(event.defaultPrevented).toBe(true);
+	});
+
+	it("calls onOpenFindReplace when Ctrl+F is pressed", () => {
+		const onOpenFindReplace = jest.fn();
+		renderHook(() => useAppKeyboardShortcuts({ onOpenFindReplace }));
+
+		fireKey("f", { ctrlKey: true });
+
+		expect(onOpenFindReplace).toHaveBeenCalledTimes(1);
+	});
+
 	it("does not call any callback for unregistered chords", () => {
 		const onFocusSearch = jest.fn();
 		const onCreateNote = jest.fn();

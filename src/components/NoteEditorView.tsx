@@ -379,6 +379,7 @@ export default function NoteEditorView({
 
   useAppKeyboardShortcuts({
     onForceSave: forceSave,
+    onOpenFindReplace: () => sendCommand("openFindReplace"),
   });
 
   useFocusEffect(

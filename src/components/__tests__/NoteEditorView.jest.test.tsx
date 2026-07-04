@@ -446,6 +446,25 @@ describe("NoteEditorView", () => {
 		expect(result.getPathname()).toBe("/editor");
 	});
 
+	it("bridges find shortcut into the existing note editor", async () => {
+		renderNoteEditor(makeNote());
+
+		await screen.findByText("Mock editor");
+		const shortcuts = (useAppKeyboardShortcuts as jest.Mock).mock.calls.at(-1)?.[0];
+
+		act(() => {
+			shortcuts.onOpenFindReplace();
+		});
+
+		await waitFor(() => {
+			expect(mockEditorRender).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					command: expect.objectContaining({ type: "openFindReplace" }),
+				}),
+			);
+		});
+	});
+
 	it("passes native DOM sizing and lets the inner editor own scrolling", async () => {
 		renderNoteEditor(makeNote());
 
@@ -577,9 +596,11 @@ describe("NoteEditorView", () => {
 
 		await screen.findByText("Mock editor");
 
-		expect(useAppKeyboardShortcuts).toHaveBeenCalledWith({
-			onForceSave: expect.any(Function),
-		});
+		expect(useAppKeyboardShortcuts).toHaveBeenCalledWith(
+			expect.objectContaining({
+				onForceSave: expect.any(Function),
+			}),
+		);
 	});
 
 	it("defaults todo status to open when switching a note to todo and saving", async () => {

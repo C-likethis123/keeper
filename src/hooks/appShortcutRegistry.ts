@@ -3,7 +3,8 @@ type AppCommandId =
 	| "createNote"
 	| "forceSave"
 	| "newTab"
-	| "closeTab";
+	| "closeTab"
+	| "openFindReplace";
 
 const appShortcutRegistry = new Map<string, AppCommandId>([
 	["Meta+K", "focusSearch"],
@@ -18,6 +19,8 @@ const appShortcutRegistry = new Map<string, AppCommandId>([
 	["Ctrl+T", "newTab"],
 	["Meta+W", "closeTab"],
 	["Ctrl+W", "closeTab"],
+	["Meta+F", "openFindReplace"],
+	["Ctrl+F", "openFindReplace"],
 ]);
 
 export function getAppShortcutCommand(chord: string): AppCommandId | null {

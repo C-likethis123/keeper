@@ -15,6 +15,7 @@ import {
   $createParagraphNode,
   $createTextNode,
   $getRoot,
+  COPY_COMMAND,
   PASTE_COMMAND,
   createEditor,
 } from "lexical";
@@ -34,6 +35,7 @@ import {
 } from "../markdown";
 import { registerChecklistMarkdownPrefixTransform } from "../lists/checklistMarkdownPrefix";
 import { convertTodoTriggerAtSelection } from "../todoTrigger/todoTriggerTransform";
+import { ClipboardShortcutsExtension } from "../extensions/ClipboardShortcutsExtension";
 import { MarkdownPasteExtension } from "../extensions/MarkdownPasteExtension";
 
 function roundTripMarkdown(markdown: string): string {
@@ -176,6 +178,56 @@ describe("Keeper Lexical markdown transformers", () => {
     expect(markdown).toBe("# Pasted");
 
     unregisterPaste();
+  });
+
+  it("copies full editor selection as markdown", () => {
+    const editor = createEditor({
+      namespace: "KeeperCopyMarkdownTest",
+      nodes: [
+        HeadingNode,
+        QuoteNode,
+        ListNode,
+        ListItemNode,
+        CodeNode,
+        CodeHighlightNode,
+        LinkNode,
+        AutoLinkNode,
+        TableNode,
+        TableCellNode,
+        TableRowNode,
+        DetailsContentNode,
+        DetailsNode,
+        DetailsSummaryNode,
+        EquationNode,
+        ImageNode,
+      ],
+      onError: (error) => {
+        throw error;
+      },
+    });
+    const unregisterCopy =
+      ClipboardShortcutsExtension.register?.(editor, {}, {} as never) ??
+      (() => {});
+    const preventDefault = jest.fn();
+    const setData = jest.fn();
+
+    editor.update(
+      () => {
+        importMarkdownToLexical("# Title\n\n- item");
+        $getRoot().select(0, $getRoot().getChildrenSize());
+      },
+      { discrete: true },
+    );
+
+    editor.dispatchCommand(COPY_COMMAND, {
+      clipboardData: { setData },
+      preventDefault,
+    } as unknown as ClipboardEvent);
+
+    expect(preventDefault).toHaveBeenCalled();
+    expect(setData).toHaveBeenCalledWith("text/plain", "# Title\n\n- item");
+
+    unregisterCopy();
   });
 
   it("round-trips image markdown through ImageNode", () => {

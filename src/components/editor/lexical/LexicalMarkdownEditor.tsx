@@ -236,6 +236,22 @@ function collectFindMatches(
   return matches;
 }
 
+function findMatchesEqual(left: FindMatch[], right: FindMatch[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((match, index) => {
+    const other = right[index];
+    return (
+      match.anchorKey === other.anchorKey &&
+      match.anchorOffset === other.anchorOffset &&
+      match.focusKey === other.focusKey &&
+      match.focusOffset === other.focusOffset
+    );
+  });
+}
+
 function scrollSelectionIntoView() {
   requestAnimationFrame(() => {
     const selection = window.getSelection();
@@ -253,7 +269,28 @@ function scrollSelectionIntoView() {
   });
 }
 
-function selectFindMatch(editor: LexicalEditor, match: FindMatch | undefined) {
+function scrollFindMatchIntoView(
+  editor: LexicalEditor,
+  match: FindMatch | undefined,
+) {
+  if (!match) {
+    return;
+  }
+
+  requestAnimationFrame(() => {
+    editor.getElementByKey(match.anchorKey)?.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: "smooth",
+    });
+  });
+}
+
+function selectFindMatch(
+  editor: LexicalEditor,
+  match: FindMatch | undefined,
+  options: { focusEditor?: boolean } = { focusEditor: true },
+) {
   if (!match) {
     return;
   }
@@ -274,7 +311,9 @@ function selectFindMatch(editor: LexicalEditor, match: FindMatch | undefined) {
     );
     $setSelection(selection);
   });
-  editor.focus();
+  if (options.focusEditor) {
+    editor.focus();
+  }
   scrollSelectionIntoView();
 }
 
@@ -324,7 +363,7 @@ function replaceFindMatch(
   );
 }
 
-function FindReplaceBar() {
+function FindReplaceBar({ command }: { command?: LexicalEditorCommand }) {
   const [editor] = useLexicalComposerContext();
   const [isOpen, setIsOpen] = useState(false);
   const [isReplaceOpen, setIsReplaceOpen] = useState(false);
@@ -337,7 +376,9 @@ function FindReplaceBar() {
 
   const refreshMatches = useCallback(() => {
     const nextMatches = collectFindMatches(editor, query, matchCase);
-    setMatches(nextMatches);
+    setMatches((current) =>
+      findMatchesEqual(current, nextMatches) ? current : nextMatches,
+    );
     setActiveIndex((current) =>
       nextMatches.length === 0 ? 0 : Math.min(current, nextMatches.length - 1),
     );
@@ -359,11 +400,12 @@ function FindReplaceBar() {
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || matches.length === 0) {
+    if (command?.type !== "openFindReplace") {
       return;
     }
-    selectFindMatch(editor, matches[activeIndex]);
-  }, [activeIndex, editor, isOpen, matches]);
+    setIsOpen(true);
+    setIsReplaceOpen(command.payload?.replace === true);
+  }, [command]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -397,11 +439,12 @@ function FindReplaceBar() {
       if (matches.length === 0) {
         return;
       }
-      setActiveIndex((current) =>
-        (current + direction + matches.length) % matches.length,
-      );
+      const nextIndex =
+        (activeIndex + direction + matches.length) % matches.length;
+      setActiveIndex(nextIndex);
+      scrollFindMatchIntoView(editor, matches[nextIndex]);
     },
-    [matches.length],
+    [activeIndex, editor, matches],
   );
 
   const replaceCurrent = useCallback(() => {
@@ -951,9 +994,9 @@ function LexicalMarkdownEditor({
 					display: flex;
 					flex-direction: column;
 					gap: 6px;
+					margin: 0 18px 8px auto;
 					padding: 8px;
-					position: fixed;
-					right: 18px;
+					position: sticky;
 					top: ${Math.max((safeAreaInsets?.top ?? 0) + 14, 14)}px;
 					width: min(520px, calc(100vw - 36px));
 					z-index: 30;
@@ -1039,7 +1082,7 @@ function LexicalMarkdownEditor({
         extension={editorExtension}
         contentEditable={null}
       >
-        <FindReplaceBar />
+        <FindReplaceBar command={command} />
         <div className="keeper-editor-content" ref={setEditorContentElement}>
           <ContentEditable className="keeper-editor ContentEditable__root" />
           <EmptyPlaceholder />

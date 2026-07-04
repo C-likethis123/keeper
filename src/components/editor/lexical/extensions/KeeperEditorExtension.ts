@@ -23,6 +23,7 @@ import {
 } from "./CommandExtension";
 import { createDraggableBlockExtension } from "./DraggableBlockExtension";
 import { InlineCodeMarkdownExitExtension } from "../codeBlock/InlineCodeMarkdownExitExtension";
+import { ClipboardShortcutsExtension } from "./ClipboardShortcutsExtension";
 import { MarkdownPasteExtension } from "./MarkdownPasteExtension";
 import { createMarkdownChangeExtension } from "./MarkdownChangeExtension";
 import { TodoTriggerExtension } from "../todoTrigger/TodoTriggerExtension";
@@ -114,6 +115,7 @@ export function createKeeperEditorExtension({
         maxIndent: null,
       }),
       MarkdownPasteExtension,
+      ClipboardShortcutsExtension,
       RichTextExtension,
       CodePrismExtension,
       ChecklistMarkdownPrefixExtension,

@@ -9,6 +9,7 @@ interface AppKeyboardShortcutCallbacks {
 	onForceSave?: () => void;
 	onNewTab?: () => void;
 	onCloseTab?: () => void;
+	onOpenFindReplace?: () => void;
 }
 
 export function useAppKeyboardShortcuts(
@@ -30,8 +31,14 @@ export function useAppKeyboardShortcuts(
 			const commandId = getAppShortcutCommand(normalized.chord);
 			if (!commandId) return;
 
-			const { onFocusSearch, onCreateNote, onForceSave, onNewTab, onCloseTab } =
-				callbacksRef.current;
+			const {
+				onFocusSearch,
+				onCreateNote,
+				onForceSave,
+				onNewTab,
+				onCloseTab,
+				onOpenFindReplace,
+			} = callbacksRef.current;
 			let handler: (() => void) | undefined;
 			switch (commandId) {
 				case "focusSearch":
@@ -48,6 +55,9 @@ export function useAppKeyboardShortcuts(
 					break;
 				case "closeTab":
 					handler = onCloseTab;
+					break;
+				case "openFindReplace":
+					handler = onOpenFindReplace;
 					break;
 			}
 			if (!handler) return;

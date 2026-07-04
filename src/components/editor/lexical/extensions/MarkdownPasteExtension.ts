@@ -22,7 +22,7 @@ function getPlainTextFromPasteEvent(event: Event): string {
   return "";
 }
 
-function shouldImportPastedMarkdown(text: string): boolean {
+export function shouldImportPastedMarkdown(text: string): boolean {
   const trimmed = text.trim();
   if (trimmed.length === 0) return false;
   return (
