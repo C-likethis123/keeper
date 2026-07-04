@@ -22,7 +22,10 @@ import {
   WikiLinkOverlay,
   type WikiLinkResult,
 } from "@/components/editor/lexical/wikilinks/WikiLinkOverlay";
-import { findExactWikiLinkMatch } from "@/components/editor/lexical/wikilinks/wikiLinkUtils";
+import {
+  findExactWikiLinkMatch,
+  shouldOpenWikiLink,
+} from "@/components/editor/lexical/wikilinks/wikiLinkUtils";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { createWikiLinkUrl, parseWikiLinkUrl } from "./wikiLinkUrl";
 
@@ -227,9 +230,13 @@ export const WikiLinkExtension = defineExtension({
   ],
   name: "keeper/WikiLink",
   register(editor, config) {
-    const handleClick = (event: MouseEvent) => {
+    const handleActivation = (event: MouseEvent) => {
       const title = findWikiLinkTitle(event.target);
       if (!title) {
+        return;
+      }
+
+      if (!shouldOpenWikiLink("web", event)) {
         return;
       }
 
@@ -244,8 +251,10 @@ export const WikiLinkExtension = defineExtension({
     };
 
     return editor.registerRootListener((root, previousRoot) => {
-      previousRoot?.removeEventListener("click", handleClick, true);
-      root?.addEventListener("click", handleClick, true);
+      previousRoot?.removeEventListener("click", handleActivation, true);
+      previousRoot?.removeEventListener("contextmenu", handleActivation, true);
+      root?.addEventListener("click", handleActivation, true);
+      root?.addEventListener("contextmenu", handleActivation, true);
     });
   },
 });

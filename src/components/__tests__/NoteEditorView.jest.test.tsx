@@ -383,6 +383,13 @@ function createDeferred<T = void>() {
 	return { promise, resolve, reject };
 }
 
+async function runDeferredGitFlush() {
+	await act(async () => {
+		jest.advanceTimersByTime(0);
+		await Promise.resolve();
+	});
+}
+
 describe("NoteEditorView", () => {
 	beforeEach(() => {
 		invalidateNoteQueryCache();
@@ -480,15 +487,17 @@ describe("NoteEditorView", () => {
 		await act(async () => {
 			initialProps.onMarkdownChange?.("Changed body");
 		});
-		await waitFor(() => {
-			expect(mockEditorRender).toHaveBeenCalledTimes(initialRenderCount + 1);
-		});
+		expect(mockEditorRender).toHaveBeenCalledTimes(initialRenderCount);
 		const contentChangeRenderCount = mockEditorRender.mock.calls.length;
 
 		act(() => {
 			jest.advanceTimersByTime(2000);
 		});
 		await screen.findByText("Saving…");
+		expect(mockSaveNote).toHaveBeenCalledWith(
+			expect.objectContaining({ content: "Changed body" }),
+			false,
+		);
 		expect(mockEditorRender).toHaveBeenCalledTimes(contentChangeRenderCount);
 
 		await act(async () => {
@@ -636,6 +645,7 @@ describe("NoteEditorView", () => {
 				false,
 			);
 		});
+		await runDeferredGitFlush();
 		expect(mockGitFlushPendingChanges).toHaveBeenCalledWith({
 			reason: "note-exit",
 			message: undefined,
@@ -646,7 +656,7 @@ describe("NoteEditorView", () => {
 		});
 	});
 
-	it("waits for save and git flush before navigating back", async () => {
+	it("waits for save but not git flush before navigating back", async () => {
 		const note = makeNote();
 		const saveDeferred = createDeferred();
 		const flushDeferred = createDeferred<{
@@ -674,8 +684,14 @@ describe("NoteEditorView", () => {
 			await Promise.resolve();
 		});
 
+		await waitFor(() => {
+			expect(result.getPathname()).toBe("/");
+		});
+		expect(mockGitFlushPendingChanges).not.toHaveBeenCalled();
+
+		await runDeferredGitFlush();
+
 		expect(mockGitFlushPendingChanges).toHaveBeenCalledTimes(1);
-		expect(result.getPathname()).toBe("/editor");
 
 		await act(async () => {
 			flushDeferred.resolve({
@@ -684,10 +700,6 @@ describe("NoteEditorView", () => {
 				didPush: true,
 			});
 			await Promise.resolve();
-		});
-
-		await waitFor(() => {
-			expect(result.getPathname()).toBe("/");
 		});
 	});
 
@@ -722,14 +734,16 @@ describe("NoteEditorView", () => {
 		});
 
 		await waitFor(() => {
-			expect(mockGitFlushPendingChanges).toHaveBeenCalledWith({
-				reason: "note-exit",
-				message: undefined,
-				timeoutMs: 8000,
-			});
-		});
-		await waitFor(() => {
 			expect(mockNavigationDispatch).toHaveBeenCalledWith(action);
+		});
+		expect(mockGitFlushPendingChanges).not.toHaveBeenCalled();
+
+		await runDeferredGitFlush();
+
+		expect(mockGitFlushPendingChanges).toHaveBeenCalledWith({
+			reason: "note-exit",
+			message: undefined,
+			timeoutMs: 8000,
 		});
 	});
 
@@ -786,6 +800,7 @@ describe("NoteEditorView", () => {
 		await waitFor(() => {
 			expect(mockDeleteNote).toHaveBeenCalledWith(note.id);
 		});
+		await runDeferredGitFlush();
 		expect(mockGitFlushPendingChanges).toHaveBeenCalledWith({
 			reason: "delete",
 			message: "Delete note",

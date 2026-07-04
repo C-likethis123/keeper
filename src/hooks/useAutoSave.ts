@@ -18,6 +18,7 @@ type AutoSaveInput = {
 	title: string;
 	content: string;
 	currentContent: string;
+	currentContentRevision?: number;
 	getCurrentContent: () => string;
 	isPinned: boolean;
 	noteType: Note["noteType"];
@@ -36,6 +37,7 @@ export function useAutoSave({
 	title,
 	content: initialContent,
 	currentContent,
+	currentContentRevision,
 	getCurrentContent,
 	isPinned,
 	noteType,
@@ -331,7 +333,11 @@ export function useAutoSave({
 	}, [onPersisted]);
 
 	useEffect(() => {
-		const nextContent = normalizeMarkdownForPersistence(currentContent);
+		const rawCurrentContent =
+			currentContentRevision === undefined
+				? currentContent
+				: getCurrentContentRef.current();
+		const nextContent = normalizeMarkdownForPersistence(rawCurrentContent);
 		if (nextContent === latestContentRef.current) {
 			return;
 		}
@@ -346,7 +352,7 @@ export function useAutoSave({
 		hasEditorContentChangedRef.current = true;
 		lastInputAtRef.current = Date.now();
 		scheduleSaveWhenIdleRef.current?.();
-	}, [currentContent]);
+	}, [currentContent, currentContentRevision]);
 
 	useEffect(() => {
 		GitService.registerBackgroundSaveHandler(forceSave);

@@ -34,6 +34,26 @@ export class NoteService {
 		const id = note.id.trim();
 		const pinnedState = !!note.isPinned;
 		const title = (note.title ?? "").trim();
+		const journalNote = {
+			id,
+			title,
+			content: note.content,
+			isPinned: pinnedState,
+			noteType: note.noteType,
+			status: note.status ?? null,
+			createdAt: note.createdAt,
+			completedAt: note.completedAt,
+			attachment: note.attachment ?? null,
+			attachedVideo: note.attachedVideo ?? null,
+			resourceUrl: note.resourceUrl ?? null,
+			documentPositions: note.documentPositions ?? null,
+		};
+		await GitService.queueChangeAsync(
+			NoteService.getGitPath(id),
+			isNewNote ? "add" : "modify",
+			journalNote,
+		);
+
 		const saved = await storageEngine.saveNote({
 			...note,
 			id,
@@ -52,24 +72,6 @@ export class NoteService {
 			status: saved.status ?? null,
 		});
 
-		await GitService.queueChangeAsync(
-			NoteService.getGitPath(id),
-			isNewNote ? "add" : "modify",
-			{
-				id,
-				title,
-				content: saved.content,
-				isPinned: pinnedState,
-				noteType: saved.noteType,
-				status: saved.status ?? null,
-				createdAt: saved.createdAt,
-				completedAt: saved.completedAt,
-				attachment: saved.attachment ?? null,
-				attachedVideo: saved.attachedVideo ?? null,
-				resourceUrl: saved.resourceUrl ?? null,
-				documentPositions: saved.documentPositions ?? null,
-			},
-		);
 		GitService.scheduleCommitBatch();
 		invalidateNoteQueryCache();
 		useStorageStore.getState().bumpContentVersion();

@@ -14,7 +14,6 @@ import React from "react";
 const mockUseNotes = jest.fn();
 const mockShowToast = jest.fn();
 const mockRouterPush = jest.fn();
-const mockUseFocusEffect = jest.fn();
 const mockOpenDrawer = jest.fn();
 
 jest.mock("@/hooks/useNotes", () => ({
@@ -71,7 +70,6 @@ jest.mock("expo-router", () => {
 		router: {
 			push: (...args: unknown[]) => mockRouterPush(...args),
 		},
-		useFocusEffect: (callback: () => void) => mockUseFocusEffect(callback),
 		useNavigation: () => ({
 			openDrawer: (...args: unknown[]) => mockOpenDrawer(...args),
 		}),
@@ -198,7 +196,6 @@ describe("Index", () => {
 		mockUseNotes.mockReset();
 		mockShowToast.mockReset();
 		mockRouterPush.mockReset();
-		mockUseFocusEffect.mockReset();
 		mockOpenDrawer.mockReset();
 		(NoteService.saveNote as jest.Mock).mockReset();
 		(NoteService.saveNote as jest.Mock).mockResolvedValue(undefined);
@@ -210,13 +207,7 @@ describe("Index", () => {
 	});
 
 	it("renders the custom home header and composer", async () => {
-		const handleRefresh = jest.fn();
-		mockUseFocusEffect.mockImplementation((callback: () => void) => callback());
-		mockUseNotes.mockReturnValue(
-			makeUseNotesResult({
-				handleRefresh,
-			}),
-		);
+		mockUseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
 
@@ -231,12 +222,10 @@ describe("Index", () => {
 		expect(
 			screen.getByRole("button", { name: "Open suggested MOCs" }),
 		).toBeOnTheScreen();
-		expect(handleRefresh).toHaveBeenCalledTimes(1);
 	});
 
 	it("updates the search query through the header search input", async () => {
 		const setQuery = jest.fn();
-		mockUseFocusEffect.mockImplementation(() => {});
 		mockUseNotes.mockReturnValue(
 			makeUseNotesResult({
 				setQuery,
@@ -252,7 +241,6 @@ describe("Index", () => {
 
 	it("opens the filter panel from the hamburger button", async () => {
 		const user = userEvent.setup();
-		mockUseFocusEffect.mockImplementation(() => {});
 		mockUseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
@@ -264,7 +252,6 @@ describe("Index", () => {
 
 	it("opens the dedicated suggested MOCs page from the header", async () => {
 		const user = userEvent.setup();
-		mockUseFocusEffect.mockImplementation(() => {});
 		mockUseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
@@ -278,7 +265,6 @@ describe("Index", () => {
 
 	it("creates a blank note and routes into the editor from the quick composer", async () => {
 		const user = userEvent.setup();
-		mockUseFocusEffect.mockImplementation(() => {});
 		mockUseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
@@ -295,7 +281,6 @@ describe("Index", () => {
 	});
 
 	it("registers home route shortcuts for search focus and note creation", () => {
-		mockUseFocusEffect.mockImplementation(() => {});
 		mockUseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
@@ -308,7 +293,6 @@ describe("Index", () => {
 
 	it("creates a todo note from the checkbox action", async () => {
 		const user = userEvent.setup();
-		mockUseFocusEffect.mockImplementation(() => {});
 		mockUseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
@@ -331,7 +315,6 @@ describe("Index", () => {
 
 	it("creates a journal note from the quick composer", async () => {
 		const user = userEvent.setup();
-		mockUseFocusEffect.mockImplementation(() => {});
 		mockUseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
@@ -354,7 +337,6 @@ describe("Index", () => {
 
 	it("creates a resource note from the quick composer", async () => {
 		const user = userEvent.setup();
-		mockUseFocusEffect.mockImplementation(() => {});
 		mockUseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
@@ -377,7 +359,6 @@ describe("Index", () => {
 
 	it("creates a quick note from the composer", async () => {
 		const user = userEvent.setup();
-		mockUseFocusEffect.mockImplementation(() => {});
 		mockUseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);

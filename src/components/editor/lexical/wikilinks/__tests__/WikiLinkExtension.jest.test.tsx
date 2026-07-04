@@ -65,7 +65,53 @@ describe("WikiLinkExtension interactions", () => {
 		global.Element = originalElement;
 	});
 
-	it("opens wiki links from the Lexical editor root", () => {
+	it("opens wiki links from the Lexical editor root on control-click", () => {
+		const root = createRootMock();
+		const editor = createEditorMock(root);
+		const onOpenWikiLink = jest.fn();
+
+		registerWikiLinkExtension(editor, onOpenWikiLink);
+
+		const handleClick = root.addEventListener.mock.calls.find(
+			([eventName]) => eventName === "click",
+		)?.[1];
+		const event = {
+			ctrlKey: true,
+			target: new TestElement(createWikiLinkUrl("Project Alpha")),
+			preventDefault: jest.fn(),
+			stopPropagation: jest.fn(),
+		};
+		handleClick(event);
+
+		expect(onOpenWikiLink).toHaveBeenCalledWith("Project Alpha");
+		expect(event.preventDefault).toHaveBeenCalled();
+		expect(event.stopPropagation).toHaveBeenCalled();
+	});
+
+	it("opens wiki links from the context menu event on control-click", () => {
+		const root = createRootMock();
+		const editor = createEditorMock(root);
+		const onOpenWikiLink = jest.fn();
+
+		registerWikiLinkExtension(editor, onOpenWikiLink);
+
+		const handleContextMenu = root.addEventListener.mock.calls.find(
+			([eventName]) => eventName === "contextmenu",
+		)?.[1];
+		const event = {
+			ctrlKey: true,
+			target: new TestElement(createWikiLinkUrl("Project Alpha")),
+			preventDefault: jest.fn(),
+			stopPropagation: jest.fn(),
+		};
+		handleContextMenu(event);
+
+		expect(onOpenWikiLink).toHaveBeenCalledWith("Project Alpha");
+		expect(event.preventDefault).toHaveBeenCalled();
+		expect(event.stopPropagation).toHaveBeenCalled();
+	});
+
+	it("ignores unmodified wiki link clicks", () => {
 		const root = createRootMock();
 		const editor = createEditorMock(root);
 		const onOpenWikiLink = jest.fn();
@@ -82,9 +128,8 @@ describe("WikiLinkExtension interactions", () => {
 		};
 		handleClick(event);
 
-		expect(onOpenWikiLink).toHaveBeenCalledWith("Project Alpha");
-		expect(event.preventDefault).toHaveBeenCalled();
-		expect(event.stopPropagation).toHaveBeenCalled();
+		expect(onOpenWikiLink).not.toHaveBeenCalled();
+		expect(event.preventDefault).not.toHaveBeenCalled();
 	});
 
 	it("ignores ordinary links", () => {
@@ -98,6 +143,7 @@ describe("WikiLinkExtension interactions", () => {
 			([eventName]) => eventName === "click",
 		)?.[1];
 		const event = {
+			ctrlKey: true,
 			target: new TestElement("https://example.com"),
 			preventDefault: jest.fn(),
 			stopPropagation: jest.fn(),

@@ -15,6 +15,7 @@ import {
   $createParagraphNode,
   $createTextNode,
   $getRoot,
+  PASTE_COMMAND,
   createEditor,
 } from "lexical";
 import {
@@ -29,9 +30,11 @@ import {
   KEEPER_MARKDOWN_TRANSFORMERS,
   exportLexicalToMarkdown,
   importMarkdownToLexical,
+  parseMarkdownToSerializedNodes,
 } from "../markdown";
 import { registerChecklistMarkdownPrefixTransform } from "../lists/checklistMarkdownPrefix";
 import { convertTodoTriggerAtSelection } from "../todoTrigger/todoTriggerTransform";
+import { MarkdownPasteExtension } from "../extensions/MarkdownPasteExtension";
 
 function roundTripMarkdown(markdown: string): string {
   const editor = createEditor({
@@ -110,6 +113,71 @@ function getFirstImportedNode(markdown: string) {
 }
 
 describe("Keeper Lexical markdown transformers", () => {
+  it("parses pasted markdown into serialized lexical nodes", () => {
+    const nodes = parseMarkdownToSerializedNodes("# Heading\n\n- **bold** item");
+
+    expect(nodes).toMatchObject([
+      { tag: "h1", type: "heading" },
+      { listType: "bullet", type: "list" },
+    ]);
+  });
+
+  it("handles paste events by inserting parsed markdown nodes", () => {
+    const editor = createEditor({
+      namespace: "KeeperMarkdownPasteTest",
+      nodes: [
+        HeadingNode,
+        QuoteNode,
+        ListNode,
+        ListItemNode,
+        CodeNode,
+        CodeHighlightNode,
+        LinkNode,
+        AutoLinkNode,
+        TableNode,
+        TableCellNode,
+        TableRowNode,
+        DetailsContentNode,
+        DetailsNode,
+        DetailsSummaryNode,
+        EquationNode,
+        ImageNode,
+      ],
+      onError: (error) => {
+        throw error;
+      },
+    });
+    const unregisterPaste =
+      MarkdownPasteExtension.register?.(editor, {}, {} as never) ??
+      (() => {});
+    const preventDefault = jest.fn();
+
+    editor.update(
+      () => {
+        importMarkdownToLexical("");
+        $getRoot().selectEnd();
+      },
+      { discrete: true },
+    );
+
+    editor.dispatchCommand(PASTE_COMMAND, {
+      clipboardData: {
+        getData: () => "# Pasted",
+      },
+      preventDefault,
+    } as unknown as ClipboardEvent);
+
+    let markdown = "";
+    editor.getEditorState().read(() => {
+      markdown = exportLexicalToMarkdown();
+    });
+
+    expect(preventDefault).toHaveBeenCalled();
+    expect(markdown).toBe("# Pasted");
+
+    unregisterPaste();
+  });
+
   it("round-trips image markdown through ImageNode", () => {
     expect(roundTripMarkdown("![Diagram](keeper://asset/image.png)")).toBe(
       "![Diagram](keeper://asset/image.png)",

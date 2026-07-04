@@ -102,7 +102,7 @@ describe("wikiLinkUtils", () => {
     );
   });
 
-  it("requires cmd-click on web but opens directly on native", () => {
+  it("requires cmd/control-click on web but opens directly on native", () => {
     expect(shouldOpenWikiLink("ios")).toBe(true);
     expect(
       shouldOpenWikiLink("web", {
@@ -112,6 +112,11 @@ describe("wikiLinkUtils", () => {
     expect(
       shouldOpenWikiLink("web", {
         nativeEvent: { metaKey: true },
+      }),
+    ).toBe(true);
+    expect(
+      shouldOpenWikiLink("web", {
+        ctrlKey: true,
       }),
     ).toBe(true);
   });

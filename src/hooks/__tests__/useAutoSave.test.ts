@@ -163,6 +163,45 @@ describe("useAutoSave", () => {
 		});
 	});
 
+	it("saves latest ref content when editor revision changes without content prop churn", async () => {
+		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		let revision = 0;
+		const { result, rerender } = renderHook(() =>
+			useAutoSave({
+				id: "note-1",
+				title: "Draft note",
+				content: "Initial body",
+				currentContent: "Initial body",
+				currentContentRevision: revision,
+				getCurrentContent: () => currentContent,
+				isPinned: false,
+				noteType: "note",
+			}),
+		);
+
+		act(() => {
+			currentContent = "Typed A";
+			currentContent = "Typed AB";
+			currentContent = "Typed ABC";
+			revision += 1;
+		});
+		rerender(undefined);
+
+		await act(async () => {
+			await result.current.forceSave();
+		});
+
+		expect(persistEditorEntry).toHaveBeenCalledWith({
+			id: "note-1",
+			title: "Draft note",
+			content: "Typed ABC",
+			isPinned: false,
+			noteType: "note",
+			status: undefined,
+			isNewEntry: false,
+		});
+	});
+
 	it("saves metadata changes with loaded note content before editor content changes", async () => {
 		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
 		currentContent = "Fresh loaded body";

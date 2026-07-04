@@ -83,6 +83,7 @@ export default function NoteEditorView({
   >();
   const [editorMarkdown, setEditorMarkdown] = useState(initialEditorMarkdown);
   const editorMarkdownRef = useRef(initialEditorMarkdown);
+  const [editorContentRevision, setEditorContentRevision] = useState(0);
   const [editorInstanceKey, setEditorInstanceKey] = useState(0);
   const keyboardHeight = useEditorKeyboardHeight();
   const [editorHostHeight, setEditorHostHeight] = useState<number | null>(null);
@@ -104,7 +105,7 @@ export default function NoteEditorView({
       return;
     }
     editorMarkdownRef.current = markdown;
-    setEditorMarkdown(markdown);
+    setEditorContentRevision((revision) => revision + 1);
   }, []);
 
   const getCurrentEditorMarkdown = useCallback(
@@ -195,6 +196,7 @@ export default function NoteEditorView({
   const { status, forceSave } = useAutoSave({
     ...note,
     currentContent: editorMarkdown,
+    currentContentRevision: editorContentRevision,
     getCurrentContent: getCurrentEditorMarkdown,
     title,
     isPinned,
@@ -212,16 +214,24 @@ export default function NoteEditorView({
     isNew,
   });
 
-  const saveAndFlushBeforeExit = useCallback(async () => {
+  const flushGitAfterNavigation = useCallback(
+    (reason: "note-exit" | "delete", message?: string) => {
+      setTimeout(() => {
+        void flushGitAndToastOnFailure(reason, message);
+      }, 0);
+    },
+    [flushGitAndToastOnFailure],
+  );
+
+  const saveBeforeExit = useCallback(async () => {
     try {
       await forceSave();
     } catch {
       showToast("Failed to save note.");
       return false;
     }
-    await flushGitAndToastOnFailure("note-exit");
     return true;
-  }, [flushGitAndToastOnFailure, forceSave]);
+  }, [forceSave]);
 
   const leaveEditor = useCallback(
     async (action?: { type: string; payload?: object }) => {
@@ -231,34 +241,45 @@ export default function NoteEditorView({
 
       isLeavingRef.current = true;
       try {
-        if (!(await saveAndFlushBeforeExit())) {
+        if (!(await saveBeforeExit())) {
           return;
         }
         bypassNextBeforeRemoveRef.current = true;
         if (action) {
           navigation.dispatch(action);
+          flushGitAfterNavigation("note-exit");
           return;
         }
         router.back();
+        flushGitAfterNavigation("note-exit");
       } finally {
         isLeavingRef.current = false;
       }
     },
-    [navigation, router, saveAndFlushBeforeExit],
+    [flushGitAfterNavigation, navigation, router, saveBeforeExit],
   );
 
   const handleBack = useCallback(async () => {
     if (tabs.length === 1 && tab && !tab.isPinned) {
-      if (!(await saveAndFlushBeforeExit())) {
+      if (!(await saveBeforeExit())) {
         return;
       }
       bypassNextBeforeRemoveRef.current = true;
       closeTab(tab.id);
       router.replace("/");
+      flushGitAfterNavigation("note-exit");
     } else {
       await leaveEditor();
     }
-  }, [tabs.length, tab, closeTab, leaveEditor, router, saveAndFlushBeforeExit]);
+  }, [
+    tabs.length,
+    tab,
+    closeTab,
+    flushGitAfterNavigation,
+    leaveEditor,
+    router,
+    saveBeforeExit,
+  ]);
 
   const handleOpenWikiLink = useCallback(
     async (wikiLinkTitle: string) => {
@@ -275,6 +296,7 @@ export default function NoteEditorView({
     (markdown: string) => {
       editorMarkdownRef.current = markdown;
       setEditorMarkdown(markdown);
+      setEditorContentRevision((revision) => revision + 1);
       setEditorInstanceKey((key) => key + 1);
       sendCommand("loadMarkdown", { markdown });
     },
@@ -386,6 +408,7 @@ export default function NoteEditorView({
         loadedNoteRef.current = { id: note.id, content: nextEditorContent };
         editorMarkdownRef.current = nextEditorContent;
         setEditorMarkdown(nextEditorContent);
+        setEditorContentRevision((revision) => revision + 1);
         if (shouldRemountEditor) {
           setEditorInstanceKey((key) => key + 1);
         }
@@ -412,13 +435,13 @@ export default function NoteEditorView({
 
   const handleDeletePress = useCallback(async () => {
     await NoteService.deleteNote(id);
-    await flushGitAndToastOnFailure(
+    bypassNextBeforeRemoveRef.current = true;
+    router.back();
+    flushGitAfterNavigation(
       "delete",
       `Delete ${latestDraftRef.current.noteType}`,
     );
-    bypassNextBeforeRemoveRef.current = true;
-    router.back();
-  }, [flushGitAndToastOnFailure, id, router]);
+  }, [flushGitAfterNavigation, id, router]);
 
   const handleTextSelected = useCallback(
     (text: string) => {
@@ -532,13 +555,14 @@ export default function NoteEditorView({
 
   const handleNavigateToNote = useCallback(
     async (noteId: string) => {
-      if (!(await saveAndFlushBeforeExit())) {
+      if (!(await saveBeforeExit())) {
         return;
       }
       bypassNextBeforeRemoveRef.current = true;
       router.push(`/editor?id=${noteId}`);
+      flushGitAfterNavigation("note-exit");
     },
-    [router, saveAndFlushBeforeExit],
+    [flushGitAfterNavigation, router, saveBeforeExit],
   );
 
   const handleToolbarInsertImage = useCallback(async () => {

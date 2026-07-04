@@ -11,6 +11,8 @@ interface WikiLinkActivationEvent {
 		metaKey?: boolean;
 		ctrlKey?: boolean;
 	};
+	metaKey?: boolean;
+	ctrlKey?: boolean;
 	stopPropagation?: () => void;
 	preventDefault?: () => void;
 }
@@ -118,5 +120,10 @@ export function shouldOpenWikiLink(
 		return true;
 	}
 
-	return Boolean(event?.nativeEvent?.metaKey || event?.nativeEvent?.ctrlKey);
+	return Boolean(
+		event?.nativeEvent?.metaKey ||
+			event?.nativeEvent?.ctrlKey ||
+			event?.metaKey ||
+			event?.ctrlKey,
+	);
 }

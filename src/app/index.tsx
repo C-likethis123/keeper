@@ -28,7 +28,7 @@ import { useFilterStore } from "@/stores/filterStore";
 import { useStorageStore } from "@/stores/storageStore";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
-import { router, useFocusEffect, useNavigation } from "expo-router";
+import { router, useNavigation } from "expo-router";
 import React, {
 	Suspense,
 	useCallback,
@@ -249,12 +249,6 @@ function IndexContent() {
 	const styles = useStyles(createStyles);
 	const emptySubtitle =
 		"There are no notes that match existing filters. Create a note to get started";
-
-	useFocusEffect(
-		useCallback(() => {
-			void handleRefresh();
-		}, [handleRefresh]),
-	);
 
 	return (
 		<View style={styles.container}>

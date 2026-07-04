@@ -104,4 +104,30 @@ describe("DefaultRemoteSyncService", () => {
 			fastForwardOnly: true,
 		});
 	});
+
+	it("commits dirty local notes before merging older remote state", async () => {
+		const order: string[] = [];
+		const gitEngine = createGitEngine({
+			status: jest.fn().mockResolvedValue([{ path: "note-1.md" }]),
+			commit: jest.fn().mockImplementation(async () => {
+				order.push("commit-local");
+			}),
+			merge: jest.fn().mockImplementation(async () => {
+				order.push("merge-remote");
+			}),
+		});
+		const service = new DefaultRemoteSyncService(
+			gitEngine,
+			createDbSyncService(),
+			createStateStore(),
+		);
+
+		await service.syncWithRemote(createNoopStartupTelemetry());
+
+		expect(gitEngine.commit).toHaveBeenCalledWith(
+			"/tmp/keeper-notes",
+			"Auto-save before sync",
+		);
+		expect(order).toEqual(["commit-local", "merge-remote"]);
+	});
 });

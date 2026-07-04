@@ -10,7 +10,15 @@ import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import { NOTES_ROOT, setNotesRoot } from "@/services/notes/Notes";
 
-import { $getRoot } from "lexical";
+import {
+  $createRangeSelection,
+  $getNodeByKey,
+  $getRoot,
+  $isTextNode,
+  $setSelection,
+  type LexicalEditor,
+  type TextNode,
+} from "lexical";
 import React, {
   useCallback,
   useEffect,
@@ -140,6 +148,393 @@ function EmptyPlaceholder() {
   }
 
   return <div className="keeper-placeholder">Start writing</div>;
+}
+
+interface FindMatch {
+  anchorKey: string;
+  anchorOffset: number;
+  focusKey: string;
+  focusOffset: number;
+}
+
+interface TextSegment {
+  end: number;
+  node: TextNode;
+  start: number;
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function resolveTextPoint(segments: TextSegment[], offset: number) {
+  for (const segment of segments) {
+    if (offset >= segment.start && offset <= segment.end) {
+      return {
+        key: segment.node.getKey(),
+        offset: Math.min(offset - segment.start, segment.node.getTextContentSize()),
+      };
+    }
+  }
+
+  const lastSegment = segments[segments.length - 1];
+  return lastSegment
+    ? {
+        key: lastSegment.node.getKey(),
+        offset: lastSegment.node.getTextContentSize(),
+      }
+    : null;
+}
+
+function collectFindMatches(
+  editor: LexicalEditor,
+  query: string,
+  matchCase: boolean,
+) {
+  if (!query) {
+    return [];
+  }
+
+  const matches: FindMatch[] = [];
+  editor.getEditorState().read(() => {
+    const segments: TextSegment[] = [];
+    let content = "";
+
+    for (const node of $getRoot().getAllTextNodes()) {
+      const text = node.getTextContent();
+      if (!text) {
+        continue;
+      }
+      const start = content.length;
+      content += text;
+      segments.push({ end: content.length, node, start });
+    }
+
+    if (!content || segments.length === 0) {
+      return;
+    }
+
+    const flags = matchCase ? "g" : "gi";
+    const expression = new RegExp(escapeRegex(query), flags);
+    for (const match of content.matchAll(expression)) {
+      const start = match.index ?? 0;
+      const end = start + query.length;
+      const anchor = resolveTextPoint(segments, start);
+      const focus = resolveTextPoint(segments, end);
+      if (!anchor || !focus) {
+        continue;
+      }
+      matches.push({
+        anchorKey: anchor.key,
+        anchorOffset: anchor.offset,
+        focusKey: focus.key,
+        focusOffset: focus.offset,
+      });
+    }
+  });
+
+  return matches;
+}
+
+function scrollSelectionIntoView() {
+  requestAnimationFrame(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    if (rect.height > 0 || rect.width > 0) {
+      window.scrollBy({
+        top: rect.top - window.innerHeight / 3,
+        behavior: "smooth",
+      });
+    }
+  });
+}
+
+function selectFindMatch(editor: LexicalEditor, match: FindMatch | undefined) {
+  if (!match) {
+    return;
+  }
+
+  editor.update(() => {
+    const anchorNode = $getNodeByKey(match.anchorKey);
+    const focusNode = $getNodeByKey(match.focusKey);
+    if (!$isTextNode(anchorNode) || !$isTextNode(focusNode)) {
+      return;
+    }
+
+    const selection = $createRangeSelection();
+    selection.setTextNodeRange(
+      anchorNode,
+      match.anchorOffset,
+      focusNode,
+      match.focusOffset,
+    );
+    $setSelection(selection);
+  });
+  editor.focus();
+  scrollSelectionIntoView();
+}
+
+function replaceFindMatch(
+  editor: LexicalEditor,
+  match: FindMatch | undefined,
+  replacement: string,
+) {
+  if (!match) {
+    return;
+  }
+
+  editor.update(
+    () => {
+      const anchorNode = $getNodeByKey(match.anchorKey);
+      const focusNode = $getNodeByKey(match.focusKey);
+      if (!$isTextNode(anchorNode) || !$isTextNode(focusNode)) {
+        return;
+      }
+
+      if (anchorNode.is(focusNode)) {
+        const text = anchorNode.getTextContent();
+        anchorNode.setTextContent(
+          `${text.slice(0, match.anchorOffset)}${replacement}${text.slice(
+            match.focusOffset,
+          )}`,
+        );
+        return;
+      }
+
+      const firstText = anchorNode.getTextContent();
+      const lastText = focusNode.getTextContent();
+      anchorNode.setTextContent(
+        `${firstText.slice(0, match.anchorOffset)}${replacement}${lastText.slice(
+          match.focusOffset,
+        )}`,
+      );
+      let nextSibling = anchorNode.getNextSibling();
+      while (nextSibling && !nextSibling.is(focusNode)) {
+        const current = nextSibling;
+        nextSibling = current.getNextSibling();
+        current.remove();
+      }
+      focusNode.remove();
+    },
+    { discrete: true },
+  );
+}
+
+function FindReplaceBar() {
+  const [editor] = useLexicalComposerContext();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isReplaceOpen, setIsReplaceOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [replacement, setReplacement] = useState("");
+  const [matchCase, setMatchCase] = useState(false);
+  const [matches, setMatches] = useState<FindMatch[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const findInputRef = useRef<HTMLInputElement | null>(null);
+
+  const refreshMatches = useCallback(() => {
+    const nextMatches = collectFindMatches(editor, query, matchCase);
+    setMatches(nextMatches);
+    setActiveIndex((current) =>
+      nextMatches.length === 0 ? 0 : Math.min(current, nextMatches.length - 1),
+    );
+  }, [editor, matchCase, query]);
+
+  useEffect(() => {
+    refreshMatches();
+    return editor.registerUpdateListener(() => {
+      refreshMatches();
+    });
+  }, [editor, refreshMatches]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    findInputRef.current?.focus();
+    findInputRef.current?.select();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || matches.length === 0) {
+      return;
+    }
+    selectFindMatch(editor, matches[activeIndex]);
+  }, [activeIndex, editor, isOpen, matches]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isMod = event.metaKey || event.ctrlKey;
+      if (isMod && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        setIsOpen(true);
+        if (event.shiftKey || event.altKey) {
+          setIsReplaceOpen(true);
+        }
+        return;
+      }
+
+      if (!isOpen) {
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsOpen(false);
+        editor.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
+  }, [editor, isOpen]);
+
+  const goToMatch = useCallback(
+    (direction: 1 | -1) => {
+      if (matches.length === 0) {
+        return;
+      }
+      setActiveIndex((current) =>
+        (current + direction + matches.length) % matches.length,
+      );
+    },
+    [matches.length],
+  );
+
+  const replaceCurrent = useCallback(() => {
+    const match = matches[activeIndex];
+    replaceFindMatch(editor, match, replacement);
+    setTimeout(() => {
+      const nextMatches = collectFindMatches(editor, query, matchCase);
+      setMatches(nextMatches);
+      setActiveIndex((current) =>
+        nextMatches.length === 0 ? 0 : Math.min(current, nextMatches.length - 1),
+      );
+    }, 0);
+  }, [activeIndex, editor, matchCase, matches, query, replacement]);
+
+  const replaceAll = useCallback(() => {
+    for (let index = matches.length - 1; index >= 0; index -= 1) {
+      replaceFindMatch(editor, matches[index], replacement);
+    }
+    setMatches([]);
+    setActiveIndex(0);
+  }, [editor, matches, replacement]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const hasMatches = matches.length > 0;
+
+  return (
+    <div className="keeper-find-panel">
+      <div className="keeper-find-row">
+        <button
+          aria-label={isReplaceOpen ? "Hide replace" : "Show replace"}
+          className="keeper-find-icon-button"
+          onClick={() => setIsReplaceOpen((value) => !value)}
+          type="button"
+        >
+          {isReplaceOpen ? "⌄" : "›"}
+        </button>
+        <input
+          ref={findInputRef}
+          aria-label="Find"
+          className="keeper-find-input"
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setActiveIndex(0);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              goToMatch(event.shiftKey ? -1 : 1);
+            }
+          }}
+          placeholder="Find"
+          value={query}
+        />
+        <span className="keeper-find-count">
+          {query ? (hasMatches ? `${activeIndex + 1}/${matches.length}` : "0/0") : ""}
+        </span>
+        <button
+          aria-label="Match case"
+          className={`keeper-find-text-button ${matchCase ? "keeper-find-active" : ""}`}
+          onClick={() => setMatchCase((value) => !value)}
+          type="button"
+        >
+          Aa
+        </button>
+        <button
+          aria-label="Previous match"
+          className="keeper-find-icon-button"
+          disabled={!hasMatches}
+          onClick={() => goToMatch(-1)}
+          type="button"
+        >
+          ↑
+        </button>
+        <button
+          aria-label="Next match"
+          className="keeper-find-icon-button"
+          disabled={!hasMatches}
+          onClick={() => goToMatch(1)}
+          type="button"
+        >
+          ↓
+        </button>
+        <button
+          aria-label="Close find"
+          className="keeper-find-icon-button"
+          onClick={() => {
+            setIsOpen(false);
+            editor.focus();
+          }}
+          type="button"
+        >
+          ×
+        </button>
+      </div>
+      {isReplaceOpen ? (
+        <div className="keeper-find-row">
+          <span className="keeper-find-spacer" />
+          <input
+            aria-label="Replace"
+            className="keeper-find-input"
+            onChange={(event) => setReplacement(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                replaceCurrent();
+              }
+            }}
+            placeholder="Replace"
+            value={replacement}
+          />
+          <button
+            className="keeper-find-replace-button"
+            disabled={!hasMatches}
+            onClick={replaceCurrent}
+            type="button"
+          >
+            Replace
+          </button>
+          <button
+            className="keeper-find-replace-button"
+            disabled={!hasMatches}
+            onClick={replaceAll}
+            type="button"
+          >
+            All
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function useLatestGetter<T>(value: T) {
@@ -280,9 +675,9 @@ function LexicalMarkdownEditor({
 						outline: none;
 						padding-left: 28px;
 						font-size: 17px;
-					line-height: 1.55;
-					white-space: pre-wrap;
-				}
+						line-height: 1.55;
+						white-space: pre-wrap;
+					}
 					.keeper-editor-content {
 						position: relative;
 					}
@@ -547,11 +942,104 @@ function LexicalMarkdownEditor({
 				.keeper-text-bold { font-weight: 700; }
 				.keeper-text-italic { font-style: italic; }
 				.keeper-text-underline { text-decoration: underline; }
+				.keeper-find-panel {
+					background: ${palette.card};
+					border: 1px solid ${palette.border};
+					border-radius: 8px;
+					box-shadow: 0 10px 28px ${palette.shadow}33;
+					box-sizing: border-box;
+					display: flex;
+					flex-direction: column;
+					gap: 6px;
+					padding: 8px;
+					position: fixed;
+					right: 18px;
+					top: ${Math.max((safeAreaInsets?.top ?? 0) + 14, 14)}px;
+					width: min(520px, calc(100vw - 36px));
+					z-index: 30;
+				}
+				.keeper-find-row {
+					align-items: center;
+					display: flex;
+					gap: 6px;
+					min-width: 0;
+				}
+				.keeper-find-input {
+					background: ${palette.background};
+					border: 1px solid ${palette.border};
+					border-radius: 6px;
+					box-sizing: border-box;
+					color: ${palette.text};
+					flex: 1;
+					font: inherit;
+					font-size: 14px;
+					height: 32px;
+					min-width: 0;
+					outline: none;
+					padding: 0 10px;
+				}
+				.keeper-find-input:focus {
+					border-color: ${palette.primary};
+					box-shadow: 0 0 0 2px ${palette.primary}33;
+				}
+				.keeper-find-count {
+					color: ${palette.textSecondary};
+					font-size: 12px;
+					font-variant-numeric: tabular-nums;
+					min-width: 44px;
+					text-align: center;
+				}
+				.keeper-find-icon-button,
+				.keeper-find-text-button,
+				.keeper-find-replace-button {
+					align-items: center;
+					background: transparent;
+					border: 1px solid transparent;
+					border-radius: 6px;
+					color: ${palette.text};
+					cursor: pointer;
+					display: inline-flex;
+					font: inherit;
+					font-size: 14px;
+					height: 32px;
+					justify-content: center;
+					line-height: 1;
+					padding: 0;
+				}
+				.keeper-find-icon-button {
+					width: 32px;
+				}
+				.keeper-find-text-button {
+					font-weight: 700;
+					width: 34px;
+				}
+				.keeper-find-replace-button {
+					background: ${palette.background};
+					border-color: ${palette.border};
+					padding: 0 10px;
+					white-space: nowrap;
+				}
+				.keeper-find-icon-button:hover,
+				.keeper-find-text-button:hover,
+				.keeper-find-replace-button:hover,
+				.keeper-find-active {
+					background: ${palette.primary}1A;
+					border-color: ${palette.primary}66;
+				}
+				.keeper-find-icon-button:disabled,
+				.keeper-find-replace-button:disabled {
+					cursor: default;
+					opacity: 0.45;
+				}
+				.keeper-find-spacer {
+					width: 32px;
+				}
 			`}</style>
       <LexicalExtensionComposer
         extension={editorExtension}
         contentEditable={null}
       >
+        <FindReplaceBar />
         <div className="keeper-editor-content" ref={setEditorContentElement}>
           <ContentEditable className="keeper-editor ContentEditable__root" />
           <EmptyPlaceholder />

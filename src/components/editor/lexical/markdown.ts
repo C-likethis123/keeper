@@ -7,7 +7,12 @@ import {
   type MultilineElementTransformer,
   type TextMatchTransformer,
 } from "@lexical/markdown";
-import { $createParagraphNode, $createTextNode } from "lexical";
+import {
+  $createParagraphNode,
+  $createTextNode,
+  createEditor,
+  type SerializedLexicalNode,
+} from "lexical";
 import {
   $createTableCellNode,
   $createTableNode,
@@ -38,6 +43,7 @@ import {
   EquationNode,
 } from "./equations/EquationNode";
 import { WIKI_LINK } from "./wikilinks/WikiLinkMarkdownTransformer";
+import { KEEPER_MARKDOWN_IMPORT_NODES } from "./keeperMarkdownImportNodes";
 
 const TABLE_ROW_REG_EXP = /^\|(.+)\|\s*$/;
 const TABLE_DIVIDER_REG_EXP = /^(\|\s*:?-{3,}:?\s*)+\|\s*$/;
@@ -289,6 +295,26 @@ export const KEEPER_MARKDOWN_TRANSFORMERS = [
 
 export function importMarkdownToLexical(markdown: string) {
   $convertFromMarkdownString(markdown, KEEPER_MARKDOWN_TRANSFORMERS);
+}
+
+export function parseMarkdownToSerializedNodes(
+  markdown: string,
+): SerializedLexicalNode[] {
+  const editor = createEditor({
+    namespace: "KeeperMarkdownPasteParser",
+    nodes: KEEPER_MARKDOWN_IMPORT_NODES,
+    onError(error) {
+      throw error;
+    },
+  });
+  editor.update(
+    () => {
+      importMarkdownToLexical(markdown);
+    },
+    { discrete: true },
+  );
+
+  return editor.getEditorState().toJSON().root.children;
 }
 
 export function exportLexicalToMarkdown(): string {

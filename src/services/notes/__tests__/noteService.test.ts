@@ -122,6 +122,46 @@ describe("NoteService", () => {
 			});
 		});
 
+		it("journals note content before writing the markdown file", async () => {
+			mockQueueChangeAsync.mockResolvedValue(undefined);
+			mockSaveNote.mockResolvedValue({
+				id: "note-1",
+				title: "My Note",
+				content: "newer body",
+				isPinned: false,
+				lastUpdated: 1000,
+				noteType: "note",
+				status: null,
+			});
+
+			await NoteService.saveNote({
+				id: "note-1",
+				title: "My Note",
+				content: "newer body",
+				isPinned: false,
+				noteType: "note",
+				status: null,
+			});
+
+			expect(mockQueueChangeAsync).toHaveBeenCalledWith("note-1.md", "modify", {
+				id: "note-1",
+				title: "My Note",
+				content: "newer body",
+				isPinned: false,
+				noteType: "note",
+				status: null,
+				createdAt: undefined,
+				completedAt: undefined,
+				attachment: null,
+				attachedVideo: null,
+				resourceUrl: null,
+				documentPositions: null,
+			});
+			expect(
+				mockQueueChangeAsync.mock.invocationCallOrder[0],
+			).toBeLessThan(mockSaveNote.mock.invocationCallOrder[0]);
+		});
+
 		it("indexes templates in SQLite", async () => {
 			const { NotesIndexService } = jest.requireMock(
 				"@/services/notes/notesIndex",

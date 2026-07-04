@@ -15,7 +15,7 @@ import {
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_UNORDERED_LIST_COMMAND,
 } from "@lexical/list";
-import { $createHeadingNode, $createQuoteNode } from "@lexical/rich-text";
+import { $createHeadingNode } from "@lexical/rich-text";
 import { $setBlocksType } from "@lexical/selection";
 import { INSERT_TABLE_COMMAND } from "@lexical/table";
 import {
@@ -29,12 +29,13 @@ import {
   type LexicalEditor,
   OUTDENT_CONTENT_COMMAND,
   REDO_COMMAND,
+  $parseSerializedNode,
   safeCast,
   UNDO_COMMAND,
   defineExtension,
 } from "lexical";
 import { $createImageNode } from "../image/ImageNode";
-import { importMarkdownToLexical } from "../markdown";
+import { importMarkdownToLexical, parseMarkdownToSerializedNodes } from "../markdown";
 
 export interface LexicalEditorCommand {
   type: string;
@@ -180,19 +181,12 @@ function insertMarkdownCommand(
 ) {
   const markdown = payload?.markdown;
   if (typeof markdown !== "string" || markdown.length === 0) return;
+  const serializedNodes = parseMarkdownToSerializedNodes(markdown);
+  if (serializedNodes.length === 0) return;
 
   editor.update(
     () => {
-      if (markdown.startsWith("> ")) {
-        const quote = $createQuoteNode();
-        quote.append($createTextNode(markdown.slice(2)));
-        $insertNodes([quote]);
-        return;
-      }
-
-      const paragraph = $createParagraphNode();
-      paragraph.append($createTextNode(markdown));
-      $insertNodes([paragraph]);
+      $insertNodes(serializedNodes.map((node) => $parseSerializedNode(node)));
     },
     { discrete: true },
   );
