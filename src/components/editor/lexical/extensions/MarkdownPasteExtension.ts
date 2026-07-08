@@ -1,3 +1,4 @@
+import { $generateNodesFromDOM } from "@lexical/html";
 import {
   $getSelection,
   $insertNodes,
@@ -22,6 +23,26 @@ function getPlainTextFromPasteEvent(event: Event): string {
   return "";
 }
 
+function getHtmlFromPasteEvent(event: Event): string {
+  if ("clipboardData" in event) {
+    const clipboardData = event.clipboardData as DataTransfer | null;
+    return clipboardData?.getData("text/html") ?? "";
+  }
+  return "";
+}
+
+function parseHtmlToLexicalNodes(
+  editor: Parameters<typeof $generateNodesFromDOM>[0],
+  html: string,
+) {
+  if (html.trim().length === 0 || typeof DOMParser === "undefined") {
+    return [];
+  }
+
+  const dom = new DOMParser().parseFromString(html, "text/html");
+  return $generateNodesFromDOM(editor, dom);
+}
+
 export function shouldImportPastedMarkdown(text: string): boolean {
   const trimmed = text.trim();
   if (trimmed.length === 0) return false;
@@ -36,6 +57,23 @@ export const MarkdownPasteExtension = defineExtension({
     return editor.registerCommand(
       PASTE_COMMAND,
       (event) => {
+        const html = getHtmlFromPasteEvent(event);
+        const htmlNodes = parseHtmlToLexicalNodes(editor, html);
+        if (htmlNodes.length > 0) {
+          event.preventDefault();
+          editor.update(
+            () => {
+              const selection = $getSelection();
+              if (!$isRangeSelection(selection)) {
+                return;
+              }
+              $insertNodes(htmlNodes);
+            },
+            { discrete: true, tag: "paste" },
+          );
+          return true;
+        }
+
         const markdown = getPlainTextFromPasteEvent(event);
         if (!shouldImportPastedMarkdown(markdown)) {
           return false;

@@ -5,9 +5,8 @@ const mockWithGitLock = jest.fn((task: () => Promise<unknown>) => task());
 
 jest.mock("@/services/git/gitService", () => ({
 	GitService: {
-		recoverPendingChanges: (...args: unknown[]) =>
-			mockRecoverPendingChanges(...args),
-		withGitLock: (...args: unknown[]) => mockWithGitLock(...args),
+		recoverPendingChanges: () => mockRecoverPendingChanges(),
+		withGitLock: (task: () => Promise<unknown>) => mockWithGitLock(task),
 	},
 }));
 
@@ -29,6 +28,27 @@ describe("GitInitializationService", () => {
 			dependencies: GitInitDependencies | null;
 			_config: unknown;
 		};
+	const metrics = () => ({
+		validateRepoMs: 0,
+		fetchMs: 0,
+		resolveHeadBeforeMs: 0,
+		resolveHeadAfterMs: 0,
+		branchResolveMs: 0,
+		remoteBranchListMs: 0,
+		currentBranchResolveMs: 0,
+		mergeMs: 0,
+		fastForwardMergeMs: 0,
+		regularMergeMs: 0,
+		checkoutMs: 0,
+		dbSyncMs: 0,
+		readLastSyncedOidMs: 0,
+		writeLastSyncedOidMs: 0,
+		changedPathsMs: 0,
+		indexSyncMs: 0,
+		usedFastForward: false,
+		didHeadChange: false,
+		didDbSync: false,
+	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -131,6 +151,58 @@ describe("GitInitializationService", () => {
 		expect(dependencies.remoteSyncService.syncWithRemote).toHaveBeenCalledTimes(1);
 		expect(dependencies.stateStore.writeLastSyncedOid).toHaveBeenCalledWith(
 			"recovered-head",
+		);
+	});
+
+	it("does not create duplicate sync conflict notes after CRDT conflict resolution", async () => {
+		const trace = jest.fn();
+		const dependencies = {
+			stateStore: {
+				shouldForceRepoReset: jest.fn().mockResolvedValue(false),
+				clearForceRepoResetFlag: jest.fn(),
+				readPendingJournal: jest.fn().mockResolvedValue([]),
+				writeLastSyncedOid: jest.fn(),
+			},
+			repoBootstrapper: {
+				validateRepository: jest.fn().mockResolvedValue({
+					exists: true,
+					isValid: true,
+				}),
+				cloneRepository: jest.fn(),
+			},
+			gitEngine: {},
+			remoteSyncService: {
+				syncWithRemote: jest.fn().mockResolvedValue({
+					success: true,
+					metrics: metrics(),
+					conflicts: [
+						{
+							path: "note-1.md",
+							oursContent: "local",
+							theirsContent: "remote",
+						},
+					],
+				}),
+			},
+			dbSyncService: {},
+			mainReconcileService: {},
+		} as unknown as GitInitDependencies;
+
+		(
+			GitInitializationService.instance as unknown as {
+				dependencies: GitInitDependencies;
+			}
+		).dependencies = dependencies;
+
+		await expect(
+			GitInitializationService.instance.initialize({
+				telemetry: { trace } as never,
+			}),
+		).resolves.toMatchObject({ success: true });
+
+		expect(trace).toHaveBeenCalledWith(
+			"git.conflicts_resolved_without_duplicate_notes",
+			{ fileCount: 1 },
 		);
 	});
 });

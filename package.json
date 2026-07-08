@@ -9,7 +9,6 @@
     "build:android": "EXPO_UPDATE_CHANNEL=production npx expo prebuild --platform android --clean && ./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64",
     "desktop": "tauri dev",
     "desktop:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
-    "ios": "expo run:ios",
     "build:web": "expo export --platform web",
     "build:mobile-git": "./scripts/build-mobile-git.sh",
     "desktop:devtools": "sh -c 'trap \"kill 0\" INT TERM EXIT; react-devtools & npm run desktop & wait'",
@@ -23,7 +22,8 @@
     "knip": "knip",
     "build:viewers": "node scripts/build-viewers.js",
     "postinstall": "node scripts/build-viewers.js",
-    "android": "expo run:android"
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -38,6 +38,7 @@
     "@lexical/rich-text": "^0.45.0",
     "@lexical/selection": "^0.45.0",
     "@lexical/table": "^0.45.0",
+    "@lexical/yjs": "^0.45.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/drawer": "^7.9.8",
     "@react-navigation/native": "^7.1.8",
@@ -58,6 +59,7 @@
     "expo-sqlite": "~16.0.10",
     "expo-system-ui": "~6.0.9",
     "expo-updates": "~29.0.16",
+    "isomorphic-webcrypto": "^2.3.8",
     "katex": "^0.16.11",
     "lexical": "^0.45.0",
     "nanoid": "^5.1.6",
@@ -69,12 +71,13 @@
     "react-native-get-random-values": "^2.0.0",
     "react-native-mathjax-html-to-svg": "^1.1.0",
     "react-native-reanimated": "~4.1.1",
-    "react-native-worklets": "^0.5.2",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.15.3",
     "react-native-web": "~0.21.0",
     "react-native-webview": "13.15.0",
+    "react-native-worklets": "^0.5.2",
+    "yjs": "^13.6.31",
     "zustand": "^5.0.10"
   },
   "devDependencies": {

@@ -581,9 +581,9 @@ Port existing smart-editing logic (indentation and brace completion) from the cu
 
 iOS native support now comes from the local Expo module in `modules/keeper-git`. To build:
 
-- Dev: `npm run ios` (requires Xcode + valid signing)
+- Production: build with EAS production profile or an Xcode release archive.
 
-Dev/prod variants use the same `APP_VARIANT` pattern as Android (`com.clikethis123.keeper.dev` vs `com.clikethis123.keeper`).
+Keeper now keeps only production mobile setup.
 
 
 ---

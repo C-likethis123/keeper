@@ -3,6 +3,10 @@ import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { storageEngine } from "@/services/storage/storageEngine";
 import { useStorageStore } from "@/stores/storageStore";
+import {
+	deleteCrdtNote,
+	saveMarkdownToCrdt,
+} from "./crdtNoteService";
 import type { ListNotesResult } from "./notesIndex";
 import type { Note, NoteListFilters, NoteSaveInput } from "./types";
 
@@ -31,6 +35,21 @@ export class NoteService {
 	}
 
 	static async saveNote(note: NoteSaveInput, isNewNote = false): Promise<Note> {
+		const crdtNote = await saveMarkdownToCrdt(note);
+		return NoteService.saveMarkdownSnapshot(crdtNote, isNewNote);
+	}
+
+	static async saveCrdtSnapshot(
+		note: NoteSaveInput,
+		isNewNote = false,
+	): Promise<Note> {
+		return NoteService.saveMarkdownSnapshot(note, isNewNote);
+	}
+
+	private static async saveMarkdownSnapshot(
+		note: NoteSaveInput,
+		isNewNote = false,
+	): Promise<Note> {
 		const id = note.id.trim();
 		const pinnedState = !!note.isPinned;
 		const title = (note.title ?? "").trim();
@@ -81,6 +100,7 @@ export class NoteService {
 
 	static async deleteNote(id: string): Promise<boolean> {
 		try {
+			await deleteCrdtNote(id);
 			const deleted = await storageEngine.deleteNote(id);
 			if (!deleted) return false;
 			try {

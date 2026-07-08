@@ -22,6 +22,11 @@ import {
   clearEditorDraft,
   readEditorDraft,
 } from "@/services/notes/editorDraftStore";
+import {
+  type CrdtEditorSnapshot,
+  loadCrdtEditorSnapshot,
+  persistCrdtUpdate,
+} from "@/services/notes/crdtNoteService";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
@@ -82,6 +87,9 @@ export default function NoteEditorView({
     | undefined
   >();
   const [editorMarkdown, setEditorMarkdown] = useState(initialEditorMarkdown);
+  const [crdtSnapshot, setCrdtSnapshot] = useState<
+    CrdtEditorSnapshot | null | undefined
+  >(undefined);
   const editorMarkdownRef = useRef(initialEditorMarkdown);
   const [editorContentRevision, setEditorContentRevision] = useState(0);
   const [editorInstanceKey, setEditorInstanceKey] = useState(0);
@@ -107,6 +115,32 @@ export default function NoteEditorView({
     editorMarkdownRef.current = markdown;
     setEditorContentRevision((revision) => revision + 1);
   }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+    setCrdtSnapshot(undefined);
+    void loadCrdtEditorSnapshot(id)
+      .then((snapshot) => {
+        if (!isCancelled) {
+          setCrdtSnapshot(snapshot);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setCrdtSnapshot(null);
+        }
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [id]);
+
+  const handleCrdtUpdate = useCallback(
+    (update: number[]) => {
+      void persistCrdtUpdate(id, update).catch(() => null);
+    },
+    [id],
+  );
 
   const getCurrentEditorMarkdown = useCallback(
     () => editorMarkdownRef.current,
@@ -720,29 +754,34 @@ export default function NoteEditorView({
             ) : null}
 
             <View style={styles.editorHost} onLayout={handleEditorHostLayout}>
-              <LexicalMarkdownEditor
-                key={editorInstanceKey}
-                hasAttachment={hasDocAttachment}
-                markdown={editorMarkdown}
-                noteId={id}
-                onMarkdownChange={handleMarkdownChange}
-                themeMode={colorScheme ?? "dark"}
-                safeAreaInsets={editorSafeAreaInsets}
-                keyboardHeight={keyboardHeight}
-                notesRoot={NOTES_ROOT}
-                onAttachDocument={handleEditorAttachDocument}
-                onInsertImage={handleToolbarInsertImage}
-                onInsertTemplateCommand={handleInsertTemplateCommand}
-                onOpenWikiLink={handleOpenWikiLink}
-                onRemoveAttachment={handleEditorRemoveAttachment}
-                onShowVideoModal={handleShowVideoModal}
-                onToggleActivePanel={toggleActivePanel}
-                onToggleArticle={handleToggleArticle}
-                onToggleRelatedNotes={handleToggleRelatedNotes}
-                command={lastCommand}
-                isNativeDom={Platform.OS !== "web"}
-                dom={editorDomProps}
-              />
+              {crdtSnapshot !== undefined ? (
+                <LexicalMarkdownEditor
+                  key={`${editorInstanceKey}-${crdtSnapshot ? "crdt" : "md"}`}
+                  crdtInitialMarkdown={crdtSnapshot?.markdown}
+                  crdtInitialUpdate={crdtSnapshot?.update}
+                  hasAttachment={hasDocAttachment}
+                  markdown={editorMarkdown}
+                  noteId={id}
+                  onCrdtUpdate={handleCrdtUpdate}
+                  onMarkdownChange={handleMarkdownChange}
+                  themeMode={colorScheme ?? "dark"}
+                  safeAreaInsets={editorSafeAreaInsets}
+                  keyboardHeight={keyboardHeight}
+                  notesRoot={NOTES_ROOT}
+                  onAttachDocument={handleEditorAttachDocument}
+                  onInsertImage={handleToolbarInsertImage}
+                  onInsertTemplateCommand={handleInsertTemplateCommand}
+                  onOpenWikiLink={handleOpenWikiLink}
+                  onRemoveAttachment={handleEditorRemoveAttachment}
+                  onShowVideoModal={handleShowVideoModal}
+                  onToggleActivePanel={toggleActivePanel}
+                  onToggleArticle={handleToggleArticle}
+                  onToggleRelatedNotes={handleToggleRelatedNotes}
+                  command={lastCommand}
+                  isNativeDom={Platform.OS !== "web"}
+                  dom={editorDomProps}
+                />
+              ) : null}
             </View>
           </View>
 

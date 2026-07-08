@@ -24,6 +24,45 @@ fn index_db_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(app_data_dir(app)?.join(INDEX_DB_NAME))
 }
 
+fn safe_relative_path(relative_path: &str) -> Result<PathBuf, String> {
+    let path = Path::new(relative_path);
+    if path.is_absolute()
+        || path.components().any(|component| {
+            !matches!(component, Component::Normal(_))
+        })
+    {
+        return Err("path escapes notes root".to_string());
+    }
+    Ok(path.to_path_buf())
+}
+
+fn collect_files_recursive(
+    root: &Path,
+    current: &Path,
+    output: &mut Vec<String>,
+) -> Result<(), String> {
+    if !current.exists() {
+        return Ok(());
+    }
+
+    for entry in std::fs::read_dir(current).map_err(|e| format!("failed to list files: {e}"))? {
+        let entry = entry.map_err(|e| format!("failed to read file entry: {e}"))?;
+        let path = entry.path();
+        if path.is_dir() {
+            collect_files_recursive(root, &path, output)?;
+            continue;
+        }
+        if path.is_file() {
+            let relative = path
+                .strip_prefix(root)
+                .map_err(|e| format!("failed to resolve relative file path: {e}"))?;
+            output.push(relative.to_string_lossy().replace('\\', "/"));
+        }
+    }
+
+    Ok(())
+}
+
 #[tauri::command]
 pub fn storage_initialize(app: tauri::AppHandle) -> Result<StorageInitResult, String> {
     let notes_root = notes_root_path(&app)?;
@@ -37,6 +76,59 @@ pub fn storage_reset_all_data(app: tauri::AppHandle) -> Result<(), String> {
     let notes_root = data_dir.join(NOTES_DIR);
     let index_db = data_dir.join(INDEX_DB_NAME);
     storage_core::reset_storage_dirs(&data_dir, &notes_root, &index_db)
+}
+
+#[tauri::command]
+pub fn storage_read_file_bytes(
+    app: tauri::AppHandle,
+    relative_path: String,
+) -> Result<Option<Vec<u8>>, String> {
+    let notes_root = notes_root_path(&app)?;
+    let full_path = notes_root.join(safe_relative_path(&relative_path)?);
+    if !full_path.exists() {
+        return Ok(None);
+    }
+    std::fs::read(&full_path)
+        .map(Some)
+        .map_err(|e| format!("failed to read file bytes: {e}"))
+}
+
+#[tauri::command]
+pub fn storage_write_file_bytes(
+    app: tauri::AppHandle,
+    relative_path: String,
+    data: Vec<u8>,
+) -> Result<(), String> {
+    let notes_root = notes_root_path(&app)?;
+    let full_path = notes_root.join(safe_relative_path(&relative_path)?);
+    if let Some(parent) = full_path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("failed to create file parent dir: {e}"))?;
+    }
+    std::fs::write(&full_path, data).map_err(|e| format!("failed to write file bytes: {e}"))
+}
+
+#[tauri::command]
+pub fn storage_list_files_recursive(
+    app: tauri::AppHandle,
+    relative_dir: String,
+) -> Result<Vec<String>, String> {
+    let notes_root = notes_root_path(&app)?;
+    let dir = notes_root.join(safe_relative_path(&relative_dir)?);
+    let mut files = Vec::new();
+    collect_files_recursive(&notes_root, &dir, &mut files)?;
+    Ok(files)
+}
+
+#[tauri::command]
+pub fn storage_delete_directory(app: tauri::AppHandle, relative_dir: String) -> Result<(), String> {
+    let notes_root = notes_root_path(&app)?;
+    let dir = notes_root.join(safe_relative_path(&relative_dir)?);
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir)
+            .map_err(|e| format!("failed to delete directory: {e}"))?;
+    }
+    Ok(())
 }
 
 #[tauri::command]

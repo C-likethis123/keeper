@@ -4,6 +4,7 @@ module.exports = {
 	testMatch: ["**/__tests__/**/*.test.ts?(x)", "**/*.jest.test.ts?(x)"],
 	moduleNameMapper: {
 		"^@/(.*)$": "<rootDir>/src/$1",
+		"^lib0/webcrypto$": "<rootDir>/node_modules/lib0/dist/webcrypto.node.cjs",
 		"^@react-navigation/([^/]+)$":
 			"<rootDir>/node_modules/@react-navigation/$1/src/index.tsx",
 	},

@@ -13,8 +13,8 @@ Keeper emits structured startup timing logs under the `[StartupTrace]` prefix so
 ## How to view them
 
 - Desktop Tauri: run `npm run desktop` and watch the app or dev terminal output.
-- Android dev build: run `npm run android:dev` and watch Metro output, or use `adb logcat` if you also want native-side context.
-- iOS dev build: run `npm run ios` and watch the Expo or Xcode logs.
+- Android production build: run `npm run build:android`, then use `adb logcat` for native-side context.
+- iOS production build: use an EAS production build or Xcode release archive, then inspect device logs.
 
 Search for `[StartupTrace]` to isolate the structured startup events.
 

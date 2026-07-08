@@ -48,6 +48,30 @@ export class PlatformStorageEngine implements StorageEngine {
 		await this.invoke("storage_reset_all_data");
 	}
 
+	async readFileBytes(relativePath: string): Promise<Uint8Array | null> {
+		const bytes = await this.invoke<number[] | null>("storage_read_file_bytes", {
+			relativePath,
+		});
+		return bytes ? new Uint8Array(bytes) : null;
+	}
+
+	async writeFileBytes(relativePath: string, data: Uint8Array): Promise<void> {
+		await this.invoke("storage_write_file_bytes", {
+			relativePath,
+			data: Array.from(data),
+		});
+	}
+
+	async listFilesRecursive(relativeDir: string): Promise<string[]> {
+		return this.invoke<string[]>("storage_list_files_recursive", {
+			relativeDir,
+		});
+	}
+
+	async deleteDirectory(relativeDir: string): Promise<void> {
+		await this.invoke("storage_delete_directory", { relativeDir });
+	}
+
 	async loadNote(id: string): Promise<Note | null> {
 		return this.invoke<ReadEntryResult | null>("read_note", { id });
 	}

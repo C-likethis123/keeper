@@ -1,20 +1,14 @@
 import {
   $getRoot,
   $getSelection,
-  $insertNodes,
   $isRangeSelection,
-  $parseSerializedNode,
   $selectAll,
   COMMAND_PRIORITY_HIGH,
   COPY_COMMAND,
   KEY_DOWN_COMMAND,
   defineExtension,
 } from "lexical";
-import {
-  exportLexicalToMarkdown,
-  parseMarkdownToSerializedNodes,
-} from "../markdown";
-import { shouldImportPastedMarkdown } from "./MarkdownPasteExtension";
+import { exportLexicalToMarkdown } from "../markdown";
 
 function isFullEditorSelection(): boolean {
   const selection = $getSelection();
@@ -70,23 +64,6 @@ function writeClipboardText(text: string): void {
   void clipboard.writeText(text).catch(() => undefined);
 }
 
-function insertClipboardText(text: string): void {
-  const selection = $getSelection();
-  if (!$isRangeSelection(selection) || text.length === 0) {
-    return;
-  }
-
-  if (shouldImportPastedMarkdown(text)) {
-    const serializedNodes = parseMarkdownToSerializedNodes(text);
-    if (serializedNodes.length > 0) {
-      $insertNodes(serializedNodes.map((node) => $parseSerializedNode(node)));
-      return;
-    }
-  }
-
-  selection.insertRawText(text);
-}
-
 function isModShortcut(event: KeyboardEvent, key: string): boolean {
   return (
     (event.metaKey || event.ctrlKey) &&
@@ -128,26 +105,6 @@ export const ClipboardShortcutsExtension = defineExtension({
           }
           writeClipboardText(text);
           return false;
-        }
-
-        if (isModShortcut(event, "v")) {
-          const clipboard = globalThis.navigator?.clipboard;
-          if (!clipboard?.readText) {
-            return false;
-          }
-          event.preventDefault();
-          void clipboard
-            .readText()
-            .then((text) => {
-              editor.update(
-                () => {
-                  insertClipboardText(text);
-                },
-                { discrete: true, tag: "paste" },
-              );
-            })
-            .catch(() => undefined);
-          return true;
         }
 
         return false;

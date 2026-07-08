@@ -21,8 +21,6 @@ const withBuildSpeedOptimizations = (config) => {
 		set("org.gradle.daemon", "true");
 		set("kotlin.incremental", "true");
 		set("kotlin.incremental.useClasspathSnapshot", "true");
-		// Single arch for local dev; build:android script overrides this for release
-		set("reactNativeArchitectures", "arm64-v8a");
 		return config;
 	});
 };
@@ -61,6 +59,7 @@ export default ({ config }) => {
 				favicon: "./assets/images/favicon.png",
 			},
 			plugins: [
+				"./plugins/withAndroidBundleInputExcludes",
 				"expo-router",
 				"expo-share-intent",
 				[

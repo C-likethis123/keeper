@@ -22,8 +22,6 @@ npm run build:desktop:dev # Build dev desktop app bundle
 npm run build:web        # Export Expo web build
 
 # Mobile
-npm run android          # Run Android via Expo
-npm run ios              # Run iOS via Expo
 npm run build:android    # Prebuild, build Rust bridge, install release APK
 npm run build:mobile-git # Build Rust git bridge for mobile
 

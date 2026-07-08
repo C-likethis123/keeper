@@ -1,5 +1,6 @@
 import type { GitEngine } from "@/services/git/engines/GitEngine";
 import { NOTES_ROOT } from "@/services/notes/Notes";
+import { reconcileCrdtSnapshots } from "@/services/notes/crdtReconcileService";
 import type { StartupTelemetry } from "@/services/startup/startupTelemetry";
 import type {
 	DbSyncService,
@@ -99,17 +100,36 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 				remoteBranch,
 			});
 
-			// Commit any uncommitted local changes before merging to avoid
-			// "uncommitted change would be overwritten by merge" errors.
 			const dirtyFiles = await this.gitEngine.status(NOTES_ROOT);
 			if (dirtyFiles.length > 0) {
-				console.log(
-					`[GitInitializationService] Committing ${dirtyFiles.length} uncommitted file(s) before merge...`,
-				);
-				await this.gitEngine.commit(NOTES_ROOT, "Auto-save before sync");
-				telemetry.trace("git.auto_save_before_sync", {
-					fileCount: dirtyFiles.length,
-				});
+				const pendingJournal = await this.stateStore.readPendingJournal();
+				if (pendingJournal.length > 0) {
+					console.log(
+						`[GitInitializationService] Committing ${dirtyFiles.length} journaled file(s) before merge...`,
+					);
+					await this.gitEngine.commit(NOTES_ROOT, "Auto-save before sync");
+					telemetry.trace("git.auto_save_before_sync", {
+						fileCount: dirtyFiles.length,
+						journalEntryCount: pendingJournal.length,
+					});
+				} else {
+					console.warn(
+						`[GitInitializationService] Discarding ${dirtyFiles.length} unjournaled dirty file(s) before remote sync`,
+						dirtyFiles,
+					);
+					const tCheckoutDirty = performance.now();
+					await this.gitEngine.checkout(NOTES_ROOT, "HEAD", {
+						noUpdateHead: true,
+						force: true,
+					});
+					metrics.checkoutMs += Math.round(
+						performance.now() - tCheckoutDirty,
+					);
+					telemetry.trace("git.discarded_unjournaled_dirty_files", {
+						fileCount: dirtyFiles.length,
+						durationMs: metrics.checkoutMs,
+					});
+				}
 			}
 
 			console.log(
@@ -169,8 +189,7 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 								`[GitInitializationService] Detected ${conflictedFiles.length} conflicted files`,
 							);
 
-							// Keep our local version in the original file; the caller
-							// will write the incoming version as a *-sync_conflict file.
+							// Keep the local Markdown snapshot; CRDT updates carry body merges.
 							for (const conflict of conflictedFiles) {
 								await this.gitEngine.resolveConflict(
 									NOTES_ROOT,
@@ -179,9 +198,16 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 								);
 							}
 
+							const crdtReconcile = await reconcileCrdtSnapshots();
+							if (crdtReconcile.updatedNoteIds.length > 0) {
+								telemetry.trace("git.crdt_snapshots_reconciled", {
+									noteCount: crdtReconcile.updatedNoteIds.length,
+								});
+							}
+
 							await this.gitEngine.commit(
 								NOTES_ROOT,
-								"Resolve sync conflicts (local changes kept; incoming changes saved as *-sync_conflict files)",
+								"Resolve Git conflicts with CRDT snapshots",
 							);
 
 							// Push the resolution so our version is on the remote
@@ -259,6 +285,13 @@ export class DefaultRemoteSyncService implements RemoteSyncService {
 			metrics.changedPathsMs = dbResult.changedPathsMs;
 			metrics.indexSyncMs = dbResult.indexSyncMs;
 			metrics.didDbSync = dbResult.didDbSync;
+
+			const crdtReconcile = await reconcileCrdtSnapshots();
+			if (crdtReconcile.updatedNoteIds.length > 0) {
+				telemetry.trace("git.crdt_snapshots_reconciled", {
+					noteCount: crdtReconcile.updatedNoteIds.length,
+				});
+			}
 
 			return { success: true, metrics };
 		} catch (error) {

@@ -19,6 +19,7 @@ import {
   PASTE_COMMAND,
   createEditor,
 } from "lexical";
+import { JSDOM } from "jsdom";
 import {
   $isDetailsNode,
   DetailsContentNode,
@@ -178,6 +179,71 @@ describe("Keeper Lexical markdown transformers", () => {
     expect(markdown).toBe("# Pasted");
 
     unregisterPaste();
+  });
+
+  it("handles paste events by preserving supported html formatting", () => {
+    const originalDOMParser = globalThis.DOMParser;
+    globalThis.DOMParser = new JSDOM("").window.DOMParser;
+    try {
+      const editor = createEditor({
+        namespace: "KeeperHtmlPasteTest",
+        nodes: [
+          HeadingNode,
+          QuoteNode,
+          ListNode,
+          ListItemNode,
+          CodeNode,
+          CodeHighlightNode,
+          LinkNode,
+          AutoLinkNode,
+          TableNode,
+          TableCellNode,
+          TableRowNode,
+          DetailsContentNode,
+          DetailsNode,
+          DetailsSummaryNode,
+          EquationNode,
+          ImageNode,
+        ],
+        onError: (error) => {
+          throw error;
+        },
+      });
+      const unregisterPaste =
+        MarkdownPasteExtension.register?.(editor, {}, {} as never) ??
+        (() => {});
+      const preventDefault = jest.fn();
+
+      editor.update(
+        () => {
+          importMarkdownToLexical("");
+          $getRoot().selectEnd();
+        },
+        { discrete: true },
+      );
+
+      editor.dispatchCommand(PASTE_COMMAND, {
+        clipboardData: {
+          getData: (type: string) =>
+            type === "text/html"
+              ? '<p>Hello <strong>bold</strong> <a href="https://example.com">link</a></p>'
+              : "plain fallback",
+        },
+        preventDefault,
+      } as unknown as ClipboardEvent);
+
+      let markdown = "";
+      editor.getEditorState().read(() => {
+        markdown = exportLexicalToMarkdown();
+      });
+
+      expect(preventDefault).toHaveBeenCalled();
+      expect(markdown).toBe("Hello **bold** [link](https://example.com)");
+
+      unregisterPaste();
+    } finally {
+      globalThis.DOMParser = originalDOMParser;
+    }
   });
 
   it("copies full editor selection as markdown", () => {

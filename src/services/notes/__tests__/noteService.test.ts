@@ -1,4 +1,5 @@
 import { NoteService } from "../noteService";
+import type { NoteSaveInput } from "../types";
 
 const mockSaveNote = jest.fn();
 const mockLoadNote = jest.fn();
@@ -6,6 +7,10 @@ const mockDeleteNote = jest.fn();
 const mockListNoteFiles = jest.fn();
 const mockIndexUpsert = jest.fn();
 const mockIndexDelete = jest.fn();
+const mockSaveMarkdownToCrdt = jest.fn((note: NoteSaveInput) =>
+	Promise.resolve(note),
+);
+const mockDeleteCrdtNote = jest.fn();
 
 jest.mock("@/services/storage/storageEngine", () => ({
 	storageEngine: {
@@ -26,6 +31,11 @@ jest.mock("@/services/git/gitService", () => ({
 		queueChangeAsync: (...args: unknown[]) => mockQueueChangeAsync(...args),
 		scheduleCommitBatch: () => mockScheduleCommitBatch(),
 	},
+}));
+
+jest.mock("@/services/notes/crdtNoteService", () => ({
+	saveMarkdownToCrdt: (note: NoteSaveInput) => mockSaveMarkdownToCrdt(note),
+	deleteCrdtNote: (noteId: string) => mockDeleteCrdtNote(noteId),
 }));
 
 jest.mock("@/services/notes/notesIndex", () => ({
@@ -195,6 +205,48 @@ describe("NoteService", () => {
 				noteType: "template",
 				status: null,
 			});
+		});
+
+		it("writes markdown edits back into Yjs before saving the snapshot", async () => {
+			mockQueueChangeAsync.mockResolvedValue(undefined);
+			mockSaveMarkdownToCrdt.mockResolvedValue({
+				id: "note-1",
+				title: "My Note",
+				content: "snapshot body from crdt",
+				isPinned: false,
+				noteType: "note",
+				status: null,
+			});
+			mockSaveNote.mockResolvedValue({
+				id: "note-1",
+				title: "My Note",
+				content: "snapshot body from crdt",
+				isPinned: false,
+				lastUpdated: 1000,
+				noteType: "note",
+				status: null,
+			});
+
+			await NoteService.saveNote({
+				id: "note-1",
+				title: "My Note",
+				content: "snapshot body",
+				isPinned: false,
+				noteType: "note",
+				status: null,
+			});
+
+			expect(mockSaveMarkdownToCrdt).toHaveBeenCalledWith({
+				id: "note-1",
+				title: "My Note",
+				content: "snapshot body",
+				isPinned: false,
+				noteType: "note",
+				status: null,
+			});
+			expect(mockSaveNote).toHaveBeenCalledWith(
+				expect.objectContaining({ content: "snapshot body from crdt" }),
+			);
 		});
 	});
 

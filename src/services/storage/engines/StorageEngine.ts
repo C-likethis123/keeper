@@ -39,6 +39,47 @@ function deleteDirectoryRecursive(dir: Directory): void {
 	dir.delete();
 }
 
+function assertSafeRelativePath(path: string): string[] {
+	const parts = path.split("/").filter(Boolean);
+	if (
+		path.startsWith("/") ||
+		parts.length === 0 ||
+		parts.some((part) => part === "." || part === "..")
+	) {
+		throw new Error("Path escapes notes root");
+	}
+	return parts;
+}
+
+function getFileAtRelativePath(path: string): File {
+	const parts = assertSafeRelativePath(path);
+	return new File(NOTES_ROOT, ...parts);
+}
+
+function getDirectoryAtRelativePath(path: string): Directory {
+	const parts = assertSafeRelativePath(path);
+	return new Directory(NOTES_ROOT, ...parts);
+}
+
+function listFilesRecursiveFromDirectory(dir: Directory, prefix: string): string[] {
+	if (!dir.exists) {
+		return [];
+	}
+
+	const paths: string[] = [];
+	for (const entry of dir.list()) {
+		const relativePath = `${prefix}/${entry.name}`;
+		if (entry instanceof Directory) {
+			paths.push(...listFilesRecursiveFromDirectory(entry, relativePath));
+			continue;
+		}
+		if (entry instanceof File) {
+			paths.push(relativePath);
+		}
+	}
+	return paths;
+}
+
 export class PlatformStorageEngine implements StorageEngine {
 	async initialize(): Promise<StorageInitializeResult> {
 		const dir = new Directory(NOTES_ROOT);
@@ -70,6 +111,35 @@ export class PlatformStorageEngine implements StorageEngine {
 			.filter((entry): entry is File => entry instanceof File);
 		if (remainingFiles.length > 0) {
 			throw new Error("Failed to clear note storage");
+		}
+	}
+
+	async readFileBytes(relativePath: string): Promise<Uint8Array | null> {
+		const file = getFileAtRelativePath(relativePath);
+		if (!file.exists) {
+			return null;
+		}
+		return file.bytes();
+	}
+
+	async writeFileBytes(relativePath: string, data: Uint8Array): Promise<void> {
+		const parts = assertSafeRelativePath(relativePath);
+		if (parts.length > 1) {
+			const dir = new Directory(NOTES_ROOT, ...parts.slice(0, -1));
+			dir.create({ intermediates: true, idempotent: true });
+		}
+		await getFileAtRelativePath(relativePath).write(data);
+	}
+
+	async listFilesRecursive(relativeDir: string): Promise<string[]> {
+		const dir = getDirectoryAtRelativePath(relativeDir);
+		return listFilesRecursiveFromDirectory(dir, relativeDir);
+	}
+
+	async deleteDirectory(relativeDir: string): Promise<void> {
+		const dir = getDirectoryAtRelativePath(relativeDir);
+		if (dir.exists) {
+			deleteDirectoryRecursive(dir);
 		}
 	}
 

@@ -7,7 +7,7 @@ Use serena MCP when searching in the codebase or trying to apply changes to code
 
 ```bash
 npm install           # Install dependencies
-npm start             # Start Expo/metro dev server
+npm start             # Start Expo/Metro server for web/desktop development
 
 # Mobile
 npm run build:android     # Prod Android: prebuild → Rust bridge → release APK → install
@@ -23,18 +23,9 @@ npm run lint:fix          # Auto-fix lint issues
 
 Automated tests exist for pure modules and selected UI/routes. Use `npm run lint` for CI checks, and run `npm test` when touching covered areas.
 
-### Android Build Variants
+### Android Build
 
-Two separate apps with distinct bundle IDs coexist on the same device:
-
-| | Dev | Prod |
-|--|-----|------|
-| **Script** | `npm run android:dev` | `npm run build:android` |
-| **App name** | Keeper (Dev) | Keeper |
-| **Bundle ID** | `com.clikethis123.keeper.dev` | `com.clikethis123.keeper` |
-| **JS source** | Metro server (hot reload) | Bundled in APK |
-
-`APP_VARIANT=development` in `app.config.js` controls which variant is built.
+Keeper only keeps production mobile setup. Use `npm run build:android` for Android release APK installs. Bundle ID is `com.clikethis123.keeper`.
 
 ## Architecture
 

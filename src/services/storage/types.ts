@@ -37,6 +37,10 @@ export type NoteIndexQueryFilters = NoteListFilters;
 export interface StorageEngine {
 	initialize(): Promise<StorageInitializeResult>;
 	resetAllData(): Promise<void>;
+	readFileBytes(relativePath: string): Promise<Uint8Array | null>;
+	writeFileBytes(relativePath: string, data: Uint8Array): Promise<void>;
+	listFilesRecursive(relativeDir: string): Promise<string[]>;
+	deleteDirectory(relativeDir: string): Promise<void>;
 	loadNote(id: string): Promise<Note | null>;
 	saveNote(note: NoteSaveInput): Promise<Note>;
 	deleteNote(id: string): Promise<boolean>;

@@ -1,12 +1,9 @@
 import { NOTES_ROOT } from "@/services/notes/Notes";
-import { parseFrontmatter } from "@/services/notes/frontmatter";
-import { NoteService } from "@/services/notes/noteService";
 import {
 	type StartupTelemetry,
 	createNoopStartupTelemetry,
 } from "@/services/startup/startupTelemetry";
 import { getStorageEngine } from "@/services/storage/storageEngine";
-import type { GitConflictFile } from "./engines/GitEngine";
 import { getGitEngine } from "./GitEngine";
 import { GitService } from "./gitService";
 import { DefaultDbSyncService } from "./init/dbSyncService";
@@ -23,47 +20,6 @@ import {
 	type RemoteSyncMetrics,
 	createEmptyStartupMetrics,
 } from "./init/types";
-
-async function createSyncConflictNotes(
-	conflicts: GitConflictFile[],
-): Promise<void> {
-	for (const conflict of conflicts) {
-		if (!conflict.theirsContent) continue;
-		const baseName = conflict.path.replace(/\.md$/, "");
-		const conflictId = `${baseName}-sync_conflict`;
-		try {
-			const parsed = parseFrontmatter(conflict.theirsContent);
-			const title = parsed.title
-				? `${parsed.title} (sync conflict)`
-				: `${baseName} (sync conflict)`;
-			await NoteService.saveNote(
-				{
-					id: conflictId,
-					title,
-					content: parsed.content,
-					isPinned: false,
-					noteType: parsed.noteType ?? "note",
-					status: parsed.status ?? null,
-					createdAt: parsed.createdAt ?? Date.now(),
-					completedAt: parsed.completedAt ?? null,
-					attachment: parsed.attachment ?? null,
-					attachedVideo: parsed.attachedVideo ?? null,
-					resourceUrl: parsed.resourceUrl ?? null,
-					documentPositions: parsed.documentPositions ?? null,
-				},
-				true,
-			);
-			console.log(
-				`[GitInitializationService] Created sync conflict note: ${conflictId}`,
-			);
-		} catch (err) {
-			console.warn(
-				`[GitInitializationService] Failed to create sync conflict note for ${conflict.path}:`,
-				err,
-			);
-		}
-	}
-}
 
 function assertGitHubConfig(): GitHubConfig {
 	const owner = process.env.EXPO_PUBLIC_GITHUB_OWNER;
@@ -286,9 +242,10 @@ export class GitInitializationService {
 			this.applySyncMetrics(metrics, syncResult.metrics);
 
 			if (syncResult.success) {
-				// Create sync_conflict notes for any files that had merge conflicts
 				if (syncResult.conflicts && syncResult.conflicts.length > 0) {
-					await createSyncConflictNotes(syncResult.conflicts);
+					telemetry.trace("git.conflicts_resolved_without_duplicate_notes", {
+						fileCount: syncResult.conflicts.length,
+					});
 				}
 
 				console.log(

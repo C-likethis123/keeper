@@ -235,6 +235,16 @@ describe("useAppKeyboardShortcuts", () => {
 		expect(event.defaultPrevented).toBe(false);
 	});
 
+	it("does not intercept find when the route does not provide that callback", () => {
+		const onCreateNote = jest.fn();
+		renderHook(() => useAppKeyboardShortcuts({ onCreateNote }));
+
+		const event = fireKey("f", { ctrlKey: true });
+
+		expect(onCreateNote).not.toHaveBeenCalled();
+		expect(event.defaultPrevented).toBe(false);
+	});
+
 	it("removes the listener when the hook unmounts", () => {
 		const onCreateNote = jest.fn();
 		const { unmount } = renderHook(() =>

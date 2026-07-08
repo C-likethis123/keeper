@@ -29,22 +29,18 @@ This is a cross-platform rich-text editor, built on both mobile and desktop.
    cargo install cargo-ndk
    ```
 
-3. Generate native projects and start the app
+3. Build the production Android app
 
    ```bash
-   npx expo prebuild --clean
-   npm run android
-   npm start
+   npm run build:android
    ```
 
    The local Expo module in `modules/keeper-git` now owns the Rust bridge wiring for iOS and Android. Fresh native generation recreates the bridge automatically, and native builds compile the Rust library from `src-tauri/git_core` as needed. `npm run build:mobile-git` remains available as a convenience rebuild command.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
 - [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
 - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+App source lives in `src/`. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
 ### Desktop (Tauri)
 
@@ -73,7 +69,6 @@ Git sync is Rust-only. Supported runtimes:
 
 Unsupported runtimes fall back to local-only mode:
 - Web
-- Expo Go
 
 ## MOC Suggestions (semantic clustering)
 

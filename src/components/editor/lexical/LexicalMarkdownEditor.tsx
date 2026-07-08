@@ -4,10 +4,12 @@ import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendin
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
 import { writeEditorDraft } from "@/services/notes/editorDraftStore";
+import { CollaborationPlugin } from "@lexical/react/LexicalCollaborationPlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { LexicalExtensionComposer } from "@lexical/react/LexicalExtensionComposer";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
+import type { Provider, ProviderAwareness } from "@lexical/yjs";
 import { NOTES_ROOT, setNotesRoot } from "@/services/notes/Notes";
 
 import {
@@ -26,6 +28,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import * as Y from "yjs";
 import {
   KEEPER_MARKDOWN_TRANSFORMERS,
   importMarkdownToLexical,
@@ -37,6 +40,8 @@ import { KEEPER_EDITOR_THEME } from "./keeperEditorTheme";
 
 interface LexicalMarkdownEditorProps {
   command?: LexicalEditorCommand;
+  crdtInitialMarkdown?: string;
+  crdtInitialUpdate?: number[];
   dom?: import("expo/dom").DOMProps;
   hasAttachment?: boolean;
   isNativeDom?: boolean;
@@ -44,6 +49,7 @@ interface LexicalMarkdownEditorProps {
   markdown: string;
   noteId: string;
   notesRoot?: string;
+  onCrdtUpdate?: (update: number[]) => void | Promise<void>;
   onMarkdownChange: (markdown: string) => void;
   onAttachDocument?: () => void;
   onInsertImage?: () => void;
@@ -61,6 +67,93 @@ interface LexicalMarkdownEditorProps {
     left: number;
   };
   themeMode: "light" | "dark";
+}
+
+function createLocalAwareness(): ProviderAwareness {
+  let localState: ReturnType<ProviderAwareness["getLocalState"]> = null;
+  const handlers = new Set<() => void>();
+  return {
+    getLocalState: () => localState,
+    getStates: () => new Map(),
+    off: (_type, cb) => {
+      handlers.delete(cb);
+    },
+    on: (_type, cb) => {
+      handlers.add(cb);
+    },
+    setLocalState: (state) => {
+      localState = state;
+      for (const handler of handlers) {
+        handler();
+      }
+    },
+    setLocalStateField: (field, value) => {
+      localState = { ...(localState ?? {}), [field]: value } as NonNullable<
+        typeof localState
+      >;
+      for (const handler of handlers) {
+        handler();
+      }
+    },
+  };
+}
+
+function createLocalProvider(
+  doc: Y.Doc,
+  onUpdate?: (update: number[]) => void | Promise<void>,
+): Provider {
+  const handlers = {
+    reload: new Set<(doc: Y.Doc) => void>(),
+    status: new Set<(status: { status: string }) => void>(),
+    sync: new Set<(isSynced: boolean) => void>(),
+    update: new Set<(arg: unknown) => void>(),
+  };
+  const handleDocUpdate = (update: Uint8Array) => {
+    for (const handler of handlers.update) {
+      handler(update);
+    }
+    void onUpdate?.([...update]);
+  };
+  let isListeningForDocUpdates = false;
+  const attachDocUpdateListener = () => {
+    if (isListeningForDocUpdates) {
+      return;
+    }
+    doc.on("update", handleDocUpdate);
+    isListeningForDocUpdates = true;
+  };
+  const detachDocUpdateListener = () => {
+    if (!isListeningForDocUpdates) {
+      return;
+    }
+    doc.off("update", handleDocUpdate);
+    isListeningForDocUpdates = false;
+  };
+
+  return {
+    awareness: createLocalAwareness(),
+    connect: () => {
+      attachDocUpdateListener();
+      for (const handler of handlers.status) {
+        handler({ status: "connected" });
+      }
+      for (const handler of handlers.sync) {
+        handler(true);
+      }
+    },
+    disconnect: () => {
+      detachDocUpdateListener();
+      for (const handler of handlers.status) {
+        handler({ status: "disconnected" });
+      }
+    },
+    off(type, cb) {
+      handlers[type].delete(cb as never);
+    },
+    on(type, cb) {
+      handlers[type].add(cb as never);
+    },
+  };
 }
 
 function getDomStyleHeight(dom?: LexicalMarkdownEditorProps["dom"]) {
@@ -105,6 +198,8 @@ function editorPropsEqual(
 ) {
   return (
     previous.command === next.command &&
+    previous.crdtInitialMarkdown === next.crdtInitialMarkdown &&
+    previous.crdtInitialUpdate === next.crdtInitialUpdate &&
     previous.hasAttachment === next.hasAttachment &&
     previous.isNativeDom === next.isNativeDom &&
     previous.keyboardHeight === next.keyboardHeight &&
@@ -112,6 +207,7 @@ function editorPropsEqual(
     previous.noteId === next.noteId &&
     previous.notesRoot === next.notesRoot &&
     previous.onAttachDocument === next.onAttachDocument &&
+    previous.onCrdtUpdate === next.onCrdtUpdate &&
     previous.onInsertImage === next.onInsertImage &&
     previous.onInsertTemplateCommand === next.onInsertTemplateCommand &&
     previous.onMarkdownChange === next.onMarkdownChange &&
@@ -156,6 +252,14 @@ interface FindMatch {
   focusKey: string;
   focusOffset: number;
 }
+
+interface CssHighlightRegistry {
+  delete: (name: string) => boolean;
+  set: (name: string, highlight: unknown) => void;
+}
+
+const FIND_ACTIVE_HIGHLIGHT_NAME = "keeper-find-active-match";
+const FIND_HIGHLIGHT_NAME = "keeper-find-match";
 
 interface TextSegment {
   end: number;
@@ -234,6 +338,111 @@ function collectFindMatches(
   });
 
   return matches;
+}
+
+function getCssHighlightRegistry() {
+  const css = globalThis.CSS as (typeof CSS & {
+    highlights?: CssHighlightRegistry;
+  }) | null;
+  const HighlightConstructor = (
+    globalThis as typeof globalThis & {
+      Highlight?: new (...ranges: Range[]) => unknown;
+    }
+  ).Highlight;
+
+  if (!css?.highlights || !HighlightConstructor) {
+    return null;
+  }
+
+  return { HighlightConstructor, highlights: css.highlights };
+}
+
+function clearFindHighlights() {
+  const registry = getCssHighlightRegistry();
+  if (!registry) {
+    return;
+  }
+
+  registry.highlights.delete(FIND_HIGHLIGHT_NAME);
+  registry.highlights.delete(FIND_ACTIVE_HIGHLIGHT_NAME);
+}
+
+function resolveDomTextPoint(
+  element: HTMLElement | null,
+  offset: number,
+): { node: Text; offset: number } | null {
+  if (!element) {
+    return null;
+  }
+
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  let remaining = offset;
+  let current = walker.nextNode();
+  while (current) {
+    const textNode = current as Text;
+    const length = textNode.data.length;
+    if (remaining <= length) {
+      return { node: textNode, offset: remaining };
+    }
+    remaining -= length;
+    current = walker.nextNode();
+  }
+
+  return null;
+}
+
+function createDomRange(editor: LexicalEditor, match: FindMatch) {
+  const anchor = resolveDomTextPoint(
+    editor.getElementByKey(match.anchorKey),
+    match.anchorOffset,
+  );
+  const focus = resolveDomTextPoint(
+    editor.getElementByKey(match.focusKey),
+    match.focusOffset,
+  );
+  if (!anchor || !focus) {
+    return null;
+  }
+
+  const range = document.createRange();
+  range.setStart(anchor.node, anchor.offset);
+  range.setEnd(focus.node, focus.offset);
+  return range;
+}
+
+function paintFindHighlights(
+  editor: LexicalEditor,
+  matches: FindMatch[],
+  activeIndex: number,
+) {
+  const registry = getCssHighlightRegistry();
+  if (!registry) {
+    return;
+  }
+
+  if (matches.length === 0) {
+    clearFindHighlights();
+    return;
+  }
+
+  const ranges = matches
+    .map((match) => createDomRange(editor, match))
+    .filter((range): range is Range => range !== null);
+  const activeMatch = matches[Math.min(activeIndex, matches.length - 1)];
+  const activeRange = activeMatch ? createDomRange(editor, activeMatch) : null;
+
+  registry.highlights.set(
+    FIND_HIGHLIGHT_NAME,
+    new registry.HighlightConstructor(...ranges),
+  );
+  if (activeRange) {
+    registry.highlights.set(
+      FIND_ACTIVE_HIGHLIGHT_NAME,
+      new registry.HighlightConstructor(activeRange),
+    );
+  } else {
+    registry.highlights.delete(FIND_ACTIVE_HIGHLIGHT_NAME);
+  }
 }
 
 function findMatchesEqual(left: FindMatch[], right: FindMatch[]) {
@@ -409,16 +618,6 @@ function FindReplaceBar({ command }: { command?: LexicalEditorCommand }) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      const isMod = event.metaKey || event.ctrlKey;
-      if (isMod && event.key.toLowerCase() === "f") {
-        event.preventDefault();
-        setIsOpen(true);
-        if (event.shiftKey || event.altKey) {
-          setIsReplaceOpen(true);
-        }
-        return;
-      }
-
       if (!isOpen) {
         return;
       }
@@ -466,6 +665,16 @@ function FindReplaceBar({ command }: { command?: LexicalEditorCommand }) {
     setMatches([]);
     setActiveIndex(0);
   }, [editor, matches, replacement]);
+
+  useEffect(() => {
+    if (!isOpen || !query) {
+      clearFindHighlights();
+      return;
+    }
+
+    paintFindHighlights(editor, matches, activeIndex);
+    return clearFindHighlights;
+  }, [activeIndex, editor, isOpen, matches, query]);
 
   if (!isOpen) {
     return null;
@@ -592,6 +801,8 @@ function useLatestGetter<T>(value: T) {
 
 function LexicalMarkdownEditor({
   command,
+  crdtInitialMarkdown,
+  crdtInitialUpdate,
   hasAttachment = false,
   isNativeDom = false,
   keyboardHeight = 0,
@@ -599,6 +810,7 @@ function LexicalMarkdownEditor({
   noteId,
   notesRoot,
   onAttachDocument,
+  onCrdtUpdate,
   onInsertImage,
   onMarkdownChange,
   onInsertTemplateCommand,
@@ -617,8 +829,25 @@ function LexicalMarkdownEditor({
 
   const palette = themeMode === "light" ? lightTheme.colors : darkTheme.colors;
   const editorContentElementRef = useRef<HTMLDivElement | null>(null);
-  const initialMarkdownRef = useRef(markdown);
+  const hasCrdtState = (crdtInitialUpdate?.length ?? 0) > 0;
+  const initialMarkdownRef = useRef(crdtInitialMarkdown ?? markdown);
   const commandRef = useRef<LexicalEditorCommand | undefined>(command);
+  const crdtDocRef = useRef<Y.Doc | null>(null);
+  if (hasCrdtState && crdtDocRef.current === null) {
+    const doc = new Y.Doc();
+    Y.applyUpdate(doc, Uint8Array.from(crdtInitialUpdate ?? []));
+    crdtDocRef.current = doc;
+  }
+  const crdtProviderFactory = useMemo(() => {
+    const doc = crdtDocRef.current;
+    if (!doc || !hasCrdtState) {
+      return null;
+    }
+    return (id: string, yjsDocMap: Map<string, Y.Doc>) => {
+      yjsDocMap.set(id, doc);
+      return createLocalProvider(doc, onCrdtUpdate);
+    };
+  }, [hasCrdtState, onCrdtUpdate]);
   const handleMarkdownChange = useCallback(
     (nextMarkdown: string) => {
       writeEditorDraft(noteId, nextMarkdown);
@@ -666,7 +895,9 @@ function LexicalMarkdownEditor({
         getOnToggleArticle,
         getOnToggleRelatedNotes,
         nodes: KEEPER_EDITOR_NODES,
-        editorState: () => importMarkdownToLexical(initialMarkdownRef.current),
+        editorState: hasCrdtState
+          ? null
+          : () => importMarkdownToLexical(initialMarkdownRef.current),
         theme: KEEPER_EDITOR_THEME,
       }),
     [
@@ -681,6 +912,7 @@ function LexicalMarkdownEditor({
       getOnToggleActivePanel,
       getOnToggleArticle,
       getOnToggleRelatedNotes,
+      hasCrdtState,
     ],
   );
 
@@ -994,12 +1226,12 @@ function LexicalMarkdownEditor({
 					display: flex;
 					flex-direction: column;
 					gap: 6px;
-					margin: 0 18px 8px auto;
 					padding: 8px;
-					position: sticky;
+					position: fixed;
+					right: ${Math.max((safeAreaInsets?.right ?? 0) + 18, 18)}px;
 					top: ${Math.max((safeAreaInsets?.top ?? 0) + 14, 14)}px;
 					width: min(520px, calc(100vw - 36px));
-					z-index: 30;
+					z-index: 1000;
 				}
 				.keeper-find-row {
 					align-items: center;
@@ -1077,6 +1309,14 @@ function LexicalMarkdownEditor({
 				.keeper-find-spacer {
 					width: 32px;
 				}
+				::highlight(keeper-find-match) {
+					background: ${palette.primary}4D;
+					color: inherit;
+				}
+				::highlight(keeper-find-active-match) {
+					background: ${palette.primary};
+					color: ${palette.background};
+				}
 			`}</style>
       <LexicalExtensionComposer
         extension={editorExtension}
@@ -1087,6 +1327,17 @@ function LexicalMarkdownEditor({
           <ContentEditable className="keeper-editor ContentEditable__root" />
           <EmptyPlaceholder />
         </div>
+        {crdtProviderFactory ? (
+          <CollaborationPlugin
+            id={noteId}
+            initialEditorState={() =>
+              importMarkdownToLexical(initialMarkdownRef.current)
+            }
+            providerFactory={crdtProviderFactory}
+            shouldBootstrap
+            username="Keeper"
+          />
+        ) : null}
         <MarkdownShortcutPlugin transformers={KEEPER_MARKDOWN_TRANSFORMERS} />
       </LexicalExtensionComposer>
     </div>

@@ -55,7 +55,7 @@ function createStateStore(): GitSyncStateStore {
 		writeLastSyncedOid: jest.fn(),
 		shouldForceRepoReset: jest.fn(),
 		clearForceRepoResetFlag: jest.fn(),
-		readPendingJournal: jest.fn(),
+		readPendingJournal: jest.fn().mockResolvedValue([]),
 		writePendingJournal: jest.fn(),
 		readDeviceId: jest.fn(),
 		writeDeviceId: jest.fn(),
@@ -105,7 +105,34 @@ describe("DefaultRemoteSyncService", () => {
 		});
 	});
 
-	it("commits dirty local notes before merging older remote state", async () => {
+	it("discards unjournaled dirty notes before merging remote state", async () => {
+		const order: string[] = [];
+		const gitEngine = createGitEngine({
+			status: jest.fn().mockResolvedValue([{ path: "note-1.md" }]),
+			checkout: jest.fn().mockImplementation(async () => {
+				order.push("discard-local");
+			}),
+			merge: jest.fn().mockImplementation(async () => {
+				order.push("merge-remote");
+			}),
+		});
+		const service = new DefaultRemoteSyncService(
+			gitEngine,
+			createDbSyncService(),
+			createStateStore(),
+		);
+
+		await service.syncWithRemote(createNoopStartupTelemetry());
+
+		expect(gitEngine.commit).not.toHaveBeenCalled();
+		expect(gitEngine.checkout).toHaveBeenCalledWith("/tmp/keeper-notes", "HEAD", {
+			noUpdateHead: true,
+			force: true,
+		});
+		expect(order).toEqual(["discard-local", "merge-remote", "discard-local"]);
+	});
+
+	it("commits journaled dirty notes before merging remote state", async () => {
 		const order: string[] = [];
 		const gitEngine = createGitEngine({
 			status: jest.fn().mockResolvedValue([{ path: "note-1.md" }]),
@@ -116,10 +143,14 @@ describe("DefaultRemoteSyncService", () => {
 				order.push("merge-remote");
 			}),
 		});
+		const stateStore = createStateStore();
+		(stateStore.readPendingJournal as jest.Mock).mockResolvedValue([
+			{ filePath: "note-1.md", operation: "modify", updatedAt: 1 },
+		]);
 		const service = new DefaultRemoteSyncService(
 			gitEngine,
 			createDbSyncService(),
-			createStateStore(),
+			stateStore,
 		);
 
 		await service.syncWithRemote(createNoopStartupTelemetry());
