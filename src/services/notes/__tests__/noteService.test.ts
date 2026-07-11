@@ -132,7 +132,7 @@ describe("NoteService", () => {
 			});
 		});
 
-		it("journals note content before writing the markdown file", async () => {
+		it("writes markdown before queueing git journal", async () => {
 			mockQueueChangeAsync.mockResolvedValue(undefined);
 			mockSaveNote.mockResolvedValue({
 				id: "note-1",
@@ -168,8 +168,39 @@ describe("NoteService", () => {
 				documentPositions: null,
 			});
 			expect(
-				mockQueueChangeAsync.mock.invocationCallOrder[0],
-			).toBeLessThan(mockSaveNote.mock.invocationCallOrder[0]);
+				mockSaveNote.mock.invocationCallOrder[0],
+			).toBeLessThan(mockQueueChangeAsync.mock.invocationCallOrder[0]);
+		});
+
+		it("does not block local saves on stalled git journaling", async () => {
+			mockQueueChangeAsync.mockReturnValue(new Promise(() => {}));
+			mockSaveNote.mockResolvedValue({
+				id: "note-1",
+				title: "My Note",
+				content: "body",
+				isPinned: false,
+				lastUpdated: 1000,
+				noteType: "note",
+				status: null,
+			});
+
+			await expect(
+				NoteService.saveNote({
+					id: "note-1",
+					title: "My Note",
+					content: "body",
+					isPinned: false,
+					noteType: "note",
+					status: null,
+				}),
+			).resolves.toMatchObject({ id: "note-1", content: "body" });
+
+			expect(mockQueueChangeAsync).toHaveBeenCalledWith(
+				"note-1.md",
+				"modify",
+				expect.objectContaining({ content: "body" }),
+			);
+			expect(mockScheduleCommitBatch).not.toHaveBeenCalled();
 		});
 
 		it("indexes templates in SQLite", async () => {

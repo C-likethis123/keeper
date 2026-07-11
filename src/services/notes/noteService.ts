@@ -30,6 +30,39 @@ export class NoteService {
 		return `${id}.md`;
 	}
 
+	private static queueGitSnapshot(
+		id: string,
+		operation: "add" | "modify",
+		note: NoteSaveInput,
+	): void {
+		const journalNote = {
+			id,
+			title: note.title,
+			content: note.content,
+			isPinned: !!note.isPinned,
+			noteType: note.noteType,
+			status: note.status ?? null,
+			createdAt: note.createdAt,
+			completedAt: note.completedAt,
+			attachment: note.attachment ?? null,
+			attachedVideo: note.attachedVideo ?? null,
+			resourceUrl: note.resourceUrl ?? null,
+			documentPositions: note.documentPositions ?? null,
+		};
+
+		void GitService.queueChangeAsync(
+			NoteService.getGitPath(id),
+			operation,
+			journalNote,
+		)
+			.then(() => {
+				GitService.scheduleCommitBatch();
+			})
+			.catch((error) => {
+				console.warn("[NoteService] Failed to queue git change:", error);
+			});
+	}
+
 	static async loadNote(id: string): Promise<Note | null> {
 		return storageEngine.loadNote(id);
 	}
@@ -53,26 +86,6 @@ export class NoteService {
 		const id = note.id.trim();
 		const pinnedState = !!note.isPinned;
 		const title = (note.title ?? "").trim();
-		const journalNote = {
-			id,
-			title,
-			content: note.content,
-			isPinned: pinnedState,
-			noteType: note.noteType,
-			status: note.status ?? null,
-			createdAt: note.createdAt,
-			completedAt: note.completedAt,
-			attachment: note.attachment ?? null,
-			attachedVideo: note.attachedVideo ?? null,
-			resourceUrl: note.resourceUrl ?? null,
-			documentPositions: note.documentPositions ?? null,
-		};
-		await GitService.queueChangeAsync(
-			NoteService.getGitPath(id),
-			isNewNote ? "add" : "modify",
-			journalNote,
-		);
-
 		const saved = await storageEngine.saveNote({
 			...note,
 			id,
@@ -91,7 +104,12 @@ export class NoteService {
 			status: saved.status ?? null,
 		});
 
-		GitService.scheduleCommitBatch();
+		NoteService.queueGitSnapshot(id, isNewNote ? "add" : "modify", {
+			...note,
+			id,
+			isPinned: pinnedState,
+			title,
+		});
 		invalidateNoteQueryCache();
 		useStorageStore.getState().bumpContentVersion();
 
