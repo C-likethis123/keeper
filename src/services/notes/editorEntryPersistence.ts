@@ -105,6 +105,6 @@ export async function persistEditorEntry(
 	const payload = buildPayload(input, existingNote);
 
 	if (!existingNote || !isSamePayload(existingNote, payload)) {
-		await NoteService.saveNote(payload, input.isNewEntry ?? false);
+		await NoteService.saveNote(payload, input.isNewEntry ?? !existingNote);
 	}
 }

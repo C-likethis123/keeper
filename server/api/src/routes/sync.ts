@@ -15,7 +15,7 @@ const baseOperationSchema = z.object({
 const createOperationSchema = baseOperationSchema.extend({
 	type: z.literal("note.create"),
 	path: z.string().min(1),
-	title: z.string().min(1),
+	title: z.string(),
 	markdown: z.string(),
 	createdAt: isoDate,
 });
@@ -29,7 +29,7 @@ const updateOperationSchema = baseOperationSchema.extend({
 const renameOperationSchema = baseOperationSchema.extend({
 	type: z.literal("note.rename"),
 	path: z.string().min(1),
-	title: z.string().min(1),
+	title: z.string(),
 	updatedAt: isoDate,
 });
 
@@ -74,20 +74,20 @@ export function registerSyncRoutes(
 			});
 		}
 
-			try {
-				const result = await syncRepository.pushOperations(parsed.data);
-				request.log.info(
-					{
-						accepted: result.accepted.length,
-						cursor: result.cursor,
-						deviceId: parsed.data.deviceId,
-						duplicateCount: result.duplicates.length,
-						opCount: parsed.data.ops.length,
-					},
-					"sync push accepted",
-				);
-				if (jobQueue && result.accepted.length > 0) {
-					await jobQueue.enqueue("git.sync", {
+		try {
+			const result = await syncRepository.pushOperations(parsed.data);
+			request.log.info(
+				{
+					accepted: result.accepted.length,
+					cursor: result.cursor,
+					deviceId: parsed.data.deviceId,
+					duplicateCount: result.duplicates.length,
+					opCount: parsed.data.ops.length,
+				},
+				"sync push accepted",
+			);
+			if (jobQueue && result.accepted.length > 0) {
+				await jobQueue.enqueue("git.sync", {
 					opIds: result.accepted,
 					operations: parsed.data.ops.filter((operation) =>
 						result.accepted.includes(operation.opId),

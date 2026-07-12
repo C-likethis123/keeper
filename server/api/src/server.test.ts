@@ -323,7 +323,7 @@ test("cluster API serves suggestions and persists feedback", async () => {
 	await server.close();
 });
 
-test("sync push rejects update for missing note", async () => {
+test("sync push upserts update for missing note", async () => {
 	const repository = new InMemorySyncRepository();
 	const server = createServer({ syncRepository: repository });
 
@@ -345,8 +345,72 @@ test("sync push rejects update for missing note", async () => {
 		},
 	});
 
-	assert.equal(response.statusCode, 409);
-	assert.equal(response.json().error, "sync_conflict");
+	assert.equal(response.statusCode, 202);
+	assert.equal(repository.notes.get("missing")?.markdown, "# Missing");
+
+	await server.close();
+});
+
+test("sync push accepts delete for missing note", async () => {
+	const repository = new InMemorySyncRepository();
+	const server = createServer({ syncRepository: repository });
+
+	const response = await server.inject({
+		method: "POST",
+		url: "/sync/push",
+		payload: {
+			deviceId: "macbook",
+			ops: [
+				{
+					opId: "macbook:1",
+					seq: 1,
+					type: "note.delete",
+					noteId: "missing",
+					deletedAt: "2026-07-11T10:00:00Z",
+				},
+			],
+		},
+	});
+
+	assert.equal(response.statusCode, 202);
+	assert.deepEqual(response.json(), {
+		accepted: ["macbook:1"],
+		duplicates: [],
+		cursor: 1,
+	});
+
+	await server.close();
+});
+
+test("sync push accepts rename for missing note", async () => {
+	const repository = new InMemorySyncRepository();
+	const server = createServer({ syncRepository: repository });
+
+	const response = await server.inject({
+		method: "POST",
+		url: "/sync/push",
+		payload: {
+			deviceId: "macbook",
+			ops: [
+				{
+					opId: "macbook:1",
+					seq: 1,
+					type: "note.rename",
+					noteId: "missing",
+					path: "notes/missing.md",
+					title: "Missing",
+					updatedAt: "2026-07-11T10:00:00Z",
+				},
+			],
+		},
+	});
+
+	assert.equal(response.statusCode, 202);
+	assert.deepEqual(response.json(), {
+		accepted: ["macbook:1"],
+		duplicates: [],
+		cursor: 1,
+	});
 
 	await server.close();
 });

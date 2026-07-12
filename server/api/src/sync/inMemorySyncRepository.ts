@@ -117,10 +117,21 @@ export class InMemorySyncRepository implements SyncRepository {
 			case "note.update": {
 				const note = this.notes.get(operation.noteId);
 				if (!note || note.deletedAt) {
-					throw new SyncConflictError("note does not exist or is deleted");
+					this.notes.set(operation.noteId, {
+						id: operation.noteId,
+						path: `${operation.noteId}.md`,
+						title: extractTitle(operation.markdown),
+						markdown: operation.markdown,
+						createdAt: operation.updatedAt,
+						updatedAt: operation.updatedAt,
+						deletedAt: null,
+						version: 1,
+					});
+					return;
 				}
 				this.notes.set(operation.noteId, {
 					...note,
+					title: extractTitle(operation.markdown) || note.title,
 					markdown: operation.markdown,
 					updatedAt: operation.updatedAt,
 					version: note.version + 1,
@@ -130,7 +141,7 @@ export class InMemorySyncRepository implements SyncRepository {
 			case "note.rename": {
 				const note = this.notes.get(operation.noteId);
 				if (!note || note.deletedAt) {
-					throw new SyncConflictError("note does not exist or is deleted");
+					return;
 				}
 				if (
 					[...this.notes.values()].some(
@@ -152,7 +163,7 @@ export class InMemorySyncRepository implements SyncRepository {
 			case "note.delete": {
 				const note = this.notes.get(operation.noteId);
 				if (!note || note.deletedAt) {
-					throw new SyncConflictError("note does not exist or is deleted");
+					return;
 				}
 				this.notes.set(operation.noteId, {
 					...note,
@@ -164,4 +175,25 @@ export class InMemorySyncRepository implements SyncRepository {
 			}
 		}
 	}
+}
+
+function extractTitle(markdown: string): string {
+	const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(markdown);
+	if (!match) return "";
+	for (const rawLine of match[1].split(/\r?\n/)) {
+		const separator = rawLine.indexOf(":");
+		if (separator < 0) continue;
+		const key = rawLine.slice(0, separator).trim();
+		if (key !== "title") continue;
+		const value = rawLine.slice(separator + 1).trim();
+		if (value.startsWith('"') && value.endsWith('"')) {
+			try {
+				return JSON.parse(value) as string;
+			} catch {
+				return value.slice(1, -1);
+			}
+		}
+		return value;
+	}
+	return "";
 }

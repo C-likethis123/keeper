@@ -329,6 +329,15 @@ describe("NoteService", () => {
 
 		it("queues note.update for existing local saves", async () => {
 			mockQueueChangeAsync.mockResolvedValue(undefined);
+			mockLoadNote.mockResolvedValue({
+				id: "note-1",
+				title: "My Note",
+				content: "old body",
+				isPinned: false,
+				lastUpdated: 999,
+				noteType: "note",
+				status: null,
+			});
 			const saved = {
 				id: "note-1",
 				title: "My Note",

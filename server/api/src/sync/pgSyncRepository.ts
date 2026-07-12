@@ -14,6 +14,10 @@ type ExistingDeviceSeqRow = {
 	payload: SyncOperation;
 };
 
+type IdRow = {
+	id: string | number;
+};
+
 const { Pool } = pg;
 
 export function createPgSyncRepository(databaseUrl: string): SyncRepository {
@@ -40,14 +44,14 @@ export function createPgSyncRepository(databaseUrl: string): SyncRepository {
 				const operations = [...input.ops].sort((a, b) => a.seq - b.seq);
 
 				for (const operation of operations) {
-					const existingOp = await client.query<{ id: number }>(
+					const existingOp = await client.query<IdRow>(
 						"SELECT id FROM sync_ops WHERE op_id = $1",
 						[operation.opId],
 					);
 
 					if (existingOp.rowCount && existingOp.rows[0]) {
 						duplicates.push(operation.opId);
-						cursor = Math.max(cursor ?? 0, existingOp.rows[0].id);
+						cursor = Math.max(cursor ?? 0, Number(existingOp.rows[0].id));
 						continue;
 					}
 
@@ -65,7 +69,7 @@ export function createPgSyncRepository(databaseUrl: string): SyncRepository {
 						);
 					}
 
-					const inserted = await client.query<{ id: number }>(
+					const inserted = await client.query<IdRow>(
 						`INSERT INTO sync_ops (op_id, device_id, device_seq, type, note_id, payload, created_at)
 						 VALUES ($1, $2, $3, $4, $5, $6, now())
 						 RETURNING id`,
@@ -81,7 +85,8 @@ export function createPgSyncRepository(databaseUrl: string): SyncRepository {
 
 					await applyOperation(client, operation);
 					accepted.push(operation.opId);
-					cursor = inserted.rows[0]?.id ?? cursor;
+					cursor =
+						inserted.rows[0] !== undefined ? Number(inserted.rows[0].id) : cursor;
 				}
 
 				await client.query("COMMIT");
@@ -110,7 +115,7 @@ export function createPgSyncRepository(databaseUrl: string): SyncRepository {
 			const client = await pool.connect();
 			try {
 				const result = await client.query<{
-					id: number;
+					id: string | number;
 					device_id: string;
 					payload: SyncOperation;
 				}>(
@@ -121,12 +126,13 @@ export function createPgSyncRepository(databaseUrl: string): SyncRepository {
 					 LIMIT $2`,
 					[input.cursor, input.limit],
 				);
-				const cursor = result.rows.at(-1)?.id ?? input.cursor;
+				const lastRow = result.rows.at(-1);
+				const cursor = lastRow !== undefined ? Number(lastRow.id) : input.cursor;
 				const ops = result.rows
 					.filter((row) => row.device_id !== input.deviceId)
 					.map((row) => ({
 						...row.payload,
-						serverId: row.id,
+						serverId: Number(row.id),
 						deviceId: row.device_id,
 					}));
 
@@ -157,19 +163,26 @@ async function applyOperation(
 			);
 			return;
 		case "note.update":
-			await applyLiveNoteUpdate(
-				client,
-				`UPDATE notes
-				 SET markdown = $2,
-				     updated_at = $3,
-				     version = version + 1
-				 WHERE id = $1 AND deleted_at IS NULL`,
-				[operation.noteId, operation.markdown, operation.updatedAt],
+			await client.query(
+				`INSERT INTO notes (id, path, title, markdown, created_at, updated_at, deleted_at, version)
+				 VALUES ($1, $2, $3, $4, $5, $5, NULL, 1)
+				 ON CONFLICT (id) DO UPDATE
+				 SET markdown = EXCLUDED.markdown,
+				     title = COALESCE(NULLIF(EXCLUDED.title, ''), notes.title),
+				     updated_at = EXCLUDED.updated_at,
+				     deleted_at = NULL,
+				     version = notes.version + 1`,
+				[
+					operation.noteId,
+					`${operation.noteId}.md`,
+					extractTitle(operation.markdown),
+					operation.markdown,
+					operation.updatedAt,
+				],
 			);
 			return;
 		case "note.rename":
-			await applyLiveNoteUpdate(
-				client,
+			await client.query(
 				`UPDATE notes
 				 SET path = $2,
 				     title = $3,
@@ -185,8 +198,7 @@ async function applyOperation(
 			);
 			return;
 		case "note.delete":
-			await applyLiveNoteUpdate(
-				client,
+			await client.query(
 				`UPDATE notes
 				 SET deleted_at = $2,
 				     updated_at = $2,
@@ -196,6 +208,27 @@ async function applyOperation(
 			);
 			return;
 	}
+}
+
+function extractTitle(markdown: string): string {
+	const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(markdown);
+	if (!match) return "";
+	for (const rawLine of match[1].split(/\r?\n/)) {
+		const separator = rawLine.indexOf(":");
+		if (separator < 0) continue;
+		const key = rawLine.slice(0, separator).trim();
+		if (key !== "title") continue;
+		const value = rawLine.slice(separator + 1).trim();
+		if (value.startsWith('"') && value.endsWith('"')) {
+			try {
+				return JSON.parse(value) as string;
+			} catch {
+				return value.slice(1, -1);
+			}
+		}
+		return value;
+	}
+	return "";
 }
 
 async function applyLiveNoteUpdate(

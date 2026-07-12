@@ -96,6 +96,8 @@ export class NoteService {
 		const id = note.id.trim();
 		const pinnedState = !!note.isPinned;
 		const title = (note.title ?? "").trim();
+		const existingNote = await storageEngine.loadNote(id);
+		const shouldCreate = isNewNote || !existingNote;
 		const saved = await storageEngine.saveNote({
 			...note,
 			id,
@@ -121,7 +123,7 @@ export class NoteService {
 			title,
 		});
 		try {
-			const queued = await (isNewNote
+			const queued = await (shouldCreate
 				? enqueueNoteCreate(saved)
 				: enqueueNoteUpdate(saved));
 			showSyncDebugToast(`Sync queued ${queued?.type ?? "note.save"}`);
