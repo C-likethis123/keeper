@@ -1,4 +1,13 @@
 import { getTauriInvoke } from "@/services/storage/runtime";
+import {
+	listServerAcceptedClusters,
+	listServerActiveClusters,
+	listServerClusterMembers,
+	serverClusterAccept,
+	serverClusterDismiss,
+	serverClusterRename,
+	shouldUseServerClusters,
+} from "@/services/notes/serverClusterClient";
 import type {
 	ClusterMemberRow,
 	ClusterRow,
@@ -27,12 +36,18 @@ export async function importClustersFromFile(): Promise<number> {
 }
 
 export async function listActiveClusters(): Promise<ClusterRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerActiveClusters();
+	}
 	return invoke<ClusterRow[]>("clusters_get_active");
 }
 
 export async function listClusterMembers(
 	clusterId: string,
 ): Promise<ClusterMemberRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerClusterMembers(clusterId);
+	}
 	const rows = await invoke<TauriClusterMemberRow[]>("clusters_get_members", {
 		clusterId,
 	});
@@ -44,14 +59,25 @@ export async function listClusterMembers(
 }
 
 export async function clusterDismiss(clusterId: string): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterDismiss(clusterId);
+		return;
+	}
 	await invoke("clusters_dismiss", { clusterId });
 }
 
 export async function clusterAccept(clusterId: string): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterAccept(clusterId);
+		return;
+	}
 	await invoke("clusters_accept", { clusterId });
 }
 
 export async function listAcceptedClusters(): Promise<ClusterRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerAcceptedClusters();
+	}
 	return invoke<ClusterRow[]>("clusters_get_accepted");
 }
 
@@ -59,6 +85,10 @@ export async function clusterRename(
 	clusterId: string,
 	name: string,
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterRename(clusterId, name);
+		return;
+	}
 	await invoke("clusters_rename", { clusterId, name });
 }
 

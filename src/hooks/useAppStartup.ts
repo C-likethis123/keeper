@@ -1,5 +1,7 @@
 import { runStartupStrategy } from "@/services/startup/startupStrategies";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
+import { startSyncPullService } from "@/services/sync/syncPullService";
+import { startSyncPushService } from "@/services/sync/syncPushService";
 import { useEffect, useState } from "react";
 
 type StartupStatus = "idle" | "running" | "ready" | "error";
@@ -87,8 +89,21 @@ export function useAppStartup(): AppStartupState {
 			}));
 		});
 
+		startSyncPushService();
+		startSyncPullService();
+		const handleOnline = () => {
+			startSyncPushService();
+			startSyncPullService();
+		};
+		if (typeof window !== "undefined" && window.addEventListener) {
+			window.addEventListener("online", handleOnline);
+		}
+
 		return () => {
 			isCancelled = true;
+			if (typeof window !== "undefined" && window.removeEventListener) {
+				window.removeEventListener("online", handleOnline);
+			}
 		};
 	}, []);
 

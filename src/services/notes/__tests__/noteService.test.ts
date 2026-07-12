@@ -25,12 +25,26 @@ jest.mock("@/services/storage/storageEngine", () => ({
 
 const mockQueueChangeAsync = jest.fn();
 const mockScheduleCommitBatch = jest.fn();
+const mockEnqueueNoteCreate = jest.fn();
+const mockEnqueueNoteUpdate = jest.fn();
+const mockEnqueueNoteDelete = jest.fn();
+const mockScheduleSyncPush = jest.fn();
 
 jest.mock("@/services/git/gitService", () => ({
 	GitService: {
 		queueChangeAsync: (...args: unknown[]) => mockQueueChangeAsync(...args),
 		scheduleCommitBatch: () => mockScheduleCommitBatch(),
 	},
+}));
+
+jest.mock("@/services/sync/syncOpQueue", () => ({
+	enqueueNoteCreate: (...args: unknown[]) => mockEnqueueNoteCreate(...args),
+	enqueueNoteUpdate: (...args: unknown[]) => mockEnqueueNoteUpdate(...args),
+	enqueueNoteDelete: (...args: unknown[]) => mockEnqueueNoteDelete(...args),
+}));
+
+jest.mock("@/services/sync/syncPushService", () => ({
+	scheduleSyncPush: () => mockScheduleSyncPush(),
 }));
 
 jest.mock("@/services/notes/crdtNoteService", () => ({
@@ -49,6 +63,10 @@ jest.mock("@/services/notes/notesIndex", () => ({
 describe("NoteService", () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		process.env.EXPO_PUBLIC_SERVER_SYNC_ENABLED = undefined;
+		mockEnqueueNoteCreate.mockResolvedValue(undefined);
+		mockEnqueueNoteUpdate.mockResolvedValue(undefined);
+		mockEnqueueNoteDelete.mockResolvedValue(undefined);
 	});
 
 	describe("saveNote - git path routing", () => {
@@ -279,6 +297,91 @@ describe("NoteService", () => {
 				expect.objectContaining({ content: "snapshot body from crdt" }),
 			);
 		});
+
+		it("queues note.create for new local saves", async () => {
+			mockQueueChangeAsync.mockResolvedValue(undefined);
+			const saved = {
+				id: "note-1",
+				title: "My Note",
+				content: "body",
+				isPinned: false,
+				lastUpdated: 1000,
+				noteType: "note",
+				status: null,
+			};
+			mockSaveNote.mockResolvedValue(saved);
+
+			await NoteService.saveNote(
+				{
+					id: "note-1",
+					title: "My Note",
+					content: "body",
+					isPinned: false,
+					noteType: "note",
+					status: null,
+				},
+				true,
+			);
+
+			expect(mockEnqueueNoteCreate).toHaveBeenCalledWith(saved);
+			expect(mockScheduleSyncPush).toHaveBeenCalled();
+		});
+
+		it("queues note.update for existing local saves", async () => {
+			mockQueueChangeAsync.mockResolvedValue(undefined);
+			const saved = {
+				id: "note-1",
+				title: "My Note",
+				content: "body",
+				isPinned: false,
+				lastUpdated: 1000,
+				noteType: "note",
+				status: null,
+			};
+			mockSaveNote.mockResolvedValue(saved);
+
+			await NoteService.saveNote({
+				id: "note-1",
+				title: "My Note",
+				content: "body",
+				isPinned: false,
+				noteType: "note",
+				status: null,
+			});
+
+			expect(mockEnqueueNoteUpdate).toHaveBeenCalledWith(saved);
+			expect(mockScheduleSyncPush).toHaveBeenCalled();
+		});
+
+		it("skips Git journal when server sync flag is enabled", async () => {
+			process.env.EXPO_PUBLIC_SERVER_SYNC_ENABLED = "true";
+			mockQueueChangeAsync.mockResolvedValue(undefined);
+			const saved = {
+				id: "note-1",
+				title: "My Note",
+				content: "body",
+				isPinned: false,
+				lastUpdated: 1000,
+				noteType: "note",
+				status: null,
+			};
+			mockSaveNote.mockResolvedValue(saved);
+
+			await NoteService.saveNote(
+				{
+					id: "note-1",
+					title: "My Note",
+					content: "body",
+					isPinned: false,
+					noteType: "note",
+					status: null,
+				},
+				true,
+			);
+
+			expect(mockQueueChangeAsync).not.toHaveBeenCalled();
+			expect(mockEnqueueNoteCreate).toHaveBeenCalledWith(saved);
+		});
 	});
 
 	describe("deleteNote - git path routing", () => {
@@ -304,6 +407,16 @@ describe("NoteService", () => {
 			mockDeleteNote.mockResolvedValue(false);
 			await NoteService.deleteNote("note-1");
 			expect(mockQueueChangeAsync).not.toHaveBeenCalled();
+		});
+
+		it("queues note.delete after local delete", async () => {
+			mockQueueChangeAsync.mockResolvedValue(undefined);
+			mockDeleteNote.mockResolvedValue(true);
+
+			await NoteService.deleteNote("note-1");
+
+			expect(mockEnqueueNoteDelete).toHaveBeenCalledWith("note-1");
+			expect(mockScheduleSyncPush).toHaveBeenCalled();
 		});
 	});
 });

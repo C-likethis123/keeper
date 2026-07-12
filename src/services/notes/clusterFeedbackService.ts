@@ -1,4 +1,8 @@
 import { NOTES_ROOT } from "@/services/notes/Notes";
+import {
+	logServerClusterFeedback,
+	shouldUseServerClusters,
+} from "@/services/notes/serverClusterClient";
 import { File } from "expo-file-system";
 import { getNotesIndexDb } from "./indexDb/db";
 import {
@@ -28,6 +32,10 @@ export async function logFeedback(
 		| "delete",
 	eventData: Record<string, unknown> = {},
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await logServerClusterFeedback(clusterId, eventType, eventData);
+		return;
+	}
 	const database = await getNotesIndexDb();
 	await recordClusterFeedback(database, clusterId, eventType, eventData);
 }

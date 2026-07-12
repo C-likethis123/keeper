@@ -1,3 +1,7 @@
+import {
+	logServerClusterFeedback,
+	shouldUseServerClusters,
+} from "@/services/notes/serverClusterClient";
 import { getTauriInvoke } from "@/services/storage/runtime";
 
 export interface FeedbackEvent {
@@ -27,6 +31,10 @@ export async function logFeedback(
 		| "delete",
 	eventData: Record<string, unknown> = {},
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await logServerClusterFeedback(clusterId, eventType, eventData);
+		return;
+	}
 	await invoke("clusters_record_feedback", {
 		clusterId,
 		eventType,

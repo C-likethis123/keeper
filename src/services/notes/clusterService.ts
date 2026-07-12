@@ -1,5 +1,14 @@
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import { File } from "expo-file-system";
+import {
+	listServerAcceptedClusters,
+	listServerActiveClusters,
+	listServerClusterMembers,
+	serverClusterAccept,
+	serverClusterDismiss,
+	serverClusterRename,
+	shouldUseServerClusters,
+} from "@/services/notes/serverClusterClient";
 import { getNotesIndexDb } from "./indexDb/db";
 import {
 	type ClusterMemberRow,
@@ -72,6 +81,9 @@ export async function importClustersFromFile(): Promise<number> {
 }
 
 export async function listActiveClusters(): Promise<ClusterRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerActiveClusters();
+	}
 	const database = await getNotesIndexDb();
 	return getActiveClusters(database);
 }
@@ -79,21 +91,35 @@ export async function listActiveClusters(): Promise<ClusterRow[]> {
 export async function listClusterMembers(
 	clusterId: string,
 ): Promise<ClusterMemberRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerClusterMembers(clusterId);
+	}
 	const database = await getNotesIndexDb();
 	return getClusterMembers(database, clusterId);
 }
 
 export async function clusterDismiss(clusterId: string): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterDismiss(clusterId);
+		return;
+	}
 	const database = await getNotesIndexDb();
 	await dismissCluster(database, clusterId);
 }
 
 export async function clusterAccept(clusterId: string): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterAccept(clusterId);
+		return;
+	}
 	const database = await getNotesIndexDb();
 	await acceptCluster(database, clusterId);
 }
 
 export async function listAcceptedClusters(): Promise<ClusterRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerAcceptedClusters();
+	}
 	const database = await getNotesIndexDb();
 	return getAcceptedClusters(database);
 }
@@ -102,6 +128,10 @@ export async function clusterRename(
 	clusterId: string,
 	name: string,
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterRename(clusterId, name);
+		return;
+	}
 	const database = await getNotesIndexDb();
 	await renameCluster(database, clusterId, name);
 }

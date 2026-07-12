@@ -2,6 +2,13 @@ import { GitService } from "@/services/git/gitService";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { storageEngine } from "@/services/storage/storageEngine";
+import {
+	enqueueNoteCreate,
+	enqueueNoteDelete,
+	enqueueNoteUpdate,
+} from "@/services/sync/syncOpQueue";
+import { scheduleSyncPush } from "@/services/sync/syncPushService";
+import { isServerSyncEnabled } from "@/services/sync/config";
 import { useStorageStore } from "@/stores/storageStore";
 import {
 	deleteCrdtNote,
@@ -35,6 +42,8 @@ export class NoteService {
 		operation: "add" | "modify",
 		note: NoteSaveInput,
 	): void {
+		if (isServerSyncEnabled()) return;
+
 		const journalNote = {
 			id,
 			title: note.title,
@@ -110,6 +119,12 @@ export class NoteService {
 			isPinned: pinnedState,
 			title,
 		});
+		try {
+			await (isNewNote ? enqueueNoteCreate(saved) : enqueueNoteUpdate(saved));
+			scheduleSyncPush();
+		} catch (error) {
+			console.warn("[NoteService] Failed to queue sync operation:", error);
+		}
 		invalidateNoteQueryCache();
 		useStorageStore.getState().bumpContentVersion();
 
@@ -126,8 +141,16 @@ export class NoteService {
 			} catch (err) {
 				console.warn("Failed to delete note from index:", err);
 			}
-			await GitService.queueChangeAsync(NoteService.getGitPath(id), "delete");
-			GitService.scheduleCommitBatch();
+			if (!isServerSyncEnabled()) {
+				await GitService.queueChangeAsync(NoteService.getGitPath(id), "delete");
+				GitService.scheduleCommitBatch();
+			}
+			try {
+				await enqueueNoteDelete(id);
+				scheduleSyncPush();
+			} catch (error) {
+				console.warn("[NoteService] Failed to queue sync operation:", error);
+			}
 			invalidateNoteQueryCache();
 			useStorageStore.getState().bumpContentVersion();
 			return true;

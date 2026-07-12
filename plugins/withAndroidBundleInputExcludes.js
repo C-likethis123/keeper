@@ -12,7 +12,7 @@ tasks.withType(com.facebook.react.tasks.BundleHermesCTask).configureEach {
 module.exports = function withAndroidBundleInputExcludes(config) {
 	return withAppBuildGradle(config, (config) => {
 		if (!config.modResults.contents.includes('sources.exclude("**/dist/**/*")')) {
-			config.modResults.contents = config.modResults.contents.trimEnd() + "\n" + PATCH;
+			config.modResults.contents = `${config.modResults.contents.trimEnd()}\n${PATCH}`;
 		}
 		return config;
 	});
