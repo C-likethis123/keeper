@@ -2,6 +2,8 @@ import pg from "pg";
 import { SyncConflictError } from "./errors.js";
 import type {
 	SyncOperation,
+	SyncPullInput,
+	SyncPullResult,
 	SyncPushInput,
 	SyncPushResult,
 	SyncRepository,
@@ -100,6 +102,35 @@ export function createPgSyncRepository(databaseUrl: string): SyncRepository {
 					throw new SyncConflictError("operation conflicts with existing note");
 				}
 				throw error;
+			} finally {
+				client.release();
+			}
+		},
+		async pullOperations(input: SyncPullInput): Promise<SyncPullResult> {
+			const client = await pool.connect();
+			try {
+				const result = await client.query<{
+					id: number;
+					device_id: string;
+					payload: SyncOperation;
+				}>(
+					`SELECT id, device_id, payload
+					 FROM sync_ops
+					 WHERE id > $1
+					 ORDER BY id ASC
+					 LIMIT $2`,
+					[input.cursor, input.limit],
+				);
+				const cursor = result.rows.at(-1)?.id ?? input.cursor;
+				const ops = result.rows
+					.filter((row) => row.device_id !== input.deviceId)
+					.map((row) => ({
+						...row.payload,
+						serverId: row.id,
+						deviceId: row.device_id,
+					}));
+
+				return { ops, cursor };
 			} finally {
 				client.release();
 			}

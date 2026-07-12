@@ -54,6 +54,23 @@ export type SyncPushResult = {
 	cursor: number | null;
 };
 
+export type PulledSyncOperation = SyncOperation & {
+	serverId: number;
+	deviceId: string;
+};
+
+export type SyncPullInput = {
+	deviceId?: string;
+	cursor: number;
+	limit: number;
+};
+
+export type SyncPullResult = {
+	ops: PulledSyncOperation[];
+	cursor: number;
+};
+
 export type SyncRepository = {
 	pushOperations(input: SyncPushInput): Promise<SyncPushResult>;
+	pullOperations(input: SyncPullInput): Promise<SyncPullResult>;
 };

@@ -1,6 +1,8 @@
 import { SyncConflictError } from "./errors.js";
 import type {
 	SyncOperation,
+	SyncPullInput,
+	SyncPullResult,
 	SyncPushInput,
 	SyncPushResult,
 	SyncRepository,
@@ -73,6 +75,23 @@ export class InMemorySyncRepository implements SyncRepository {
 			duplicates,
 			cursor,
 		};
+	}
+
+	async pullOperations(input: SyncPullInput): Promise<SyncPullResult> {
+		const scanned = this.operations
+			.filter((stored) => stored.id > input.cursor)
+			.sort((a, b) => a.id - b.id)
+			.slice(0, input.limit);
+		const cursor = scanned.at(-1)?.id ?? input.cursor;
+		const ops = scanned
+			.filter((stored) => stored.deviceId !== input.deviceId)
+			.map((stored) => ({
+				...stored.operation,
+				serverId: stored.id,
+				deviceId: stored.deviceId,
+			}));
+
+		return { ops, cursor };
 	}
 
 	private applyOperation(operation: SyncOperation): void {

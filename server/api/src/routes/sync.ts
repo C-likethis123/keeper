@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import type { JobQueue } from "../jobs/types.js";
 import { SyncConflictError } from "../sync/errors.js";
 import type { SyncRepository } from "../sync/types.js";
 
@@ -52,9 +53,16 @@ const pushRequestSchema = z.object({
 		.max(100),
 });
 
+const pullQuerySchema = z.object({
+	deviceId: z.string().min(1).optional(),
+	cursor: z.coerce.number().int().nonnegative().default(0),
+	limit: z.coerce.number().int().positive().max(500).default(100),
+});
+
 export function registerSyncRoutes(
 	server: FastifyInstance,
 	syncRepository: SyncRepository,
+	jobQueue?: JobQueue,
 ) {
 	server.post("/sync/push", async (request, reply) => {
 		const parsed = pushRequestSchema.safeParse(request.body);
@@ -68,6 +76,22 @@ export function registerSyncRoutes(
 
 		try {
 			const result = await syncRepository.pushOperations(parsed.data);
+			if (jobQueue && result.accepted.length > 0) {
+				await jobQueue.enqueue("git.sync", {
+					opIds: result.accepted,
+					operations: parsed.data.ops.filter((operation) =>
+						result.accepted.includes(operation.opId),
+					),
+					noteIds: [
+						...new Set(
+							parsed.data.ops
+								.filter((operation) => result.accepted.includes(operation.opId))
+								.map((operation) => operation.noteId),
+						),
+					],
+					cursor: result.cursor,
+				});
+			}
 
 			return reply.code(202).send(result);
 		} catch (error) {
@@ -80,5 +104,20 @@ export function registerSyncRoutes(
 
 			throw error;
 		}
+	});
+
+	server.get("/sync/pull", async (request, reply) => {
+		const parsed = pullQuerySchema.safeParse(request.query);
+
+		if (!parsed.success) {
+			return reply.code(400).send({
+				error: "invalid_sync_pull",
+				issues: parsed.error.issues,
+			});
+		}
+
+		const result = await syncRepository.pullOperations(parsed.data);
+
+		return reply.code(200).send(result);
 	});
 }

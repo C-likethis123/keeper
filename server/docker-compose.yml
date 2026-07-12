@@ -15,20 +15,32 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+
   api:
     image: node:24-alpine
     working_dir: /app
     command: sh -c "npm install && npm run db:migrate && npm run dev"
     environment:
       DATABASE_URL: postgres://keeper:keeper@postgres:5432/keeper
+      REDIS_URL: redis://redis:6379
       PORT: 8787
+      SERVER_GIT_REPO_DIR: /data/keeper-notes
+      SERVER_GIT_BRANCH: main
     ports:
       - "8787:8787"
     volumes:
       - ./api:/app
+      - keeper-notes:/data/keeper-notes
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
 
 volumes:
   keeper-postgres:
+  keeper-notes:
