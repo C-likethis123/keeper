@@ -6,6 +6,7 @@ import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { storageEngine } from "@/services/storage/storageEngine";
 import { useStorageStore } from "@/stores/storageStore";
 import { getSyncServerUrl } from "@/services/sync/config";
+import { showSyncDebugToast } from "@/services/sync/debug";
 import { pullSyncOperations } from "@/services/sync/remoteSyncClient";
 import {
 	getSyncDeviceId,
@@ -142,6 +143,12 @@ export async function pullPendingSyncOps(): Promise<void> {
 			retryMs = BASE_RETRY_MS;
 		} catch (error) {
 			console.warn("[SyncPullService] Pull failed:", error);
+			showSyncDebugToast(
+				`Sync pull failed: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+				10000,
+			);
 			scheduleSyncPull(retryMs);
 			retryMs = Math.min(retryMs * 2, MAX_RETRY_MS);
 		}

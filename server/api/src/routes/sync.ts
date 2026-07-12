@@ -74,10 +74,20 @@ export function registerSyncRoutes(
 			});
 		}
 
-		try {
-			const result = await syncRepository.pushOperations(parsed.data);
-			if (jobQueue && result.accepted.length > 0) {
-				await jobQueue.enqueue("git.sync", {
+			try {
+				const result = await syncRepository.pushOperations(parsed.data);
+				request.log.info(
+					{
+						accepted: result.accepted.length,
+						cursor: result.cursor,
+						deviceId: parsed.data.deviceId,
+						duplicateCount: result.duplicates.length,
+						opCount: parsed.data.ops.length,
+					},
+					"sync push accepted",
+				);
+				if (jobQueue && result.accepted.length > 0) {
+					await jobQueue.enqueue("git.sync", {
 					opIds: result.accepted,
 					operations: parsed.data.ops.filter((operation) =>
 						result.accepted.includes(operation.opId),
@@ -116,8 +126,16 @@ export function registerSyncRoutes(
 			});
 		}
 
-		const result = await syncRepository.pullOperations(parsed.data);
+			const result = await syncRepository.pullOperations(parsed.data);
+			request.log.info(
+				{
+					cursor: result.cursor,
+					deviceId: parsed.data.deviceId,
+					opCount: result.ops.length,
+				},
+				"sync pull returned",
+			);
 
-		return reply.code(200).send(result);
-	});
+			return reply.code(200).send(result);
+		});
 }

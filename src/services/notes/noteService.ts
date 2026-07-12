@@ -7,6 +7,7 @@ import {
 	enqueueNoteDelete,
 	enqueueNoteUpdate,
 } from "@/services/sync/syncOpQueue";
+import { showSyncDebugToast } from "@/services/sync/debug";
 import { scheduleSyncPush } from "@/services/sync/syncPushService";
 import { isServerSyncEnabled } from "@/services/sync/config";
 import { useStorageStore } from "@/stores/storageStore";
@@ -120,10 +121,14 @@ export class NoteService {
 			title,
 		});
 		try {
-			await (isNewNote ? enqueueNoteCreate(saved) : enqueueNoteUpdate(saved));
+			const queued = await (isNewNote
+				? enqueueNoteCreate(saved)
+				: enqueueNoteUpdate(saved));
+			showSyncDebugToast(`Sync queued ${queued?.type ?? "note.save"}`);
 			scheduleSyncPush();
 		} catch (error) {
 			console.warn("[NoteService] Failed to queue sync operation:", error);
+			showSyncDebugToast("Sync queue failed", 8000);
 		}
 		invalidateNoteQueryCache();
 		useStorageStore.getState().bumpContentVersion();
@@ -146,10 +151,12 @@ export class NoteService {
 				GitService.scheduleCommitBatch();
 			}
 			try {
-				await enqueueNoteDelete(id);
+				const queued = await enqueueNoteDelete(id);
+				showSyncDebugToast(`Sync queued ${queued?.type ?? "note.delete"}`);
 				scheduleSyncPush();
 			} catch (error) {
 				console.warn("[NoteService] Failed to queue sync operation:", error);
+				showSyncDebugToast("Sync queue failed", 8000);
 			}
 			invalidateNoteQueryCache();
 			useStorageStore.getState().bumpContentVersion();

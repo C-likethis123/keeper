@@ -11,8 +11,8 @@ expo-env.d.ts
 *.apk
 *.so
 
-# Claude
-.claude/settings.local.json
+# caddy
+server/caddy-root.crt
 
 # Python
 __pycache__

@@ -42,7 +42,8 @@ services:
         condition: service_started
 
   caddy:
-    image: caddy:2-alpine
+    build:
+      context: ./caddy
     environment:
       KEEPER_API_DOMAIN: ${KEEPER_API_DOMAIN:-localhost}
     ports:

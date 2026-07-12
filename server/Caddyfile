@@ -1,4 +1,8 @@
-https://{$KEEPER_API_DOMAIN} {
-	tls internal
+:443 {
+	tls /data/keeper-self-signed.crt /data/keeper-self-signed.key
+	log {
+		output stdout
+		format console
+	}
 	reverse_proxy api:8787
 }

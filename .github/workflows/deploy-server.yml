@@ -19,7 +19,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check SSH reachability
+        id: ssh-check
+        env:
+          ORACLE_VM_HOST: ${{ secrets.ORACLE_VM_HOST }}
+          ORACLE_VM_SSH_PORT: ${{ secrets.ORACLE_VM_SSH_PORT || 22 }}
+        run: |
+          set -eu
+
+          if [ -z "$ORACLE_VM_HOST" ]; then
+            echo "ORACLE_VM_HOST secret is required."
+            exit 1
+          fi
+
+          if timeout 15 bash -c '</dev/tcp/"$1"/"$2"' _ "$ORACLE_VM_HOST" "$ORACLE_VM_SSH_PORT"; then
+            echo "reachable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Cannot reach $ORACLE_VM_HOST:$ORACLE_VM_SSH_PORT from GitHub Actions; skipping deploy."
+            echo "reachable=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy over SSH
+        if: steps.ssh-check.outputs.reachable == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ORACLE_VM_HOST }}
@@ -122,7 +143,7 @@ jobs:
 
             sudo docker compose -f server/docker-compose.yml up -d --build
             sudo docker compose -f server/docker-compose.yml ps
-            sudo docker compose -f server/docker-compose.yml cp caddy:/data/caddy/pki/authorities/local/root.crt server/keeper-caddy-root.crt
+            sudo docker compose -f server/docker-compose.yml cp caddy:/data/keeper-self-signed.crt server/keeper-caddy-root.crt
             for attempt in 1 2 3 4 5; do
               if curl -k --fail --resolve "$KEEPER_API_DOMAIN:443:127.0.0.1" "https://$KEEPER_API_DOMAIN/health"; then
                 exit 0

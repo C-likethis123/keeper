@@ -1,4 +1,5 @@
 import { getSyncServerUrl } from "@/services/sync/config";
+import { showSyncDebugToast } from "@/services/sync/debug";
 import { pushSyncOperations } from "@/services/sync/remoteSyncClient";
 import {
 	getSyncDeviceId,
@@ -21,7 +22,11 @@ function clearRetryTimer(): void {
 }
 
 export function scheduleSyncPush(delayMs = 0): void {
-	if (!getSyncServerUrl()) return;
+	const serverUrl = getSyncServerUrl();
+	if (!serverUrl) {
+		showSyncDebugToast("Sync skipped: no server URL", 8000);
+		return;
+	}
 	clearRetryTimer();
 	retryTimer = setTimeout(() => {
 		retryTimer = null;
@@ -38,18 +43,21 @@ export async function pushPendingSyncOps(): Promise<void> {
 		const queued = await readQueuedSyncOps();
 		if (queued.length === 0) {
 			retryMs = BASE_RETRY_MS;
+			showSyncDebugToast("Sync skipped: queue empty");
 			return;
 		}
 
 		try {
 			const deviceId = await getSyncDeviceId();
 			const batch = queued.slice(0, 100);
+			showSyncDebugToast(`Sync pushing ${batch.length}`);
 			const result = await pushSyncOperations(deviceId, batch);
 			await markSyncOpsPushed([
 				...result.accepted,
 				...(result.duplicates ?? []),
 			]);
 			retryMs = BASE_RETRY_MS;
+			showSyncDebugToast(`Sync pushed ${result.accepted.length}`);
 
 			const remaining = await readQueuedSyncOps();
 			if (remaining.length > 0) {
@@ -57,6 +65,12 @@ export async function pushPendingSyncOps(): Promise<void> {
 			}
 		} catch (error) {
 			console.warn("[SyncPushService] Push failed:", error);
+			showSyncDebugToast(
+				`Sync push failed: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+				10000,
+			);
 			scheduleSyncPush(retryMs);
 			retryMs = Math.min(retryMs * 2, MAX_RETRY_MS);
 		}

@@ -34,15 +34,15 @@ docker compose up -d
 docker compose logs -f caddy
 ```
 
-Open inbound TCP `443` in the VM cloud firewall/security list. Caddy terminates HTTPS with its internal CA and proxies to the API container on `8787`.
+Open inbound TCP `443` in the VM cloud firewall/security list. Caddy terminates HTTPS with a self-signed certificate and proxies to the API container on `8787`.
 
 Export the Caddy root cert if a client needs to trust it:
 
 ```bash
-docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt ./keeper-caddy-root.crt
+docker compose cp caddy:/data/keeper-self-signed.crt ./keeper-caddy-root.crt
 ```
 
-For production HTTPS, use a real DNS name and remove `tls internal` from `Caddyfile` so Caddy can get a public Let's Encrypt certificate.
+For production HTTPS, use a real DNS name and switch `Caddyfile` back to managed TLS so Caddy can get a public Let's Encrypt certificate.
 
 For Git and MOC workers, set:
 
