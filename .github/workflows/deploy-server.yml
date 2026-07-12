@@ -37,24 +37,63 @@ jobs:
               DEPLOY_REPO="https://github.com/${{ github.repository }}.git"
             fi
 
-            if ! command -v git >/dev/null 2>&1; then
-              sudo apt-get update
-              sudo apt-get install -y git
-            fi
+            install_git() {
+              if command -v apt-get >/dev/null 2>&1; then
+                sudo apt-get update
+                sudo apt-get install -y git
+              elif command -v dnf >/dev/null 2>&1; then
+                sudo dnf install -y git
+              elif command -v yum >/dev/null 2>&1; then
+                sudo yum install -y git
+              else
+                echo "No supported package manager found to install git."
+                exit 1
+              fi
+            }
 
-            if ! command -v docker >/dev/null 2>&1; then
-              sudo apt-get update
-              sudo apt-get install -y ca-certificates curl gnupg
-              sudo install -d -m 0755 /etc/apt/keyrings
-              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.asc >/dev/null
-              sudo chmod a+r /etc/apt/keyrings/docker.asc
-              . /etc/os-release
-              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
-              sudo apt-get update
-              sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            install_docker() {
+              if command -v apt-get >/dev/null 2>&1; then
+                sudo apt-get update
+                sudo apt-get install -y ca-certificates curl gnupg
+                sudo install -d -m 0755 /etc/apt/keyrings
+                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.asc >/dev/null
+                sudo chmod a+r /etc/apt/keyrings/docker.asc
+                . /etc/os-release
+                echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+                sudo apt-get update
+                sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+              elif command -v dnf >/dev/null 2>&1; then
+                sudo dnf install -y dnf-plugins-core
+                sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+                sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+              elif command -v yum >/dev/null 2>&1; then
+                sudo yum install -y yum-utils
+                sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+                sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+              else
+                echo "No supported package manager found to install docker."
+                exit 1
+              fi
+
               sudo systemctl enable --now docker
               sudo usermod -aG docker "$DEPLOY_USER"
+            }
+
+            start_docker() {
+              if command -v systemctl >/dev/null 2>&1; then
+                sudo systemctl enable --now docker
+              fi
+            }
+
+            if ! command -v git >/dev/null 2>&1; then
+              install_git
             fi
+
+            if ! command -v docker >/dev/null 2>&1 || ! sudo docker compose version >/dev/null 2>&1; then
+              install_docker
+            fi
+
+            start_docker
 
             if [ ! -d "$DEPLOY_PATH/.git" ]; then
               if [ -e "$DEPLOY_PATH" ] && [ "$(find "$DEPLOY_PATH" -mindepth 1 -maxdepth 1 2>/dev/null | wc -l)" -gt 0 ]; then
