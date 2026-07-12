@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: keeper
       POSTGRES_DB: keeper
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - keeper-postgres:/var/lib/postgresql/data
     healthcheck:
@@ -18,7 +18,7 @@ services:
   redis:
     image: redis:8-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
 
   api:
     image: node:24-alpine
@@ -31,7 +31,7 @@ services:
       SERVER_GIT_REPO_DIR: /data/keeper-notes
       SERVER_GIT_BRANCH: main
     ports:
-      - "8787:8787"
+      - "127.0.0.1:8787:8787"
     volumes:
       - ./api:/app
       - keeper-notes:/data/keeper-notes
@@ -41,6 +41,23 @@ services:
       redis:
         condition: service_started
 
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      KEEPER_API_DOMAIN: ${KEEPER_API_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - keeper-caddy-data:/data
+      - keeper-caddy-config:/config
+    depends_on:
+      api:
+        condition: service_started
+
 volumes:
   keeper-postgres:
   keeper-notes:
+  keeper-caddy-data:
+  keeper-caddy-config:

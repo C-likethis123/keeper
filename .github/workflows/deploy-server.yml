@@ -33,8 +33,16 @@ jobs:
             DEPLOY_PATH="${KEEPER_DEPLOY_PATH:-/opt/keeper}"
             DEPLOY_USER="$(id -un)"
             DEPLOY_REPO="${{ secrets.KEEPER_REPO_URL }}"
+            KEEPER_API_DOMAIN="${{ secrets.KEEPER_API_DOMAIN }}"
             if [ -z "$DEPLOY_REPO" ]; then
               DEPLOY_REPO="https://github.com/${{ github.repository }}.git"
+            fi
+            if [ -z "$KEEPER_API_DOMAIN" ]; then
+              KEEPER_API_DOMAIN="${{ secrets.ORACLE_VM_HOST }}"
+            fi
+            if [ -z "$KEEPER_API_DOMAIN" ]; then
+              echo "Set KEEPER_API_DOMAIN or ORACLE_VM_HOST secret."
+              exit 1
             fi
 
             install_git() {
@@ -110,5 +118,16 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
+            printf 'KEEPER_API_DOMAIN=%s\n' "$KEEPER_API_DOMAIN" > server/.env
+
             sudo docker compose -f server/docker-compose.yml up -d --build
             sudo docker compose -f server/docker-compose.yml ps
+            sudo docker compose -f server/docker-compose.yml cp caddy:/data/caddy/pki/authorities/local/root.crt server/keeper-caddy-root.crt
+            for attempt in 1 2 3 4 5; do
+              if curl -k --fail --resolve "$KEEPER_API_DOMAIN:443:127.0.0.1" "https://$KEEPER_API_DOMAIN/health"; then
+                exit 0
+              fi
+              sleep 2
+            done
+            sudo docker compose -f server/docker-compose.yml logs --tail=100 caddy
+            exit 1

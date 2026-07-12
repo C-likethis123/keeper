@@ -15,6 +15,35 @@ API:
 curl http://localhost:8787/health
 ```
 
+Proxy:
+
+```bash
+curl -k https://localhost/health
+```
+
+For temporary self-signed HTTPS, set the VM IP or host:
+
+```bash
+KEEPER_API_DOMAIN=161.118.229.1
+```
+
+Then restart:
+
+```bash
+docker compose up -d
+docker compose logs -f caddy
+```
+
+Open inbound TCP `443` in the VM cloud firewall/security list. Caddy terminates HTTPS with its internal CA and proxies to the API container on `8787`.
+
+Export the Caddy root cert if a client needs to trust it:
+
+```bash
+docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt ./keeper-caddy-root.crt
+```
+
+For production HTTPS, use a real DNS name and remove `tls internal` from `Caddyfile` so Caddy can get a public Let's Encrypt certificate.
+
 For Git and MOC workers, set:
 
 ```bash
@@ -53,7 +82,7 @@ Client cutover flag:
 
 ```bash
 EXPO_PUBLIC_SERVER_SYNC_ENABLED=true
-EXPO_PUBLIC_SYNC_SERVER_URL=http://localhost:8787
+EXPO_PUBLIC_SYNC_SERVER_URL=https://161.118.229.1
 ```
 
 When the flag is enabled, clients keep local writes and server sync enabled but stop direct client Git journal writes.
