@@ -55,6 +55,8 @@ jobs:
             DEPLOY_USER="$(id -un)"
             DEPLOY_REPO="${{ secrets.KEEPER_REPO_URL }}"
             KEEPER_API_DOMAIN="${{ secrets.KEEPER_API_DOMAIN }}"
+            SERVER_GIT_REMOTE_URL="${{ secrets.SERVER_GIT_REMOTE_URL }}"
+            KEEPER_SEED_TOKEN="${{ secrets.KEEPER_SEED_TOKEN }}"
             if [ -z "$DEPLOY_REPO" ]; then
               DEPLOY_REPO="https://github.com/${{ github.repository }}.git"
             fi
@@ -139,7 +141,11 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            printf 'KEEPER_API_DOMAIN=%s\n' "$KEEPER_API_DOMAIN" > server/.env
+            {
+              printf 'KEEPER_API_DOMAIN=%s\n' "$KEEPER_API_DOMAIN"
+              printf 'SERVER_GIT_REMOTE_URL=%s\n' "$SERVER_GIT_REMOTE_URL"
+              printf 'KEEPER_SEED_TOKEN=%s\n' "$KEEPER_SEED_TOKEN"
+            } > server/.env
 
             sudo docker compose -f server/docker-compose.yml up -d --build
             sudo docker compose -f server/docker-compose.yml ps

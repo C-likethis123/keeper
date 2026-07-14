@@ -50,6 +50,7 @@ For Git and MOC workers, set:
 SERVER_GIT_REMOTE_URL=<git-remote-url>
 SERVER_GIT_REPO_DIR=/data/keeper-notes
 REDIS_URL=redis://redis:6379
+KEEPER_SEED_TOKEN=<shared-token-for-github-action>
 ```
 
 Push operation:
@@ -78,6 +79,20 @@ Pull operations after a server cursor:
 curl 'http://localhost:8787/sync/pull?deviceId=macbook&cursor=0'
 ```
 
+Seed from the configured GitHub repo:
+
+```bash
+curl -X POST http://localhost:8787/github/seed \
+  -H "authorization: Bearer $KEEPER_SEED_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{
+    "repository": "owner/repo",
+    "ref": "main",
+    "sha": "abc123",
+    "proceedIfDbHasData": false
+  }'
+```
+
 Client cutover flag:
 
 ```bash
@@ -99,6 +114,7 @@ When the flag is enabled, clients keep local writes and server sync enabled but 
 - same-device operations are skipped during pull while the cursor still advances
 - `git.sync` worker clones the server repo, writes accepted note ops, commits, and pushes
 - Redis-backed Git lock when `REDIS_URL` is set
+- `POST /github/seed` seeds markdown notes from the configured GitHub repo
 - `/jobs` and `/jobs/:id`
 - `moc.classify` worker runs the Python pipeline and imports clusters
 - `/clusters/active`, `/clusters/accepted`, `/clusters/:id/members`

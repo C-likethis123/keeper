@@ -1,5 +1,6 @@
 import { createServer } from "./server.js";
 import { createPgClusterRepository } from "./clusters/pgClusterRepository.js";
+import { createGitHubSeedServiceFromEnv } from "./github/seedService.js";
 import { InMemoryJobQueue } from "./jobs/inMemoryJobQueue.js";
 import { createPgSyncRepository } from "./sync/pgSyncRepository.js";
 import { createGitSyncProcessorFromEnv } from "./workers/gitWorker.js";
@@ -13,6 +14,7 @@ if (!databaseUrl) {
 }
 
 const clusterRepository = createPgClusterRepository(databaseUrl);
+const syncRepository = createPgSyncRepository(databaseUrl);
 const processors =
 	process.env.SERVER_GIT_REMOTE_URL && process.env.SERVER_GIT_REPO_DIR
 		? {
@@ -22,9 +24,18 @@ const processors =
 		: {};
 
 const server = createServer({
-	syncRepository: createPgSyncRepository(databaseUrl),
+	syncRepository,
 	jobQueue: new InMemoryJobQueue(processors),
 	clusterRepository,
+	githubSeed:
+		process.env.KEEPER_SEED_TOKEN &&
+		process.env.SERVER_GIT_REMOTE_URL &&
+		process.env.SERVER_GIT_REPO_DIR
+			? {
+					token: process.env.KEEPER_SEED_TOKEN,
+					service: createGitHubSeedServiceFromEnv(syncRepository),
+				}
+			: undefined,
 });
 
 await server.listen({ host: "0.0.0.0", port });

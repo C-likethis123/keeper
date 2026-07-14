@@ -70,7 +70,27 @@ export type SyncPullResult = {
 	cursor: number;
 };
 
+export type SeedNoteInput = {
+	noteId: string;
+	path: string;
+	title: string;
+	markdown: string;
+	sourceSha: string;
+	timestamp: string;
+};
+
+export type SeedNotesInput = {
+	deviceId: string;
+	notes: SeedNoteInput[];
+};
+
+export type SeedNotesResult = SyncPushResult & {
+	noteCount: number;
+};
+
 export type SyncRepository = {
 	pushOperations(input: SyncPushInput): Promise<SyncPushResult>;
 	pullOperations(input: SyncPullInput): Promise<SyncPullResult>;
+	hasNotes(): Promise<boolean>;
+	seedNotes(input: SeedNotesInput): Promise<SeedNotesResult>;
 };

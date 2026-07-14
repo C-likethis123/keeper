@@ -1,11 +1,14 @@
 import { SyncConflictError } from "./errors.js";
 import type {
 	SyncOperation,
+	NoteCreateOperation,
 	SyncPullInput,
 	SyncPullResult,
 	SyncPushInput,
 	SyncPushResult,
 	SyncRepository,
+	SeedNotesInput,
+	SeedNotesResult,
 } from "./types.js";
 
 type NoteRow = {
@@ -94,6 +97,54 @@ export class InMemorySyncRepository implements SyncRepository {
 		return { ops, cursor };
 	}
 
+	async hasNotes(): Promise<boolean> {
+		return [...this.notes.values()].some((note) => !note.deletedAt);
+	}
+
+	async seedNotes(input: SeedNotesInput): Promise<SeedNotesResult> {
+		const existingSeqs = this.operations
+			.filter((stored) => stored.deviceId === input.deviceId)
+			.map((stored) => stored.seq);
+		let nextSeq = Math.max(0, ...existingSeqs) + 1;
+		const operations: NoteCreateOperation[] = input.notes.map((note) => ({
+			opId: `github-seed:${note.sourceSha}:${note.path}`,
+			seq: nextSeq++,
+			type: "note.create",
+			noteId: note.noteId,
+			path: note.path,
+			title: note.title,
+			markdown: note.markdown,
+			createdAt: note.timestamp,
+		}));
+		const accepted: string[] = [];
+		const duplicates: string[] = [];
+		let cursor: number | null = null;
+
+		for (const operation of operations) {
+			const existingByOp = this.operations.find(
+				(stored) => stored.operation.opId === operation.opId,
+			);
+			if (existingByOp) {
+				duplicates.push(operation.opId);
+				cursor = Math.max(cursor ?? 0, existingByOp.id);
+				continue;
+			}
+
+			const id = this.nextId++;
+			this.operations.push({
+				id,
+				deviceId: input.deviceId,
+				seq: operation.seq,
+				operation,
+			});
+			this.upsertSeedNote(operation);
+			accepted.push(operation.opId);
+			cursor = id;
+		}
+
+		return { accepted, duplicates, cursor, noteCount: input.notes.length };
+	}
+
 	private applyOperation(operation: SyncOperation): void {
 		switch (operation.type) {
 			case "note.create":
@@ -174,6 +225,20 @@ export class InMemorySyncRepository implements SyncRepository {
 				return;
 			}
 		}
+	}
+
+	private upsertSeedNote(operation: NoteCreateOperation) {
+		const existing = this.notes.get(operation.noteId);
+		this.notes.set(operation.noteId, {
+			id: operation.noteId,
+			path: operation.path,
+			title: operation.title,
+			markdown: operation.markdown,
+			createdAt: existing?.createdAt ?? operation.createdAt,
+			updatedAt: operation.createdAt,
+			deletedAt: null,
+			version: (existing?.version ?? 0) + 1,
+		});
 	}
 }
 

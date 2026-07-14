@@ -28,8 +28,10 @@ services:
       DATABASE_URL: postgres://keeper:keeper@postgres:5432/keeper
       REDIS_URL: redis://redis:6379
       PORT: 8787
+      SERVER_GIT_REMOTE_URL: ${SERVER_GIT_REMOTE_URL:-}
       SERVER_GIT_REPO_DIR: /data/keeper-notes
       SERVER_GIT_BRANCH: main
+      KEEPER_SEED_TOKEN: ${KEEPER_SEED_TOKEN:-}
     ports:
       - "127.0.0.1:8787:8787"
     volumes:

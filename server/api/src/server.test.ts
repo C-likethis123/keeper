@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { InMemoryClusterRepository } from "./clusters/inMemoryClusterRepository.js";
+import type { GitHubSeedService } from "./github/seedService.js";
 import { InMemoryJobQueue } from "./jobs/inMemoryJobQueue.js";
 import { createServer } from "./server.js";
 import { InMemorySyncRepository } from "./sync/inMemorySyncRepository.js";
@@ -16,6 +17,138 @@ test("health route returns ok", async () => {
 
 	assert.equal(response.statusCode, 200);
 	assert.deepEqual(response.json(), { ok: true });
+
+	await server.close();
+});
+
+test("github seed rejects missing bearer token", async () => {
+	const repository = new InMemorySyncRepository();
+	const seedService: GitHubSeedService = {
+		async seed() {
+			throw new Error("seed should not run");
+		},
+	};
+	const server = createServer({
+		syncRepository: repository,
+		githubSeed: { token: "secret", service: seedService },
+	});
+
+	const response = await server.inject({
+		method: "POST",
+		url: "/github/seed",
+		payload: {
+			repository: "owner/repo",
+			ref: "main",
+			sha: "abc123",
+			proceedIfDbHasData: false,
+		},
+	});
+
+	assert.equal(response.statusCode, 401);
+	assert.deepEqual(response.json(), { error: "unauthorized" });
+
+	await server.close();
+});
+
+test("github seed stops when DB has data and proceed flag is false", async () => {
+	const repository = new InMemorySyncRepository();
+	await repository.pushOperations({
+		deviceId: "phone",
+		ops: [
+			{
+				opId: "phone:1",
+				seq: 1,
+				type: "note.create",
+				noteId: "note-1",
+				path: "note-1.md",
+				title: "Note 1",
+				markdown: "# Note 1",
+				createdAt: "2026-07-11T10:00:00Z",
+			},
+		],
+	});
+	const seedService: GitHubSeedService = {
+		async seed() {
+			throw new Error("seed should not run");
+		},
+	};
+	const server = createServer({
+		syncRepository: repository,
+		githubSeed: { token: "secret", service: seedService },
+	});
+
+	const response = await server.inject({
+		method: "POST",
+		url: "/github/seed",
+		headers: { authorization: "Bearer secret" },
+		payload: {
+			repository: "owner/repo",
+			ref: "main",
+			sha: "abc123",
+			proceedIfDbHasData: false,
+		},
+	});
+
+	assert.equal(response.statusCode, 409);
+	assert.equal(response.json().error, "server_db_has_data");
+
+	await server.close();
+});
+
+test("github seed proceeds when DB has data and proceed flag is true", async () => {
+	const repository = new InMemorySyncRepository();
+	await repository.pushOperations({
+		deviceId: "phone",
+		ops: [
+			{
+				opId: "phone:1",
+				seq: 1,
+				type: "note.create",
+				noteId: "note-1",
+				path: "note-1.md",
+				title: "Note 1",
+				markdown: "# Note 1",
+				createdAt: "2026-07-11T10:00:00Z",
+			},
+		],
+	});
+	const seedService: GitHubSeedService = {
+		async seed(input) {
+			assert.equal(input.proceedIfDbHasData, true);
+			return {
+				accepted: ["github-seed:abc123:pages/seeded.md"],
+				duplicates: [],
+				cursor: 2,
+				noteCount: 1,
+				sha: input.sha,
+			};
+		},
+	};
+	const server = createServer({
+		syncRepository: repository,
+		githubSeed: { token: "secret", service: seedService },
+	});
+
+	const response = await server.inject({
+		method: "POST",
+		url: "/github/seed",
+		headers: { authorization: "Bearer secret" },
+		payload: {
+			repository: "owner/repo",
+			ref: "main",
+			sha: "abc123",
+			proceedIfDbHasData: true,
+		},
+	});
+
+	assert.equal(response.statusCode, 202);
+	assert.deepEqual(response.json(), {
+		accepted: ["github-seed:abc123:pages/seeded.md"],
+		duplicates: [],
+		cursor: 2,
+		noteCount: 1,
+		sha: "abc123",
+	});
 
 	await server.close();
 });

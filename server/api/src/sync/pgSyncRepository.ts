@@ -7,6 +7,8 @@ import type {
 	SyncPushInput,
 	SyncPushResult,
 	SyncRepository,
+	SeedNotesInput,
+	SeedNotesResult,
 } from "./types.js";
 
 type ExistingDeviceSeqRow = {
@@ -137,6 +139,113 @@ export function createPgSyncRepository(databaseUrl: string): SyncRepository {
 					}));
 
 				return { ops, cursor };
+			} finally {
+				client.release();
+			}
+		},
+		async hasNotes(): Promise<boolean> {
+			const client = await pool.connect();
+			try {
+				const result = await client.query<IdRow>(
+					"SELECT id FROM notes WHERE deleted_at IS NULL LIMIT 1",
+				);
+				return (result.rowCount ?? 0) > 0;
+			} finally {
+				client.release();
+			}
+		},
+		async seedNotes(input: SeedNotesInput): Promise<SeedNotesResult> {
+			const client = await pool.connect();
+			const accepted: string[] = [];
+			const duplicates: string[] = [];
+			let cursor: number | null = null;
+
+			try {
+				await client.query("BEGIN");
+				await client.query(
+					`INSERT INTO devices (id, name, created_at)
+					 VALUES ($1, $2, now())
+					 ON CONFLICT (id) DO UPDATE SET name = COALESCE(EXCLUDED.name, devices.name)`,
+					[input.deviceId, "GitHub seed"],
+				);
+				const seqResult = await client.query<{ max_seq: string | null }>(
+					"SELECT MAX(device_seq) AS max_seq FROM sync_ops WHERE device_id = $1",
+					[input.deviceId],
+				);
+				let nextSeq = Number(seqResult.rows[0]?.max_seq ?? 0) + 1;
+
+				for (const note of input.notes) {
+					const operation: SyncOperation = {
+						opId: `github-seed:${note.sourceSha}:${note.path}`,
+						seq: nextSeq++,
+						type: "note.create",
+						noteId: note.noteId,
+						path: note.path,
+						title: note.title,
+						markdown: note.markdown,
+						createdAt: note.timestamp,
+					};
+					const existingOp = await client.query<IdRow>(
+						"SELECT id FROM sync_ops WHERE op_id = $1",
+						[operation.opId],
+					);
+
+					if (existingOp.rowCount && existingOp.rows[0]) {
+						duplicates.push(operation.opId);
+						cursor = Math.max(cursor ?? 0, Number(existingOp.rows[0].id));
+						continue;
+					}
+
+					const inserted = await client.query<IdRow>(
+						`INSERT INTO sync_ops (op_id, device_id, device_seq, type, note_id, payload, created_at)
+						 VALUES ($1, $2, $3, $4, $5, $6, now())
+						 RETURNING id`,
+						[
+							operation.opId,
+							input.deviceId,
+							operation.seq,
+							operation.type,
+							operation.noteId,
+							JSON.stringify(operation),
+						],
+					);
+					await client.query(
+						`INSERT INTO notes (id, path, title, markdown, created_at, updated_at, deleted_at, version)
+						 VALUES ($1, $2, $3, $4, $5, $5, NULL, 1)
+						 ON CONFLICT (id) DO UPDATE
+						 SET path = EXCLUDED.path,
+						     title = EXCLUDED.title,
+						     markdown = EXCLUDED.markdown,
+						     updated_at = EXCLUDED.updated_at,
+						     deleted_at = NULL,
+						     version = notes.version + 1`,
+						[
+							note.noteId,
+							note.path,
+							note.title,
+							note.markdown,
+							note.timestamp,
+						],
+					);
+					accepted.push(operation.opId);
+					cursor =
+						inserted.rows[0] !== undefined ? Number(inserted.rows[0].id) : cursor;
+				}
+
+				await client.query("COMMIT");
+
+				return { accepted, duplicates, cursor, noteCount: input.notes.length };
+			} catch (error) {
+				await client.query("ROLLBACK");
+				if (
+					typeof error === "object" &&
+					error !== null &&
+					"code" in error &&
+					(error as { code?: string }).code === "23505"
+				) {
+					throw new SyncConflictError("operation conflicts with existing note");
+				}
+				throw error;
 			} finally {
 				client.release();
 			}
