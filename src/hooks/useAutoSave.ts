@@ -13,6 +13,11 @@ const AUTO_SAVE_INTERVAL_MS = 60000;
 const AUTO_SAVE_DEBOUNCE_MS = 2000;
 const SAVE_INDICATOR_DELAY_MS = 1000;
 
+type PersistedEditorEntry = {
+	content: string;
+	persistedAt: number;
+};
+
 type AutoSaveInput = {
 	id: string;
 	title: string;
@@ -28,7 +33,7 @@ type AutoSaveInput = {
 	resourceUrl?: Note["resourceUrl"];
 	documentPositions?: Note["documentPositions"];
 	initialNoteType?: Note["noteType"];
-	onPersisted?: () => void;
+	onPersisted?: (entry: PersistedEditorEntry) => void;
 	isNew?: boolean;
 };
 
@@ -252,6 +257,7 @@ export function useAutoSave({
 					}
 
 					setStatus("saving");
+					const persistedAt = Date.now();
 					const saveStart = performance.now();
 					const currentIsNewEntry = isNewEntryRef.current;
 					if (__DEV__) {
@@ -315,7 +321,7 @@ export function useAutoSave({
 						resourceUrl: currentNote.resourceUrl,
 						documentPositions: currentNote.documentPositions,
 					};
-					onPersisted?.();
+					onPersisted?.({ content: currentContent, persistedAt });
 					setStatus("saved");
 					statusTimeoutRef.current = setTimeout(() => {
 						setStatus("idle");

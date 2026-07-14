@@ -241,9 +241,9 @@ export default function NoteEditorView({
     resourceUrl,
     documentPositions,
     initialNoteType: note.noteType,
-    onPersisted: useCallback(() => {
+    onPersisted: useCallback(({ content, persistedAt }) => {
       isNewEntryRef.current = false;
-      clearEditorDraft(id, editorMarkdownRef.current);
+      clearEditorDraft(id, content, persistedAt);
     }, [id]),
     isNew,
   });

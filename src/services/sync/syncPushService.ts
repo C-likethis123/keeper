@@ -50,14 +50,12 @@ export async function pushPendingSyncOps(): Promise<void> {
 		try {
 			const deviceId = await getSyncDeviceId();
 			const batch = queued.slice(0, 100);
-			showSyncDebugToast(`Sync pushing ${batch.length}`);
 			const result = await pushSyncOperations(deviceId, batch);
 			await markSyncOpsPushed([
 				...result.accepted,
 				...(result.duplicates ?? []),
 			]);
 			retryMs = BASE_RETRY_MS;
-			showSyncDebugToast(`Sync pushed ${result.accepted.length}`);
 
 			const remaining = await readQueuedSyncOps();
 			if (remaining.length > 0) {

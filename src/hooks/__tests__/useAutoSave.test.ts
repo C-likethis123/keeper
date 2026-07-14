@@ -399,7 +399,10 @@ describe("useAutoSave", () => {
 			});
 		});
 		expect(result.current.status).toBe("saved");
-		expect(onPersisted).toHaveBeenCalledWith();
+		expect(onPersisted).toHaveBeenCalledWith({
+			content: "Updated body",
+			persistedAt: expect.any(Number),
+		});
 
 		act(() => {
 			jest.advanceTimersByTime(1000);
