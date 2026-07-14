@@ -20,14 +20,14 @@ jobs:
     steps:
       - name: Notify Keeper server
         env:
-          KEEPER_SEED_URL: ${{ secrets.KEEPER_SEED_URL }}
+          KEEPER_API_DOMAIN: ${{ secrets.KEEPER_API_DOMAIN || secrets.ORACLE_VM_HOST }}
           KEEPER_SEED_TOKEN: ${{ secrets.KEEPER_SEED_TOKEN }}
           PROCEED_IF_DB_HAS_DATA: ${{ github.event.inputs.mode == 'proceed-even-if-db-has-data' }}
         run: |
           set -eu
 
-          if [ -z "$KEEPER_SEED_URL" ]; then
-            echo "KEEPER_SEED_URL secret is required."
+          if [ -z "$KEEPER_API_DOMAIN" ]; then
+            echo "KEEPER_API_DOMAIN or ORACLE_VM_HOST secret is required."
             exit 1
           fi
 
@@ -35,6 +35,11 @@ jobs:
             echo "KEEPER_SEED_TOKEN secret is required."
             exit 1
           fi
+
+          KEEPER_API_DOMAIN="${KEEPER_API_DOMAIN#http://}"
+          KEEPER_API_DOMAIN="${KEEPER_API_DOMAIN#https://}"
+          KEEPER_API_DOMAIN="${KEEPER_API_DOMAIN%/}"
+          KEEPER_SEED_URL="https://$KEEPER_API_DOMAIN/github/seed"
 
           curl -fsS -X POST "$KEEPER_SEED_URL" \
             -H "Authorization: Bearer $KEEPER_SEED_TOKEN" \

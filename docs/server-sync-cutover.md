@@ -25,7 +25,7 @@ PYTHON_BIN=python3
 Set GitHub Action secrets:
 
 ```bash
-KEEPER_SEED_URL=https://keeper-sync.example/github/seed
+KEEPER_API_DOMAIN=keeper-sync.example
 KEEPER_SEED_TOKEN=<same-token-as-server>
 SERVER_GIT_REMOTE_URL=<git-remote-url>
 ```
