@@ -1,0 +1,47 @@
+name: Seed Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Seed behavior if server DB already has notes"
+        required: true
+        type: choice
+        default: "empty-only"
+        options:
+          - empty-only
+          - proceed-even-if-db-has-data
+
+jobs:
+  seed:
+    name: Seed Keeper server from GitHub repo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Notify Keeper server
+        env:
+          KEEPER_SEED_URL: ${{ secrets.KEEPER_SEED_URL }}
+          KEEPER_SEED_TOKEN: ${{ secrets.KEEPER_SEED_TOKEN }}
+          PROCEED_IF_DB_HAS_DATA: ${{ github.event.inputs.mode == 'proceed-even-if-db-has-data' }}
+        run: |
+          set -eu
+
+          if [ -z "$KEEPER_SEED_URL" ]; then
+            echo "KEEPER_SEED_URL secret is required."
+            exit 1
+          fi
+
+          if [ -z "$KEEPER_SEED_TOKEN" ]; then
+            echo "KEEPER_SEED_TOKEN secret is required."
+            exit 1
+          fi
+
+          curl -fsS -X POST "$KEEPER_SEED_URL" \
+            -H "Authorization: Bearer $KEEPER_SEED_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "repository": "${{ github.repository }}",
+              "ref": "${{ github.ref_name }}",
+              "sha": "${{ github.sha }}",
+              "proceedIfDbHasData": '"$PROCEED_IF_DB_HAS_DATA"'
+            }'
