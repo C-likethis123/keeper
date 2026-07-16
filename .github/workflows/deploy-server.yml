@@ -147,14 +147,14 @@ jobs:
               printf 'KEEPER_SEED_TOKEN=%s\n' "$KEEPER_SEED_TOKEN"
             } > server/.env
 
-            sudo docker compose -f server/docker-compose.yml up -d --build
-            sudo docker compose -f server/docker-compose.yml ps
-            sudo docker compose -f server/docker-compose.yml cp caddy:/data/keeper-self-signed.crt server/keeper-caddy-root.crt
+            sudo docker compose --env-file server/.env -f server/docker-compose.yml up -d --build
+            sudo docker compose --env-file server/.env -f server/docker-compose.yml ps
+            sudo docker compose --env-file server/.env -f server/docker-compose.yml cp caddy:/data/keeper-self-signed.crt server/keeper-caddy-root.crt
             for attempt in 1 2 3 4 5; do
               if curl -k --fail --resolve "$KEEPER_API_DOMAIN:443:127.0.0.1" "https://$KEEPER_API_DOMAIN/health"; then
                 exit 0
               fi
               sleep 2
             done
-            sudo docker compose -f server/docker-compose.yml logs --tail=100 caddy
+            sudo docker compose --env-file server/.env -f server/docker-compose.yml logs --tail=100 caddy
             exit 1
