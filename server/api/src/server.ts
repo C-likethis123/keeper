@@ -16,7 +16,7 @@ export type ServerDependencies = {
 	clusterRepository?: ClusterRepository;
 	githubSeed?: {
 		token: string;
-		service: GitHubSeedService;
+		service?: GitHubSeedService;
 	};
 };
 

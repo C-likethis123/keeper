@@ -13,7 +13,7 @@ const seedRequestSchema = z.object({
 export type GitHubRouteDependencies = {
 	syncRepository: SyncRepository;
 	seedToken: string;
-	seedService: GitHubSeedService;
+	seedService?: GitHubSeedService;
 };
 
 export function registerGitHubRoutes(
@@ -31,6 +31,14 @@ export function registerGitHubRoutes(
 			return reply.code(400).send({
 				error: "invalid_github_seed",
 				issues: parsed.error.issues,
+			});
+		}
+
+		if (!dependencies.seedService) {
+			return reply.code(503).send({
+				error: "github_seed_not_configured",
+				message:
+					"GitHub seed requires SERVER_GIT_REMOTE_URL and SERVER_GIT_REPO_DIR on the Keeper server.",
 			});
 		}
 

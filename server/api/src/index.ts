@@ -28,12 +28,13 @@ const server = createServer({
 	jobQueue: new InMemoryJobQueue(processors),
 	clusterRepository,
 	githubSeed:
-		process.env.KEEPER_SEED_TOKEN &&
-		process.env.SERVER_GIT_REMOTE_URL &&
-		process.env.SERVER_GIT_REPO_DIR
+		process.env.KEEPER_SEED_TOKEN
 			? {
 					token: process.env.KEEPER_SEED_TOKEN,
-					service: createGitHubSeedServiceFromEnv(syncRepository),
+					service:
+						process.env.SERVER_GIT_REMOTE_URL && process.env.SERVER_GIT_REPO_DIR
+							? createGitHubSeedServiceFromEnv(syncRepository)
+							: undefined,
 				}
 			: undefined,
 });

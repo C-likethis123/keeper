@@ -50,6 +50,31 @@ test("github seed rejects missing bearer token", async () => {
 	await server.close();
 });
 
+test("github seed reports missing server git config", async () => {
+	const repository = new InMemorySyncRepository();
+	const server = createServer({
+		syncRepository: repository,
+		githubSeed: { token: "secret" },
+	});
+
+	const response = await server.inject({
+		method: "POST",
+		url: "/github/seed",
+		headers: { authorization: "Bearer secret" },
+		payload: {
+			repository: "owner/repo",
+			ref: "main",
+			sha: "abc123",
+			proceedIfDbHasData: false,
+		},
+	});
+
+	assert.equal(response.statusCode, 503);
+	assert.equal(response.json().error, "github_seed_not_configured");
+
+	await server.close();
+});
+
 test("github seed stops when DB has data and proceed flag is false", async () => {
 	const repository = new InMemorySyncRepository();
 	await repository.pushOperations({
