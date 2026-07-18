@@ -41,7 +41,7 @@ jobs:
           KEEPER_API_DOMAIN="${KEEPER_API_DOMAIN%/}"
           KEEPER_SEED_URL="https://$KEEPER_API_DOMAIN/github/seed"
 
-          curl -kfsS --fail-with-body -X POST "$KEEPER_SEED_URL" \
+          curl -ksS --fail-with-body -X POST "$KEEPER_SEED_URL" \
             -H "Authorization: Bearer $KEEPER_SEED_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
