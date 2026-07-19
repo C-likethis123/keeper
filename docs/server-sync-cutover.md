@@ -15,7 +15,7 @@ Set server env:
 DATABASE_URL=postgres://keeper:keeper@postgres:5432/keeper
 REDIS_URL=redis://redis:6379
 SERVER_GIT_REMOTE_URL=<git-remote-url>
-SERVER_GIT_REPO_DIR=/data/keeper-notes
+SERVER_GIT_REPO_DIR=/data/repos/keeper-notes
 SERVER_GIT_BRANCH=main
 KEEPER_SEED_TOKEN=<shared-token-for-github-action>
 MOC_PIPELINE_PATH=/app/scripts/moc_pipeline/pipeline.py

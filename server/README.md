@@ -48,7 +48,7 @@ For Git and MOC workers, set:
 
 ```bash
 SERVER_GIT_REMOTE_URL=<git-remote-url>
-SERVER_GIT_REPO_DIR=/data/keeper-notes
+SERVER_GIT_REPO_DIR=/data/repos/keeper-notes
 REDIS_URL=redis://redis:6379
 KEEPER_SEED_TOKEN=<shared-token-for-github-action>
 ```

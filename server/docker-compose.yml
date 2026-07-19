@@ -29,14 +29,14 @@ services:
       REDIS_URL: redis://redis:6379
       PORT: 8787
       SERVER_GIT_REMOTE_URL: ${SERVER_GIT_REMOTE_URL:-}
-      SERVER_GIT_REPO_DIR: /data/keeper-notes
+      SERVER_GIT_REPO_DIR: /data/repos/keeper-notes
       SERVER_GIT_BRANCH: main
       KEEPER_SEED_TOKEN: ${KEEPER_SEED_TOKEN:-}
     ports:
       - "127.0.0.1:8787:8787"
     volumes:
       - ./api:/app
-      - keeper-notes:/data/keeper-notes
+      - keeper-notes:/data/repos
     depends_on:
       postgres:
         condition: service_healthy
