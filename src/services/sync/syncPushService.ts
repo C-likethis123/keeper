@@ -1,4 +1,7 @@
-import { getSyncServerUrl } from "@/services/sync/config";
+import {
+	getSyncServerUrl,
+	isServerSyncConfigured,
+} from "@/services/sync/config";
 import { showSyncDebugToast } from "@/services/sync/debug";
 import { pushSyncOperations } from "@/services/sync/remoteSyncClient";
 import {
@@ -23,7 +26,7 @@ function clearRetryTimer(): void {
 
 export function scheduleSyncPush(delayMs = 0): void {
 	const serverUrl = getSyncServerUrl();
-	if (!serverUrl) {
+	if (!isServerSyncConfigured() || !serverUrl) {
 		showSyncDebugToast("Sync skipped: no server URL", 8000);
 		return;
 	}
@@ -38,7 +41,7 @@ export async function pushPendingSyncOps(): Promise<void> {
 	if (pushPromise) return pushPromise;
 
 	pushPromise = (async () => {
-		if (!getSyncServerUrl()) return;
+		if (!isServerSyncConfigured()) return;
 
 		const queued = await readQueuedSyncOps();
 		if (queued.length === 0) {

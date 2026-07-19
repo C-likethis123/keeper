@@ -6,6 +6,7 @@ import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppStartup } from "@/hooks/useAppStartup";
 import { useStyles } from "@/hooks/useStyles";
 import { GitService } from "@/services/git/gitService";
+import { isServerSyncEnabled } from "@/services/sync/config";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import { getTauriInvoke } from "@/services/storage/runtime";
 import { ThemeProvider } from "@react-navigation/native";
@@ -29,6 +30,7 @@ export default function RootLayout() {
 		traceStartupBootstrapEvent("bootstrap.root_layout_first_render");
 		const saveAndFlushForExit = async () => {
 			try {
+				if (isServerSyncEnabled()) return;
 				await GitService.saveCurrentEditorBeforeBackgroundFlush();
 				await GitService.flushPendingChanges({
 					reason: "app-background",

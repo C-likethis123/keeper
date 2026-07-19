@@ -1,6 +1,7 @@
 import type { SaveStatus } from "@/components/SaveIndicator";
 import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import { GitService } from "@/services/git/gitService";
+import { isServerSyncEnabled } from "@/services/sync/config";
 import {
 	normalizeMarkdownForPersistence,
 	persistEditorEntry,
@@ -361,6 +362,7 @@ export function useAutoSave({
 	}, [currentContent, currentContentRevision]);
 
 	useEffect(() => {
+		if (isServerSyncEnabled()) return;
 		GitService.registerBackgroundSaveHandler(forceSave);
 
 		return () => {

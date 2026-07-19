@@ -11,6 +11,7 @@ import { useNoteEditorLayout } from "@/hooks/useNoteEditorLayout";
 import { useRelatedNotes } from "@/hooks/useRelatedNotes";
 import { useStyles } from "@/hooks/useStyles";
 import { GitService } from "@/services/git/gitService";
+import { isServerSyncEnabled } from "@/services/sync/config";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import {
   type AttachmentType,
@@ -158,11 +159,12 @@ export default function NoteEditorView({
   const tab = tabs.find((t) => t.noteId === id);
 
   const flushGitAndToastOnFailure = useCallback(
-    async (
+	    async (
       reason: "note-exit" | "delete",
       message?: string,
-    ): Promise<boolean> => {
-      const result = await GitService.flushPendingChanges({
+	    ): Promise<boolean> => {
+	      if (isServerSyncEnabled()) return true;
+	      const result = await GitService.flushPendingChanges({
         reason,
         message,
         timeoutMs: 8000,

@@ -102,6 +102,10 @@ EXPO_PUBLIC_SERVER_SYNC_ENABLED=true
 EXPO_PUBLIC_SYNC_SERVER_URL=https://161.118.229.1
 ```
 
+When `EXPO_PUBLIC_SYNC_SERVER_URL` is set, server sync is enabled by default.
+Set `EXPO_PUBLIC_SERVER_SYNC_ENABLED=false` only for temporary legacy local-Git
+operation during migration.
+
 When the flag is enabled, clients keep local writes and server sync enabled but stop direct client Git journal writes.
 
 ## Implemented Scope

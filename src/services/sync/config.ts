@@ -8,5 +8,12 @@ export function getSyncServerUrl(): string | null {
 }
 
 export function isServerSyncEnabled(): boolean {
-	return process.env.EXPO_PUBLIC_SERVER_SYNC_ENABLED === "true";
+	const explicitFlag = process.env.EXPO_PUBLIC_SERVER_SYNC_ENABLED;
+	if (explicitFlag === "false") return false;
+	if (explicitFlag === "true") return true;
+	return getSyncServerUrl() !== null;
+}
+
+export function isServerSyncConfigured(): boolean {
+	return isServerSyncEnabled() && getSyncServerUrl() !== null;
 }
