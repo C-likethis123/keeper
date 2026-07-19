@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "eas-build-pre-install": "./scripts/eas-install-rust.sh",
     "web:desktop": "BROWSER=none expo start --web --port 8082",
     "build:android": "EXPO_UPDATE_CHANNEL=production npx expo prebuild --platform android --clean && ./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64",
     "desktop": "tauri dev",

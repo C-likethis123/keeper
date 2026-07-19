@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Ensure cargo is on PATH when invoked from Gradle (which spawns a fresh shell
-# that does not inherit the PATH set by the eas-build-pre-install hook).
+# Ensure cargo is on PATH when invoked from Gradle (which spawns a fresh shell).
 [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

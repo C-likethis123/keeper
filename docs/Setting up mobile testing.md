@@ -22,5 +22,5 @@ ADB is used to connect the phone with the laptop.
 1. Follow these steps to install Android emulator: https://abp.io/docs/10.0/framework/ui/react-native/setting-up-android-emulator#:~:text=In%20this%20document,Startup%20Issues%20(macOS/Linux):
 2. Two emulators are created: `1emu` and `2emu`. Start them with AVD manager like: `emulator -avd [emu name]`
 3. Set up the emulator like: `emulator -avd [emu name] -no-window`
-4.  Build the production APK with `eas build -p android --profile release-apk` or `npm run build:android`, then install it with `adb install [build]`.
+4.  Build and install the production APK with `npm run build:android`.
 5. 
