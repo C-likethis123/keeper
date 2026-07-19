@@ -3,6 +3,11 @@ name: Seed Server
 on:
   workflow_dispatch:
     inputs:
+      source-ref:
+        description: "Branch or tag to seed from C-likethis/logseq"
+        required: true
+        default: "main"
+        type: string
       mode:
         description: "Seed behavior if server DB already has notes"
         required: true
@@ -22,6 +27,8 @@ jobs:
         env:
           KEEPER_API_DOMAIN: ${{ secrets.KEEPER_API_DOMAIN || secrets.ORACLE_VM_HOST }}
           KEEPER_SEED_TOKEN: ${{ secrets.KEEPER_SEED_TOKEN }}
+          SOURCE_REPOSITORY: C-likethis/logseq
+          SOURCE_REF: ${{ inputs.source-ref }}
           PROCEED_IF_DB_HAS_DATA: ${{ github.event.inputs.mode == 'proceed-even-if-db-has-data' }}
         run: |
           set -eu
@@ -45,8 +52,8 @@ jobs:
             -H "Authorization: Bearer $KEEPER_SEED_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
-              "repository": "${{ github.repository }}",
-              "ref": "${{ github.ref_name }}",
-              "sha": "${{ github.sha }}",
+              "repository": "'"$SOURCE_REPOSITORY"'",
+              "ref": "'"$SOURCE_REF"'",
+              "sha": "'"$SOURCE_REF"'",
               "proceedIfDbHasData": '"$PROCEED_IF_DB_HAS_DATA"'
             }'

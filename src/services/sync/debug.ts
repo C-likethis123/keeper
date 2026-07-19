@@ -5,6 +5,6 @@ export function isSyncDebugEnabled(): boolean {
 }
 
 export function showSyncDebugToast(message: string, duration = 5000): void {
-	if (!isSyncDebugEnabled()) return;
+	if (!isSyncDebugEnabled() || /^sync pushed \d+$/i.test(message)) return;
 	showToast(message, duration);
 }

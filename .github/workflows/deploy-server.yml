@@ -67,6 +67,17 @@ jobs:
               echo "Set KEEPER_API_DOMAIN or ORACLE_VM_HOST secret."
               exit 1
             fi
+            if [ -z "$SERVER_GIT_REMOTE_URL" ]; then
+              echo "SERVER_GIT_REMOTE_URL must point to C-likethis/logseq."
+              exit 1
+            fi
+            case "$SERVER_GIT_REMOTE_URL" in
+              *C-likethis/logseq*) ;;
+              *)
+                echo "SERVER_GIT_REMOTE_URL must point to C-likethis/logseq, not the Keeper app repository."
+                exit 1
+                ;;
+            esac
 
             install_git() {
               if command -v apt-get >/dev/null 2>&1; then

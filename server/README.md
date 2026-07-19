@@ -47,7 +47,7 @@ For production HTTPS, use a real DNS name and switch `Caddyfile` back to managed
 For Git and MOC workers, set:
 
 ```bash
-SERVER_GIT_REMOTE_URL=<git-remote-url>
+SERVER_GIT_REMOTE_URL=<C-likethis/logseq git-remote-url>
 SERVER_GIT_REPO_DIR=/data/repos/keeper-notes
 REDIS_URL=redis://redis:6379
 KEEPER_SEED_TOKEN=<shared-token-for-github-action>
@@ -79,7 +79,9 @@ Pull operations after a server cursor:
 curl 'http://localhost:8787/sync/pull?deviceId=macbook&cursor=0'
 ```
 
-Seed from the configured GitHub repo:
+Seed from the configured Logseq Git remote. Set `SERVER_GIT_REMOTE_URL` to the
+`C-likethis/logseq` remote (with credentials if it is private); do not point it
+at the Keeper application repository.
 
 ```bash
 curl -X POST http://localhost:8787/github/seed \
