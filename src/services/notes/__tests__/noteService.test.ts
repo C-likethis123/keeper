@@ -63,7 +63,7 @@ jest.mock("@/services/notes/notesIndex", () => ({
 describe("NoteService", () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		process.env.EXPO_PUBLIC_SERVER_SYNC_ENABLED = undefined;
+		process.env.EXPO_PUBLIC_SYNC_SERVER_URL = undefined;
 		mockEnqueueNoteCreate.mockResolvedValue(undefined);
 		mockEnqueueNoteUpdate.mockResolvedValue(undefined);
 		mockEnqueueNoteDelete.mockResolvedValue(undefined);
@@ -362,8 +362,8 @@ describe("NoteService", () => {
 			expect(mockScheduleSyncPush).toHaveBeenCalled();
 		});
 
-		it("skips Git journal when server sync flag is enabled", async () => {
-			process.env.EXPO_PUBLIC_SERVER_SYNC_ENABLED = "true";
+		it("skips Git journal when sync server URL is set", async () => {
+		process.env.EXPO_PUBLIC_SYNC_SERVER_URL = "https://sync.example";
 			mockQueueChangeAsync.mockResolvedValue(undefined);
 			const saved = {
 				id: "note-1",

@@ -1,10 +1,9 @@
-import { getCachedQueryPromise } from "@/services/notes/noteQueryCache";
+import { getCachedQueryPromise, useSuspensePromise } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import type { Note } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
 import { waitForStorageReady } from "@/stores/storageSuspense";
-import { use } from "react";
 
 function buildTemplatesQueryKey(args: {
 	contentVersion: number;
@@ -59,5 +58,5 @@ export default function useSuspenseTemplates(): Note[] {
 	}
 
 	const key = buildTemplatesQueryKey({ contentVersion, refreshVersion: 0 });
-	return use(getCachedQueryPromise(key, loadTemplates));
+	return useSuspensePromise(getCachedQueryPromise(key, loadTemplates));
 }

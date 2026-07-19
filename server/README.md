@@ -98,11 +98,11 @@ curl -X POST http://localhost:8787/github/seed \
 Client cutover flag:
 
 ```bash
-EXPO_PUBLIC_SERVER_SYNC_ENABLED=true
 EXPO_PUBLIC_SYNC_SERVER_URL=https://161.118.229.1
 ```
 
-When the flag is enabled, clients keep local writes and server sync enabled but stop direct client Git journal writes.
+When `EXPO_PUBLIC_SYNC_SERVER_URL` is set, server sync is enabled by default.
+When the sync server URL is set, clients keep local writes and server sync enabled but stop direct client Git journal writes.
 
 ## Implemented Scope
 

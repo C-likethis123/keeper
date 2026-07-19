@@ -57,6 +57,27 @@ export const MarkdownPasteExtension = defineExtension({
     return editor.registerCommand(
       PASTE_COMMAND,
       (event) => {
+        const markdown = getPlainTextFromPasteEvent(event);
+        if (shouldImportPastedMarkdown(markdown)) {
+          const serializedNodes = parseMarkdownToSerializedNodes(markdown);
+          if (serializedNodes.length > 0) {
+            event.preventDefault();
+            editor.update(
+              () => {
+                const selection = $getSelection();
+                if (!$isRangeSelection(selection)) {
+                  return;
+                }
+                $insertNodes(
+                  serializedNodes.map((node) => $parseSerializedNode(node)),
+                );
+              },
+              { discrete: true, tag: "paste" },
+            );
+            return true;
+          }
+        }
+
         const html = getHtmlFromPasteEvent(event);
         const htmlNodes = parseHtmlToLexicalNodes(editor, html);
         if (htmlNodes.length > 0) {
@@ -74,30 +95,7 @@ export const MarkdownPasteExtension = defineExtension({
           return true;
         }
 
-        const markdown = getPlainTextFromPasteEvent(event);
-        if (!shouldImportPastedMarkdown(markdown)) {
-          return false;
-        }
-
-        const serializedNodes = parseMarkdownToSerializedNodes(markdown);
-        if (serializedNodes.length === 0) {
-          return false;
-        }
-
-        event.preventDefault();
-        editor.update(
-          () => {
-            const selection = $getSelection();
-            if (!$isRangeSelection(selection)) {
-              return;
-            }
-            $insertNodes(
-              serializedNodes.map((node) => $parseSerializedNode(node)),
-            );
-          },
-          { discrete: true, tag: "paste" },
-        );
-        return true;
+        return false;
       },
       COMMAND_PRIORITY_HIGH,
     );

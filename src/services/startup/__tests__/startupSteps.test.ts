@@ -25,6 +25,8 @@ function createTelemetry() {
 
 describe("startupSteps", () => {
 	beforeEach(() => {
+		process.env.EXPO_PUBLIC_SYNC_SERVER_URL = undefined;
+		process.env.EXPO_PUBLIC_GIT_API_URL = undefined;
 		jest.restoreAllMocks();
 		jest.clearAllMocks();
 		jest
@@ -33,6 +35,24 @@ describe("startupSteps", () => {
 		useStorageStore.setState({
 			bumpContentVersion: mockBumpContentVersion,
 		});
+	});
+
+	it("skips local Git initialization when sync server URL is set", async () => {
+		process.env.EXPO_PUBLIC_SYNC_SERVER_URL = "https://sync.example";
+		const initialize = jest.spyOn(
+			GitInitializationService.instance,
+			"initialize",
+		);
+
+		await initializeGitStep(
+			{
+				backgroundMode: false,
+				setInitError: jest.fn(),
+			},
+			createTelemetry() as never,
+		);
+
+		expect(initialize).not.toHaveBeenCalled();
 	});
 
 	it("rebuilds the notes index after storage initialization requests it", async () => {

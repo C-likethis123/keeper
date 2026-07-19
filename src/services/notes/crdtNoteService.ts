@@ -233,9 +233,17 @@ export async function loadCrdtEditorSnapshot(
 	}
 
 	const doc = await loadCrdtDoc(noteId);
+	const markdown = doc.getText(BODY_KEY).toString();
+
+	// Empty CRDT state must not mask Markdown saved by the regular note path.
+	// This includes whitespace-only state left by a new note during shutdown.
+	if (!markdown.trim()) {
+		return null;
+	}
+
 	return {
 		update: [...Y.encodeStateAsUpdate(doc)],
-		markdown: doc.getText(BODY_KEY).toString(),
+		markdown,
 	};
 }
 
@@ -261,9 +269,11 @@ export async function saveMarkdownToCrdt(
 		await persistUpdate(note.id, localUpdate);
 	}
 
+	// Markdown input is source of truth for this save. Do not replace it with
+	// stale CRDT body when CRDT persistence races app shutdown.
 	return {
 		...note,
-		content: doc.getText(BODY_KEY).toString(),
+		content: note.content,
 	};
 }
 

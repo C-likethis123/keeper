@@ -5,7 +5,9 @@ import { deleteCrdtNote } from "@/services/notes/crdtNoteService";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { storageEngine } from "@/services/storage/storageEngine";
 import { useStorageStore } from "@/stores/storageStore";
-import { getSyncServerUrl } from "@/services/sync/config";
+import {
+	isServerSyncConfigured,
+} from "@/services/sync/config";
 import { showSyncDebugToast } from "@/services/sync/debug";
 import { pullSyncOperations } from "@/services/sync/remoteSyncClient";
 import {
@@ -112,7 +114,7 @@ async function applyRemoteOperations(
 }
 
 export function scheduleSyncPull(delayMs = 0): void {
-	if (!getSyncServerUrl()) return;
+	if (!isServerSyncConfigured()) return;
 	clearRetryTimer();
 	retryTimer = setTimeout(() => {
 		retryTimer = null;
@@ -124,7 +126,7 @@ export async function pullPendingSyncOps(): Promise<void> {
 	if (pullPromise) return pullPromise;
 
 	pullPromise = (async () => {
-		if (!getSyncServerUrl()) return;
+		if (!isServerSyncConfigured()) return;
 
 		try {
 			const deviceId = await getSyncDeviceId();

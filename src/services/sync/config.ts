@@ -8,5 +8,9 @@ export function getSyncServerUrl(): string | null {
 }
 
 export function isServerSyncEnabled(): boolean {
-	return process.env.EXPO_PUBLIC_SERVER_SYNC_ENABLED === "true";
+	return getSyncServerUrl() !== null;
+}
+
+export function isServerSyncConfigured(): boolean {
+	return isServerSyncEnabled() && getSyncServerUrl() !== null;
 }

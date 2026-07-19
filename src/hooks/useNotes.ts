@@ -7,7 +7,7 @@ import {
 	listStandaloneAcceptedClusters,
 } from "@/services/notes/clusterService";
 import type { NoteSection } from "@/services/notes/indexDb/types";
-import { getCachedQueryPromise } from "@/services/notes/noteQueryCache";
+import { getCachedQueryPromise, useSuspensePromise } from "@/services/notes/noteQueryCache";
 import {
 	type NoteIndexItem,
 	NotesIndexService,
@@ -22,10 +22,7 @@ import { useFilterStore } from "@/stores/filterStore";
 import { useStorageStore } from "@/stores/storageStore";
 import { waitForStorageReady } from "@/stores/storageSuspense";
 import {
-	startTransition,
-	use,
 	useCallback,
-	useDeferredValue,
 	useEffect,
 	useMemo,
 	useRef,
@@ -233,7 +230,7 @@ export default function useNotes() {
 	const contentVersion = useStorageStore((s) => s.contentVersion);
 	const [query, setQuery] = useState("");
 	const debouncedQuery = useDebounce(query, 300);
-	const deferredQuery = useDeferredValue(debouncedQuery);
+	const deferredQuery = debouncedQuery;
 	const noteTypeFilter = useFilterStore((s) => s.noteTypes);
 	const statusFilter = useFilterStore((s) => s.status);
 	const hideDone = useFilterStore((s) => s.hideDone);
@@ -287,7 +284,7 @@ export default function useNotes() {
 		contentVersion,
 		refreshVersion,
 	});
-	const baseResult = use(
+	const baseResult = useSuspensePromise(
 		getCachedQueryPromise(baseKey, () =>
 			loadNotesPage({
 				query: deferredQuery,
@@ -373,9 +370,7 @@ export default function useNotes() {
 	]);
 
 	const handleRefresh = useCallback(async () => {
-		startTransition(() => {
-			setRefreshVersion((current) => current + 1);
-		});
+	setRefreshVersion((current) => current + 1);
 	}, []);
 
 	const allNotes = useMemo(

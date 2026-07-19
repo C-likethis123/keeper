@@ -95,13 +95,20 @@ export function useAppStartup(): AppStartupState {
 			startSyncPushService();
 			startSyncPullService();
 		};
-		if (typeof window !== "undefined" && window.addEventListener) {
+		const canListenForOnline =
+			typeof window !== "undefined" &&
+			typeof window.addEventListener === "function" &&
+			typeof window.removeEventListener === "function";
+		if (canListenForOnline) {
 			window.addEventListener("online", handleOnline);
 		}
 
 		return () => {
 			isCancelled = true;
-			if (typeof window !== "undefined" && window.removeEventListener) {
+			if (
+				typeof window !== "undefined" &&
+				typeof window.removeEventListener === "function"
+			) {
 				window.removeEventListener("online", handleOnline);
 			}
 		};

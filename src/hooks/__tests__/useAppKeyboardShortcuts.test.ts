@@ -245,6 +245,16 @@ describe("useAppKeyboardShortcuts", () => {
 		expect(event.defaultPrevented).toBe(false);
 	});
 
+	it("ignores partial native document without listener APIs", () => {
+		Object.defineProperty(globalThis, "document", {
+			configurable: true,
+			value: {},
+			writable: true,
+		});
+
+		expect(() => renderHook(() => useAppKeyboardShortcuts({}))).not.toThrow();
+	});
+
 	it("removes the listener when the hook unmounts", () => {
 		const onCreateNote = jest.fn();
 		const { unmount } = renderHook(() =>

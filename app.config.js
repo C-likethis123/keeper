@@ -59,6 +59,7 @@ export default ({ config }) => {
 				favicon: "./assets/images/favicon.png",
 			},
 			plugins: [
+				"./plugins/withKeeperServerCertificate",
 				"./plugins/withAndroidBundleInputExcludes",
 				"expo-router",
 				"expo-share-intent",

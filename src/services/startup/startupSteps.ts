@@ -3,6 +3,7 @@ import { NotesIndexService } from "@/services/notes/notesIndex";
 import { StorageInitializationService } from "@/services/storage/storageInitializationService";
 import { showToast } from "@/services/toast";
 import { useStorageStore } from "@/stores/storageStore";
+import { isServerSyncEnabled } from "@/services/sync/config";
 import type { StartupTelemetry } from "./startupTelemetry";
 
 interface InitializeGitStepOptions {
@@ -45,6 +46,10 @@ export async function initializeGitStep(
 	{ backgroundMode, setInitError, setStatusMessage }: InitializeGitStepOptions,
 	telemetry: StartupTelemetry,
 ): Promise<void> {
+	if (isServerSyncEnabled()) {
+		telemetry.trace("git.initialize_skipped_server_sync");
+		return;
+	}
 	setStatusMessage?.("Syncing with GitHub...");
 	const initializeStart = telemetry.stepStarted("git.initialize", {
 		backgroundMode,

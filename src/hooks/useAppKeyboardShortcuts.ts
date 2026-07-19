@@ -1,6 +1,5 @@
 import { normalizeKeyEvent } from "@/components/editor/keyboard/normalizeKeyEvent";
 import { useEffect, useRef } from "react";
-import { Platform } from "react-native";
 import { getAppShortcutCommand } from "./appShortcutRegistry";
 
 interface AppKeyboardShortcutCallbacks {
@@ -22,7 +21,13 @@ export function useAppKeyboardShortcuts(
 	});
 
 	useEffect(() => {
-		if (Platform.OS !== "web") return;
+		if (
+			typeof document === "undefined" ||
+			typeof document.addEventListener !== "function" ||
+			typeof document.removeEventListener !== "function"
+		) {
+			return;
+		}
 
 		const handleKeyDown = (event: KeyboardEvent) => {
 			const normalized = normalizeKeyEvent(event);

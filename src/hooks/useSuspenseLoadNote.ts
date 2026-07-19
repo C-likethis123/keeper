@@ -1,9 +1,8 @@
-import { getCachedQueryPromise } from "@/services/notes/noteQueryCache";
+import { getCachedQueryPromise, useSuspensePromise } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
 import { waitForStorageReady } from "@/stores/storageSuspense";
-import { use } from "react";
 
 export function useSuspenseLoadNote(id: string): Note | null {
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
@@ -22,7 +21,7 @@ export function useSuspenseLoadNote(id: string): Note | null {
 		throw new Error(initializationError ?? "Storage is unavailable");
 	}
 
-	return use(
+	return useSuspensePromise(
 		getCachedQueryPromise(`note:${id}`, () => NoteService.loadNote(id)),
 	);
 }

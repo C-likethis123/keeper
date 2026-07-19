@@ -5,7 +5,6 @@
 Set client env:
 
 ```bash
-EXPO_PUBLIC_SERVER_SYNC_ENABLED=true
 EXPO_PUBLIC_SYNC_SERVER_URL=https://keeper-sync.example
 ```
 
@@ -38,7 +37,7 @@ SERVER_GIT_REMOTE_URL=<C-likethis/logseq git-remote-url>
 4. Start server and run migrations.
 5. Run the `Seed Server` GitHub Action with `empty-only`.
 6. Confirm `/sync/pull?deviceId=check&cursor=0` returns seed operations.
-7. Start client with `EXPO_PUBLIC_SERVER_SYNC_ENABLED=true`.
+7. Start client with `EXPO_PUBLIC_SYNC_SERVER_URL=https://keeper-sync.example`.
 8. Create or edit one low-risk note.
 9. Confirm `/jobs?kind=git.sync` shows succeeded.
 10. Confirm remote Git has server commit.
