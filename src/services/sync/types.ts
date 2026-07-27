@@ -7,6 +7,7 @@ export type NoteCreateSyncOperation = {
 	title: string;
 	markdown: string;
 	createdAt: string;
+	attachmentBase64?: string;
 };
 
 export type NoteUpdateSyncOperation = {
@@ -16,6 +17,7 @@ export type NoteUpdateSyncOperation = {
 	noteId: string;
 	markdown: string;
 	updatedAt: string;
+	attachmentBase64?: string;
 };
 
 export type NoteRenameSyncOperation = {

@@ -33,6 +33,10 @@ export async function copyPickedAttachmentToNote(
 		noteId,
 		filename,
 	});
+	if (!isServerSyncEnabled()) {
+		await GitService.queueChangeAsync(relativePath, "add");
+		GitService.scheduleCommitBatch();
+	}
 	return relativePath;
 }
 

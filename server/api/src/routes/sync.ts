@@ -18,12 +18,14 @@ const createOperationSchema = baseOperationSchema.extend({
 	title: z.string(),
 	markdown: z.string(),
 	createdAt: isoDate,
+	attachmentBase64: z.string().optional(),
 });
 
 const updateOperationSchema = baseOperationSchema.extend({
 	type: z.literal("note.update"),
 	markdown: z.string(),
 	updatedAt: isoDate,
+	attachmentBase64: z.string().optional(),
 });
 
 const renameOperationSchema = baseOperationSchema.extend({

@@ -32,8 +32,10 @@ export async function copyPickedAttachmentToNote(
   }
   const source = new File(uri);
   const dest = new File(attachmentsDir, filename);
-  source.copy(dest);
-  return `_attachments/${filename}`;
+	source.copy(dest);
+	await GitService.queueChangeAsync(`_attachments/${filename}`, "add");
+	GitService.scheduleCommitBatch();
+	return `_attachments/${filename}`;
 }
 
 export function resolveAttachmentUri(relativePath: string): string {

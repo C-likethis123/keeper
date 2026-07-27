@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { stringifyFrontmatter } from "@/services/notes/frontmatter";
 import type { Note } from "@/services/notes/types";
 import type { QueuedSyncOperation } from "@/services/sync/types";
+import { storageEngine } from "@/services/storage/storageEngine";
 
 const DEVICE_ID_KEY = "keeper:sync:device-id";
 const SEQ_KEY = "keeper:sync:next-seq";
@@ -35,6 +36,20 @@ function toMarkdown(note: Note): string {
 		...note,
 		modified: note.modified ?? note.lastUpdated,
 	});
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+	let binary = "";
+	for (let i = 0; i < bytes.length; i += 0x8000) {
+		binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+	}
+	return globalThis.btoa(binary);
+}
+
+async function attachmentBase64(note: Note): Promise<string | undefined> {
+	if (!note.attachment) return undefined;
+	const bytes = await storageEngine.readFileBytes(note.attachment);
+	return bytes ? bytesToBase64(bytes) : undefined;
 }
 
 async function readQueueUnsafe(): Promise<QueuedSyncOperation[]> {
@@ -124,6 +139,7 @@ async function appendSyncOp(
 }
 
 export async function enqueueNoteCreate(note: Note): Promise<QueuedSyncOperation> {
+	const attachment = await attachmentBase64(note);
 	return appendSyncOp(() => ({
 		type: "note.create",
 		noteId: note.id,
@@ -131,15 +147,18 @@ export async function enqueueNoteCreate(note: Note): Promise<QueuedSyncOperation
 		title: note.title,
 		markdown: toMarkdown(note),
 		createdAt: toIsoTime(note.createdAt ?? note.lastUpdated),
+		attachmentBase64: attachment,
 	}));
 }
 
 export async function enqueueNoteUpdate(note: Note): Promise<QueuedSyncOperation> {
+	const attachment = await attachmentBase64(note);
 	return appendSyncOp(() => ({
 		type: "note.update",
 		noteId: note.id,
 		markdown: toMarkdown(note),
 		updatedAt: toIsoTime(note.lastUpdated),
+		attachmentBase64: attachment,
 	}));
 }
 

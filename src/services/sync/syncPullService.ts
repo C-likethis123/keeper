@@ -17,6 +17,13 @@ import {
 } from "@/services/sync/syncOpQueue";
 import type { PulledSyncOperation } from "@/services/sync/types";
 
+function base64ToBytes(value: string): Uint8Array {
+	const binary = globalThis.atob(value);
+	const bytes = new Uint8Array(binary.length);
+	for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+	return bytes;
+}
+
 const BASE_RETRY_MS = 1000;
 const MAX_RETRY_MS = 60_000;
 
@@ -77,10 +84,20 @@ async function upsertRemoteNote(note: NoteSaveInput): Promise<void> {
 	});
 }
 
+async function restoreRemoteAttachment(
+	operation: Extract<PulledSyncOperation, { type: "note.create" | "note.update" }>,
+): Promise<void> {
+	if (!operation.attachmentBase64) return;
+	const parsed = parseFrontmatter(operation.markdown);
+	if (!parsed.attachment) return;
+	await storageEngine.writeFileBytes(parsed.attachment, base64ToBytes(operation.attachmentBase64));
+}
+
 async function applyRemoteOperation(operation: PulledSyncOperation): Promise<void> {
 	switch (operation.type) {
-		case "note.create":
+	case "note.create":
 		case "note.update":
+			await restoreRemoteAttachment(operation);
 			await upsertRemoteNote(parseRemoteMarkdown(operation));
 			return;
 		case "note.rename": {

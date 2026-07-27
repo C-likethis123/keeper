@@ -7,6 +7,7 @@ export type NoteCreateOperation = {
 	title: string;
 	markdown: string;
 	createdAt: string;
+	attachmentBase64?: string;
 };
 
 export type NoteUpdateOperation = {
@@ -16,6 +17,7 @@ export type NoteUpdateOperation = {
 	noteId: string;
 	markdown: string;
 	updatedAt: string;
+	attachmentBase64?: string;
 };
 
 export type NoteRenameOperation = {
