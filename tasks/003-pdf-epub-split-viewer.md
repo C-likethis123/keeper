@@ -4,7 +4,7 @@
 
 - Planning
 - Roadmap entry: `Phase 12: PDF/ePub Split-Screen Viewer`
-- Grove workspace: `codex-pdf-epub-split-4543` / branch `codex/pdf-epub-split-viewer`
+- Git worktree branch: `codex/pdf-epub-split-viewer`
 
 ## Goal
 

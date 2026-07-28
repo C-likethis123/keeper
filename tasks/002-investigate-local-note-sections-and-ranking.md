@@ -4,7 +4,7 @@
 
 - In Progress
 - Roadmap entry: `Phase 11: Local-First Note Sections and Ranking`
-- Grove workspace: `codex-local-note-sec-15df` / branch `codex/local-note-sections-ranking`
+- Git worktree branch: `codex/local-note-sections-ranking`
 
 ## Design Decisions (Resolved)
 
