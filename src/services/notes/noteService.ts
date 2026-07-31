@@ -1,4 +1,3 @@
-import { GitService } from "@/services/git/gitService";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { storageEngine } from "@/services/storage/storageEngine";
@@ -32,45 +31,6 @@ export class NoteService {
 	private constructor() {
 		// desktop path setup is done by StorageInitializationService
 		// mobile/web will lazily create notes root through expo-file-system on write.
-	}
-
-	private static getGitPath(id: string): string {
-		return `${id}.md`;
-	}
-
-	private static queueGitSnapshot(
-		id: string,
-		operation: "add" | "modify",
-		note: NoteSaveInput,
-	): void {
-		if (isServerSyncEnabled()) return;
-
-		const journalNote = {
-			id,
-			title: note.title,
-			content: note.content,
-			isPinned: !!note.isPinned,
-			noteType: note.noteType,
-			status: note.status ?? null,
-			createdAt: note.createdAt,
-			completedAt: note.completedAt,
-			attachment: note.attachment ?? null,
-			attachedVideo: note.attachedVideo ?? null,
-			resourceUrl: note.resourceUrl ?? null,
-			documentPositions: note.documentPositions ?? null,
-		};
-
-		void GitService.queueChangeAsync(
-			NoteService.getGitPath(id),
-			operation,
-			journalNote,
-		)
-			.then(() => {
-				GitService.scheduleCommitBatch();
-			})
-			.catch((error) => {
-				console.warn("[NoteService] Failed to queue git change:", error);
-			});
 	}
 
 	static async loadNote(id: string): Promise<Note | null> {
@@ -116,12 +76,6 @@ export class NoteService {
 			status: saved.status ?? null,
 		});
 
-		NoteService.queueGitSnapshot(id, isNewNote ? "add" : "modify", {
-			...note,
-			id,
-			isPinned: pinnedState,
-			title,
-		});
 		try {
 			const queued = await (shouldCreate
 				? enqueueNoteCreate(saved)
@@ -147,10 +101,6 @@ export class NoteService {
 				await NotesIndexService.deleteNote(id);
 			} catch (err) {
 				console.warn("Failed to delete note from index:", err);
-			}
-			if (!isServerSyncEnabled()) {
-				await GitService.queueChangeAsync(NoteService.getGitPath(id), "delete");
-				GitService.scheduleCommitBatch();
 			}
 			try {
 				const queued = await enqueueNoteDelete(id);

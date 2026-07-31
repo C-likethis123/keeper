@@ -26,5 +26,4 @@ tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-localhost = "2"
 portpicker = "0.1"
-git_core = { path = "git_core" }
 storage_core = { path = "storage_core" }

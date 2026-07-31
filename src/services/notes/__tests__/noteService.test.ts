@@ -23,19 +23,10 @@ jest.mock("@/services/storage/storageEngine", () => ({
 	},
 }));
 
-const mockQueueChangeAsync = jest.fn();
-const mockScheduleCommitBatch = jest.fn();
 const mockEnqueueNoteCreate = jest.fn();
 const mockEnqueueNoteUpdate = jest.fn();
 const mockEnqueueNoteDelete = jest.fn();
 const mockScheduleSyncPush = jest.fn();
-
-jest.mock("@/services/git/gitService", () => ({
-	GitService: {
-		queueChangeAsync: (...args: unknown[]) => mockQueueChangeAsync(...args),
-		scheduleCommitBatch: () => mockScheduleCommitBatch(),
-	},
-}));
 
 jest.mock("@/services/sync/syncOpQueue", () => ({
 	enqueueNoteCreate: (...args: unknown[]) => mockEnqueueNoteCreate(...args),
@@ -69,163 +60,11 @@ describe("NoteService", () => {
 		mockEnqueueNoteDelete.mockResolvedValue(undefined);
 	});
 
-	describe("saveNote - git path routing", () => {
-		it("queues template saves in the notes root", async () => {
-			mockQueueChangeAsync.mockResolvedValue(undefined);
-			mockSaveNote.mockResolvedValue({
-				id: "tmpl-1",
-				title: "My Template",
-				content: "body",
-				isPinned: true,
-				lastUpdated: 1000,
-				noteType: "template",
-				status: null,
-			});
-
-			await NoteService.saveNote(
-				{
-					id: "tmpl-1",
-					title: "My Template",
-					content: "body",
-					isPinned: true,
-					noteType: "template",
-					status: null,
-				},
-				true,
-			);
-
-			expect(mockQueueChangeAsync).toHaveBeenCalledWith("tmpl-1.md", "add", {
-				id: "tmpl-1",
-				title: "My Template",
-				content: "body",
-				isPinned: true,
-				noteType: "template",
-				status: null,
-				createdAt: undefined,
-				completedAt: undefined,
-				attachment: null,
-				attachedVideo: null,
-				resourceUrl: null,
-				documentPositions: null,
-			});
-		});
-
-		it("queues regular note saves without prefix", async () => {
-			mockQueueChangeAsync.mockResolvedValue(undefined);
-			mockSaveNote.mockResolvedValue({
-				id: "note-1",
-				title: "My Note",
-				content: "body",
-				isPinned: false,
-				lastUpdated: 1000,
-				noteType: "note",
-				status: null,
-			});
-
-			await NoteService.saveNote(
-				{
-					id: "note-1",
-					title: "My Note",
-					content: "body",
-					isPinned: false,
-					noteType: "note",
-					status: null,
-				},
-				true,
-			);
-
-			expect(mockQueueChangeAsync).toHaveBeenCalledWith("note-1.md", "add", {
-				id: "note-1",
-				title: "My Note",
-				content: "body",
-				isPinned: false,
-				noteType: "note",
-				status: null,
-				createdAt: undefined,
-				completedAt: undefined,
-				attachment: null,
-				attachedVideo: null,
-				resourceUrl: null,
-				documentPositions: null,
-			});
-		});
-
-		it("writes markdown before queueing git journal", async () => {
-			mockQueueChangeAsync.mockResolvedValue(undefined);
-			mockSaveNote.mockResolvedValue({
-				id: "note-1",
-				title: "My Note",
-				content: "newer body",
-				isPinned: false,
-				lastUpdated: 1000,
-				noteType: "note",
-				status: null,
-			});
-
-			await NoteService.saveNote({
-				id: "note-1",
-				title: "My Note",
-				content: "newer body",
-				isPinned: false,
-				noteType: "note",
-				status: null,
-			});
-
-			expect(mockQueueChangeAsync).toHaveBeenCalledWith("note-1.md", "modify", {
-				id: "note-1",
-				title: "My Note",
-				content: "newer body",
-				isPinned: false,
-				noteType: "note",
-				status: null,
-				createdAt: undefined,
-				completedAt: undefined,
-				attachment: null,
-				attachedVideo: null,
-				resourceUrl: null,
-				documentPositions: null,
-			});
-			expect(
-				mockSaveNote.mock.invocationCallOrder[0],
-			).toBeLessThan(mockQueueChangeAsync.mock.invocationCallOrder[0]);
-		});
-
-		it("does not block local saves on stalled git journaling", async () => {
-			mockQueueChangeAsync.mockReturnValue(new Promise(() => {}));
-			mockSaveNote.mockResolvedValue({
-				id: "note-1",
-				title: "My Note",
-				content: "body",
-				isPinned: false,
-				lastUpdated: 1000,
-				noteType: "note",
-				status: null,
-			});
-
-			await expect(
-				NoteService.saveNote({
-					id: "note-1",
-					title: "My Note",
-					content: "body",
-					isPinned: false,
-					noteType: "note",
-					status: null,
-				}),
-			).resolves.toMatchObject({ id: "note-1", content: "body" });
-
-			expect(mockQueueChangeAsync).toHaveBeenCalledWith(
-				"note-1.md",
-				"modify",
-				expect.objectContaining({ content: "body" }),
-			);
-			expect(mockScheduleCommitBatch).not.toHaveBeenCalled();
-		});
-
+	describe("saveNote", () => {
 		it("indexes templates in SQLite", async () => {
 			const { NotesIndexService } = jest.requireMock(
 				"@/services/notes/notesIndex",
 			);
-			mockQueueChangeAsync.mockResolvedValue(undefined);
 			mockSaveNote.mockResolvedValue({
 				id: "tmpl-1",
 				title: "My Template",
@@ -257,7 +96,6 @@ describe("NoteService", () => {
 		});
 
 		it("writes markdown edits back into Yjs before saving the snapshot", async () => {
-			mockQueueChangeAsync.mockResolvedValue(undefined);
 			mockSaveMarkdownToCrdt.mockResolvedValue({
 				id: "note-1",
 				title: "My Note",
@@ -299,7 +137,6 @@ describe("NoteService", () => {
 		});
 
 		it("queues note.create for new local saves", async () => {
-			mockQueueChangeAsync.mockResolvedValue(undefined);
 			const saved = {
 				id: "note-1",
 				title: "My Note",
@@ -328,7 +165,6 @@ describe("NoteService", () => {
 		});
 
 		it("queues note.update for existing local saves", async () => {
-			mockQueueChangeAsync.mockResolvedValue(undefined);
 			mockLoadNote.mockResolvedValue({
 				id: "note-1",
 				title: "My Note",
@@ -362,64 +198,10 @@ describe("NoteService", () => {
 			expect(mockScheduleSyncPush).toHaveBeenCalled();
 		});
 
-		it("skips Git journal when sync server URL is set", async () => {
-		process.env.EXPO_PUBLIC_SYNC_SERVER_URL = "https://sync.example";
-			mockQueueChangeAsync.mockResolvedValue(undefined);
-			const saved = {
-				id: "note-1",
-				title: "My Note",
-				content: "body",
-				isPinned: false,
-				lastUpdated: 1000,
-				noteType: "note",
-				status: null,
-			};
-			mockSaveNote.mockResolvedValue(saved);
-
-			await NoteService.saveNote(
-				{
-					id: "note-1",
-					title: "My Note",
-					content: "body",
-					isPinned: false,
-					noteType: "note",
-					status: null,
-				},
-				true,
-			);
-
-			expect(mockQueueChangeAsync).not.toHaveBeenCalled();
-			expect(mockEnqueueNoteCreate).toHaveBeenCalledWith(saved);
-		});
 	});
 
-	describe("deleteNote - git path routing", () => {
-		it("queues template deletes in the notes root", async () => {
-			mockQueueChangeAsync.mockResolvedValue(undefined);
-			mockDeleteNote.mockResolvedValue(true);
-
-			await NoteService.deleteNote("tmpl-1");
-
-			expect(mockQueueChangeAsync).toHaveBeenCalledWith("tmpl-1.md", "delete");
-		});
-
-		it("queues regular note deletes without prefix", async () => {
-			mockQueueChangeAsync.mockResolvedValue(undefined);
-			mockDeleteNote.mockResolvedValue(true);
-
-			await NoteService.deleteNote("note-1");
-
-			expect(mockQueueChangeAsync).toHaveBeenCalledWith("note-1.md", "delete");
-		});
-
-		it("does not queue git change when storage delete fails", async () => {
-			mockDeleteNote.mockResolvedValue(false);
-			await NoteService.deleteNote("note-1");
-			expect(mockQueueChangeAsync).not.toHaveBeenCalled();
-		});
-
+	describe("deleteNote", () => {
 		it("queues note.delete after local delete", async () => {
-			mockQueueChangeAsync.mockResolvedValue(undefined);
 			mockDeleteNote.mockResolvedValue(true);
 
 			await NoteService.deleteNote("note-1");

@@ -16,14 +16,12 @@ import type {
 	NoteIndexItem,
 	NoteIndexRow,
 	NotesIndexRebuildMetrics,
-	NotesIndexSyncMetrics,
 } from "./indexDb/types";
 
 export type {
 	ListNotesResult,
 	NoteIndexItem,
 	NotesIndexRebuildMetrics,
-	NotesIndexSyncMetrics,
 };
 
 export async function notesIndexDbHasRows(): Promise<boolean> {

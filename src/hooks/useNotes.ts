@@ -1,13 +1,17 @@
 import { PAGE_SIZE } from "@/constants/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
+	importClustersFromFile,
 	listAcceptedSubClusters,
 	listAcceptedSuperClusters,
 	listClusterMembers,
 	listStandaloneAcceptedClusters,
 } from "@/services/notes/clusterService";
 import type { NoteSection } from "@/services/notes/indexDb/types";
-import { getCachedQueryPromise, useSuspensePromise } from "@/services/notes/noteQueryCache";
+import {
+	getCachedQueryPromise,
+	useSuspensePromise,
+} from "@/services/notes/noteQueryCache";
 import {
 	type NoteIndexItem,
 	NotesIndexService,
@@ -25,8 +29,8 @@ import {
 	useCallback,
 	useEffect,
 	useMemo,
-	useRef,
 	useState,
+	useTransition,
 } from "react";
 
 function toNote(item: NoteIndexItem): Note {
@@ -157,6 +161,8 @@ function noteFromIndexItem(item: {
 }
 
 async function loadSectionMetadata() {
+	await ensureClustersImported();
+
 	const [
 		recentlyEditedRows,
 		orphanedIds,
@@ -224,6 +230,29 @@ async function loadSectionMetadata() {
 	};
 }
 
+let clustersImportPromise: Promise<number> | null = null;
+
+function ensureClustersImported(): Promise<number> {
+	clustersImportPromise ??= importClustersFromFile().catch((error) => {
+		console.warn("[useNotes] importClustersFromFile failed:", error);
+		return 0;
+	});
+	return clustersImportPromise;
+}
+
+async function loadSectionMetadataSafely() {
+	try {
+		return await loadSectionMetadata();
+	} catch (error) {
+		console.warn("[useNotes] loadSectionMetadata failed:", error);
+		return {
+			recentlyEditedNoteIds: new Set<string>(),
+			orphanedNoteIds: new Set<string>(),
+			acceptedClusterSections: [] as NoteSection[],
+		};
+	}
+}
+
 export default function useNotes() {
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
 	const initializationError = useStorageStore((s) => s.initializationError);
@@ -237,6 +266,7 @@ export default function useNotes() {
 	const setNoteTypeFilter = useFilterStore((s) => s.setNoteTypes);
 	const setStatusFilter = useFilterStore((s) => s.setStatus);
 	const [refreshVersion, setRefreshVersion] = useState(0);
+	const [isRefreshing, startRefreshTransition] = useTransition();
 	const [paginationState, setPaginationState] = useState<{
 		baseKey: string;
 		notes: Note[];
@@ -250,17 +280,6 @@ export default function useNotes() {
 		isLoadingMore: false,
 		error: null,
 	});
-	const [sectionMetadata, setSectionMetadata] = useState<{
-		recentlyEditedNoteIds: Set<string>;
-		orphanedNoteIds: Set<string>;
-		acceptedClusterSections: NoteSection[];
-	}>({
-		recentlyEditedNoteIds: new Set(),
-		orphanedNoteIds: new Set(),
-		acceptedClusterSections: [],
-	});
-	const sectionRequestVersionRef = useRef(0);
-
 	const filters = useMemo<NoteListFilters>(
 		() => ({
 			noteTypes: noteTypeFilter.length > 0 ? noteTypeFilter : undefined,
@@ -284,15 +303,19 @@ export default function useNotes() {
 		contentVersion,
 		refreshVersion,
 	});
-	const baseResult = useSuspensePromise(
-		getCachedQueryPromise(baseKey, () =>
-			loadNotesPage({
-				query: deferredQuery,
-				filters,
-				offset: 0,
-			}),
-		),
+	const basePromise = getCachedQueryPromise(baseKey, () =>
+		loadNotesPage({
+			query: deferredQuery,
+			filters,
+			offset: 0,
+		}),
 	);
+	const sectionMetadataPromise = getCachedQueryPromise(
+		`note-sections:${contentVersion}:${refreshVersion}`,
+		loadSectionMetadataSafely,
+	);
+	const baseResult = useSuspensePromise(basePromise);
+	const sectionMetadata = useSuspensePromise(sectionMetadataPromise);
 	const baseNotes = useMemo(() => baseResult.items.map(toNote), [baseResult]);
 	const activePagination =
 		paginationState.baseKey === baseKey
@@ -369,53 +392,16 @@ export default function useNotes() {
 		filters,
 	]);
 
-	const handleRefresh = useCallback(async () => {
-	setRefreshVersion((current) => current + 1);
+	const handleRefresh = useCallback(() => {
+		startRefreshTransition(() => {
+			setRefreshVersion((current) => current + 1);
+		});
 	}, []);
 
 	const allNotes = useMemo(
 		() => [...baseNotes, ...activePagination.notes],
 		[baseNotes, activePagination.notes],
 	);
-
-	useEffect(() => {
-		void contentVersion;
-		void refreshVersion;
-
-		const requestVersion = sectionRequestVersionRef.current + 1;
-		sectionRequestVersionRef.current = requestVersion;
-
-		let cancelled = false;
-
-		void loadSectionMetadata()
-			.then((metadata) => {
-				if (cancelled) {
-					return;
-				}
-				if (sectionRequestVersionRef.current !== requestVersion) {
-					return;
-				}
-				setSectionMetadata(metadata);
-			})
-			.catch((err) => {
-				console.warn("[useNotes] loadSectionMetadata failed:", err);
-				if (cancelled) {
-					return;
-				}
-				if (sectionRequestVersionRef.current !== requestVersion) {
-					return;
-				}
-				setSectionMetadata({
-					recentlyEditedNoteIds: new Set(),
-					orphanedNoteIds: new Set(),
-					acceptedClusterSections: [],
-				});
-			});
-
-		return () => {
-			cancelled = true;
-		};
-	}, [contentVersion, refreshVersion]);
 
 	const sections = useMemo(() => {
 		const pinnedNotes = allNotes.filter((n) => n.isPinned);
@@ -439,7 +425,8 @@ export default function useNotes() {
 		notes: allNotes,
 		sections,
 		hasMore: activePagination.nextOffset != null,
-		isLoading: activePagination.isLoadingMore,
+		isRefreshing,
+		isLoadingMore: activePagination.isLoadingMore,
 		loadMoreNotes,
 		setQuery,
 		noteTypeFilter,

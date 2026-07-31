@@ -26,7 +26,6 @@ const mockListNotesFallback = jest.fn();
 const mockIndexListNotes = jest.fn();
 const mockNavigationSetOptions = jest.fn();
 const mockNavigationDispatch = jest.fn();
-const mockGitFlushPendingChanges = jest.fn();
 const mockEditorRender = jest.fn();
 const mockGetDocumentAsync = jest.fn();
 const mockCopyPickedImageToNotes = jest.fn();
@@ -148,14 +147,6 @@ jest.mock("@/services/notes/attachmentStorage", () => ({
 		if (path.endsWith(".pdf")) return "pdf";
 		if (path.endsWith(".epub")) return "epub";
 		return null;
-	},
-}));
-
-jest.mock("@/services/git/gitService", () => ({
-	GitService: {
-		flushPendingChanges: (...args: unknown[]) =>
-			mockGitFlushPendingChanges(...args),
-		registerBackgroundSaveHandler: jest.fn(),
 	},
 }));
 
@@ -383,13 +374,6 @@ function createDeferred<T = void>() {
 	return { promise, resolve, reject };
 }
 
-async function runDeferredGitFlush() {
-	await act(async () => {
-		jest.advanceTimersByTime(0);
-		await Promise.resolve();
-	});
-}
-
 describe("NoteEditorView", () => {
 	beforeEach(() => {
 		invalidateNoteQueryCache();
@@ -398,7 +382,6 @@ describe("NoteEditorView", () => {
 		mockDeleteNote.mockReset();
 		mockListNotesFallback.mockReset();
 		mockIndexListNotes.mockReset();
-		mockGitFlushPendingChanges.mockReset();
 		mockNavigationDispatch.mockReset();
 		mockEditorRender.mockReset();
 		mockGetDocumentAsync.mockReset();
@@ -415,11 +398,6 @@ describe("NoteEditorView", () => {
 		});
 		mockCopyPickedImageToNotes.mockResolvedValue("assets/image.png");
 		mockCopyPickedAttachmentToNote.mockResolvedValue("_attachments/picked.pdf");
-		mockGitFlushPendingChanges.mockResolvedValue({
-			success: true,
-			didCommit: true,
-			didPush: true,
-		});
 		mockNavigationSetOptions.mockReset();
 		(useAppKeyboardShortcuts as jest.Mock).mockReset();
 		latestNavigationOptions = undefined;
@@ -666,27 +644,15 @@ describe("NoteEditorView", () => {
 				false,
 			);
 		});
-		await runDeferredGitFlush();
-		expect(mockGitFlushPendingChanges).toHaveBeenCalledWith({
-			reason: "note-exit",
-			message: undefined,
-			timeoutMs: 8000,
-		});
 		await waitFor(() => {
 			expect(result.getPathname()).toBe("/");
 		});
 	});
 
-	it("waits for save but not git flush before navigating back", async () => {
+	it("waits for save before navigating back", async () => {
 		const note = makeNote();
 		const saveDeferred = createDeferred();
-		const flushDeferred = createDeferred<{
-			success: boolean;
-			didCommit: boolean;
-			didPush: boolean;
-		}>();
 		mockSaveNote.mockReturnValue(saveDeferred.promise);
-		mockGitFlushPendingChanges.mockReturnValue(flushDeferred.promise);
 
 		const result = renderNoteEditor(note);
 
@@ -698,7 +664,6 @@ describe("NoteEditorView", () => {
 		pressHeaderBack();
 
 		expect(result.getPathname()).toBe("/editor");
-		expect(mockGitFlushPendingChanges).not.toHaveBeenCalled();
 
 		await act(async () => {
 			saveDeferred.resolve();
@@ -708,23 +673,9 @@ describe("NoteEditorView", () => {
 		await waitFor(() => {
 			expect(result.getPathname()).toBe("/");
 		});
-		expect(mockGitFlushPendingChanges).not.toHaveBeenCalled();
-
-		await runDeferredGitFlush();
-
-		expect(mockGitFlushPendingChanges).toHaveBeenCalledTimes(1);
-
-		await act(async () => {
-			flushDeferred.resolve({
-				success: true,
-				didCommit: true,
-				didPush: true,
-			});
-			await Promise.resolve();
-		});
 	});
 
-	it("flushes beforeRemove navigation through the same save path", async () => {
+	it("handles beforeRemove navigation through the same save path", async () => {
 		const note = makeNote();
 		const saveDeferred = createDeferred();
 		const action = { type: "GO_BACK" };
@@ -756,15 +707,6 @@ describe("NoteEditorView", () => {
 
 		await waitFor(() => {
 			expect(mockNavigationDispatch).toHaveBeenCalledWith(action);
-		});
-		expect(mockGitFlushPendingChanges).not.toHaveBeenCalled();
-
-		await runDeferredGitFlush();
-
-		expect(mockGitFlushPendingChanges).toHaveBeenCalledWith({
-			reason: "note-exit",
-			message: undefined,
-			timeoutMs: 8000,
 		});
 	});
 
@@ -810,7 +752,7 @@ describe("NoteEditorView", () => {
 		expect(mockDeleteNote).not.toHaveBeenCalled();
 	});
 
-	it("flushes queued git changes after deleting before leaving", async () => {
+	it("deletes before leaving", async () => {
 		const user = userEvent.setup();
 		const note = makeNote();
 		const result = renderNoteEditor(note);
@@ -820,12 +762,6 @@ describe("NoteEditorView", () => {
 
 		await waitFor(() => {
 			expect(mockDeleteNote).toHaveBeenCalledWith(note.id);
-		});
-		await runDeferredGitFlush();
-		expect(mockGitFlushPendingChanges).toHaveBeenCalledWith({
-			reason: "delete",
-			message: "Delete note",
-			timeoutMs: 8000,
 		});
 		await waitFor(() => {
 			expect(result.getPathname()).toBe("/");

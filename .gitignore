@@ -52,14 +52,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
-modules/keeper-git/ios/rust/
-modules/keeper-git/android/build/
-modules/keeper-git/.cargo-target/
 
 # Tauri
 src-tauri/target/
-src-tauri/git_core/target/
-src-tauri/git_core/target/
 
 # cursor debug
 .cursor/debug*.log

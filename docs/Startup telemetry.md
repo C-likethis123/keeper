@@ -7,7 +7,6 @@ Keeper emits structured startup timing logs under the `[StartupTrace]` prefix so
 - `src/services/startup/startupStrategies.ts`
 - `src/services/startup/startupSteps.ts`
 - `src/services/startup/startupTelemetry.ts`
-- `src/services/git/gitInitializationService.ts`
 - `src/services/notes/notesIndexDb.ts`
 
 ## How to view them

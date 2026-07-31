@@ -297,19 +297,7 @@ export async function readCrdtFrontmatter(
 	return Object.fromEntries(doc.getMap(FRONTMATTER_KEY).entries());
 }
 
-export async function listCrdtNoteIds(): Promise<string[]> {
-	const paths = await storageEngine.listFilesRecursive(CRDT_ROOT);
-	const noteIds = new Set<string>();
-	for (const path of paths) {
-		const parts = path.split("/");
-		const notesIndex = parts.indexOf("notes");
-		const encodedNoteId = notesIndex >= 0 ? parts[notesIndex + 1] : undefined;
-		if (encodedNoteId) {
-			noteIds.add(decodeNoteId(encodedNoteId));
-		}
-	}
-	return [...noteIds].sort();
-}
+
 
 export async function deleteCrdtNote(noteId: string): Promise<void> {
 	await storageEngine.deleteDirectory(`${CRDT_ROOT}/${encodeNoteId(noteId)}`);

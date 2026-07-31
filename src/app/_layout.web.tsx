@@ -5,10 +5,7 @@ import { lightTheme } from "@/constants/themes/lightTheme";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useAppStartup } from "@/hooks/useAppStartup";
 import { useStyles } from "@/hooks/useStyles";
-import { GitService } from "@/services/git/gitService";
-import { isServerSyncEnabled } from "@/services/sync/config";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
-import { getTauriInvoke } from "@/services/storage/runtime";
 import { ThemeProvider } from "@react-navigation/native";
 import { Drawer } from "expo-router/drawer";
 import { useEffect } from "react";
@@ -28,90 +25,6 @@ traceStartupBootstrapEvent("bootstrap.layout_module_evaluated");
 export default function RootLayout() {
 	useEffect(() => {
 		traceStartupBootstrapEvent("bootstrap.root_layout_first_render");
-		const saveAndFlushForExit = async () => {
-			try {
-				if (isServerSyncEnabled()) return;
-				await GitService.saveCurrentEditorBeforeBackgroundFlush();
-				await GitService.flushPendingChanges({
-					reason: "app-background",
-					timeoutMs: 5000,
-				});
-			} catch (error) {
-				console.warn("[Web] Failed to save on app exit:", error);
-			}
-		};
-		const handlePageHide = () => {
-			void saveAndFlushForExit();
-		};
-		const handleVisibilityChange = () => {
-			if (document.visibilityState === "hidden") {
-				void saveAndFlushForExit();
-			}
-		};
-		const browserWindow =
-			typeof window !== "undefined" &&
-			typeof window.addEventListener === "function"
-				? window
-				: null;
-		const browserDocument =
-			typeof document !== "undefined" &&
-			typeof document.addEventListener === "function"
-				? document
-				: null;
-		browserWindow?.addEventListener("pagehide", handlePageHide);
-		browserDocument?.addEventListener(
-			"visibilitychange",
-			handleVisibilityChange,
-		);
-
-		// Tauri desktop: handle window close to flush pending git changes
-		if (getTauriInvoke() !== null) {
-			let unlisten: (() => void) | null = null;
-			import("@tauri-apps/api/window")
-				.then(({ getCurrentWindow }) => {
-					let isClosing = false;
-					return getCurrentWindow().onCloseRequested(async (event) => {
-						if (isClosing) return;
-						console.log("[Tauri] Close requested, preventing default...");
-						// Prevent immediate close
-						event.preventDefault();
-						isClosing = true;
-						try {
-							console.log("[Tauri] Saving editor state...");
-							await saveAndFlushForExit();
-							console.log("[Tauri] Flush complete.");
-						} catch (e) {
-							console.warn("[Tauri] Failed to flush on close:", e);
-						} finally {
-							console.log("[Tauri] Closing window...");
-							// Actually close the window
-							await getCurrentWindow().close();
-						}
-					});
-				})
-				.then((u) => {
-					unlisten = u;
-				})
-				.catch((err) => {
-					console.warn("[Tauri] Failed to setup close listener:", err);
-				});
-
-			return () => {
-				if (unlisten) unlisten();
-				browserWindow?.removeEventListener("pagehide", handlePageHide);
-				browserDocument?.removeEventListener(
-					"visibilitychange",
-					handleVisibilityChange,
-				);
-			};
-		}
-		return () => {
-			browserWindow?.removeEventListener("pagehide", handlePageHide);
-			browserDocument?.removeEventListener(
-				"visibilitychange",
-				handleVisibilityChange,
-			);
-		};
 	}, []);
 	const themeMode = useColorScheme();
 	const { isHydrated, initError, statusMessage } = useAppStartup();

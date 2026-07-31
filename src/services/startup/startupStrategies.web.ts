@@ -1,5 +1,5 @@
 import { checkForUpdates } from "@/utils/checkForUpdates";
-import { initializeGitStep, initializeStorageStep } from "./startupSteps";
+import { initializeStorageStep } from "./startupSteps";
 import {
 	type StartupTelemetry,
 	createStartupTelemetry,
@@ -14,22 +14,12 @@ interface StartupStrategyContext {
 
 async function runDesktopStartup({
 	setHydrated,
-	setInitError,
-	setStatusMessage,
 	telemetry,
 }: StartupStrategyContext): Promise<void> {
 	await initializeStorageStep(telemetry);
 	const hydrationStart = telemetry.stepStarted("desktop.hydrate_ui");
 	setHydrated();
 	telemetry.stepCompleted("desktop.hydrate_ui", hydrationStart);
-	void initializeGitStep(
-		{
-			backgroundMode: true,
-			setInitError,
-			setStatusMessage,
-		},
-		telemetry,
-	);
 }
 
 export async function runStartupStrategy(

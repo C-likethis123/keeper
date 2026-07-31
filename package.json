@@ -5,11 +5,10 @@
   "scripts": {
     "start": "expo start",
     "web:desktop": "BROWSER=none expo start --web --port 8082",
-    "build:android": "EXPO_UPDATE_CHANNEL=production npx expo prebuild --platform android --clean && ./scripts/build-mobile-git.sh android && cd android && ./gradlew :app:installRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64",
+    "build:android": "EXPO_UPDATE_CHANNEL=production npx expo prebuild --platform android --clean && cd android && ./gradlew :app:installRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64",
     "desktop": "tauri dev",
     "desktop:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "build:web": "expo export --platform web",
-    "build:mobile-git": "./scripts/build-mobile-git.sh",
     "desktop:devtools": "sh -c 'trap \"kill 0\" INT TERM EXIT; react-devtools & npm run desktop & wait'",
     "build:desktop": "tauri build",
     "build:desktop:dev": "tauri build --config src-tauri/tauri.dev.conf.json --bundles app",

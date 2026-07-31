@@ -2,7 +2,6 @@ import {
 	registerPendingDispatchFlusher,
 	unregisterPendingDispatchFlusher,
 } from "@/components/editor/core/pendingDispatchRegistry";
-import { GitService } from "@/services/git/gitService";
 import {
 	normalizeMarkdownForPersistence,
 	persistEditorEntry,
@@ -35,12 +34,6 @@ function runInteractionTask(task: InteractionTask) {
 jest.mock("@/services/notes/editorEntryPersistence", () => ({
 	normalizeMarkdownForPersistence: jest.fn((value: string) => value.trim()),
 	persistEditorEntry: jest.fn(),
-}));
-
-jest.mock("@/services/git/gitService", () => ({
-	GitService: {
-		registerBackgroundSaveHandler: jest.fn(),
-	},
 }));
 
 describe("useAutoSave", () => {
@@ -799,30 +792,6 @@ describe("useAutoSave", () => {
 			await expect(result.current.forceSave()).rejects.toBe(saveError);
 		});
 		expect(result.current.status).toBe("idle");
-	});
-
-	it("registers and clears the background save handler with the current forceSave callback", async () => {
-		const { unmount } = renderHook(() =>
-			useAutoSave({
-				id: "note-1",
-				title: "Draft note",
-				content: "Initial body",
-				currentContent,
-				getCurrentContent: () => currentContent,
-				isPinned: false,
-				noteType: "note",
-			}),
-		);
-
-		expect(GitService.registerBackgroundSaveHandler).toHaveBeenCalledWith(
-			expect.any(Function),
-		);
-
-		unmount();
-
-		expect(GitService.registerBackgroundSaveHandler).toHaveBeenLastCalledWith(
-			null,
-		);
 	});
 
 	it("normalizes the initial saved snapshot from the incoming content", () => {

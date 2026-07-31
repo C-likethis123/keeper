@@ -6,7 +6,7 @@ This is a cross-platform rich-text editor, built on both mobile and desktop.
 
 1. [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app)
 2. React Native
-3. Git libraries (Rust `git_core` via Tauri/native bridge for local repositories, Octokit for the GitHub API)
+3. Server sync with local Markdown and SQLite persistence
 
 ## Get started
 
@@ -15,27 +15,13 @@ This is a cross-platform rich-text editor, built on both mobile and desktop.
    ```bash
    npm install
 
-   rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
-   rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
-   cargo install cargo-ndk
    ```
 
-
-2. Install Rust prerequisites for native mobile builds
-
-   ```bash
-   rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
-   rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
-   cargo install cargo-ndk
-   ```
-
-3. Build the production Android app
+2. Build the production Android app
 
    ```bash
    npm run build:android
    ```
-
-   The local Expo module in `modules/keeper-git` now owns the Rust bridge wiring for iOS and Android. Fresh native generation recreates the bridge automatically, and native builds compile the Rust library from `src-tauri/git_core` as needed. `npm run build:mobile-git` remains available as a convenience rebuild command.
 
 - [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
 - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
@@ -47,28 +33,18 @@ App source lives in `src/`. This project uses [file-based routing](https://docs.
 The web app can run in a desktop window via [Tauri](https://tauri.app/). Prerequisites: [Rust](https://rustup.rs/) and Xcode Command Line Tools (macOS: `xcode-select --install`).
 
 - **Dev**: `npm run desktop` — starts the Expo web server on `http://localhost:8082` and opens the Tauri window.
-- **Concurrent mobile + desktop dev**: desktop uses Expo web on `8082`, while mobile dev keeps Metro on `8081`. Mobile Rust artifacts are built under `modules/keeper-git/.cargo-target/` so Tauri does not rebuild on Android bridge output changes.
+- **Concurrent mobile + desktop dev**: desktop uses Expo web on `8082`, while mobile dev keeps Metro on `8081`.
 - **Production build**: `npm run build:desktop` — exports the web bundle then builds the desktop app. Outputs are in `src-tauri/target/release/` (and bundle artifacts for your OS).
 
 The first run may prompt for system permissions (e.g. macOS).
 
-### Git backend configuration
+### Sync backend configuration
 
-The editor can send file change batches to a backend git service. Configure the backend URL via:
+Configure the sync server URL:
 
 ```bash
-EXPO_PUBLIC_GIT_API_URL=https://your-backend.example.com/api
+EXPO_PUBLIC_SYNC_SERVER_URL=https://your-backend.example.com
 ```
-
-### Git runtime support
-
-Git sync is Rust-only. Supported runtimes:
-- Tauri desktop
-- Android native build
-- iOS native build
-
-Unsupported runtimes fall back to local-only mode:
-- Web
 
 ## MOC Suggestions (semantic clustering)
 

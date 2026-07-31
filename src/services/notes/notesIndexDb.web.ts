@@ -4,7 +4,6 @@ import type {
 	NoteIndexItem,
 	NoteIndexRow,
 	NotesIndexRebuildMetrics,
-	NotesIndexSyncMetrics,
 } from "./indexDb/types";
 import type { NoteListFilters } from "./types";
 
@@ -12,7 +11,6 @@ export type {
 	ListNotesResult,
 	NoteIndexItem,
 	NotesIndexRebuildMetrics,
-	NotesIndexSyncMetrics,
 };
 
 type TauriIndexItem = {

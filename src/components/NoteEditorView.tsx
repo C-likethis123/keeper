@@ -10,8 +10,6 @@ import { useEditorKeyboardHeight } from "@/hooks/useEditorKeyboardHeight";
 import { useNoteEditorLayout } from "@/hooks/useNoteEditorLayout";
 import { useRelatedNotes } from "@/hooks/useRelatedNotes";
 import { useStyles } from "@/hooks/useStyles";
-import { GitService } from "@/services/git/gitService";
-import { isServerSyncEnabled } from "@/services/sync/config";
 import { NOTES_ROOT } from "@/services/notes/Notes";
 import {
   type AttachmentType,
@@ -158,25 +156,6 @@ export default function NoteEditorView({
   const { updateTabTitle, tabs, closeTab, openTab } = useTabStore();
   const tab = tabs.find((t) => t.noteId === id);
 
-  const flushGitAndToastOnFailure = useCallback(
-	    async (
-      reason: "note-exit" | "delete",
-      message?: string,
-	    ): Promise<boolean> => {
-	      if (isServerSyncEnabled()) return true;
-	      const result = await GitService.flushPendingChanges({
-        reason,
-        message,
-        timeoutMs: 8000,
-      });
-      if (!result.success) {
-        showToast("Saved locally. Sync will retry shortly.");
-      }
-      return result.success;
-    },
-    [],
-  );
-
   const isLeavingRef = useRef(false);
   const bypassNextBeforeRemoveRef = useRef(false);
   const isNewEntryRef = useRef(!!isNew);
@@ -250,15 +229,6 @@ export default function NoteEditorView({
     isNew,
   });
 
-  const flushGitAfterNavigation = useCallback(
-    (reason: "note-exit" | "delete", message?: string) => {
-      setTimeout(() => {
-        void flushGitAndToastOnFailure(reason, message);
-      }, 0);
-    },
-    [flushGitAndToastOnFailure],
-  );
-
   const saveBeforeExit = useCallback(async () => {
     try {
       await forceSave();
@@ -283,16 +253,14 @@ export default function NoteEditorView({
         bypassNextBeforeRemoveRef.current = true;
         if (action) {
           navigation.dispatch(action);
-          flushGitAfterNavigation("note-exit");
           return;
         }
         router.back();
-        flushGitAfterNavigation("note-exit");
       } finally {
         isLeavingRef.current = false;
       }
     },
-    [flushGitAfterNavigation, navigation, router, saveBeforeExit],
+    [navigation, router, saveBeforeExit],
   );
 
   const handleBack = useCallback(async () => {
@@ -303,7 +271,6 @@ export default function NoteEditorView({
       bypassNextBeforeRemoveRef.current = true;
       closeTab(tab.id);
       router.replace("/");
-      flushGitAfterNavigation("note-exit");
     } else {
       await leaveEditor();
     }
@@ -311,7 +278,6 @@ export default function NoteEditorView({
     tabs.length,
     tab,
     closeTab,
-    flushGitAfterNavigation,
     leaveEditor,
     router,
     saveBeforeExit,
@@ -474,11 +440,7 @@ export default function NoteEditorView({
     await NoteService.deleteNote(id);
     bypassNextBeforeRemoveRef.current = true;
     router.back();
-    flushGitAfterNavigation(
-      "delete",
-      `Delete ${latestDraftRef.current.noteType}`,
-    );
-  }, [flushGitAfterNavigation, id, router]);
+  }, [id, router]);
 
   const handleTextSelected = useCallback(
     (text: string) => {
@@ -597,9 +559,8 @@ export default function NoteEditorView({
       }
       bypassNextBeforeRemoveRef.current = true;
       router.push(`/editor?id=${noteId}`);
-      flushGitAfterNavigation("note-exit");
     },
-    [flushGitAfterNavigation, router, saveBeforeExit],
+    [router, saveBeforeExit],
   );
 
   const handleToolbarInsertImage = useCallback(async () => {

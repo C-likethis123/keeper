@@ -1,5 +1,4 @@
 import { Directory, File } from "expo-file-system";
-import { GitService } from "@/services/git/gitService";
 import { NOTES_ROOT } from "./Notes";
 
 export type AttachmentType = "pdf" | "epub";
@@ -31,10 +30,8 @@ export async function copyPickedAttachmentToNote(
     attachmentsDir.create({ intermediates: true });
   }
   const source = new File(uri);
-  const dest = new File(attachmentsDir, filename);
+	const dest = new File(attachmentsDir, filename);
 	source.copy(dest);
-	await GitService.queueChangeAsync(`_attachments/${filename}`, "add");
-	GitService.scheduleCommitBatch();
 	return `_attachments/${filename}`;
 }
 
@@ -49,6 +46,4 @@ export async function deleteAttachment(relativePath: string): Promise<void> {
   if (file.exists) {
     file.delete();
   }
-  await GitService.queueChangeAsync(relativePath, "delete");
-  GitService.scheduleCommitBatch();
 }

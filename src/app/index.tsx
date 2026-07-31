@@ -1,5 +1,6 @@
 import HomeQuickComposer from "@/components/HomeQuickComposer";
 import HomeScreenHeader from "@/components/HomeScreenHeader";
+import NoteGrid from "@/components/NoteGrid";
 import ResetAppDataModal from "@/components/ResetAppDataModal";
 import AddNoteToClusterModal from "@/components/moc/AddNoteToClusterModal";
 import RenameClusterModal from "@/components/moc/RenameClusterModal";
@@ -17,7 +18,6 @@ import {
 	clusterDelete,
 	clusterRemoveNote,
 	clusterRename,
-	importClustersFromFile,
 } from "@/services/notes/clusterService";
 import type { NoteSection } from "@/services/notes/indexDb/types";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
@@ -29,14 +29,7 @@ import { useStorageStore } from "@/stores/storageStore";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
 import { router, useNavigation } from "expo-router";
-import React, {
-	Suspense,
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import React, { Suspense, useCallback, useMemo, useRef, useState } from "react";
 import {
 	Alert,
 	Platform,
@@ -45,15 +38,14 @@ import {
 	View,
 } from "react-native";
 
-const LazyNoteGrid = React.lazy(() => import("@/components/NoteGrid"));
-
 function IndexContent() {
 	const {
 		notes,
 		sections,
 		query,
 		hasMore,
-		isLoading,
+		isRefreshing,
+		isLoadingMore,
 		error,
 		handleRefresh,
 		loadMoreNotes,
@@ -232,10 +224,6 @@ function IndexContent() {
 		[safeSections, handleDeleteCluster, handleRemoveNote],
 	);
 
-	useEffect(() => {
-		void importClustersFromFile();
-	}, []);
-
 	const searchInputRef = useRef<TextInput>(null);
 	useAppKeyboardShortcuts({
 		onFocusSearch: () => {
@@ -261,23 +249,19 @@ function IndexContent() {
 				onReset={confirmReset}
 				resetDisabled={isResetting}
 			/>
-			<Suspense fallback={<Loader />}>
-				<LazyNoteGrid
-					notes={notes ?? []}
-					sections={enhancedSections}
-					emptySubtitle={emptySubtitle}
-					onDelete={handleDeleteNote}
-					onPinToggle={handlePinToggle}
-					refreshing={isLoading}
-					onRefresh={handleRefresh}
-					onEndReached={loadMoreNotes}
-					isLoadingMore={isLoading}
-					hasMore={hasMore}
-					listHeaderComponent={
-						<HomeQuickComposer onPress={createAndOpenNote} />
-					}
-				/>
-			</Suspense>
+			<NoteGrid
+				notes={notes ?? []}
+				sections={enhancedSections}
+				emptySubtitle={emptySubtitle}
+				onDelete={handleDeleteNote}
+				onPinToggle={handlePinToggle}
+				refreshing={isRefreshing}
+				onRefresh={handleRefresh}
+				onEndReached={loadMoreNotes}
+				isLoadingMore={isLoadingMore}
+				hasMore={hasMore}
+				listHeaderComponent={<HomeQuickComposer onPress={createAndOpenNote} />}
+			/>
 			<ResetAppDataModal
 				visible={isResetModalVisible}
 				isResetting={isResetting}

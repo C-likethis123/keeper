@@ -1,13 +1,7 @@
 import { render, screen } from "@testing-library/react-native";
-import { act } from "react";
 import type React from "react";
 
 const mockUseAppStartup = jest.fn();
-const mockGetTauriInvoke = jest.fn();
-const mockSaveCurrentEditorBeforeBackgroundFlush = jest.fn();
-const mockFlushPendingChanges = jest.fn();
-const mockOnCloseRequested = jest.fn();
-const mockClose = jest.fn();
 
 jest.mock("@react-navigation/native", () => ({
 	ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
@@ -91,27 +85,6 @@ jest.mock("@/hooks/useStyles", () => ({
 		}),
 }));
 
-jest.mock("@/services/storage/runtime", () => ({
-	getTauriInvoke: () => mockGetTauriInvoke(),
-}));
-
-jest.mock("@/services/git/gitService", () => ({
-	GitService: {
-		saveCurrentEditorBeforeBackgroundFlush: (
-			...args: unknown[]
-		): Promise<void> => mockSaveCurrentEditorBeforeBackgroundFlush(...args),
-		flushPendingChanges: (...args: unknown[]) =>
-			mockFlushPendingChanges(...args),
-	},
-}));
-
-jest.mock("@tauri-apps/api/window", () => ({
-	getCurrentWindow: () => ({
-		onCloseRequested: (...args: unknown[]) => mockOnCloseRequested(...args),
-		close: () => mockClose(),
-	}),
-}));
-
 import RootLayout from "@/app/_layout.web";
 
 describe("RootLayout (web)", () => {
@@ -139,16 +112,6 @@ describe("RootLayout (web)", () => {
 			configurable: true,
 			value: jest.fn(),
 		});
-		mockGetTauriInvoke.mockReturnValue(null);
-		mockSaveCurrentEditorBeforeBackgroundFlush.mockResolvedValue(undefined);
-		mockFlushPendingChanges.mockResolvedValue({
-			success: true,
-			didCommit: true,
-			didPush: true,
-			didRecover: false,
-		});
-		mockOnCloseRequested.mockResolvedValue(jest.fn());
-		mockClose.mockResolvedValue(undefined);
 		mockUseAppStartup.mockReturnValue({
 			isHydrated: false,
 			initError: null,
@@ -178,68 +141,4 @@ describe("RootLayout (web)", () => {
 		expect(screen.getByText("Toast overlay")).toBeTruthy();
 	});
 
-	it("saves the editor before flushing git on Tauri window close", async () => {
-		mockGetTauriInvoke.mockReturnValue(jest.fn());
-		mockUseAppStartup.mockReturnValue({
-			isHydrated: true,
-			initError: null,
-			runtime: "web",
-			status: "ready",
-		});
-
-		render(<RootLayout />);
-
-		await act(async () => {
-			await Promise.resolve();
-		});
-
-		const closeHandler = mockOnCloseRequested.mock.calls[0]?.[0];
-		expect(closeHandler).toEqual(expect.any(Function));
-		const event = { preventDefault: jest.fn() };
-
-		await act(async () => {
-			await closeHandler(event);
-		});
-
-		expect(event.preventDefault).toHaveBeenCalledTimes(1);
-		expect(mockSaveCurrentEditorBeforeBackgroundFlush).toHaveBeenCalledTimes(1);
-		expect(mockFlushPendingChanges).toHaveBeenCalledWith({
-			reason: "app-background",
-			timeoutMs: 5000,
-		});
-		expect(
-			mockSaveCurrentEditorBeforeBackgroundFlush.mock.invocationCallOrder[0],
-		).toBeLessThan(mockFlushPendingChanges.mock.invocationCallOrder[0]);
-		expect(mockClose).toHaveBeenCalledTimes(1);
-	});
-
-	it("saves the editor before flushing git on browser page hide", async () => {
-		mockUseAppStartup.mockReturnValue({
-			isHydrated: true,
-			initError: null,
-			runtime: "web",
-			status: "ready",
-		});
-
-		render(<RootLayout />);
-
-		const pageHideHandler = (
-			window.addEventListener as jest.Mock
-		).mock.calls.find(([eventName]) => eventName === "pagehide")?.[1];
-		expect(pageHideHandler).toEqual(expect.any(Function));
-
-		await act(async () => {
-			pageHideHandler();
-			await Promise.resolve();
-		});
-
-		expect(mockSaveCurrentEditorBeforeBackgroundFlush).toHaveBeenCalledTimes(1);
-		expect(mockFlushPendingChanges).toHaveBeenCalledWith({
-			reason: "app-background",
-			timeoutMs: 5000,
-		});
-		expect(
-			mockSaveCurrentEditorBeforeBackgroundFlush.mock.invocationCallOrder[0],
-		).toBeLessThan(mockFlushPendingChanges.mock.invocationCallOrder[0]);
-	});
 });

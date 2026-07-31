@@ -1,16 +1,7 @@
-import { GitInitializationService } from "@/services/git/gitInitializationService";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { StorageInitializationService } from "@/services/storage/storageInitializationService";
 import { useStorageStore } from "@/stores/storageStore";
-import {
-	initializeGitStep,
-	initializeStorageStep,
-} from "../startupSteps";
-
-const mockShowToast = jest.fn();
-jest.mock("@/services/toast", () => ({
-	showToast: (...args: unknown[]) => mockShowToast(...args),
-}));
+import { initializeStorageStep } from "../startupSteps";
 
 const mockBumpContentVersion = jest.fn();
 
@@ -26,7 +17,6 @@ function createTelemetry() {
 describe("startupSteps", () => {
 	beforeEach(() => {
 		process.env.EXPO_PUBLIC_SYNC_SERVER_URL = undefined;
-		process.env.EXPO_PUBLIC_GIT_API_URL = undefined;
 		jest.restoreAllMocks();
 		jest.clearAllMocks();
 		jest
@@ -35,24 +25,6 @@ describe("startupSteps", () => {
 		useStorageStore.setState({
 			bumpContentVersion: mockBumpContentVersion,
 		});
-	});
-
-	it("skips local Git initialization when sync server URL is set", async () => {
-		process.env.EXPO_PUBLIC_SYNC_SERVER_URL = "https://sync.example";
-		const initialize = jest.spyOn(
-			GitInitializationService.instance,
-			"initialize",
-		);
-
-		await initializeGitStep(
-			{
-				backgroundMode: false,
-				setInitError: jest.fn(),
-			},
-			createTelemetry() as never,
-		);
-
-		expect(initialize).not.toHaveBeenCalled();
 	});
 
 	it("rebuilds the notes index after storage initialization requests it", async () => {
@@ -88,56 +60,6 @@ describe("startupSteps", () => {
 			101,
 			error,
 		);
-	});
-
-	it("rebuilds and bumps content version after a successful clone", async () => {
-		jest
-			.spyOn(GitInitializationService.instance, "initialize")
-			.mockResolvedValue({
-				success: true,
-				supported: true,
-				wasCloned: true,
-				metrics: { didDbSync: false },
-			} as Awaited<
-				ReturnType<typeof GitInitializationService.instance.initialize>
-			>);
-		const telemetry = createTelemetry();
-
-		await initializeGitStep(
-			{
-				backgroundMode: false,
-				setInitError: jest.fn(),
-			},
-			telemetry as never,
-		);
-
-		expect(NotesIndexService.rebuildFromDisk).toHaveBeenCalledTimes(1);
-		expect(mockBumpContentVersion).toHaveBeenCalledTimes(1);
-	});
-
-	it("surfaces git failures through setInitError in foreground mode", async () => {
-		jest
-			.spyOn(GitInitializationService.instance, "initialize")
-			.mockResolvedValue({
-				success: false,
-				supported: true,
-				error: "Sync exploded",
-				metrics: { didDbSync: false },
-			} as Awaited<
-				ReturnType<typeof GitInitializationService.instance.initialize>
-			>);
-		const setInitError = jest.fn();
-
-		await initializeGitStep(
-			{
-				backgroundMode: false,
-				setInitError,
-			},
-			createTelemetry() as never,
-		);
-
-		expect(mockShowToast).not.toHaveBeenCalled();
-		expect(setInitError).toHaveBeenCalledWith("Sync exploded");
 	});
 
 });

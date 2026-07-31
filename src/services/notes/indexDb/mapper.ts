@@ -1,5 +1,4 @@
-import { File } from "expo-file-system";
-import { NOTES_ROOT } from "../Notes";
+import type { File } from "expo-file-system";
 import { parseFrontmatter } from "../frontmatter";
 import { computeContentHash } from "../wikiLinkParser";
 import type { NoteIndexItem, NoteIndexRow, NoteIndexSqlItem } from "./types";
@@ -52,29 +51,6 @@ export function mapIndexItemToSqlItem(item: NoteIndexItem): NoteIndexSqlItem {
 		updatedAt: item.updatedAt,
 		noteType: item.noteType,
 		status: item.noteType === "todo" ? (item.status ?? "open") : null,
-	};
-}
-
-export async function mapMarkdownPathToSqlItem(
-	path: string,
-): Promise<NoteIndexSqlItem | null> {
-	const file = new File(NOTES_ROOT, path);
-	if (!file.exists) {
-		return null;
-	}
-	const content = await file.text();
-	const parsed = parseFrontmatter(content);
-	const modified = parsed.modified ?? file.modificationTime ?? 0;
-	return {
-		id: parsed.id,
-		title: parsed.title,
-		summary: extractSummary(parsed.content),
-		isPinned: parsed.isPinned ? 1 : 0,
-		updatedAt: modified,
-		modified,
-		noteType: parsed.noteType ?? null,
-		status: parsed.noteType === "todo" ? (parsed.status ?? "open") : null,
-		contentHash: computeContentHash(content),
 	};
 }
 

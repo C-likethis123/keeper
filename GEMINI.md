@@ -47,7 +47,7 @@ Keeper is a cross-platform block-based markdown note editor (iOS/Android/web/des
 
 5. **Services** (`services/`) — Persistence:
    - `services/notes/` — `noteService.ts` (CRUD), `notesIndex.ts` (SQLite full-text search), `Notes.ts`/`Notes.web.ts` (platform FS abstraction)
-   - `services/git/` — `gitService.ts` (batched commit queue), `gitInitializationService.ts` (clone/validate on launch), `gitApi.ts` (Octokit GitHub API)
+   - `services/sync/` — server sync operation queue, push, pull, and CRDT transport
 
 ### Editor Model (`components/editor/core/`)
 
@@ -67,8 +67,8 @@ An **immutable, transaction-based** document model:
 ### Data Persistence (three-tier)
 
 1. **File system** via a Rust bridge that interacts with native file system
-2. **SQLite** via a Rust bridge — full-text search index (title, summary, pinned, timestamp); rebuilt on git clone detection
-3. **Git** via Rust `git_core` bridge — batched, debounced commits; optional push to GitHub
+2. **SQLite** via a Rust bridge — full-text search index (title, summary, pinned, timestamp)
+3. **Server sync** — queued note operations with push/pull transport
 
 ## Scroll management
 
@@ -77,10 +77,7 @@ This note editor manages scrolling via EditorScrollContext.
 ### Environment Variables
 
 ```
-EXPO_PUBLIC_GITHUB_OWNER=<owner>
-EXPO_PUBLIC_GITHUB_REPO=<repo>
-EXPO_PUBLIC_GITHUB_TOKEN=<token>
-EXPO_PUBLIC_GIT_API_URL=<backend-url>   # optional remote backend
+EXPO_PUBLIC_SYNC_SERVER_URL=<sync-server-url>
 ```
 
 ## Key Conventions

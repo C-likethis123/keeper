@@ -22,8 +22,7 @@ npm run build:desktop:dev # Build dev desktop app bundle
 npm run build:web        # Export Expo web build
 
 # Mobile
-npm run build:android    # Prebuild, build Rust bridge, install release APK
-npm run build:mobile-git # Build Rust git bridge for mobile
+npm run build:android    # Prebuild and install release APK
 
 # Utilities
 npm test                 # Jest unit suite
@@ -68,16 +67,14 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
 
 6. **Services** (`src/services/`) - Persistence and side effects:
    - `notes/` - note CRUD, frontmatter, note type derivation, templates, attachments/images, wiki link parsing, query cache, SQLite/index DB sync, cluster and cluster feedback services.
-   - `git/` - Git service, sync manager, journal, async queue, native bridge, runtime engine selection, Rust engine, and repo init/reconcile services.
+   - `sync/` - server sync push/pull, operation queue, CRDT transport, and sync orchestration.
    - `storage/` - platform storage engine abstraction with mobile and Tauri engines.
    - `startup/` - startup steps, strategies, telemetry.
    - `app/` - reset app data service.
    - `toast.ts` - toast facade.
 
 7. **Native/Rust**:
-   - `modules/keeper-git/` - Expo native module for mobile Git bridge, Kotlin/Swift wrappers, Rust build script.
    - `src-tauri/src/` - Tauri app commands and desktop storage bridge.
-   - `src-tauri/git_core/` - Rust Git core crate.
    - `src-tauri/storage_core/` - Rust SQLite/storage core crate and migrations.
 
 8. **MOC Pipeline**:
@@ -90,7 +87,7 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
 1. **Storage engine** - `src/services/storage/*` chooses mobile or Tauri storage implementation.
 2. **Notes service** - `src/services/notes/noteService.ts` reads/writes Markdown and metadata.
 3. **Index DB/SQLite** - `src/services/notes/indexDb/*`, `notesIndexDb*`, and migrations keep search, metadata, wiki links, clusters, and feedback queryable.
-4. **Git sync** - `src/services/git/*` batches, journals, commits, reconciles, and flushes changes through Rust Git engine/native bridge.
+4. **Server sync** - `src/services/sync/*` queues note operations and pushes/pulls them through the sync server.
 
 ## Key Conventions
 
@@ -98,7 +95,7 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
 - Keep editor work in Lexical extensions/nodes/transforms.
 - Do not mutate editor state directly. Use store actions and immutable updates.
 - Keep platform splits explicit: `.web.ts`, `.native.tsx`, and platform-specific services override shared files.
-- Use storage and git engine abstractions. Do not call Tauri or native module APIs directly from UI.
+- Use storage and sync abstractions. Do not call Tauri or native module APIs directly from UI.
 - Use Biome, not ESLint/Prettier.
 - Tests live beside code in `__tests__/` and use Jest/RNTL where relevant.
 - Build-generated folders (`node_modules`, `android`, `ios`, `dist`, `src-tauri/target`) are not source of truth.
@@ -106,8 +103,5 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
 ## Environment Variables
 
 ```bash
-EXPO_PUBLIC_GITHUB_OWNER=<owner>
-EXPO_PUBLIC_GITHUB_REPO=<repo>
-EXPO_PUBLIC_GITHUB_TOKEN=<token>
-EXPO_PUBLIC_GIT_API_URL=<backend-url> # optional remote backend
+EXPO_PUBLIC_SYNC_SERVER_URL=<sync-server-url>
 ```

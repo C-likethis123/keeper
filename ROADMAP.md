@@ -284,12 +284,7 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 
 ### Mobile Native Git Bridge
 
-**Status**: Implemented via the local Expo module in `modules/keeper-git`
-**Notes**:
-
-- Native registration now survives clean Expo prebuilds through autolinking
-- Android and iOS share the same local module approach
-- `npm run build:mobile-git` remains as a convenience rebuild path for the Rust library
+**Status**: Removed. Mobile sync now uses the server sync service.
 
 ### Testing Architecture
 
@@ -531,27 +526,6 @@ Integrate the local Python clustering pipeline into the repository's continuous 
 
 ---
 
-### Phase 17: Refactor Git Sync Service for Modularity
-
-Improve the maintainability and testability of the Git syncing infrastructure by refactoring the monolithic `GitService` into modular, domain-specific components.
-
-**Status**: Planned
-**Objectives**:
-
-- **Decouple Journaling**: Extract pending journal management (`AsyncGitSyncStateStore` logic) into a `GitJournal` service.
-- **Isolate Sync Management**: Move app-lifecycle, background-flush, and recovery logic into a dedicated `GitSyncManager`.
-- **Modularize Native Bridge**: Abstract native module interaction into a cleaner `GitNativeBridge` interface to facilitate future engine swaps (e.g., to `isomorphic-git` if desired).
-- **Improve Testability**: Create clear boundaries to allow unit testing of journal logic without requiring actual Git or filesystem operations.
-
-**Key files to target**:
-
-- `src/services/git/gitService.ts` (the primary target for decomposition)
-- `src/services/git/init/stateStore.ts`
-- `modules/keeper-git/src/` (interface review)
-
-
----
-
 ### Future Ideas
 
 - Drawings (low priority)
@@ -579,7 +553,7 @@ Port existing smart-editing logic (indentation and brace completion) from the cu
 
 ## iOS Support
 
-iOS native support now comes from the local Expo module in `modules/keeper-git`. To build:
+iOS production builds use EAS or an Xcode release archive:
 
 - Production: build with EAS production profile or an Xcode release archive.
 

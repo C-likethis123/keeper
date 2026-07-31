@@ -3,10 +3,6 @@ import { jest } from "@jest/globals";
 
 globalThis.jest = jest;
 
-process.env.EXPO_PUBLIC_GITHUB_OWNER ??= "keeper-test-owner";
-process.env.EXPO_PUBLIC_GITHUB_REPO ??= "keeper-test-repo";
-process.env.EXPO_PUBLIC_GITHUB_TOKEN ??= "keeper-test-token";
-
 jest.mock("expo-file-system", () => ({
 	__esModule: true,
 	Paths: {

@@ -222,20 +222,7 @@ export async function upsertBatch(
 	}
 }
 
-export async function deleteBatch(
-	database: SQLiteDatabase,
-	ids: string[],
-	batchSize: number,
-): Promise<void> {
-	for (let i = 0; i < ids.length; i += batchSize) {
-		const batch = ids.slice(i, i + batchSize);
-		const placeholders = batch.map(() => "?").join(", ");
-		await database.runAsync(
-			`DELETE FROM ${TABLE} WHERE id IN (${placeholders})`,
-			...batch,
-		);
-	}
-}
+
 
 export async function dropFtsTriggers(database: SQLiteDatabase): Promise<void> {
 	await database.execAsync("DROP TRIGGER IF EXISTS note_index_ai");

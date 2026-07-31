@@ -103,9 +103,13 @@ jest.mock("@/components/NoteGrid", () => {
 		default: ({
 			listHeaderComponent,
 			notes,
+			refreshing,
+			isLoadingMore,
 		}: {
 			listHeaderComponent?: React.ReactNode;
 			notes: Array<{ title: string }>;
+			refreshing: boolean;
+			isLoadingMore: boolean;
 		}) =>
 			React.createElement(View, { testID: "note-grid" }, [
 				React.createElement(
@@ -114,6 +118,16 @@ jest.mock("@/components/NoteGrid", () => {
 					listHeaderComponent,
 				),
 				React.createElement(Text, { key: "count" }, `Notes: ${notes.length}`),
+				React.createElement(
+					Text,
+					{ key: "refreshing" },
+					`Refreshing: ${refreshing}`,
+				),
+				React.createElement(
+					Text,
+					{ key: "loading-more" },
+					`Loading more: ${isLoadingMore}`,
+				),
 			]),
 	};
 });
@@ -180,7 +194,8 @@ function makeUseNotesResult(
 		noteTypeFilter: undefined,
 		statusFilter: undefined,
 		hasMore: false,
-		isLoading: false,
+		isRefreshing: false,
+		isLoadingMore: false,
 		error: null,
 		handleRefresh: jest.fn(),
 		loadMoreNotes: jest.fn(),
@@ -206,12 +221,13 @@ describe("Index", () => {
 		});
 	});
 
-	it("renders the custom home header and composer", async () => {
+	it("renders the note grid without a second loading fallback", () => {
 		mockUseNotes.mockReturnValue(makeUseNotesResult());
 
 		render(<Index />);
 
-		expect(await screen.findByText("Notes: 1")).toBeOnTheScreen();
+		expect(screen.getByText("Notes: 1")).toBeOnTheScreen();
+		expect(screen.queryByText("Loading notes")).not.toBeOnTheScreen();
 		expect(screen.getByPlaceholderText("Search")).toBeOnTheScreen();
 		expect(
 			screen.getByRole("button", { name: "Take a note" }),
@@ -222,6 +238,17 @@ describe("Index", () => {
 		expect(
 			screen.getByRole("button", { name: "Open suggested MOCs" }),
 		).toBeOnTheScreen();
+	});
+
+	it("keeps refresh and pagination loading states independent", () => {
+		mockUseNotes.mockReturnValue(
+			makeUseNotesResult({ isRefreshing: true, isLoadingMore: false }),
+		);
+
+		render(<Index />);
+
+		expect(screen.getByText("Refreshing: true")).toBeOnTheScreen();
+		expect(screen.getByText("Loading more: false")).toBeOnTheScreen();
 	});
 
 	it("updates the search query through the header search input", async () => {

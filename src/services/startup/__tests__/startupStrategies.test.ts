@@ -1,14 +1,12 @@
 import { runStartupStrategy } from "../startupStrategies";
 
 const mockInitializeStorageStep = jest.fn();
-const mockInitializeGitStep = jest.fn();
 const mockCreateStartupTelemetry = jest.fn();
 const mockCheckForUpdates = jest.fn();
 
 jest.mock("../startupSteps", () => ({
 	initializeStorageStep: (...args: unknown[]) =>
 		mockInitializeStorageStep(...args),
-	initializeGitStep: (...args: unknown[]) => mockInitializeGitStep(...args),
 }));
 
 jest.mock("../startupTelemetry", () => ({
@@ -42,25 +40,16 @@ describe("runStartupStrategy", () => {
 		jest.clearAllMocks();
 		mockCreateStartupTelemetry.mockReturnValue(createTelemetry());
 		mockInitializeStorageStep.mockResolvedValue(undefined);
-		mockInitializeGitStep.mockResolvedValue(undefined);
 		mockCheckForUpdates.mockResolvedValue(undefined);
 	});
 
-	it("waits for mobile git initialization before hydrating", async () => {
+	it("waits for storage initialization before hydrating", async () => {
 		const context = createContext();
 
 		await runStartupStrategy(context);
 
 		expect(mockInitializeStorageStep).toHaveBeenCalledTimes(1);
-		expect(mockInitializeGitStep).toHaveBeenCalledWith(
-			{
-				backgroundMode: false,
-				setInitError: context.setInitError,
-				setStatusMessage: context.setStatusMessage,
-			},
-			expect.any(Object),
-		);
-		expect(mockInitializeGitStep.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(mockInitializeStorageStep.mock.invocationCallOrder[0]).toBeLessThan(
 			context.setHydrated.mock.invocationCallOrder[0],
 		);
 	});

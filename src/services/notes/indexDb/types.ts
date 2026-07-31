@@ -29,26 +29,6 @@ export interface NotesIndexRebuildMetrics {
 	totalMs?: number;
 }
 
-export interface NotesIndexSyncMetrics {
-	mode: "incremental";
-	addedCount: number;
-	modifiedCount: number;
-	deletedCount: number;
-	markdownUpsertPathCount: number;
-	markdownDeleteCount: number;
-	upsertedNoteCount: number;
-	deletedNoteCount: number;
-	readParseMs: number;
-	sqlMs: number;
-	totalMs: number;
-}
-
-export interface NoteIndexSyncChangedPaths {
-	added: string[];
-	modified: string[];
-	deleted: string[];
-}
-
 export interface NoteIndexRow {
 	id: string;
 	title: string;
