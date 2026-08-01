@@ -1,6 +1,19 @@
 import { parseFrontmatter, stringifyFrontmatter } from "../frontmatter";
 
 describe("frontmatter", () => {
+	it("parses drawing note type", () => {
+		const parsed = parseFrontmatter(`---
+id: "drawing-1"
+title: "Sketch"
+pinned: false
+type: drawing
+---
+{"version":1}`);
+
+		expect(parsed.noteType).toBe("drawing");
+		expect(parsed.content).toBe('{"version":1}');
+	});
+
 	it("parses quoted YAML scalars and todo metadata", () => {
 		const parsed = parseFrontmatter(`---
 id: "note-1"

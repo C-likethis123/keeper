@@ -1,10 +1,17 @@
 import { getTauriInvoke } from "@/services/storage/runtime";
 import {
 	listServerAcceptedClusters,
+	listServerAcceptedSuperClusters,
 	listServerActiveClusters,
+	listServerActiveSuperClusters,
+	listServerChildClusters,
 	listServerClusterMembers,
+	listServerStandaloneAcceptedClusters,
 	serverClusterAccept,
+	serverClusterAddNote,
+	serverClusterDelete,
 	serverClusterDismiss,
+	serverClusterRemoveNote,
 	serverClusterRename,
 	shouldUseServerClusters,
 } from "@/services/notes/serverClusterClient";
@@ -96,6 +103,10 @@ export async function clusterAddNote(
 	clusterId: string,
 	noteId: string,
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterAddNote(clusterId, noteId);
+		return;
+	}
 	await invoke("clusters_add_note", { clusterId, noteId });
 }
 
@@ -103,32 +114,54 @@ export async function clusterRemoveNote(
 	clusterId: string,
 	noteId: string,
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterRemoveNote(clusterId, noteId);
+		return;
+	}
 	await invoke("clusters_remove_note", { clusterId, noteId });
 }
 
 export async function clusterDelete(clusterId: string): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterDelete(clusterId);
+		return;
+	}
 	await invoke("clusters_delete", { clusterId });
 }
 
 // ─── Super-Cluster Service (Tauri stubs — pending Rust backend support) ──────
 
 export async function listActiveSuperClusters(): Promise<SuperClusterRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerActiveSuperClusters();
+	}
 	return invoke<SuperClusterRow[]>("super_clusters_get_active");
 }
 
 export async function listAcceptedSuperClusters(): Promise<SuperClusterRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerAcceptedSuperClusters();
+	}
 	return invoke<SuperClusterRow[]>("super_clusters_get_accepted");
 }
 
 export async function superClusterAccept(
 	superClusterId: string,
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterAccept(superClusterId);
+		return;
+	}
 	await invoke("super_clusters_accept", { superClusterId });
 }
 
 export async function superClusterDismiss(
 	superClusterId: string,
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterDismiss(superClusterId);
+		return;
+	}
 	await invoke("super_clusters_dismiss", { superClusterId });
 }
 
@@ -136,17 +169,27 @@ export async function superClusterRename(
 	superClusterId: string,
 	name: string,
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterRename(superClusterId, name);
+		return;
+	}
 	await invoke("super_clusters_rename", { superClusterId, name });
 }
 
 export async function listAcceptedSubClusters(
 	superClusterId: string,
 ): Promise<ClusterRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerChildClusters(superClusterId);
+	}
 	return invoke<ClusterRow[]>("super_clusters_get_sub_clusters", {
 		superClusterId,
 	});
 }
 
 export async function listStandaloneAcceptedClusters(): Promise<ClusterRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerStandaloneAcceptedClusters();
+	}
 	return invoke<ClusterRow[]>("clusters_get_standalone_accepted");
 }

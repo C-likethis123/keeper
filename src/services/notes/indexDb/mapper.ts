@@ -63,7 +63,10 @@ export async function mapMarkdownFileToSqlItem(
 	return {
 		id: parsed.id,
 		title: parsed.title,
-		summary: extractSummary(parsed.content),
+		summary:
+			parsed.noteType === "drawing"
+				? "Drawing"
+				: extractSummary(parsed.content),
 		isPinned: parsed.isPinned ? 1 : 0,
 		updatedAt: modified,
 		modified,

@@ -21,9 +21,11 @@ services:
       - "127.0.0.1:6379:6379"
 
   api:
-    image: node:24-alpine
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
     working_dir: /app
-    command: sh -c "apk add --no-cache git && npm install && npm run db:migrate && npm run dev"
+    command: sh -c "npm run db:migrate && npm run start"
     environment:
       DATABASE_URL: postgres://keeper:keeper@postgres:5432/keeper
       REDIS_URL: redis://redis:6379
@@ -32,13 +34,44 @@ services:
       SERVER_GIT_REPO_DIR: /data/repos/keeper-notes
       SERVER_GIT_BRANCH: main
       KEEPER_SEED_TOKEN: ${KEEPER_SEED_TOKEN:-}
+      MOC_CLASSIFY_DELAY_MS: ${MOC_CLASSIFY_DELAY_MS:-15000}
     ports:
       - "127.0.0.1:8787:8787"
     volumes:
-      - ./api:/app
       - keeper-notes:/data/repos
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  worker:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    working_dir: /app
+    command: npm run worker:start
+    environment:
+      DATABASE_URL: postgres://keeper:keeper@postgres:5432/keeper
+      REDIS_URL: redis://redis:6379
+      SERVER_GIT_REMOTE_URL: ${SERVER_GIT_REMOTE_URL:-}
+      SERVER_GIT_REPO_DIR: /data/repos/keeper-notes
+      SERVER_GIT_BRANCH: main
+      MOC_PIPELINE_PATH: /opt/keeper/moc_pipeline/pipeline.py
+      MOC_ARTIFACTS_DIR: /data/moc
+      MOC_CLASSIFY_DELAY_MS: ${MOC_CLASSIFY_DELAY_MS:-15000}
+      HF_HOME: /data/models/huggingface
+    volumes:
+      - keeper-notes:/data/repos
+      - keeper-moc:/data/moc
+      - keeper-models:/data/models
+    depends_on:
+      api:
         condition: service_healthy
       redis:
         condition: service_started
@@ -62,5 +95,7 @@ services:
 volumes:
   keeper-postgres:
   keeper-notes:
+  keeper-moc:
+  keeper-models:
   keeper-caddy-data:
   keeper-caddy-config:

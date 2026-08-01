@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 import json
+import os
 
 
 @dataclass
@@ -15,7 +16,9 @@ class FeedbackEvent:
 
 def load_feedback(notes_root: Path) -> list[FeedbackEvent]:
 	"""Load feedback events from .moc_feedback.json if it exists."""
-	feedback_path = notes_root / ".moc_feedback.json"
+	feedback_path = Path(
+		os.environ.get("MOC_FEEDBACK_PATH", notes_root / ".moc_feedback.json")
+	)
 	if not feedback_path.exists():
 		return []
 
@@ -24,10 +27,10 @@ def load_feedback(notes_root: Path) -> list[FeedbackEvent]:
 		events = data.get("events", [])
 		return [
 			FeedbackEvent(
-				cluster_id=e["clusterId"],
-				event_type=e["eventType"],
-				event_data=e.get("eventData"),
-				created_at=e["createdAt"],
+				cluster_id=e.get("clusterId", e.get("cluster_id")),
+				event_type=e.get("eventType", e.get("event_type")),
+				event_data=e.get("eventData", e.get("event_data")),
+				created_at=e.get("createdAt", e.get("created_at")),
 			)
 			for e in events
 		]
@@ -102,3 +105,20 @@ def get_rename_examples(feedback: list[FeedbackEvent]) -> list[tuple[str, str, s
 def get_dismissed_cluster_ids(feedback: list[FeedbackEvent]) -> set[str]:
 	"""Get set of cluster IDs that were dismissed."""
 	return {e.cluster_id for e in feedback if e.event_type == "dismiss"}
+
+
+def get_accepted_clusters(
+	feedback: list[FeedbackEvent],
+	cluster_kind: str = "cluster",
+) -> dict[str, set[str]]:
+	"""Return accepted cluster members keyed by cluster ID and kind."""
+	accepted: dict[str, set[str]] = {}
+	for event in feedback:
+		if event.event_type == "accept" and event.event_data:
+			event_kind = event.event_data.get("clusterKind", "cluster")
+			if event_kind != cluster_kind:
+				continue
+			member_ids = event.event_data.get("memberIds", [])
+			if member_ids:
+				accepted[event.cluster_id] = set(member_ids)
+	return accepted

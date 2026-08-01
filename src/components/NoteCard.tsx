@@ -1,3 +1,4 @@
+import DrawingPreview from "@/components/drawing/DrawingPreview";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
@@ -107,9 +108,15 @@ function NoteCard({
 				)}
 			</View>
 
-			<Text style={styles.content} numberOfLines={3}>
-				{note.content}
-			</Text>
+			{note.noteType === "drawing" ? (
+				<View style={styles.drawingPreview}>
+					<DrawingPreview content={note.content} />
+				</View>
+			) : (
+				<Text style={styles.content} numberOfLines={3}>
+					{note.content}
+				</Text>
+			)}
 
 			{typeLabel && (
 				<View style={styles.badges}>
@@ -121,8 +128,8 @@ function NoteCard({
 				</View>
 			)}
 
-				<View style={styles.footer}>
-					<Text style={styles.date}>{formattedDate}</Text>
+			<View style={styles.footer}>
+				<Text style={styles.date}>{formattedDate}</Text>
 
 				<View style={styles.actions}>
 					{onRemoveFromCluster && (
@@ -203,6 +210,13 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			marginTop: 6,
 			color: theme.colors.textMuted,
 			flexGrow: 1,
+		},
+		drawingPreview: {
+			marginTop: 8,
+			borderRadius: 8,
+			overflow: "hidden",
+			borderWidth: StyleSheet.hairlineWidth,
+			borderColor: theme.colors.border,
 		},
 		badges: {
 			flexDirection: "row",

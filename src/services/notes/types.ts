@@ -1,4 +1,10 @@
-export type NoteType = "journal" | "resource" | "todo" | "note" | "template";
+export type NoteType =
+	| "journal"
+	| "resource"
+	| "todo"
+	| "note"
+	| "template"
+	| "drawing";
 export type NoteStatus = "open" | "blocked" | "doing" | "done";
 
 export interface NoteListFilters {

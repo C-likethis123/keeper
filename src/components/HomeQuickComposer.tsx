@@ -45,6 +45,12 @@ export default function HomeQuickComposer({
 						variant="flat"
 						onPress={() => onPress({ noteType: "resource", title: "Source: " })}
 					/>
+					<IconButton
+						label="Create drawing"
+						name="paint-brush"
+						variant="flat"
+						onPress={() => onPress({ noteType: "drawing" })}
+					/>
 				</View>
 			</View>
 		</View>

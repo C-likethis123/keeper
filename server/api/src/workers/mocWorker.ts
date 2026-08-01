@@ -9,6 +9,7 @@ const execFileAsync = promisify(execFile);
 
 type MocWorkerConfig = {
 	notesRoot: string;
+	artifactsRoot?: string;
 	pipelinePath: string;
 	pythonBin?: string;
 	clusterRepository: ClusterRepository;
@@ -22,13 +23,13 @@ function requiredString(value: unknown, name: string): string {
 }
 
 async function exportFeedback(
-	notesRoot: string,
+	feedbackPath: string,
 	clusterRepository: ClusterRepository,
 ): Promise<void> {
 	const feedback = await clusterRepository.listFeedback();
-	await mkdir(notesRoot, { recursive: true });
+	await mkdir(path.dirname(feedbackPath), { recursive: true });
 	await writeFile(
-		path.join(notesRoot, ".moc_feedback.json"),
+		feedbackPath,
 		JSON.stringify(
 			{
 				version: 1,
@@ -48,16 +49,24 @@ async function exportFeedback(
 
 export function createMocClassificationProcessor(config: MocWorkerConfig) {
 	return async function processMocClassification(_job: ServerJob): Promise<void> {
-		await exportFeedback(config.notesRoot, config.clusterRepository);
-		await execFileAsync(config.pythonBin ?? "python3", [
-			config.pipelinePath,
-			config.notesRoot,
-		]);
-
-		const raw = await readFile(
-			path.join(config.notesRoot, ".moc_clusters.json"),
-			"utf8",
+		const artifactsRoot = config.artifactsRoot ?? config.notesRoot;
+		const feedbackPath = path.join(artifactsRoot, ".moc_feedback.json");
+		const outputPath = path.join(artifactsRoot, ".moc_clusters.json");
+		await exportFeedback(feedbackPath, config.clusterRepository);
+		await execFileAsync(
+			config.pythonBin ?? "python3",
+			[config.pipelinePath, config.notesRoot],
+			{
+				env: {
+					...process.env,
+					MOC_CACHE_DIR: path.join(artifactsRoot, ".moc_cache"),
+					MOC_FEEDBACK_PATH: feedbackPath,
+					MOC_OUTPUT_PATH: outputPath,
+				},
+			},
 		);
+
+		const raw = await readFile(outputPath, "utf8");
 		const parsed = JSON.parse(raw) as ClustersJson;
 		if (!Array.isArray(parsed.clusters)) {
 			throw new Error("MOC pipeline output missing clusters");
@@ -71,6 +80,7 @@ export function createMocClassificationProcessorFromEnv(
 ) {
 	return createMocClassificationProcessor({
 		notesRoot: requiredString(process.env.SERVER_GIT_REPO_DIR, "SERVER_GIT_REPO_DIR"),
+		artifactsRoot: process.env.MOC_ARTIFACTS_DIR ?? "/data/moc",
 		pipelinePath:
 			process.env.MOC_PIPELINE_PATH ??
 			path.resolve(process.cwd(), "../../scripts/moc_pipeline/pipeline.py"),

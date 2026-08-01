@@ -61,6 +61,20 @@ jest.mock("@/components/NoteEditorView", () => {
 	};
 });
 
+jest.mock("@/components/drawing/DrawingEditorView", () => {
+	const React = require("react");
+	const { Text } = require("react-native");
+	return {
+		__esModule: true,
+		default: ({ note }: { note: Note }) =>
+			React.createElement(
+				Text,
+				null,
+				`Loaded drawing: ${note.title} / ${note.content}`,
+			),
+	};
+});
+
 function makeNote(overrides?: Partial<Note>): Note {
 	return {
 		id: "note-1",
@@ -149,6 +163,28 @@ describe("NoteEditorScreen", () => {
 		expect(result.getPathname()).toBe("/editor");
 	});
 
+	it("renders drawing editor for drawing note", async () => {
+		mockUseSuspenseLoadNote.mockReturnValue(
+			makeNote({
+				title: "Sketch",
+				content: '{"version":1}',
+				noteType: "drawing",
+			}),
+		);
+
+		renderRouter(
+			{
+				index: () => null,
+				editor: NoteEditorScreen,
+			},
+			{ initialUrl: "/editor?id=note-1" },
+		);
+
+		expect(
+			await screen.findByText('Loaded drawing: Sketch / {"version":1}'),
+		).toBeOnTheScreen();
+	});
+
 	it("loads persisted content when a restored new-note route still has isNew", async () => {
 		mockUseSuspenseLoadNote.mockReturnValue(
 			makeNote({ title: "Persisted draft", content: "Saved body" }),
@@ -181,5 +217,19 @@ describe("NoteEditorScreen", () => {
 
 		expect(await screen.findByText("Loaded note: Draft / ")).toBeTruthy();
 		expect(mockUseSuspenseLoadNote).toHaveBeenCalledWith("new-note");
+	});
+
+	it("creates drawing editor from new drawing route", async () => {
+		mockUseSuspenseLoadNote.mockReturnValue(null);
+
+		renderRouter(
+			{
+				index: () => null,
+				editor: NoteEditorScreen,
+			},
+			{ initialUrl: "/editor?id=new-drawing&isNew=true&noteType=drawing" },
+		);
+
+		expect(await screen.findByText("Loaded drawing:  / ")).toBeOnTheScreen();
 	});
 });

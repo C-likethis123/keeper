@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import Callable, Any
@@ -9,24 +10,28 @@ _CACHE_DIR = ".moc_cache"
 _HEAD_FILE = "head.txt"
 _EMBEDDINGS_FILE = "embeddings.json"
 
+def cache_dir(notes_root: Path) -> Path:
+    configured = os.environ.get("MOC_CACHE_DIR")
+    return Path(configured) if configured else notes_root / _CACHE_DIR
+
 def load_head(notes_root: Path) -> str | None:
-    path = notes_root / _CACHE_DIR / _HEAD_FILE
+    path = cache_dir(notes_root) / _HEAD_FILE
     return path.read_text(encoding="utf-8").strip() if path.exists() else None
 
 def save_head(notes_root: Path, commit: str) -> None:
-    d = notes_root / _CACHE_DIR
-    d.mkdir(exist_ok=True)
+    d = cache_dir(notes_root)
+    d.mkdir(parents=True, exist_ok=True)
     (d / _HEAD_FILE).write_text(commit, encoding="utf-8")
 
 def load_embeddings(notes_root: Path) -> dict[str, list[float]]:
-    path = notes_root / _CACHE_DIR / _EMBEDDINGS_FILE
+    path = cache_dir(notes_root) / _EMBEDDINGS_FILE
     if not path.exists(): return {}
     try: return json.loads(path.read_text(encoding="utf-8"))
     except: return {}
 
 def save_embeddings(notes_root: Path, data: dict[str, list[float]]) -> None:
-    d = notes_root / _CACHE_DIR
-    d.mkdir(exist_ok=True)
+    d = cache_dir(notes_root)
+    d.mkdir(parents=True, exist_ok=True)
     (d / _EMBEDDINGS_FILE).write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
 
 def get_changed_paths(notes_root: Path, since_commit: str | None, until_commit: str) -> list[str]:
@@ -39,7 +44,10 @@ def get_changed_paths(notes_root: Path, since_commit: str | None, until_commit: 
 def cached_embeddings(notes: dict[str, str], notes_root: Path, current_head: str, generate_fn: Callable[[list[str]], np.ndarray]) -> dict[str, list[float]]:
     last_head = load_head(notes_root)
     cache = load_embeddings(notes_root)
-    changed = set(get_changed_paths(notes_root, last_head, current_head))
+    try:
+        changed = set(get_changed_paths(notes_root, last_head, current_head))
+    except subprocess.CalledProcessError:
+        changed = set(notes)
     
     # Clean up cache for deleted files
     for path in list(cache.keys()):

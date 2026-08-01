@@ -20,6 +20,20 @@ export class InMemoryClusterRepository implements ClusterRepository {
 				this.members.delete(cluster.id);
 			}
 		}
+		for (const superCluster of input.super_clusters ?? []) {
+			const existing = this.clusters.get(superCluster.id);
+			this.clusters.set(superCluster.id, {
+				id: superCluster.id,
+				name: existing?.acceptedAt ? existing.name : superCluster.name,
+				confidence: superCluster.confidence,
+				createdAt: existing?.createdAt ?? now,
+				acceptedAt: existing?.acceptedAt ?? null,
+				dismissedAt: existing?.dismissedAt ?? null,
+				acceptedNoteId: existing?.acceptedNoteId ?? null,
+				parentId: null,
+				kind: "super_cluster",
+			});
+		}
 		for (const cluster of input.clusters) {
 			const existing = this.clusters.get(cluster.id);
 			this.clusters.set(cluster.id, {
@@ -31,6 +45,7 @@ export class InMemoryClusterRepository implements ClusterRepository {
 				dismissedAt: existing?.dismissedAt ?? null,
 				acceptedNoteId: existing?.acceptedNoteId ?? null,
 				parentId: cluster.parent_id ?? null,
+				kind: "cluster",
 			});
 			this.members.set(
 				cluster.id,
@@ -46,18 +61,69 @@ export class InMemoryClusterRepository implements ClusterRepository {
 
 	async listActiveClusters(): Promise<ClusterRow[]> {
 		return [...this.clusters.values()].filter(
-			(cluster) => !cluster.acceptedAt && !cluster.dismissedAt,
+			(cluster) =>
+				cluster.kind === "cluster" && !cluster.acceptedAt && !cluster.dismissedAt,
 		);
 	}
 
 	async listAcceptedClusters(): Promise<ClusterRow[]> {
 		return [...this.clusters.values()].filter(
-			(cluster) => !!cluster.acceptedAt && !cluster.dismissedAt,
+			(cluster) =>
+				cluster.kind === "cluster" && !!cluster.acceptedAt && !cluster.dismissedAt,
 		);
+	}
+
+	async listActiveSuperClusters(): Promise<ClusterRow[]> {
+		return [...this.clusters.values()].filter(
+			(cluster) =>
+				cluster.kind === "super_cluster" &&
+				!cluster.acceptedAt &&
+				!cluster.dismissedAt,
+		);
+	}
+
+	async listAcceptedSuperClusters(): Promise<ClusterRow[]> {
+		return [...this.clusters.values()].filter(
+			(cluster) =>
+				cluster.kind === "super_cluster" &&
+				!!cluster.acceptedAt &&
+				!cluster.dismissedAt,
+		);
+	}
+
+	async listChildClusters(superClusterId: string): Promise<ClusterRow[]> {
+		return [...this.clusters.values()].filter(
+			(cluster) => cluster.kind === "cluster" && cluster.parentId === superClusterId,
+		);
+	}
+
+	async listStandaloneAcceptedClusters(): Promise<ClusterRow[]> {
+		return (await this.listAcceptedClusters()).filter((cluster) => !cluster.parentId);
 	}
 
 	async listClusterMembers(clusterId: string): Promise<ClusterMemberRow[]> {
 		return this.members.get(clusterId) ?? [];
+	}
+
+	async addClusterMember(clusterId: string, noteId: string): Promise<void> {
+		const members = this.members.get(clusterId) ?? [];
+		if (members.some((member) => member.noteId === noteId)) return;
+		this.members.set(clusterId, [
+			...members,
+			{ clusterId, noteId, score: 1 },
+		]);
+	}
+
+	async removeClusterMember(clusterId: string, noteId: string): Promise<void> {
+		this.members.set(
+			clusterId,
+			(this.members.get(clusterId) ?? []).filter((member) => member.noteId !== noteId),
+		);
+	}
+
+	async deleteCluster(clusterId: string): Promise<void> {
+		this.clusters.delete(clusterId);
+		this.members.delete(clusterId);
 	}
 
 	async acceptCluster(clusterId: string, acceptedNoteId?: string): Promise<void> {

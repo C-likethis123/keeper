@@ -65,7 +65,8 @@ export class NoteService {
 			title,
 		});
 
-		const summary = extractSummary(saved.content);
+		const summary =
+			saved.noteType === "drawing" ? "Drawing" : extractSummary(saved.content);
 		await NotesIndexService.upsertNote({
 			noteId: id,
 			summary,

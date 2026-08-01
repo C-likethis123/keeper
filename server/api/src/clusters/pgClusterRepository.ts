@@ -18,6 +18,7 @@ type ClusterDbRow = {
 	dismissed_at: Date | null;
 	accepted_note_id: string | null;
 	parent_id: string | null;
+	kind: "cluster" | "super_cluster";
 };
 
 type ClusterMemberDbRow = {
@@ -44,6 +45,7 @@ function mapCluster(row: ClusterDbRow): ClusterRow {
 		dismissedAt: row.dismissed_at?.toISOString() ?? null,
 		acceptedNoteId: row.accepted_note_id,
 		parentId: row.parent_id,
+		kind: row.kind,
 	};
 }
 
@@ -76,14 +78,27 @@ export function createPgClusterRepository(databaseUrl: string): ClusterRepositor
 				await client.query(
 					"DELETE FROM clusters WHERE accepted_at IS NULL AND dismissed_at IS NULL",
 				);
-				for (const cluster of input.clusters) {
+				for (const superCluster of input.super_clusters ?? []) {
 					await client.query(
-						`INSERT INTO clusters (id, name, confidence, created_at, parent_id)
-						 VALUES ($1, $2, $3, now(), $4)
+						`INSERT INTO clusters (id, name, confidence, created_at, parent_id, kind)
+						 VALUES ($1, $2, $3, now(), NULL, 'super_cluster')
 						 ON CONFLICT (id) DO UPDATE SET
 						   name = CASE WHEN clusters.accepted_at IS NOT NULL THEN clusters.name ELSE EXCLUDED.name END,
 						   confidence = EXCLUDED.confidence,
-						   parent_id = EXCLUDED.parent_id`,
+						   parent_id = NULL,
+						   kind = 'super_cluster'`,
+						[superCluster.id, superCluster.name, superCluster.confidence],
+					);
+				}
+				for (const cluster of input.clusters) {
+					await client.query(
+						`INSERT INTO clusters (id, name, confidence, created_at, parent_id, kind)
+						 VALUES ($1, $2, $3, now(), $4, 'cluster')
+						 ON CONFLICT (id) DO UPDATE SET
+						   name = CASE WHEN clusters.accepted_at IS NOT NULL THEN clusters.name ELSE EXCLUDED.name END,
+						   confidence = EXCLUDED.confidence,
+						   parent_id = EXCLUDED.parent_id,
+						   kind = 'cluster'`,
 						[
 							cluster.id,
 							cluster.name,
@@ -114,18 +129,55 @@ export function createPgClusterRepository(databaseUrl: string): ClusterRepositor
 		},
 		async listActiveClusters(): Promise<ClusterRow[]> {
 			const result = await pool.query<ClusterDbRow>(
-				`SELECT id, name, confidence, created_at, accepted_at, dismissed_at, accepted_note_id, parent_id
+				`SELECT id, name, confidence, created_at, accepted_at, dismissed_at, accepted_note_id, parent_id, kind
 				 FROM clusters
-				 WHERE accepted_at IS NULL AND dismissed_at IS NULL
+				 WHERE kind = 'cluster' AND accepted_at IS NULL AND dismissed_at IS NULL
 				 ORDER BY confidence DESC`,
 			);
 			return result.rows.map(mapCluster);
 		},
 		async listAcceptedClusters(): Promise<ClusterRow[]> {
 			const result = await pool.query<ClusterDbRow>(
-				`SELECT id, name, confidence, created_at, accepted_at, dismissed_at, accepted_note_id, parent_id
+				`SELECT id, name, confidence, created_at, accepted_at, dismissed_at, accepted_note_id, parent_id, kind
 				 FROM clusters
-				 WHERE accepted_at IS NOT NULL AND dismissed_at IS NULL
+				 WHERE kind = 'cluster' AND accepted_at IS NOT NULL AND dismissed_at IS NULL
+				 ORDER BY accepted_at DESC`,
+			);
+			return result.rows.map(mapCluster);
+		},
+		async listActiveSuperClusters(): Promise<ClusterRow[]> {
+			const result = await pool.query<ClusterDbRow>(
+				`SELECT id, name, confidence, created_at, accepted_at, dismissed_at, accepted_note_id, parent_id, kind
+				 FROM clusters
+				 WHERE kind = 'super_cluster' AND accepted_at IS NULL AND dismissed_at IS NULL
+				 ORDER BY confidence DESC`,
+			);
+			return result.rows.map(mapCluster);
+		},
+		async listAcceptedSuperClusters(): Promise<ClusterRow[]> {
+			const result = await pool.query<ClusterDbRow>(
+				`SELECT id, name, confidence, created_at, accepted_at, dismissed_at, accepted_note_id, parent_id, kind
+				 FROM clusters
+				 WHERE kind = 'super_cluster' AND accepted_at IS NOT NULL AND dismissed_at IS NULL
+				 ORDER BY accepted_at DESC`,
+			);
+			return result.rows.map(mapCluster);
+		},
+		async listChildClusters(superClusterId: string): Promise<ClusterRow[]> {
+			const result = await pool.query<ClusterDbRow>(
+				`SELECT id, name, confidence, created_at, accepted_at, dismissed_at, accepted_note_id, parent_id, kind
+				 FROM clusters WHERE kind = 'cluster' AND parent_id = $1
+				 ORDER BY confidence DESC`,
+				[superClusterId],
+			);
+			return result.rows.map(mapCluster);
+		},
+		async listStandaloneAcceptedClusters(): Promise<ClusterRow[]> {
+			const result = await pool.query<ClusterDbRow>(
+				`SELECT id, name, confidence, created_at, accepted_at, dismissed_at, accepted_note_id, parent_id, kind
+				 FROM clusters
+				 WHERE kind = 'cluster' AND parent_id IS NULL
+				   AND accepted_at IS NOT NULL AND dismissed_at IS NULL
 				 ORDER BY accepted_at DESC`,
 			);
 			return result.rows.map(mapCluster);
@@ -136,6 +188,22 @@ export function createPgClusterRepository(databaseUrl: string): ClusterRepositor
 				[clusterId],
 			);
 			return result.rows.map(mapMember);
+		},
+		async addClusterMember(clusterId: string, noteId: string): Promise<void> {
+			await pool.query(
+				`INSERT INTO cluster_members (cluster_id, note_id, score) VALUES ($1, $2, 1)
+				 ON CONFLICT (cluster_id, note_id) DO NOTHING`,
+				[clusterId, noteId],
+			);
+		},
+		async removeClusterMember(clusterId: string, noteId: string): Promise<void> {
+			await pool.query(
+				"DELETE FROM cluster_members WHERE cluster_id = $1 AND note_id = $2",
+				[clusterId, noteId],
+			);
+		},
+		async deleteCluster(clusterId: string): Promise<void> {
+			await pool.query("DELETE FROM clusters WHERE id = $1", [clusterId]);
 		},
 		async acceptCluster(clusterId: string, acceptedNoteId?: string): Promise<void> {
 			await pool.query(

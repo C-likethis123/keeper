@@ -2,6 +2,7 @@ import { getSyncServerUrl, isServerSyncEnabled } from "@/services/sync/config";
 import type {
 	ClusterMemberRow,
 	ClusterRow,
+	SuperClusterRow,
 } from "@/services/notes/indexDb/repository";
 
 type ServerClusterRow = {
@@ -13,6 +14,7 @@ type ServerClusterRow = {
 	dismissedAt: string | null;
 	acceptedNoteId: string | null;
 	parentId: string | null;
+	kind?: "cluster" | "super_cluster";
 };
 
 type ServerClusterMemberRow = {
@@ -37,6 +39,17 @@ function mapCluster(row: ServerClusterRow): ClusterRow {
 		dismissed_at: parseTime(row.dismissedAt),
 		accepted_note_id: row.acceptedNoteId,
 		parent_id: row.parentId,
+	};
+}
+
+function mapSuperCluster(row: ServerClusterRow): SuperClusterRow {
+	return {
+		id: row.id,
+		name: row.name,
+		confidence: row.confidence,
+		created_at: parseTime(row.createdAt) ?? 0,
+		accepted_at: parseTime(row.acceptedAt),
+		dismissed_at: parseTime(row.dismissedAt),
 	};
 }
 
@@ -76,6 +89,36 @@ export async function listServerAcceptedClusters(): Promise<ClusterRow[]> {
 	return rows.map(mapCluster);
 }
 
+export async function listServerActiveSuperClusters(): Promise<
+	SuperClusterRow[]
+> {
+	const rows = await request<ServerClusterRow[]>("/clusters/super/active");
+	return rows.map(mapSuperCluster);
+}
+
+export async function listServerAcceptedSuperClusters(): Promise<
+	SuperClusterRow[]
+> {
+	const rows = await request<ServerClusterRow[]>("/clusters/super/accepted");
+	return rows.map(mapSuperCluster);
+}
+
+export async function listServerChildClusters(
+	superClusterId: string,
+): Promise<ClusterRow[]> {
+	const rows = await request<ServerClusterRow[]>(
+		`/clusters/super/${encodeURIComponent(superClusterId)}/children?accepted=true`,
+	);
+	return rows.map(mapCluster);
+}
+
+export async function listServerStandaloneAcceptedClusters(): Promise<
+	ClusterRow[]
+> {
+	const rows = await request<ServerClusterRow[]>("/clusters/standalone/accepted");
+	return rows.map(mapCluster);
+}
+
 export async function listServerClusterMembers(
 	clusterId: string,
 ): Promise<ClusterMemberRow[]> {
@@ -90,6 +133,32 @@ export async function serverClusterAccept(clusterId: string): Promise<void> {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({}),
+	});
+}
+
+export async function serverClusterAddNote(
+	clusterId: string,
+	noteId: string,
+): Promise<void> {
+	await request(
+		`/clusters/${encodeURIComponent(clusterId)}/members/${encodeURIComponent(noteId)}`,
+		{ method: "POST" },
+	);
+}
+
+export async function serverClusterRemoveNote(
+	clusterId: string,
+	noteId: string,
+): Promise<void> {
+	await request(
+		`/clusters/${encodeURIComponent(clusterId)}/members/${encodeURIComponent(noteId)}`,
+		{ method: "DELETE" },
+	);
+}
+
+export async function serverClusterDelete(clusterId: string): Promise<void> {
+	await request(`/clusters/${encodeURIComponent(clusterId)}`, {
+		method: "DELETE",
 	});
 }
 

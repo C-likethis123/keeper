@@ -2,6 +2,7 @@ import { createServer } from "./server.js";
 import { createPgClusterRepository } from "./clusters/pgClusterRepository.js";
 import { createGitHubSeedServiceFromEnv } from "./github/seedService.js";
 import { InMemoryJobQueue } from "./jobs/inMemoryJobQueue.js";
+import { RedisJobQueue } from "./jobs/redisJobQueue.js";
 import { createPgSyncRepository } from "./sync/pgSyncRepository.js";
 import { createGitSyncProcessorFromEnv } from "./workers/gitWorker.js";
 import { createMocClassificationProcessorFromEnv } from "./workers/mocWorker.js";
@@ -15,26 +16,41 @@ if (!databaseUrl) {
 
 const clusterRepository = createPgClusterRepository(databaseUrl);
 const syncRepository = createPgSyncRepository(databaseUrl);
-const processors =
+const localProcessors =
 	process.env.SERVER_GIT_REMOTE_URL && process.env.SERVER_GIT_REPO_DIR
 		? {
 				"git.sync": createGitSyncProcessorFromEnv(),
 				"moc.classify": createMocClassificationProcessorFromEnv(clusterRepository),
 			}
 		: {};
+const jobQueue = process.env.REDIS_URL
+	? new RedisJobQueue(process.env.REDIS_URL)
+	: new InMemoryJobQueue(localProcessors);
+const seedService =
+	process.env.SERVER_GIT_REMOTE_URL && process.env.SERVER_GIT_REPO_DIR
+		? createGitHubSeedServiceFromEnv(syncRepository)
+		: undefined;
 
 const server = createServer({
 	syncRepository,
-	jobQueue: new InMemoryJobQueue(processors),
+	jobQueue,
 	clusterRepository,
 	githubSeed:
 		process.env.KEEPER_SEED_TOKEN
 			? {
 					token: process.env.KEEPER_SEED_TOKEN,
-					service:
-						process.env.SERVER_GIT_REMOTE_URL && process.env.SERVER_GIT_REPO_DIR
-							? createGitHubSeedServiceFromEnv(syncRepository)
-							: undefined,
+					service: seedService
+						? {
+								async seed(input) {
+									const result = await seedService.seed(input);
+									await jobQueue.enqueue("moc.classify", {
+										source: "github.seed",
+										sha: result.sha,
+									});
+									return result;
+								},
+							}
+						: undefined,
 				}
 			: undefined,
 });

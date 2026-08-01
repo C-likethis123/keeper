@@ -222,10 +222,13 @@ export default function NoteEditorView({
     resourceUrl,
     documentPositions,
     initialNoteType: note.noteType,
-    onPersisted: useCallback(({ content, persistedAt }) => {
-      isNewEntryRef.current = false;
-      clearEditorDraft(id, content, persistedAt);
-    }, [id]),
+    onPersisted: useCallback(
+      ({ content, persistedAt }: { content: string; persistedAt: number }) => {
+        isNewEntryRef.current = false;
+        clearEditorDraft(id, content, persistedAt);
+      },
+      [id],
+    ),
     isNew,
   });
 

@@ -15,6 +15,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
+import DrawingEditorView from "@/components/drawing/DrawingEditorView";
+
 function NewNoteEditorContent({
 	id,
 	initialTitle,
@@ -26,7 +28,11 @@ function NewNoteEditorContent({
 }) {
 	const existingNote = useSuspenseLoadNote(id);
 	if (existingNote) {
-		return <NoteEditorView note={existingNote} />;
+		return existingNote.noteType === "drawing" ? (
+			<DrawingEditorView note={existingNote} />
+		) : (
+			<NoteEditorView note={existingNote} />
+		);
 	}
 
 	const virtualNote: Note = {
@@ -37,7 +43,11 @@ function NewNoteEditorContent({
 		noteType: (initialNoteType as Note["noteType"]) ?? "note",
 		lastUpdated: Date.now(),
 	};
-	return <NoteEditorView note={virtualNote} isNew />;
+	return virtualNote.noteType === "drawing" ? (
+		<DrawingEditorView note={virtualNote} isNew />
+	) : (
+		<NoteEditorView note={virtualNote} isNew />
+	);
 }
 
 function ExistingNoteEditorContent({
@@ -55,7 +65,11 @@ function ExistingNoteEditorContent({
 		);
 	}
 
-	return <NoteEditorView note={note} />;
+	return note.noteType === "drawing" ? (
+		<DrawingEditorView note={note} />
+	) : (
+		<NoteEditorView note={note} />
+	);
 }
 
 function NoteEditorContent({

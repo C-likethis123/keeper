@@ -2,10 +2,17 @@ import { NOTES_ROOT } from "@/services/notes/Notes";
 import { File } from "expo-file-system";
 import {
 	listServerAcceptedClusters,
+	listServerAcceptedSuperClusters,
 	listServerActiveClusters,
+	listServerActiveSuperClusters,
+	listServerChildClusters,
 	listServerClusterMembers,
+	listServerStandaloneAcceptedClusters,
 	serverClusterAccept,
+	serverClusterAddNote,
+	serverClusterDelete,
 	serverClusterDismiss,
+	serverClusterRemoveNote,
 	serverClusterRename,
 	shouldUseServerClusters,
 } from "@/services/notes/serverClusterClient";
@@ -140,6 +147,10 @@ export async function clusterAddNote(
 	clusterId: string,
 	noteId: string,
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterAddNote(clusterId, noteId);
+		return;
+	}
 	const database = await getNotesIndexDb();
 	await addNoteToCluster(database, clusterId, noteId);
 }
@@ -148,11 +159,19 @@ export async function clusterRemoveNote(
 	clusterId: string,
 	noteId: string,
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterRemoveNote(clusterId, noteId);
+		return;
+	}
 	const database = await getNotesIndexDb();
 	await removeNoteFromCluster(database, clusterId, noteId);
 }
 
 export async function clusterDelete(clusterId: string): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterDelete(clusterId);
+		return;
+	}
 	const database = await getNotesIndexDb();
 	await deleteCluster(database, clusterId);
 }
@@ -160,11 +179,17 @@ export async function clusterDelete(clusterId: string): Promise<void> {
 // ─── Super-Cluster Service ────────────────────────────────────────────────────
 
 export async function listActiveSuperClusters(): Promise<SuperClusterRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerActiveSuperClusters();
+	}
 	const database = await getNotesIndexDb();
 	return getActiveSuperClusters(database);
 }
 
 export async function listAcceptedSuperClusters(): Promise<SuperClusterRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerAcceptedSuperClusters();
+	}
 	const database = await getNotesIndexDb();
 	return getAcceptedSuperClusters(database);
 }
@@ -172,6 +197,10 @@ export async function listAcceptedSuperClusters(): Promise<SuperClusterRow[]> {
 export async function superClusterAccept(
 	superClusterId: string,
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterAccept(superClusterId);
+		return;
+	}
 	const database = await getNotesIndexDb();
 	await acceptSuperCluster(database, superClusterId);
 }
@@ -179,6 +208,10 @@ export async function superClusterAccept(
 export async function superClusterDismiss(
 	superClusterId: string,
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterDismiss(superClusterId);
+		return;
+	}
 	const database = await getNotesIndexDb();
 	await dismissSuperCluster(database, superClusterId);
 }
@@ -187,6 +220,10 @@ export async function superClusterRename(
 	superClusterId: string,
 	name: string,
 ): Promise<void> {
+	if (shouldUseServerClusters()) {
+		await serverClusterRename(superClusterId, name);
+		return;
+	}
 	const database = await getNotesIndexDb();
 	await renameSuperCluster(database, superClusterId, name);
 }
@@ -194,11 +231,17 @@ export async function superClusterRename(
 export async function listAcceptedSubClusters(
 	superClusterId: string,
 ): Promise<ClusterRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerChildClusters(superClusterId);
+	}
 	const database = await getNotesIndexDb();
 	return getAcceptedSubClusters(database, superClusterId);
 }
 
 export async function listStandaloneAcceptedClusters(): Promise<ClusterRow[]> {
+	if (shouldUseServerClusters()) {
+		return listServerStandaloneAcceptedClusters();
+	}
 	const database = await getNotesIndexDb();
 	return getStandaloneAcceptedClusters(database);
 }

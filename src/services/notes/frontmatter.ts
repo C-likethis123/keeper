@@ -17,7 +17,14 @@ interface ParsedFrontmatter {
 }
 
 function isNoteType(value: string): value is NoteType {
-	return ["journal", "resource", "todo", "note", "template"].includes(value);
+	return [
+		"journal",
+		"resource",
+		"todo",
+		"note",
+		"template",
+		"drawing",
+	].includes(value);
 }
 
 function isNoteStatus(value: string): value is NoteStatus {

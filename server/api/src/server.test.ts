@@ -481,6 +481,88 @@ test("cluster API serves suggestions and persists feedback", async () => {
 	await server.close();
 });
 
+
+test("cluster API serves hierarchy and member curation", async () => {
+	const clusterRepository = new InMemoryClusterRepository();
+	await clusterRepository.importClusters({
+		version: 2,
+		super_clusters: [
+			{
+				id: "super-1",
+				name: "Engineering",
+				confidence: 0.8,
+				child_cluster_ids: ["cluster-1"],
+			},
+		],
+		clusters: [
+			{
+				id: "cluster-1",
+				name: "TypeScript",
+				confidence: 0.9,
+				parent_id: "super-1",
+				members: [{ note_id: "note-1", score: 0.8 }],
+			},
+		],
+	});
+	const server = createServer({
+		syncRepository: new InMemorySyncRepository(),
+		clusterRepository,
+	});
+
+	const activeSuper = await server.inject({
+		method: "GET",
+		url: "/clusters/super/active",
+	});
+	assert.equal(activeSuper.statusCode, 200);
+	assert.equal(activeSuper.json()[0].id, "super-1");
+
+	const children = await server.inject({
+		method: "GET",
+		url: "/clusters/super/super-1/children",
+	});
+	assert.equal(children.statusCode, 200);
+	assert.equal(children.json()[0].id, "cluster-1");
+
+	await server.inject({
+		method: "POST",
+		url: "/clusters/cluster-1/members/note-2",
+	});
+	await server.inject({
+		method: "DELETE",
+		url: "/clusters/cluster-1/members/note-1",
+	});
+	const members = await server.inject({
+		method: "GET",
+		url: "/clusters/cluster-1/members",
+	});
+	assert.deepEqual(members.json(), [
+		{ clusterId: "cluster-1", noteId: "note-2", score: 1 },
+	]);
+
+	const acceptSuper = await server.inject({
+		method: "POST",
+		url: "/clusters/super-1/accept",
+		payload: {},
+	});
+	assert.equal(acceptSuper.statusCode, 204);
+	const feedback = await clusterRepository.listFeedback();
+	const superAccept = feedback.find(
+		(event) => event.clusterId === "super-1" && event.eventType === "accept",
+	);
+	assert.deepEqual(superAccept?.eventData, {
+		clusterKind: "super_cluster",
+		memberIds: ["note-2"],
+	});
+	const deleteCluster = await server.inject({
+		method: "DELETE",
+		url: "/clusters/cluster-1",
+	});
+	assert.equal(deleteCluster.statusCode, 204);
+	assert.deepEqual(await clusterRepository.listClusterMembers("cluster-1"), []);
+
+	await server.close();
+});
+
 test("sync push upserts update for missing note", async () => {
 	const repository = new InMemorySyncRepository();
 	const server = createServer({ syncRepository: repository });

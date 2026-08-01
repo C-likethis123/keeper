@@ -1,9 +1,12 @@
 import sys
 from pathlib import Path
 import tempfile
+from unittest.mock import patch
+
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from pipeline import load_notes
+from pipeline import _preserve_super_cluster_ids, load_notes
 
 
 def _write(tmp: Path, name: str, content: str) -> None:
@@ -39,6 +42,18 @@ def test_load_notes_returns_metadata():
         assert "Other Note" in m["wikilinks"]
 
 
+def test_load_notes_uses_frontmatter_id_and_filename_fallback():
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        (root / "pages").mkdir()
+        _write(root / "pages", "named.md", "---\nid: stable-id\ntitle: Named\n---\nBody")
+        _write(root / "pages", "fallback.md", "---\ntitle: Fallback\n---\nBody")
+
+        ids, _, _ = load_notes(root)
+
+        assert ids == ["fallback", "stable-id"]
+
+
 def test_load_notes_block_style_tags():
     with tempfile.TemporaryDirectory() as d:
         root = Path(d)
@@ -56,6 +71,36 @@ def test_load_notes_excludes_journal_with_bom():
         assert len(ids) == 0
 
 
+def test_preserve_super_cluster_ids_updates_parent_links():
+    clusters = [
+        {
+            "id": "child-1",
+            "parent_id": "generated-super",
+            "members": [{"note_id": "a"}, {"note_id": "b"}],
+        },
+        {
+            "id": "child-2",
+            "parent_id": "generated-super",
+            "members": [{"note_id": "c"}],
+        },
+    ]
+    super_clusters = [
+        {
+            "id": "generated-super",
+            "child_cluster_ids": ["child-1", "child-2"],
+        }
+    ]
+
+    _preserve_super_cluster_ids(
+        super_clusters,
+        clusters,
+        {"accepted-super": {"a", "b", "c"}},
+    )
+
+    assert super_clusters[0]["id"] == "accepted-super"
+    assert {cluster["parent_id"] for cluster in clusters} == {"accepted-super"}
+
+
 def test_main_end_to_end():
     """Full pipeline with 5 notes: 3 clustered, 2 filtered."""
     with tempfile.TemporaryDirectory() as d:
@@ -68,12 +113,27 @@ def test_main_end_to_end():
         _write(root, "journal1.md", "---\ntype: journal\ntitle: My Day\n---\nToday was fine.")
         _write(root, "todo1.md", "---\ntype: todo\ntitle: Buy groceries\n---\n- [ ] milk")
         import json, sys
-        # Run the pipeline
-        sys.argv = ["pipeline.py", str(root)]
         import pipeline
-        pipeline.main(str(root))
+
+        embeddings = np.array([
+            [1.0, 0.0, 0.0],
+            [0.99, 0.01, 0.0],
+            [0.98, 0.02, 0.0],
+        ])
+        with patch.object(
+            pipeline,
+            "_lazy_imports",
+            return_value=(
+                lambda _texts: embeddings,
+                None,
+                lambda _distances: np.array([0, 0, 0]),
+                lambda _labels, _texts: {0: "Python"},
+                lambda _clusters, _embeddings, _ids, _texts: [],
+            ),
+        ):
+            pipeline.main(str(root))
         out = json.loads((root / ".moc_clusters.json").read_text())
-        assert out["version"] == 1
+        assert out["version"] == 2
         # All member note_ids must exclude journal1 and todo1
         all_member_ids = {m["note_id"] for c in out["clusters"] for m in c["members"]}
         assert "journal1" not in all_member_ids

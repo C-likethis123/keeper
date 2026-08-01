@@ -95,6 +95,39 @@ describe("NoteService", () => {
 			});
 		});
 
+		it("indexes drawing without exposing serialized strokes", async () => {
+			const { NotesIndexService } = jest.requireMock(
+				"@/services/notes/notesIndex",
+			);
+			const content = '{"version":1,"strokes":[]}';
+			mockSaveNote.mockResolvedValue({
+				id: "drawing-1",
+				title: "Sketch",
+				content,
+				isPinned: false,
+				lastUpdated: 1000,
+				noteType: "drawing",
+				status: null,
+			});
+
+			await NoteService.saveNote({
+				id: "drawing-1",
+				title: "Sketch",
+				content,
+				isPinned: false,
+				noteType: "drawing",
+				status: null,
+			});
+
+			expect(NotesIndexService.upsertNote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					noteId: "drawing-1",
+					summary: "Drawing",
+					noteType: "drawing",
+				}),
+			);
+		});
+
 		it("writes markdown edits back into Yjs before saving the snapshot", async () => {
 			mockSaveMarkdownToCrdt.mockResolvedValue({
 				id: "note-1",

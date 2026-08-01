@@ -13,6 +13,7 @@ const FILTER_OPTIONS: { label: string; value?: NoteType }[] = [
 	{ label: "Journals", value: "journal" },
 	{ label: "Resources", value: "resource" },
 	{ label: "Todos", value: "todo" },
+	{ label: "Drawings", value: "drawing" },
 ];
 
 const STATUS_OPTIONS: { label: string; value?: NoteStatus }[] = [
