@@ -153,7 +153,8 @@ export default function NoteEditorView({
     );
   }, []);
 
-  const { updateTabTitle, tabs, closeTab, openTab } = useTabStore();
+  const { updateTabTitle, tabs, closeTab, openTab, markTabPersisted } =
+    useTabStore();
   const tab = tabs.find((t) => t.noteId === id);
 
   const isLeavingRef = useRef(false);
@@ -225,9 +226,10 @@ export default function NoteEditorView({
     onPersisted: useCallback(
       ({ content, persistedAt }: { content: string; persistedAt: number }) => {
         isNewEntryRef.current = false;
+        markTabPersisted(id);
         clearEditorDraft(id, content, persistedAt);
       },
-      [id],
+      [id, markTabPersisted],
     ),
     isNew,
   });
@@ -377,9 +379,10 @@ export default function NoteEditorView({
         isNewEntry,
       });
       isNewEntryRef.current = false;
+      markTabPersisted(id);
       return payload;
     },
-    [buildCurrentNotePayload],
+    [buildCurrentNotePayload, id, markTabPersisted],
   );
 
   useAppKeyboardShortcuts({

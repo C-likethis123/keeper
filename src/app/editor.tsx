@@ -27,6 +27,12 @@ function NewNoteEditorContent({
 	initialNoteType?: string;
 }) {
 	const existingNote = useSuspenseLoadNote(id);
+	useEffect(() => {
+		if (existingNote) {
+			useTabStore.getState().markTabPersisted(id);
+		}
+	}, [existingNote, id]);
+
 	if (existingNote) {
 		return existingNote.noteType === "drawing" ? (
 			<DrawingEditorView note={existingNote} />
@@ -130,7 +136,11 @@ export default function NoteEditorScreen() {
 		if (nextId) {
 			const nextTab = remaining.find((t) => t.id === nextId);
 			if (nextTab) {
-				router.replace(`/editor?id=${nextTab.noteId}`);
+				router.replace(
+					nextTab.isNew
+						? `/editor?id=${nextTab.noteId}&isNew=true`
+						: `/editor?id=${nextTab.noteId}`,
+				);
 				return;
 			}
 		}
@@ -139,9 +149,9 @@ export default function NoteEditorScreen() {
 
 	useEffect(() => {
 		if (noteId) {
-			useTabStore.getState().openTab(noteId, initialTitle);
+			useTabStore.getState().openTab(noteId, initialTitle, isNew);
 		}
-	}, [noteId, initialTitle]);
+	}, [noteId, initialTitle, isNew]);
 
 	useAppKeyboardShortcuts({
 		onNewTab: () => void createAndOpenNote(),

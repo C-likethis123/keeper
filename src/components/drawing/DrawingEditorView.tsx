@@ -62,7 +62,7 @@ export default function DrawingEditorView({
 	const contentRef = useRef(serializeDrawingDocument(document));
 	const isLeavingRef = useRef(false);
 	const bypassNextBeforeRemoveRef = useRef(false);
-	const { updateTabTitle, tabs, closeTab } = useTabStore();
+	const { updateTabTitle, tabs, closeTab, markTabPersisted } = useTabStore();
 	const tab = tabs.find((candidate) => candidate.noteId === id);
 
 	const serializedContent = useMemo(
@@ -73,6 +73,10 @@ export default function DrawingEditorView({
 	contentRef.current = serializedContent;
 
 	const getCurrentContent = useCallback(() => contentRef.current, []);
+	const handlePersisted = useCallback(
+		() => markTabPersisted(id),
+		[id, markTabPersisted],
+	);
 	const { status, forceSave } = useAutoSave({
 		...note,
 		content: note.content,
@@ -83,6 +87,7 @@ export default function DrawingEditorView({
 		isPinned,
 		noteType: "drawing",
 		initialNoteType: "drawing",
+		onPersisted: handlePersisted,
 		isNew,
 	});
 

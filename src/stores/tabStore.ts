@@ -2,21 +2,23 @@
 import { nanoid } from "nanoid";
 import { create } from "zustand";
 
-interface Tab {
+export interface Tab {
 	id: string;
 	noteId: string;
 	title: string;
 	isPinned: boolean;
+	isNew: boolean;
 }
 
 interface TabState {
 	tabs: Tab[];
 	activeTabId: string | null;
-	openTab: (noteId: string, title?: string) => void;
+	openTab: (noteId: string, title?: string, isNew?: boolean) => void;
 	closeTab: (tabId: string) => void;
 	pinTab: (tabId: string) => void;
 	activateTab: (tabId: string) => void;
 	updateTabTitle: (tabId: string, title: string) => void;
+	markTabPersisted: (noteId: string) => void;
 	closeAllUnpinned: () => void;
 }
 
@@ -25,13 +27,19 @@ export const useTabStore = create<TabState>((set) => ({
 	tabs: [],
 	activeTabId: null,
 
-	openTab: (noteId, title = "Untitled") =>
+	openTab: (noteId, title = "Untitled", isNew = false) =>
 		set((state) => {
 			const existing = state.tabs.find((t) => t.noteId === noteId);
 			if (existing) {
 				return { activeTabId: existing.id };
 			}
-			const newTab: Tab = { id: nanoid(), noteId, title, isPinned: false };
+			const newTab: Tab = {
+				id: nanoid(),
+				noteId,
+				title,
+				isPinned: false,
+				isNew,
+			};
 			return { tabs: [...state.tabs, newTab], activeTabId: newTab.id };
 		}),
 
@@ -73,6 +81,18 @@ export const useTabStore = create<TabState>((set) => ({
 		set((state) => ({
 			tabs: state.tabs.map((t) => (t.id === tabId ? { ...t, title } : t)),
 		})),
+
+	markTabPersisted: (noteId) =>
+		set((state) => {
+			if (!state.tabs.some((tab) => tab.noteId === noteId && tab.isNew)) {
+				return state;
+			}
+			return {
+				tabs: state.tabs.map((tab) =>
+					tab.noteId === noteId ? { ...tab, isNew: false } : tab,
+				),
+			};
+		}),
 
 	closeAllUnpinned: () =>
 		set((state) => {

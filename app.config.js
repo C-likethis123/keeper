@@ -43,7 +43,7 @@ export default ({ config }) => {
 			},
 			android: {
 				versionCode: 3,
-				softwareKeyboardLayoutMode: "pan",
+				softwareKeyboardLayoutMode: "resize",
 				adaptiveIcon: {
 					backgroundColor: "#E6F4FE",
 					foregroundImage: "./assets/images/android-icon-foreground.png",

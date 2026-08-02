@@ -23,9 +23,11 @@ export function TabBar() {
 	const styles = useStyles(createStyles);
 
 	const handleActivateTab = useCallback(
-		(tabId: string, noteId: string) => {
+		(tabId: string, noteId: string, isNew: boolean) => {
 			activateTab(tabId);
-			router.replace(`/editor?id=${noteId}`);
+			router.replace(
+				isNew ? `/editor?id=${noteId}&isNew=true` : `/editor?id=${noteId}`,
+			);
 		},
 		[activateTab],
 	);
@@ -39,7 +41,11 @@ export function TabBar() {
 			if (nextActiveId) {
 				const nextTab = remainingTabs.find((t) => t.id === nextActiveId);
 				if (nextTab) {
-					router.replace(`/editor?id=${nextTab.noteId}`);
+					router.replace(
+						nextTab.isNew
+							? `/editor?id=${nextTab.noteId}&isNew=true`
+							: `/editor?id=${nextTab.noteId}`,
+					);
 					return;
 				}
 			}
@@ -73,7 +79,9 @@ export function TabBar() {
 								isActive ? styles.chipActive : styles.chipInactive,
 								pressed && styles.chipPressed,
 							]}
-							onPress={() => handleActivateTab(tab.id, tab.noteId)}
+							onPress={() =>
+								handleActivateTab(tab.id, tab.noteId, tab.isNew)
+							}
 							onLongPress={() => pinTab(tab.id)}
 						>
 							{tab.isPinned && (

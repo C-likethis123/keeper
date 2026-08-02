@@ -30,8 +30,14 @@ jest.mock("@/hooks/useStyles", () => ({
 		}),
 }));
 
-function makeTab(id: string, noteId: string, title: string, isPinned = false) {
-	return { id, noteId, title, isPinned };
+function makeTab(
+	id: string,
+	noteId: string,
+	title: string,
+	isPinned = false,
+	isNew = false,
+) {
+	return { id, noteId, title, isPinned, isNew };
 }
 
 function resetStore() {
@@ -82,6 +88,23 @@ describe("TabBar", () => {
 
 		expect(useTabStore.getState().activeTabId).toBe("tab-a");
 		expect(mockReplace).toHaveBeenCalledWith("/editor?id=note-1");
+	});
+
+	it("preserves new-note state when returning to an unsaved tab", () => {
+		useTabStore.setState({
+			tabs: [
+				makeTab("tab-a", "draft-1", "", false, true),
+				makeTab("tab-b", "note-2", "Beta"),
+			],
+			activeTabId: "tab-b",
+		});
+
+		render(<TabBar />);
+		fireEvent.press(screen.getAllByRole("tab")[0]);
+
+		expect(mockReplace).toHaveBeenCalledWith(
+			"/editor?id=draft-1&isNew=true",
+		);
 	});
 
 	it("navigates to the next tab when closing the active tab", () => {

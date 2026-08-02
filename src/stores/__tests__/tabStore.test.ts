@@ -1,7 +1,7 @@
 import { useTabStore } from "../tabStore";
 
 function makeTab(id: string, noteId: string, title: string, isPinned = false) {
-	return { id, noteId, title, isPinned };
+	return { id, noteId, title, isPinned, isNew: false };
 }
 
 function resetStore() {
@@ -41,6 +41,14 @@ describe("tabStore", () => {
 		it("defaults title to Untitled when not provided", () => {
 			useTabStore.getState().openTab("note-1");
 			expect(useTabStore.getState().tabs[0].title).toBe("Untitled");
+		});
+
+		it("tracks new tabs until note is persisted", () => {
+			useTabStore.getState().openTab("note-1", "", true);
+			expect(useTabStore.getState().tabs[0].isNew).toBe(true);
+
+			useTabStore.getState().markTabPersisted("note-1");
+			expect(useTabStore.getState().tabs[0].isNew).toBe(false);
 		});
 	});
 

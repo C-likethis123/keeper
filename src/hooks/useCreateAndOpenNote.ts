@@ -12,7 +12,7 @@ export function useCreateAndOpenNote() {
 
 			try {
 				const { openTab } = useTabStore.getState();
-				openTab(newId, options?.title ?? "");
+				openTab(newId, options?.title ?? "", true);
 				router.push({
 					pathname: "/editor",
 					params: {
