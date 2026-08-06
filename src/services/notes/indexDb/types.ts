@@ -65,6 +65,7 @@ export interface NoteSection {
 	id: string;
 	title: string;
 	notes: Note[];
+	memberNoteIds?: string[];
 	clusterId?: string;
 	superClusterId?: string;
 	clusterActions?: {

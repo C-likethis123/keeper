@@ -5,12 +5,12 @@ import ResetAppDataModal from "@/components/ResetAppDataModal";
 import AddNoteToClusterModal from "@/components/moc/AddNoteToClusterModal";
 import RenameClusterModal from "@/components/moc/RenameClusterModal";
 import ErrorScreen from "@/components/shared/ErrorScreen";
-import Loader from "@/components/shared/Loader";
 import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import useNotes from "@/hooks/useNotes";
+import { useStartupReady } from "@/hooks/useStartupReady";
 import { useStyles } from "@/hooks/useStyles";
 import { logFeedback } from "@/services/notes/clusterFeedbackService";
 import {
@@ -30,7 +30,7 @@ import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
 import { router, useNavigation } from "expo-router";
 import { nanoid } from "nanoid";
-import React, { Suspense, useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
 	Alert,
 	Platform,
@@ -59,6 +59,7 @@ function IndexContent() {
 	const [renameTarget, setRenameTarget] = useState<NoteSection | null>(null);
 	const [addNoteTarget, setAddNoteTarget] = useState<NoteSection | null>(null);
 	const createAndOpenNote = useCreateAndOpenNote();
+	const markStartupReady = useStartupReady();
 	const navigation = useNavigation<DrawerNavigationProp<ParamListBase>>();
 
 	const handleMenuPress = useCallback(() => {
@@ -296,6 +297,7 @@ function IndexContent() {
 						onSave={handleCreateQuickNote}
 					/>
 				}
+				onReady={markStartupReady}
 			/>
 			<ResetAppDataModal
 				visible={isResetModalVisible}
@@ -313,7 +315,11 @@ function IndexContent() {
 				visible={addNoteTarget !== null}
 				onClose={() => setAddNoteTarget(null)}
 				onConfirm={handleAddNoteConfirm}
-				excludeNoteIds={addNoteTarget?.notes.map((n) => n.id) ?? []}
+				excludeNoteIds={
+					addNoteTarget?.memberNoteIds ??
+					addNoteTarget?.notes.map((note) => note.id) ??
+					[]
+				}
 			/>
 			{error ? (
 				<ErrorScreen error={new Error(error)} onRetry={handleRefresh} />
@@ -338,9 +344,7 @@ export default function Index() {
 				/>
 			)}
 		>
-			<Suspense fallback={<Loader />}>
-				<IndexContent key={retryVersion} />
-			</Suspense>
+			<IndexContent key={retryVersion} />
 		</QueryErrorBoundary>
 	);
 }

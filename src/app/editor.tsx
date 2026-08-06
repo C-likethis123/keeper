@@ -6,6 +6,7 @@ import QueryErrorBoundary from "@/components/shared/QueryErrorBoundary";
 import { useAppKeyboardShortcuts } from "@/hooks/useAppKeyboardShortcuts";
 import { useCreateAndOpenNote } from "@/hooks/useCreateAndOpenNote";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStartupReady } from "@/hooks/useStartupReady";
 import { useStyles } from "@/hooks/useStyles";
 import { useSuspenseLoadNote } from "@/hooks/useSuspenseLoadNote";
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
@@ -27,11 +28,13 @@ function NewNoteEditorContent({
 	initialNoteType?: string;
 }) {
 	const existingNote = useSuspenseLoadNote(id);
+	const markStartupReady = useStartupReady();
 	useEffect(() => {
 		if (existingNote) {
 			useTabStore.getState().markTabPersisted(id);
 		}
 	}, [existingNote, id]);
+	useEffect(markStartupReady, []);
 
 	if (existingNote) {
 		return existingNote.noteType === "drawing" ? (
@@ -64,6 +67,8 @@ function ExistingNoteEditorContent({
 	onRetry: () => void;
 }) {
 	const note = useSuspenseLoadNote(id);
+	const markStartupReady = useStartupReady();
+	useEffect(markStartupReady, []);
 
 	if (!note) {
 		return (
@@ -174,30 +179,32 @@ export default function NoteEditorScreen() {
 	}
 	return (
 		<View style={styles.screen}>
-			<TabBar />
-			<View style={styles.content}>
-				<QueryErrorBoundary
-					fallbackRender={(error, reset) => (
-						<ErrorScreen
-							error={error}
-							onRetry={() => {
-								reset();
-								handleRetry();
-							}}
-						/>
-					)}
-				>
-					<Suspense key={retryVersion} fallback={<Loader />}>
-						<NoteEditorContent
-							key={noteId}
-							id={noteId}
-							isNew={isNew}
-							initialTitle={initialTitle}
-							initialNoteType={initialNoteType}
-							onRetry={handleRetry}
-						/>
-					</Suspense>
-				</QueryErrorBoundary>
+			<View testID="note-editor-card" style={styles.editorCard}>
+				<TabBar />
+				<View style={styles.content}>
+					<QueryErrorBoundary
+						fallbackRender={(error, reset) => (
+							<ErrorScreen
+								error={error}
+								onRetry={() => {
+									reset();
+									handleRetry();
+								}}
+							/>
+						)}
+					>
+						<Suspense key={retryVersion} fallback={<Loader />}>
+							<NoteEditorContent
+								key={noteId}
+								id={noteId}
+								isNew={isNew}
+								initialTitle={initialTitle}
+								initialNoteType={initialNoteType}
+								onRetry={handleRetry}
+							/>
+						</Suspense>
+					</QueryErrorBoundary>
+				</View>
 			</View>
 		</View>
 	);
@@ -207,7 +214,22 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		screen: {
 			flex: 1,
+			alignItems: "center",
+			justifyContent: "center",
+			padding: 24,
+			backgroundColor: theme.colors.card,
+		},
+		editorCard: {
+			flex: 1,
+			width: "100%",
+			maxWidth: 960,
+			borderWidth: 1,
+			borderColor: theme.colors.border,
+			borderRadius: 16,
+			borderCurve: "continuous",
+			overflow: "hidden",
 			backgroundColor: theme.colors.background,
+			boxShadow: "0 8px 28px rgba(0, 0, 0, 0.18)",
 		},
 		content: {
 			flex: 1,

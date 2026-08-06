@@ -1,6 +1,6 @@
 import NoteGrid from "@/components/NoteGrid";
 import type { Note } from "@/services/notes/types";
-import { act, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 import React from "react";
 import { FlatList, Text } from "react-native";
 
@@ -44,30 +44,26 @@ function makeNotes(count: number): Note[] {
 }
 
 describe("NoteGrid", () => {
-	it("loads more notes when scrolling near the bottom", () => {
-		const onEndReached = jest.fn();
-		const { UNSAFE_getByType } = render(
+	it("reports readiness after native list content is measured", () => {
+		const onReady = jest.fn();
+		render(
 			<NoteGrid
-				notes={makeNotes(20)}
+				notes={makeNotes(2)}
 				onDelete={() => {}}
 				onPinToggle={() => {}}
 				onRefresh={() => {}}
-				onEndReached={onEndReached}
-				hasMore
-				isLoadingMore={false}
+				onReady={onReady}
 			/>,
 		);
 
-		act(() => {
-			UNSAFE_getByType(FlatList).props.onEndReached();
-		});
+		fireEvent(screen.UNSAFE_getByType(FlatList), "contentSizeChange", 320, 640);
 
-		expect(onEndReached).toHaveBeenCalledTimes(1);
+		expect(onReady).toHaveBeenCalledTimes(1);
 	});
 
-	it("forwards repeated end-reached events while more notes are available", () => {
+	it("does not load more before user scrolls", () => {
 		const onEndReached = jest.fn();
-		const { UNSAFE_getByType } = render(
+		render(
 			<NoteGrid
 				notes={makeNotes(20)}
 				onDelete={() => {}}
@@ -79,12 +75,34 @@ describe("NoteGrid", () => {
 			/>,
 		);
 
-		act(() => {
-			UNSAFE_getByType(FlatList).props.onEndReached();
-		});
-		act(() => {
-			UNSAFE_getByType(FlatList).props.onEndReached();
-		});
+		fireEvent(screen.UNSAFE_getByType(FlatList), "endReached");
+
+		expect(onEndReached).not.toHaveBeenCalled();
+	});
+
+	it("loads one page per user scroll near bottom", () => {
+		const onEndReached = jest.fn();
+		render(
+			<NoteGrid
+				notes={makeNotes(20)}
+				onDelete={() => {}}
+				onPinToggle={() => {}}
+				onRefresh={() => {}}
+				onEndReached={onEndReached}
+				hasMore
+				isLoadingMore={false}
+			/>,
+		);
+
+		const list = screen.UNSAFE_getByType(FlatList);
+		fireEvent.scroll(list, { nativeEvent: { contentOffset: { y: 100 } } });
+		fireEvent(list, "endReached");
+		fireEvent(list, "endReached");
+
+		expect(onEndReached).toHaveBeenCalledTimes(1);
+
+		fireEvent.scroll(list, { nativeEvent: { contentOffset: { y: 200 } } });
+		fireEvent(list, "endReached");
 
 		expect(onEndReached).toHaveBeenCalledTimes(2);
 	});

@@ -13,6 +13,38 @@ export default function Root({ children }: PropsWithChildren) {
 			background-color: #000000;
 		}
 
+		#keeper-startup-cover {
+			position: fixed;
+			inset: 0;
+			z-index: 2147483647;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			gap: 16px;
+			background: #000000;
+			color: #ffffff;
+			font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+		}
+
+		#keeper-startup-title {
+			font-size: 32px;
+			font-weight: 700;
+		}
+
+		#keeper-startup-spinner {
+			width: 28px;
+			height: 28px;
+			border: 3px solid rgba(255, 255, 255, 0.25);
+			border-top-color: #ffffff;
+			border-radius: 999px;
+			animation: keeper-startup-spin 0.8s linear infinite;
+		}
+
+		@keyframes keeper-startup-spin {
+			to { transform: rotate(360deg); }
+		}
+
 		input,
 		textarea {
 			outline: none;
@@ -55,6 +87,16 @@ export default function Root({ children }: PropsWithChildren) {
 				background-color: #ffffff;
 			}
 
+			#keeper-startup-cover {
+				background: #ffffff;
+				color: #111827;
+			}
+
+			#keeper-startup-spinner {
+				border-color: rgba(17, 24, 39, 0.2);
+				border-top-color: #111827;
+			}
+
 			::-webkit-scrollbar-track {
 				background: #ffffff;
 			}
@@ -87,7 +129,13 @@ export default function Root({ children }: PropsWithChildren) {
 				<style>{scrollbarStyles}</style>
 				<ScrollViewStyleReset />
 			</head>
-			<body>{children}</body>
+			<body>
+				<output id="keeper-startup-cover" aria-label="Loading Keeper">
+					<span id="keeper-startup-title">Keeper</span>
+					<span id="keeper-startup-spinner" />
+				</output>
+				{children}
+			</body>
 		</html>
 	);
 }

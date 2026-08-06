@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react-native";
 import type React from "react";
 
 const mockUseAppStartup = jest.fn();
+let mockDrawerSuspends = false;
+const mockPendingNotes = new Promise<never>(() => {});
 
 jest.mock("@react-navigation/native", () => ({
 	ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
@@ -30,6 +32,7 @@ jest.mock("@/constants/themes/lightTheme", () => ({
 jest.mock("expo-router/drawer", () => ({
 	Drawer: Object.assign(
 		({ children }: { children: React.ReactNode }) => {
+			if (mockDrawerSuspends) throw mockPendingNotes;
 			const React = require("react");
 			return React.createElement(
 				React.Fragment,
@@ -90,6 +93,7 @@ import RootLayout from "@/app/_layout.web";
 describe("RootLayout (web)", () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockDrawerSuspends = false;
 		if (typeof document === "undefined") {
 			Object.defineProperty(globalThis, "document", {
 				configurable: true,
@@ -141,4 +145,19 @@ describe("RootLayout (web)", () => {
 		expect(screen.getByText("Toast overlay")).toBeTruthy();
 	});
 
+	it("keeps the startup screen visible until route data is ready", () => {
+		mockDrawerSuspends = true;
+		mockUseAppStartup.mockReturnValue({
+			isHydrated: true,
+			initError: null,
+			runtime: "web",
+			status: "ready",
+		});
+
+		render(<RootLayout />);
+
+		expect(screen.getByText("Keeper")).toBeTruthy();
+		expect(screen.queryByText("Drawer")).toBeNull();
+		expect(screen.queryByText("Toast overlay")).toBeNull();
+	});
 });

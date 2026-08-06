@@ -59,7 +59,10 @@ export default function HomeQuickComposer({
 
 	return (
 		<View style={styles.wrapper}>
-			<View style={[styles.card, isExpanded && styles.cardExpanded]}>
+			<View
+				testID="home-quick-composer-card"
+				style={[styles.card, isExpanded && styles.cardExpanded]}
+			>
 				{isExpanded ? (
 					<>
 						<TextInput
@@ -96,9 +99,7 @@ export default function HomeQuickComposer({
 								name="thumb-tack"
 								size={20}
 								color={
-									isPinned
-										? styles.pinIconPinned.color
-										: styles.pinIcon.color
+									isPinned ? styles.pinIconPinned.color : styles.pinIcon.color
 								}
 							/>
 						</Pressable>
@@ -167,9 +168,7 @@ export default function HomeQuickComposer({
 								label="Create drawing"
 								name="paint-brush"
 								variant="flat"
-								onPress={() =>
-									onCreateTypedNote({ noteType: "drawing" })
-								}
+								onPress={() => onCreateTypedNote({ noteType: "drawing" })}
 							/>
 						</View>
 					</>
@@ -206,11 +205,13 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			elevation: 3,
 		},
 		cardExpanded: {
-			minHeight: 190,
-			paddingTop: 10,
-			paddingBottom: 8,
+			maxWidth: 860,
+			minHeight: 220,
+			paddingTop: 14,
+			paddingBottom: 10,
 			flexDirection: "column",
 			alignItems: "stretch",
+			borderRadius: 12,
 		},
 		primaryAction: {
 			flex: 1,
@@ -231,7 +232,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			color: theme.colors.text,
 		},
 		contentInput: {
-			minHeight: 78,
+			minHeight: 104,
 			paddingTop: 8,
 			paddingBottom: 8,
 			fontSize: 16,

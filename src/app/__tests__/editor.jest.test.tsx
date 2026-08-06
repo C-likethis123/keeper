@@ -160,6 +160,11 @@ describe("NoteEditorScreen", () => {
 		expect(
 			await screen.findByText("Loaded note: Loaded draft / Initial body"),
 		).toBeTruthy();
+		expect(screen.getByTestId("note-editor-card")).toHaveStyle({
+			width: "100%",
+			maxWidth: 960,
+			borderRadius: 16,
+		});
 		expect(result.getPathname()).toBe("/editor");
 	});
 

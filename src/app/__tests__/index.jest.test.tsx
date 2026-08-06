@@ -148,7 +148,7 @@ jest.mock("@/components/moc/RenameClusterModal", () => {
 	};
 });
 
-jest.mock("@/components/shared/Loader", () => {
+jest.mock("@/components/shared/StartupScreen", () => {
 	const React = require("react");
 	const { Text } = require("react-native");
 	return {
@@ -238,6 +238,20 @@ describe("Index", () => {
 		expect(
 			screen.getByRole("button", { name: "Open suggested MOCs" }),
 		).toBeOnTheScreen();
+	});
+
+	it("expands the quick composer without leaving the notes screen", async () => {
+		const user = userEvent.setup();
+		mockUseNotes.mockReturnValue(makeUseNotesResult());
+
+		render(<Index />);
+		await user.press(screen.getByRole("button", { name: "Take a note" }));
+
+		expect(screen.getByTestId("home-quick-composer-card")).toHaveStyle({
+			maxWidth: 860,
+			minHeight: 220,
+		});
+		expect(screen.getByText("Notes: 1")).toBeOnTheScreen();
 	});
 
 	it("keeps refresh and pagination loading states independent", () => {

@@ -1,4 +1,4 @@
-import { PAGE_SIZE } from "@/constants/pagination";
+import { NOTE_GRID_PAGE_SIZE } from "@/constants/pagination";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
 	importClustersFromFile,
@@ -17,7 +17,6 @@ import {
 	NotesIndexService,
 } from "@/services/notes/notesIndex";
 import {
-	notesIndexDbGetById,
 	notesIndexDbGetOrphanedNotes,
 	notesIndexDbGetRecentlyEditedNotes,
 } from "@/services/notes/notesIndexDb";
@@ -27,6 +26,7 @@ import { useStorageStore } from "@/stores/storageStore";
 import { waitForStorageReady } from "@/stores/storageSuspense";
 import {
 	useCallback,
+	useDeferredValue,
 	useEffect,
 	useMemo,
 	useState,
@@ -45,17 +45,20 @@ function toNote(item: NoteIndexItem): Note {
 	};
 }
 
-function computeSections(
+type ClusterSectionMetadata = Omit<NoteSection, "notes"> & {
+	memberNoteIds: string[];
+};
+
+export function computeSections(
 	allNotes: Note[],
 	pinnedNotes: Note[],
 	recentlyEditedNoteIds: Set<string>,
 	orphanedNoteIds: Set<string>,
-	acceptedClusterSections: NoteSection[],
+	acceptedClusterSections: ClusterSectionMetadata[],
 	isFiltered: boolean,
 ): NoteSection[] {
 	const sections: NoteSection[] = [];
 	const shownNoteIds = new Set<string>();
-	const allNoteIds = isFiltered ? new Set(allNotes.map((n) => n.id)) : null;
 
 	if (pinnedNotes.length > 0) {
 		sections.push({ id: "pinned", title: "Pinned", notes: pinnedNotes });
@@ -75,13 +78,11 @@ function computeSections(
 	}
 
 	for (const cs of acceptedClusterSections) {
-		// When filtered, intersect with the matching note set and deduplicate.
-		// When not filtered, show ALL cluster members so that pinned/recently-edited
-		// notes are still visible in their cluster section, and excludeNoteIds in
-		// the AddNoteToClusterModal correctly reflects the full membership.
-		const clusterNotes = allNoteIds
-			? cs.notes.filter((n) => allNoteIds.has(n.id) && !shownNoteIds.has(n.id))
-			: cs.notes;
+		const memberNoteIds = new Set(cs.memberNoteIds);
+		const loadedClusterNotes = allNotes.filter((note) => memberNoteIds.has(note.id));
+		const clusterNotes = isFiltered
+			? loadedClusterNotes.filter((note) => !shownNoteIds.has(note.id))
+			: loadedClusterNotes;
 		if (clusterNotes.length > 0) {
 			sections.push({ ...cs, notes: clusterNotes });
 			for (const note of clusterNotes) shownNoteIds.add(note.id);
@@ -127,37 +128,17 @@ function buildNotesQueryKey(args: {
 	});
 }
 
-async function loadNotesPage(args: {
+export async function loadNotesPage(args: {
 	query: string;
 	filters: NoteListFilters;
 	offset: number;
 }) {
 	return NotesIndexService.listNotes(
 		args.query,
-		PAGE_SIZE,
+		NOTE_GRID_PAGE_SIZE,
 		args.offset,
 		args.filters,
 	);
-}
-
-function noteFromIndexItem(item: {
-	noteId: string;
-	title: string;
-	summary: string;
-	updatedAt: number;
-	isPinned: boolean;
-	noteType: Note["noteType"] | null;
-	status?: Note["status"] | null;
-}): Note {
-	return {
-		id: item.noteId,
-		title: item.title,
-		content: item.summary,
-		lastUpdated: item.updatedAt,
-		isPinned: item.isPinned,
-		noteType: item.noteType ?? "note",
-		status: item.status,
-	};
 }
 
 async function loadSectionMetadata() {
@@ -175,29 +156,23 @@ async function loadSectionMetadata() {
 		listStandaloneAcceptedClusters(),
 	]);
 
-	const acceptedClusterSections: NoteSection[] = [];
+	const acceptedClusterSections: ClusterSectionMetadata[] = [];
 
 	// Super-cluster sections: notes from all accepted child sub-clusters combined
 	for (const superCluster of acceptedSuperClusters) {
 		const subClusters = await listAcceptedSubClusters(superCluster.id);
 		const seenNoteIds = new Set<string>();
-		const notes: Note[] = [];
 		for (const subCluster of subClusters) {
 			const members = await listClusterMembers(subCluster.id);
 			for (const member of members) {
-				if (seenNoteIds.has(member.note_id)) continue;
-				const item = await notesIndexDbGetById(member.note_id);
-				if (item) {
-					notes.push(noteFromIndexItem(item));
-					seenNoteIds.add(member.note_id);
-				}
+				seenNoteIds.add(member.note_id);
 			}
 		}
-		if (notes.length > 0) {
+		if (seenNoteIds.size > 0) {
 			acceptedClusterSections.push({
 				id: superCluster.id,
 				title: superCluster.name,
-				notes,
+				memberNoteIds: [...seenNoteIds],
 				superClusterId: superCluster.id,
 			});
 		}
@@ -206,18 +181,12 @@ async function loadSectionMetadata() {
 	// Standalone cluster sections (no super-cluster parent)
 	for (const cluster of standaloneClusters) {
 		const members = await listClusterMembers(cluster.id);
-		const notes: Note[] = [];
-		for (const member of members) {
-			const item = await notesIndexDbGetById(member.note_id);
-			if (item) {
-				notes.push(noteFromIndexItem(item));
-			}
-		}
-		if (notes.length > 0) {
+		const memberNoteIds = members.map((member) => member.note_id);
+		if (memberNoteIds.length > 0) {
 			acceptedClusterSections.push({
 				id: cluster.id,
 				title: cluster.name,
-				notes,
+				memberNoteIds,
 				clusterId: cluster.id,
 			});
 		}
@@ -257,6 +226,7 @@ export default function useNotes() {
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
 	const initializationError = useStorageStore((s) => s.initializationError);
 	const contentVersion = useStorageStore((s) => s.contentVersion);
+	const deferredContentVersion = useDeferredValue(contentVersion);
 	const [query, setQuery] = useState("");
 	const debouncedQuery = useDebounce(query, 300);
 	const deferredQuery = debouncedQuery;
@@ -300,7 +270,7 @@ export default function useNotes() {
 	const baseKey = buildNotesQueryKey({
 		query: deferredQuery,
 		filters,
-		contentVersion,
+		contentVersion: deferredContentVersion,
 		refreshVersion,
 	});
 	const basePromise = getCachedQueryPromise(baseKey, () =>
@@ -311,7 +281,7 @@ export default function useNotes() {
 		}),
 	);
 	const sectionMetadataPromise = getCachedQueryPromise(
-		`note-sections:${contentVersion}:${refreshVersion}`,
+		`note-sections:${deferredContentVersion}:${refreshVersion}`,
 		loadSectionMetadataSafely,
 	);
 	const baseResult = useSuspensePromise(basePromise);

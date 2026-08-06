@@ -1,10 +1,12 @@
 import MOCSuggestions from "@/components/moc/MOCSuggestions";
 import { IconButton } from "@/components/shared/IconButton";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
+import { useStartupReady } from "@/hooks/useStartupReady";
 import { useStyles } from "@/hooks/useStyles";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
 import { router, useNavigation } from "expo-router";
+import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -13,6 +15,8 @@ export default function SuggestedMOCsScreen() {
 	const insets = useSafeAreaInsets();
 	const styles = useStyles(createStyles);
 	const canGoBack = navigation.canGoBack();
+	const markStartupReady = useStartupReady();
+	useEffect(markStartupReady, []);
 
 	return (
 		<View style={styles.screen}>

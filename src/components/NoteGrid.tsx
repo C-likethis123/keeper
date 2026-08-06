@@ -5,7 +5,7 @@ import type { NoteSection } from "@/services/notes/indexDb/types";
 import type { Note } from "@/services/notes/types";
 import { FontAwesome } from "@expo/vector-icons";
 import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import {
 	ActivityIndicator,
 	FlatList,
@@ -40,6 +40,7 @@ export default function NoteGrid({
 	isLoadingMore = false,
 	hasMore = false,
 	listHeaderComponent,
+	onReady,
 }: {
 	notes: Note[];
 	sections?: NoteSection[];
@@ -53,6 +54,7 @@ export default function NoteGrid({
 	isLoadingMore?: boolean;
 	hasMore?: boolean;
 	listHeaderComponent?: React.ReactElement | null;
+	onReady?: () => void;
 }) {
 	const { width } = useWindowDimensions();
 	const theme = useExtendedTheme();
@@ -63,8 +65,19 @@ export default function NoteGrid({
 	if (width > 900) numColumns = 4;
 	else if (width > 600) numColumns = 3;
 
+	const paginationGate = useRef(false);
+	const handleScroll = useCallback(
+		(event: { nativeEvent: { contentOffset: { y: number } } }) => {
+			if (event.nativeEvent.contentOffset.y > 0) {
+				paginationGate.current = true;
+			}
+		},
+		[],
+	);
+
 	const handleEndReached = useCallback(() => {
-		if (hasMore && !isLoadingMore) {
+		if (paginationGate.current && hasMore && !isLoadingMore) {
+			paginationGate.current = false;
 			onEndReached?.();
 		}
 	}, [hasMore, isLoadingMore, onEndReached]);
@@ -205,10 +218,10 @@ export default function NoteGrid({
 
 	return (
 		<View style={styles.root}>
-				<FlatList
-					data={rowData}
-					key={`note-grid-${numColumns}`}
-					keyExtractor={keyExtractor}
+			<FlatList
+				data={rowData}
+				key={`note-grid-${numColumns}`}
+				keyExtractor={keyExtractor}
 				contentContainerStyle={styles.contentContainer}
 				ListHeaderComponent={listHeader}
 				ListEmptyComponent={
@@ -227,6 +240,9 @@ export default function NoteGrid({
 				}
 				onEndReached={handleEndReached}
 				onEndReachedThreshold={0.5}
+				onScroll={handleScroll}
+				onContentSizeChange={onReady}
+				scrollEventThrottle={16}
 				ListFooterComponent={
 					isLoadingMore ? (
 						<View style={styles.footerLoader}>
@@ -234,8 +250,8 @@ export default function NoteGrid({
 						</View>
 					) : null
 				}
-					renderItem={renderItem}
-				/>
+				renderItem={renderItem}
+			/>
 		</View>
 	);
 }
@@ -246,7 +262,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			flex: 1,
 		},
 		headerWrapper: {
-			maxWidth: 640,
+			maxWidth: 960,
 			width: "100%",
 			alignSelf: "center",
 		},
