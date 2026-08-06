@@ -24,6 +24,7 @@ import {
 import { createDraggableBlockExtension } from "./DraggableBlockExtension";
 import { InlineCodeMarkdownExitExtension } from "../codeBlock/InlineCodeMarkdownExitExtension";
 import { ClipboardShortcutsExtension } from "./ClipboardShortcutsExtension";
+import { LinkMarkdownEditExtension } from "./LinkMarkdownEditExtension";
 import { MarkdownPasteExtension } from "./MarkdownPasteExtension";
 import { createMarkdownChangeExtension } from "./MarkdownChangeExtension";
 import { TodoTriggerExtension } from "../todoTrigger/TodoTriggerExtension";
@@ -123,6 +124,7 @@ export function createKeeperEditorExtension({
       EquationExtension,
       TodoTriggerExtension,
       InlineCodeMarkdownExitExtension,
+      LinkMarkdownEditExtension,
       configExtension(CommandExtension, { getCommand }),
       configExtension(SlashCommandExtension, { getOnInsertTemplateCommand }),
       configExtension(WikiLinkExtension, { getOnOpenWikiLink }),

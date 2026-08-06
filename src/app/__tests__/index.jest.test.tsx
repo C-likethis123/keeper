@@ -290,7 +290,7 @@ describe("Index", () => {
 		expect(mockRouterPush).toHaveBeenCalledWith("/suggested-mocs");
 	});
 
-	it("creates a blank note and routes into the editor from the quick composer", async () => {
+	it("expands the quick composer without leaving home", async () => {
 		const user = userEvent.setup();
 		mockUseNotes.mockReturnValue(makeUseNotesResult());
 
@@ -298,13 +298,13 @@ describe("Index", () => {
 
 		await user.press(screen.getByRole("button", { name: "Take a note" }));
 
-		await waitFor(() => {
-			expect(mockRouterPush).toHaveBeenCalledWith({
-				pathname: "/editor",
-				params: { id: "new-note-id", isNew: "true" },
-			});
-		});
-		expect(NoteService.saveNote).not.toHaveBeenCalled();
+		expect(screen.getByLabelText("Note title")).toBeOnTheScreen();
+		expect(screen.getByLabelText("Note content")).toBeOnTheScreen();
+		expect(screen.getByRole("button", { name: "Pin note" })).toBeOnTheScreen();
+		expect(mockRouterPush).not.toHaveBeenCalled();
+
+		fireEvent(screen.getByLabelText("Note title"), "submitEditing");
+		expect(screen.getByLabelText("Note content")).toBeOnTheScreen();
 	});
 
 	it("registers home route shortcuts for search focus and note creation", () => {
@@ -386,19 +386,30 @@ describe("Index", () => {
 
 	it("creates a quick note from the composer", async () => {
 		const user = userEvent.setup();
-		mockUseNotes.mockReturnValue(makeUseNotesResult());
+		const notesResult = makeUseNotesResult();
+		mockUseNotes.mockReturnValue(notesResult);
 
 		render(<Index />);
 
 		await user.press(screen.getByRole("button", { name: "Take a note" }));
+		await user.type(screen.getByLabelText("Note title"), "Trip ideas");
+		await user.type(screen.getByLabelText("Note content"), "Visit Kyoto");
+		await user.press(screen.getByRole("button", { name: "Pin note" }));
+		await user.press(screen.getByRole("button", { name: "Close note" }));
 
 		await waitFor(() => {
-			expect(mockRouterPush).toHaveBeenCalledWith({
-				pathname: "/editor",
-				params: { id: "new-note-id", isNew: "true" },
-			});
+			expect(NoteService.saveNote).toHaveBeenCalledWith(
+				{
+					id: "new-note-id",
+					title: "Trip ideas",
+					content: "Visit Kyoto",
+					isPinned: true,
+					noteType: "note",
+				},
+				true,
+			);
 		});
-		expect(mockShowToast).not.toHaveBeenCalled();
-		expect(NoteService.saveNote).not.toHaveBeenCalled();
+		expect(notesResult.handleRefresh).toHaveBeenCalled();
+		expect(mockRouterPush).not.toHaveBeenCalled();
 	});
 });

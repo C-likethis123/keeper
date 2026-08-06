@@ -29,6 +29,7 @@ import { useStorageStore } from "@/stores/storageStore";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
 import { router, useNavigation } from "expo-router";
+import { nanoid } from "nanoid";
 import React, { Suspense, useCallback, useMemo, useRef, useState } from "react";
 import {
 	Alert,
@@ -122,6 +123,35 @@ function IndexContent() {
 		void runReset();
 		reset();
 	}, [runReset, reset]);
+
+	const handleCreateQuickNote = useCallback(
+		async (draft: {
+			title: string;
+			content: string;
+			isPinned: boolean;
+		}) => {
+			try {
+				await NoteService.saveNote(
+					{
+						id: nanoid(),
+						title: draft.title,
+						content: draft.content,
+						isPinned: draft.isPinned,
+						noteType: "note",
+					},
+					true,
+				);
+				invalidateNoteQueryCache();
+				bumpContentVersion();
+				await handleRefresh();
+			} catch (error) {
+				console.warn("Failed to create note:", error);
+				showToast("Failed to create note");
+				throw error;
+			}
+		},
+		[bumpContentVersion, handleRefresh],
+	);
 
 	const handlePinToggle = useCallback(
 		async (updated: Note) => {
@@ -260,7 +290,12 @@ function IndexContent() {
 				onEndReached={loadMoreNotes}
 				isLoadingMore={isLoadingMore}
 				hasMore={hasMore}
-				listHeaderComponent={<HomeQuickComposer onPress={createAndOpenNote} />}
+				listHeaderComponent={
+					<HomeQuickComposer
+						onCreateTypedNote={createAndOpenNote}
+						onSave={handleCreateQuickNote}
+					/>
+				}
 			/>
 			<ResetAppDataModal
 				visible={isResetModalVisible}
