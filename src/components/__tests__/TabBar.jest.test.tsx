@@ -70,8 +70,43 @@ describe("TabBar", () => {
 
 		render(<TabBar />);
 
+		expect(screen.getByText("Home")).toBeTruthy();
 		expect(screen.getByText("Alpha")).toBeTruthy();
 		expect(screen.getByText("Beta")).toBeTruthy();
+	});
+
+	it("keeps a permanent home tab that navigates home", () => {
+		useTabStore.setState({
+			tabs: [
+				makeTab("tab-a", "note-1", "Alpha"),
+				makeTab("tab-b", "note-2", "Beta"),
+			],
+			activeTabId: "tab-a",
+		});
+
+		render(<TabBar activeView="home" />);
+		fireEvent.press(screen.getByRole("tab", { name: "Home" }));
+
+		expect(mockReplace).toHaveBeenCalledWith("/");
+		expect(screen.getByRole("tab", { name: "Home" }).props.accessibilityState).toEqual(
+			{ selected: true },
+		);
+	});
+
+	it("stays home when closing a note from the home tab", () => {
+		useTabStore.setState({
+			tabs: [
+				makeTab("tab-a", "note-1", "Alpha"),
+				makeTab("tab-b", "note-2", "Beta"),
+			],
+			activeTabId: "tab-a",
+		});
+
+		render(<TabBar activeView="home" />);
+		fireEvent.press(screen.getByLabelText("Close Beta"));
+
+		expect(useTabStore.getState().tabs.map((tab) => tab.id)).toEqual(["tab-a"]);
+		expect(mockReplace).not.toHaveBeenCalled();
 	});
 
 	it("activates tab and navigates to note on press", () => {
@@ -100,7 +135,7 @@ describe("TabBar", () => {
 		});
 
 		render(<TabBar />);
-		fireEvent.press(screen.getAllByRole("tab")[0]);
+		fireEvent.press(screen.getAllByRole("tab")[1]);
 
 		expect(mockReplace).toHaveBeenCalledWith(
 			"/editor?id=draft-1&isNew=true",

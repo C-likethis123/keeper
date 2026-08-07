@@ -2,6 +2,7 @@ import HomeQuickComposer from "@/components/HomeQuickComposer";
 import HomeScreenHeader from "@/components/HomeScreenHeader";
 import NoteGrid from "@/components/NoteGrid";
 import ResetAppDataModal from "@/components/ResetAppDataModal";
+import { TabBar } from "@/components/TabBar";
 import AddNoteToClusterModal from "@/components/moc/AddNoteToClusterModal";
 import RenameClusterModal from "@/components/moc/RenameClusterModal";
 import ErrorScreen from "@/components/shared/ErrorScreen";
@@ -271,6 +272,7 @@ function IndexContent() {
 
 	return (
 		<View style={styles.container}>
+			<TabBar activeView="home" />
 			<HomeScreenHeader
 				searchQuery={query}
 				setSearchQuery={setQuery}
