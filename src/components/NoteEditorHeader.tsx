@@ -16,6 +16,7 @@ type Props = {
   onBlurTitle: () => void;
   onSubmitEditing: () => void;
   onBack: () => void;
+  onShowHistory: () => void;
   onTogglePin: () => void;
   onDelete: () => void;
 };
@@ -29,6 +30,7 @@ export default function NoteEditorHeader({
   onBlurTitle,
   onSubmitEditing,
   onBack,
+  onShowHistory,
   onTogglePin,
   onDelete,
 }: Props) {
@@ -70,6 +72,14 @@ export default function NoteEditorHeader({
         </View>
         <SaveIndicator status={status} />
         <View style={[styles.headerSideRail, styles.headerActionsRail]}>
+          <Pressable
+            onPress={onShowHistory}
+            style={styles.headerIconButton}
+            accessibilityRole="button"
+            accessibilityLabel="Version history"
+          >
+            <FontAwesome name="history" size={22} style={styles.historyIcon} />
+          </Pressable>
           <Pressable
             onPress={onTogglePin}
             style={styles.headerIconButton}
@@ -118,8 +128,8 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      width: 132,
-      minWidth: 132,
+      width: 168,
+      minWidth: 168,
     },
     headerBackButton: {
       paddingVertical: 8,
@@ -149,6 +159,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
       color: theme.colors.text,
     },
     pinIcon: {
+      color: theme.colors.textMuted,
+    },
+    historyIcon: {
       color: theme.colors.textMuted,
     },
     pinIconPinned: {

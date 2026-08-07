@@ -1,19 +1,26 @@
 import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { storageEngine } from "@/services/storage/storageEngine";
+import { isServerSyncEnabled } from "@/services/sync/config";
+import { showSyncDebugToast } from "@/services/sync/debug";
 import {
 	enqueueNoteCreate,
 	enqueueNoteDelete,
 	enqueueNoteUpdate,
 } from "@/services/sync/syncOpQueue";
-import { showSyncDebugToast } from "@/services/sync/debug";
 import { scheduleSyncPush } from "@/services/sync/syncPushService";
-import { isServerSyncEnabled } from "@/services/sync/config";
 import { useStorageStore } from "@/stores/storageStore";
 import {
 	deleteCrdtNote,
 	saveMarkdownToCrdt,
 } from "./crdtNoteService";
+import {
+	type NoteVersion,
+	captureNoteVersion,
+	deleteNoteVersions,
+	getNoteVersion,
+	listNoteVersions,
+} from "./noteHistoryService";
 import type { ListNotesResult } from "./notesIndex";
 import type { Note, NoteListFilters, NoteSaveInput } from "./types";
 
@@ -58,6 +65,13 @@ export class NoteService {
 		const title = (note.title ?? "").trim();
 		const existingNote = await storageEngine.loadNote(id);
 		const shouldCreate = isNewNote || !existingNote;
+		if (existingNote) {
+			try {
+				await captureNoteVersion(existingNote);
+			} catch (error) {
+				console.warn("[NoteService] Failed to capture note history:", error);
+			}
+		}
 		const saved = await storageEngine.saveNote({
 			...note,
 			id,
@@ -99,6 +113,11 @@ export class NoteService {
 			const deleted = await storageEngine.deleteNote(id);
 			if (!deleted) return false;
 			try {
+				await deleteNoteVersions(id);
+			} catch (error) {
+				console.warn("[NoteService] Failed to delete note history:", error);
+			}
+			try {
 				await NotesIndexService.deleteNote(id);
 			} catch (err) {
 				console.warn("Failed to delete note from index:", err);
@@ -118,6 +137,17 @@ export class NoteService {
 			console.warn("Failed to delete note:", e);
 			return false;
 		}
+	}
+
+	static async listNoteVersions(id: string): Promise<NoteVersion[]> {
+		return listNoteVersions(id);
+	}
+
+	static async restoreNoteVersion(id: string, versionId: string): Promise<Note> {
+		const version = await getNoteVersion(id, versionId);
+		if (!version) throw new Error("Note version not found");
+		const { lastUpdated: _lastUpdated, ...snapshot } = version.note;
+		return NoteService.saveNote({ ...snapshot, id }, false);
 	}
 
 	static async listNotesFallback(

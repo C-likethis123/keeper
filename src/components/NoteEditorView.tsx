@@ -1,6 +1,7 @@
 import NoteEditorHeader from "@/components/NoteEditorHeader";
-import NoteRelatedNotes from "@/components/moc/NoteRelatedNotes";
+import NoteHistoryModal from "@/components/NoteHistoryModal";
 import TemplatePickerModal from "@/components/TemplatePickerModal";
+import NoteRelatedNotes from "@/components/moc/NoteRelatedNotes";
 import { FilterChip } from "@/components/shared/FilterChip";
 import { TODO_STATUS_OPTIONS } from "@/constants/noteTypes";
 import type { ExtendedTheme } from "@/constants/themes/types";
@@ -18,14 +19,14 @@ import {
   inferAttachmentType,
 } from "@/services/notes/attachmentStorage";
 import {
-  clearEditorDraft,
-  readEditorDraft,
-} from "@/services/notes/editorDraftStore";
-import {
   type CrdtEditorSnapshot,
   loadCrdtEditorSnapshot,
   persistCrdtUpdate,
 } from "@/services/notes/crdtNoteService";
+import {
+  clearEditorDraft,
+  readEditorDraft,
+} from "@/services/notes/editorDraftStore";
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
@@ -177,6 +178,8 @@ export default function NoteEditorView({
   } = useNoteEditorLayout(note);
 
   const [isTemplateModalVisible, setIsTemplateModalVisible] = useState(false);
+  const [isHistoryVisible, setIsHistoryVisible] = useState(false);
+  const [historyNote, setHistoryNote] = useState(note);
   const [showRelatedNotes, setShowRelatedNotes] = useState(false);
   const {
     backlinks,
@@ -383,6 +386,49 @@ export default function NoteEditorView({
       return payload;
     },
     [buildCurrentNotePayload, id, markTabPersisted],
+  );
+
+  const handleShowHistory = useCallback(async () => {
+    try {
+      await forceSave();
+      const persisted = await NoteService.loadNote(id);
+      if (persisted) setHistoryNote(persisted);
+      setIsHistoryVisible(true);
+    } catch {
+      showToast("Failed to open version history.");
+    }
+  }, [forceSave, id]);
+
+  const handleRestoreVersion = useCallback(
+    async (versionId: string) => {
+      const restored = await NoteService.restoreNoteVersion(id, versionId);
+      setTitle(restored.title);
+      setIsPinned(restored.isPinned);
+      setNoteType(restored.noteType);
+      setTodoStatus(
+        restored.noteType === "todo" ? (restored.status ?? "open") : null,
+      );
+      setAttachmentPath(restored.attachment ?? null);
+      setAttachmentType(
+        restored.attachment ? inferAttachmentType(restored.attachment) : null,
+      );
+      setIsAttachmentVisible(!!restored.attachment);
+      setAttachedVideo(restored.attachedVideo ?? null);
+      setIsVideoVisible(!!restored.attachedVideo);
+      setResourceUrl(restored.resourceUrl ?? null);
+      setIsArticleVisible(!!restored.resourceUrl);
+      setDocumentPositions(restored.documentPositions ?? null);
+      editorMarkdownRef.current = restored.content;
+      setEditorMarkdown(restored.content);
+      setEditorContentRevision((revision) => revision + 1);
+      setCrdtSnapshot(await loadCrdtEditorSnapshot(id));
+      setEditorInstanceKey((key) => key + 1);
+      clearEditorDraft(id, restored.content, restored.lastUpdated);
+      if (tab) updateTabTitle(tab.id, restored.title);
+      setHistoryNote(restored);
+      showToast("Version restored.");
+    },
+    [id, tab, updateTabTitle],
   );
 
   useAppKeyboardShortcuts({
@@ -667,6 +713,9 @@ export default function NoteEditorView({
         onBack={() => {
           void handleBack();
         }}
+        onShowHistory={() => {
+          void handleShowHistory();
+        }}
         onTogglePin={() => {
           void handleTogglePin();
         }}
@@ -722,8 +771,13 @@ export default function NoteEditorView({
               </View>
             ) : null}
 
-            <View style={styles.editorHost} onLayout={handleEditorHostLayout}>
-              {crdtSnapshot !== undefined ? (
+            <View
+              testID="note-editor-host"
+              style={styles.editorHost}
+              onLayout={handleEditorHostLayout}
+            >
+              {crdtSnapshot !== undefined &&
+              (Platform.OS === "web" || editorHostHeight !== null) ? (
                 <LexicalMarkdownEditor
                   key={`${editorInstanceKey}-${crdtSnapshot ? "crdt" : "md"}`}
                   crdtInitialMarkdown={undefined}
@@ -771,6 +825,12 @@ export default function NoteEditorView({
         visible={isTemplateModalVisible}
         onApplyTemplate={handleApplyTemplate}
         onDismiss={() => setIsTemplateModalVisible(false)}
+      />
+      <NoteHistoryModal
+        visible={isHistoryVisible}
+        note={historyNote}
+        onDismiss={() => setIsHistoryVisible(false)}
+        onRestore={handleRestoreVersion}
       />
       <AttachVideoModal
         visible={isShowVideoModalVisible}

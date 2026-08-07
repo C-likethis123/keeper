@@ -80,6 +80,30 @@ describe("NoteGrid", () => {
 		expect(onEndReached).not.toHaveBeenCalled();
 	});
 
+	it("loads more when content cannot fill the viewport", () => {
+		const onEndReached = jest.fn();
+		render(
+			<NoteGrid
+				notes={makeNotes(2)}
+				onDelete={() => {}}
+				onPinToggle={() => {}}
+				onRefresh={() => {}}
+				onEndReached={onEndReached}
+				hasMore
+				isLoadingMore={false}
+			/>,
+		);
+
+		const list = screen.UNSAFE_getByType(FlatList);
+		fireEvent(list, "layout", {
+			nativeEvent: { layout: { height: 800, width: 320, x: 0, y: 0 } },
+		});
+		fireEvent(list, "contentSizeChange", 320, 400);
+		fireEvent(list, "contentSizeChange", 320, 400);
+
+		expect(onEndReached).toHaveBeenCalledTimes(1);
+	});
+
 	it("loads one page per user scroll near bottom", () => {
 		const onEndReached = jest.fn();
 		render(

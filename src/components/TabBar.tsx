@@ -13,7 +13,7 @@ import {
 	View,
 } from "react-native";
 
-export function TabBar() {
+export function TabBar({ activeView = "note" }: { activeView?: "home" | "note" }) {
 	const tabs = useTabStore((s) => s.tabs);
 	const activeTabId = useTabStore((s) => s.activeTabId);
 	const activateTab = useTabStore((s) => s.activateTab);
@@ -21,6 +21,9 @@ export function TabBar() {
 	const pinTab = useTabStore((s) => s.pinTab);
 
 	const styles = useStyles(createStyles);
+	const handleActivateHome = useCallback(() => {
+		router.replace("/");
+	}, []);
 
 	const handleActivateTab = useCallback(
 		(tabId: string, noteId: string, isNew: boolean) => {
@@ -35,6 +38,9 @@ export function TabBar() {
 	const handleCloseTab = useCallback(
 		(tabId: string) => {
 			closeTab(tabId);
+			if (activeView === "home") {
+				return;
+			}
 			// After closing, navigate based on new store state
 			const { activeTabId: nextActiveId, tabs: remainingTabs } =
 				useTabStore.getState();
@@ -51,7 +57,7 @@ export function TabBar() {
 			}
 			router.replace("/");
 		},
-		[closeTab],
+		[activeView, closeTab],
 	);
 
 	// On mobile, hide when there is 1 or fewer tabs
@@ -66,8 +72,29 @@ export function TabBar() {
 				showsHorizontalScrollIndicator={false}
 				contentContainerStyle={styles.scrollContent}
 			>
+				<Pressable
+					accessibilityRole="tab"
+					accessibilityLabel="Home"
+					accessibilityState={{ selected: activeView === "home" }}
+					style={({ pressed }) => [
+						styles.chip,
+						activeView === "home" ? styles.chipActive : styles.chipInactive,
+						pressed && styles.chipPressed,
+					]}
+					onPress={handleActivateHome}
+				>
+					<FontAwesome name="home" size={12} style={styles.homeIcon} />
+					<Text
+						style={[
+							styles.title,
+							activeView === "home" && styles.titleActive,
+						]}
+					>
+						Home
+					</Text>
+				</Pressable>
 				{tabs.map((tab) => {
-					const isActive = tab.id === activeTabId;
+					const isActive = activeView === "note" && tab.id === activeTabId;
 					return (
 						<Pressable
 							key={tab.id}
@@ -156,6 +183,10 @@ function createStyles(theme: ExtendedTheme) {
 		pinIcon: {
 			color: theme.colors.textMuted,
 			marginRight: 4,
+		},
+		homeIcon: {
+			color: theme.colors.textMuted,
+			marginRight: 6,
 		},
 		title: {
 			flex: 1,

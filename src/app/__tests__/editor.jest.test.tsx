@@ -162,8 +162,7 @@ describe("NoteEditorScreen", () => {
 		).toBeTruthy();
 		expect(screen.getByTestId("note-editor-card")).toHaveStyle({
 			width: "100%",
-			maxWidth: 960,
-			borderRadius: 16,
+			flex: 1,
 		});
 		expect(result.getPathname()).toBe("/editor");
 	});

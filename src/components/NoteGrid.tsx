@@ -5,10 +5,11 @@ import type { NoteSection } from "@/services/notes/indexDb/types";
 import type { Note } from "@/services/notes/types";
 import { FontAwesome } from "@expo/vector-icons";
 import type React from "react";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
 	ActivityIndicator,
 	FlatList,
+	type LayoutChangeEvent,
 	type ListRenderItemInfo,
 	Pressable,
 	RefreshControl,
@@ -66,6 +67,9 @@ export default function NoteGrid({
 	else if (width > 600) numColumns = 3;
 
 	const paginationGate = useRef(false);
+	const contentHeightRef = useRef(0);
+	const viewportHeightRef = useRef(0);
+	const lastUnderfilledRequestRef = useRef<string | null>(null);
 	const handleScroll = useCallback(
 		(event: { nativeEvent: { contentOffset: { y: number } } }) => {
 			if (event.nativeEvent.contentOffset.y > 0) {
@@ -112,6 +116,47 @@ export default function NoteGrid({
 			clusterActions: undefined,
 		}));
 	}, [notes, numColumns, sections]);
+	const paginationDatasetKey = `${notes.length}:${notes[0]?.id ?? ""}:${notes.at(-1)?.id ?? ""}`;
+
+	const loadNextPageIfUnderfilled = useCallback(() => {
+		const contentHeight = contentHeightRef.current;
+		const requestKey = `${paginationDatasetKey}:${contentHeight}`;
+		if (
+			!hasMore ||
+			isLoadingMore ||
+			contentHeight <= 0 ||
+			viewportHeightRef.current <= 0 ||
+			contentHeight > viewportHeightRef.current ||
+			lastUnderfilledRequestRef.current === requestKey
+		) {
+			return;
+		}
+
+		lastUnderfilledRequestRef.current = requestKey;
+		paginationGate.current = false;
+		onEndReached?.();
+	}, [hasMore, isLoadingMore, onEndReached, paginationDatasetKey]);
+
+	const handleContentSizeChange = useCallback(
+		(_width: number, height: number) => {
+			contentHeightRef.current = height;
+			onReady?.();
+			loadNextPageIfUnderfilled();
+		},
+		[loadNextPageIfUnderfilled, onReady],
+	);
+
+	const handleLayout = useCallback(
+		(event: LayoutChangeEvent) => {
+			viewportHeightRef.current = event.nativeEvent.layout.height;
+			loadNextPageIfUnderfilled();
+		},
+		[loadNextPageIfUnderfilled],
+	);
+
+	useEffect(() => {
+		loadNextPageIfUnderfilled();
+	}, [loadNextPageIfUnderfilled]);
 
 	const isEmpty = rowData.length === 0;
 	const keyExtractor = useCallback((item: NoteGridRow, index: number) => {
@@ -241,7 +286,8 @@ export default function NoteGrid({
 				onEndReached={handleEndReached}
 				onEndReachedThreshold={0.5}
 				onScroll={handleScroll}
-				onContentSizeChange={onReady}
+				onContentSizeChange={handleContentSizeChange}
+				onLayout={handleLayout}
 				scrollEventThrottle={16}
 				ListFooterComponent={
 					isLoadingMore ? (

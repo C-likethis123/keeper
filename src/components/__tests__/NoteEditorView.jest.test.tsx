@@ -301,7 +301,7 @@ function makeNote(overrides?: Partial<Note>): Note {
 	};
 }
 
-function renderNoteEditor(note: Note) {
+function renderNoteEditor(note: Note, measureEditor = true) {
 	const result = renderRouter(
 		{
 			index: () => <Text>Home route</Text>,
@@ -310,6 +310,11 @@ function renderNoteEditor(note: Note) {
 		{ initialUrl: "/" },
 	);
 	testRouter.push("/editor");
+	if (measureEditor) {
+		fireEvent(screen.getByTestId("note-editor-host"), "layout", {
+			nativeEvent: { layout: { height: 600, width: 400, x: 0, y: 0 } },
+		});
+	}
 	return result;
 }
 
@@ -516,6 +521,32 @@ describe("NoteEditorView", () => {
 
 		await screen.findByText("Mock video panel");
 		expect(screen.queryByText("Mock document panel")).toBeNull();
+	});
+
+	it("waits for native split layout before mounting the editor beside a video", async () => {
+		const note = makeNote({
+			attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		});
+
+		renderNoteEditor(note, false);
+
+		await screen.findByText("Mock video panel");
+		expect(screen.queryByText("Mock editor")).toBeNull();
+
+		fireEvent(screen.getByTestId("note-editor-host"), "layout", {
+			nativeEvent: { layout: { height: 360, width: 400, x: 0, y: 0 } },
+		});
+
+		await screen.findByText("Mock editor");
+		expect(mockEditorRender).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				dom: expect.objectContaining({
+					style: expect.arrayContaining([
+						expect.objectContaining({ height: 360 }),
+					]),
+				}),
+			}),
+		);
 	});
 
 	it("shows the document panel after attaching a document when video was active", async () => {

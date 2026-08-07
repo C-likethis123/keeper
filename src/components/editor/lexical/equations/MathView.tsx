@@ -107,9 +107,11 @@ export function MathView({
 				</View>
 			);
 		}
-		return React.createElement("div", {
+		return React.createElement(displayMode ? "div" : "span", {
 			style: {
-				width: "100%",
+				...(displayMode
+					? { width: "100%" }
+					: { display: "inline-block", verticalAlign: "middle" }),
 				alignItems: "center",
 				justifyContent: "center",
 				minHeight: displayMode ? 60 : 24,

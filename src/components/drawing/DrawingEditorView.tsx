@@ -1,4 +1,5 @@
 import NoteEditorHeader from "@/components/NoteEditorHeader";
+import NoteHistoryModal from "@/components/NoteHistoryModal";
 import DrawingCanvas from "@/components/drawing/DrawingCanvas";
 import DrawingToolbar from "@/components/drawing/DrawingToolbar";
 import {
@@ -58,6 +59,8 @@ export default function DrawingEditorView({
 	const [undoStack, setUndoStack] = useState<DrawingDocument[]>([]);
 	const [redoStack, setRedoStack] = useState<DrawingDocument[]>([]);
 	const [contentRevision, setContentRevision] = useState(0);
+	const [isHistoryVisible, setIsHistoryVisible] = useState(false);
+	const [historyNote, setHistoryNote] = useState(note);
 	const documentRef = useRef(document);
 	const contentRef = useRef(serializeDrawingDocument(document));
 	const isLeavingRef = useRef(false);
@@ -188,6 +191,32 @@ export default function DrawingEditorView({
 		setIsPinned((pinned) => !pinned);
 	}, []);
 
+	const handleShowHistory = useCallback(async () => {
+		try {
+			await forceSave();
+			const persisted = await NoteService.loadNote(id);
+			if (persisted) setHistoryNote(persisted);
+			setIsHistoryVisible(true);
+		} catch {
+			showToast("Failed to open version history.");
+		}
+	}, [forceSave, id]);
+
+	const handleRestoreVersion = useCallback(
+		async (versionId: string) => {
+			const restored = await NoteService.restoreNoteVersion(id, versionId);
+			setTitle(restored.title);
+			setIsPinned(restored.isPinned);
+			applyDocument(parseDrawingDocument(restored.content));
+			setUndoStack([]);
+			setRedoStack([]);
+			if (tab) updateTabTitle(tab.id, restored.title);
+			setHistoryNote(restored);
+			showToast("Version restored.");
+		},
+		[applyDocument, id, tab, updateTabTitle],
+	);
+
 	useAppKeyboardShortcuts({ onForceSave: forceSave });
 
 	useEffect(() => {
@@ -251,6 +280,7 @@ export default function DrawingEditorView({
 				onBlurTitle={() => void forceSave()}
 				onSubmitEditing={() => void forceSave()}
 				onBack={() => void handleBack()}
+				onShowHistory={() => void handleShowHistory()}
 				onTogglePin={handleTogglePin}
 				onDelete={() => void handleDelete()}
 			/>
@@ -276,6 +306,12 @@ export default function DrawingEditorView({
 				onCycleBackground={handleCycleBackground}
 				onUndo={handleUndo}
 				onRedo={handleRedo}
+			/>
+			<NoteHistoryModal
+				visible={isHistoryVisible}
+				note={historyNote}
+				onDismiss={() => setIsHistoryVisible(false)}
+				onRestore={handleRestoreVersion}
 			/>
 		</View>
 	);

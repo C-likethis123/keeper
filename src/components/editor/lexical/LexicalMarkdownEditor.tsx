@@ -3,942 +3,970 @@
 import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
+import { NOTES_ROOT, setNotesRoot } from "@/services/notes/Notes";
 import { writeEditorDraft } from "@/services/notes/editorDraftStore";
 import { CollaborationPlugin } from "@lexical/react/LexicalCollaborationPlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { LexicalExtensionComposer } from "@lexical/react/LexicalExtensionComposer";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
+import { LexicalExtensionComposer } from "@lexical/react/LexicalExtensionComposer";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import type { Provider, ProviderAwareness } from "@lexical/yjs";
-import { NOTES_ROOT, setNotesRoot } from "@/services/notes/Notes";
 
 import {
-  $createRangeSelection,
-  $getNodeByKey,
-  $getRoot,
-  $isTextNode,
-  $setSelection,
-  type LexicalEditor,
-  type TextNode,
+	$createRangeSelection,
+	$getNodeByKey,
+	$getRoot,
+	$isTextNode,
+	$setSelection,
+	type LexicalEditor,
+	type TextNode,
 } from "lexical";
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
 } from "react";
 import * as Y from "yjs";
-import {
-  KEEPER_MARKDOWN_TRANSFORMERS,
-  importMarkdownToLexical,
-} from "./markdown";
 import type { LexicalEditorCommand } from "./extensions/CommandExtension";
 import { createKeeperEditorExtension } from "./extensions/KeeperEditorExtension";
 import { KEEPER_EDITOR_NODES } from "./keeperEditorNodes";
 import { KEEPER_EDITOR_THEME } from "./keeperEditorTheme";
+import {
+	KEEPER_MARKDOWN_TRANSFORMERS,
+	importMarkdownToLexical,
+} from "./markdown";
 
 interface LexicalMarkdownEditorProps {
-  command?: LexicalEditorCommand;
-  crdtInitialMarkdown?: string;
-  crdtInitialUpdate?: number[];
-  dom?: import("expo/dom").DOMProps;
-  hasAttachment?: boolean;
-  isNativeDom?: boolean;
-  keyboardHeight?: number;
-  markdown: string;
-  noteId: string;
-  notesRoot?: string;
-  onCrdtUpdate?: (update: number[]) => void | Promise<void>;
-  onMarkdownChange: (markdown: string) => void;
-  onAttachDocument?: () => void;
-  onInsertImage?: () => void;
-  onInsertTemplateCommand?: () => void | Promise<void>;
-  onOpenWikiLink?: (title: string) => void | Promise<void>;
-  onRemoveAttachment?: () => void;
-  onShowVideoModal?: () => void;
-  onToggleActivePanel?: () => void;
-  onToggleArticle?: () => void;
-  onToggleRelatedNotes?: () => void;
-  safeAreaInsets?: {
-    top: number;
-    right: number;
-    bottom: number;
-    left: number;
-  };
-  themeMode: "light" | "dark";
+	accessibilityLabel?: string;
+	autoFocus?: boolean;
+	command?: LexicalEditorCommand;
+	crdtInitialMarkdown?: string;
+	crdtInitialUpdate?: number[];
+	dom?: import("expo/dom").DOMProps;
+	hasAttachment?: boolean;
+	isNativeDom?: boolean;
+	keyboardHeight?: number;
+	markdown: string;
+	noteId: string;
+	notesRoot?: string;
+	onCrdtUpdate?: (update: number[]) => void | Promise<void>;
+	onMarkdownChange: (markdown: string) => void;
+	onAttachDocument?: () => void;
+	onInsertImage?: () => void;
+	onInsertTemplateCommand?: () => void | Promise<void>;
+	onOpenWikiLink?: (title: string) => void | Promise<void>;
+	onRemoveAttachment?: () => void;
+	persistDraft?: boolean;
+	variant?: "full" | "compact";
+	onShowVideoModal?: () => void;
+	onToggleActivePanel?: () => void;
+	onToggleArticle?: () => void;
+	onToggleRelatedNotes?: () => void;
+	safeAreaInsets?: {
+		top: number;
+		right: number;
+		bottom: number;
+		left: number;
+	};
+	themeMode: "light" | "dark";
 }
 
 function createLocalAwareness(): ProviderAwareness {
-  let localState: ReturnType<ProviderAwareness["getLocalState"]> = null;
-  const handlers = new Set<() => void>();
-  return {
-    getLocalState: () => localState,
-    getStates: () => new Map(),
-    off: (_type, cb) => {
-      handlers.delete(cb);
-    },
-    on: (_type, cb) => {
-      handlers.add(cb);
-    },
-    setLocalState: (state) => {
-      localState = state;
-      for (const handler of handlers) {
-        handler();
-      }
-    },
-    setLocalStateField: (field, value) => {
-      localState = { ...(localState ?? {}), [field]: value } as NonNullable<
-        typeof localState
-      >;
-      for (const handler of handlers) {
-        handler();
-      }
-    },
-  };
+	let localState: ReturnType<ProviderAwareness["getLocalState"]> = null;
+	const handlers = new Set<() => void>();
+	return {
+		getLocalState: () => localState,
+		getStates: () => new Map(),
+		off: (_type, cb) => {
+			handlers.delete(cb);
+		},
+		on: (_type, cb) => {
+			handlers.add(cb);
+		},
+		setLocalState: (state) => {
+			localState = state;
+			for (const handler of handlers) {
+				handler();
+			}
+		},
+		setLocalStateField: (field, value) => {
+			localState = { ...(localState ?? {}), [field]: value } as NonNullable<
+				typeof localState
+			>;
+			for (const handler of handlers) {
+				handler();
+			}
+		},
+	};
 }
 
 function createLocalProvider(
-  doc: Y.Doc,
-  onUpdate?: (update: number[]) => void | Promise<void>,
+	doc: Y.Doc,
+	onUpdate?: (update: number[]) => void | Promise<void>,
 ): Provider {
-  const handlers = {
-    reload: new Set<(doc: Y.Doc) => void>(),
-    status: new Set<(status: { status: string }) => void>(),
-    sync: new Set<(isSynced: boolean) => void>(),
-    update: new Set<(arg: unknown) => void>(),
-  };
-  const handleDocUpdate = (update: Uint8Array) => {
-    for (const handler of handlers.update) {
-      handler(update);
-    }
-    void onUpdate?.([...update]);
-  };
-  let isListeningForDocUpdates = false;
-  const attachDocUpdateListener = () => {
-    if (isListeningForDocUpdates) {
-      return;
-    }
-    doc.on("update", handleDocUpdate);
-    isListeningForDocUpdates = true;
-  };
-  const detachDocUpdateListener = () => {
-    if (!isListeningForDocUpdates) {
-      return;
-    }
-    doc.off("update", handleDocUpdate);
-    isListeningForDocUpdates = false;
-  };
+	const handlers = {
+		reload: new Set<(doc: Y.Doc) => void>(),
+		status: new Set<(status: { status: string }) => void>(),
+		sync: new Set<(isSynced: boolean) => void>(),
+		update: new Set<(arg: unknown) => void>(),
+	};
+	const handleDocUpdate = (update: Uint8Array) => {
+		for (const handler of handlers.update) {
+			handler(update);
+		}
+		void onUpdate?.([...update]);
+	};
+	let isListeningForDocUpdates = false;
+	const attachDocUpdateListener = () => {
+		if (isListeningForDocUpdates) {
+			return;
+		}
+		doc.on("update", handleDocUpdate);
+		isListeningForDocUpdates = true;
+	};
+	const detachDocUpdateListener = () => {
+		if (!isListeningForDocUpdates) {
+			return;
+		}
+		doc.off("update", handleDocUpdate);
+		isListeningForDocUpdates = false;
+	};
 
-  return {
-    awareness: createLocalAwareness(),
-    connect: () => {
-      attachDocUpdateListener();
-      for (const handler of handlers.status) {
-        handler({ status: "connected" });
-      }
-      for (const handler of handlers.sync) {
-        handler(true);
-      }
-    },
-    disconnect: () => {
-      detachDocUpdateListener();
-      for (const handler of handlers.status) {
-        handler({ status: "disconnected" });
-      }
-    },
-    off(type, cb) {
-      handlers[type].delete(cb as never);
-    },
-    on(type, cb) {
-      handlers[type].add(cb as never);
-    },
-  };
+	return {
+		awareness: createLocalAwareness(),
+		connect: () => {
+			attachDocUpdateListener();
+			for (const handler of handlers.status) {
+				handler({ status: "connected" });
+			}
+			for (const handler of handlers.sync) {
+				handler(true);
+			}
+		},
+		disconnect: () => {
+			detachDocUpdateListener();
+			for (const handler of handlers.status) {
+				handler({ status: "disconnected" });
+			}
+		},
+		off(type, cb) {
+			handlers[type].delete(cb as never);
+		},
+		on(type, cb) {
+			handlers[type].add(cb as never);
+		},
+	};
 }
 
 function getDomStyleHeight(dom?: LexicalMarkdownEditorProps["dom"]) {
-  const style = dom?.style;
-  if (!Array.isArray(style)) {
-    return undefined;
-  }
-  for (const item of style) {
-    if (item && typeof item === "object" && "height" in item) {
-      return (item as { height?: unknown }).height;
-    }
-  }
-  return undefined;
+	const style = dom?.style;
+	if (!Array.isArray(style)) {
+		return undefined;
+	}
+	for (const item of style) {
+		if (item && typeof item === "object" && "height" in item) {
+			return (item as { height?: unknown }).height;
+		}
+	}
+	return undefined;
 }
 
 function safeAreaInsetsEqual(
-  previous?: LexicalMarkdownEditorProps["safeAreaInsets"],
-  next?: LexicalMarkdownEditorProps["safeAreaInsets"],
+	previous?: LexicalMarkdownEditorProps["safeAreaInsets"],
+	next?: LexicalMarkdownEditorProps["safeAreaInsets"],
 ) {
-  return (
-    previous?.top === next?.top &&
-    previous?.right === next?.right &&
-    previous?.bottom === next?.bottom &&
-    previous?.left === next?.left
-  );
+	return (
+		previous?.top === next?.top &&
+		previous?.right === next?.right &&
+		previous?.bottom === next?.bottom &&
+		previous?.left === next?.left
+	);
 }
 
 function domPropsEqual(
-  previous?: LexicalMarkdownEditorProps["dom"],
-  next?: LexicalMarkdownEditorProps["dom"],
+	previous?: LexicalMarkdownEditorProps["dom"],
+	next?: LexicalMarkdownEditorProps["dom"],
 ) {
-  return (
-    previous?.allowingReadAccessToURL === next?.allowingReadAccessToURL &&
-    previous?.scrollEnabled === next?.scrollEnabled &&
-    getDomStyleHeight(previous) === getDomStyleHeight(next)
-  );
+	return (
+		previous?.allowingReadAccessToURL === next?.allowingReadAccessToURL &&
+		previous?.scrollEnabled === next?.scrollEnabled &&
+		getDomStyleHeight(previous) === getDomStyleHeight(next)
+	);
 }
 
 function editorPropsEqual(
-  previous: LexicalMarkdownEditorProps,
-  next: LexicalMarkdownEditorProps,
+	previous: LexicalMarkdownEditorProps,
+	next: LexicalMarkdownEditorProps,
 ) {
-  return (
-    previous.command === next.command &&
-    previous.crdtInitialMarkdown === next.crdtInitialMarkdown &&
-    previous.crdtInitialUpdate === next.crdtInitialUpdate &&
-    previous.hasAttachment === next.hasAttachment &&
-    previous.isNativeDom === next.isNativeDom &&
-    previous.keyboardHeight === next.keyboardHeight &&
-    previous.markdown === next.markdown &&
-    previous.noteId === next.noteId &&
-    previous.notesRoot === next.notesRoot &&
-    previous.onAttachDocument === next.onAttachDocument &&
-    previous.onCrdtUpdate === next.onCrdtUpdate &&
-    previous.onInsertImage === next.onInsertImage &&
-    previous.onInsertTemplateCommand === next.onInsertTemplateCommand &&
-    previous.onMarkdownChange === next.onMarkdownChange &&
-    previous.onOpenWikiLink === next.onOpenWikiLink &&
-    previous.onRemoveAttachment === next.onRemoveAttachment &&
-    previous.onShowVideoModal === next.onShowVideoModal &&
-    previous.onToggleActivePanel === next.onToggleActivePanel &&
-    previous.onToggleArticle === next.onToggleArticle &&
-    previous.onToggleRelatedNotes === next.onToggleRelatedNotes &&
-    previous.themeMode === next.themeMode &&
-    safeAreaInsetsEqual(previous.safeAreaInsets, next.safeAreaInsets) &&
-    domPropsEqual(previous.dom, next.dom)
-  );
+	return (
+		previous.command === next.command &&
+		previous.accessibilityLabel === next.accessibilityLabel &&
+		previous.autoFocus === next.autoFocus &&
+		previous.crdtInitialMarkdown === next.crdtInitialMarkdown &&
+		previous.crdtInitialUpdate === next.crdtInitialUpdate &&
+		previous.hasAttachment === next.hasAttachment &&
+		previous.isNativeDom === next.isNativeDom &&
+		previous.keyboardHeight === next.keyboardHeight &&
+		previous.markdown === next.markdown &&
+		previous.noteId === next.noteId &&
+		previous.notesRoot === next.notesRoot &&
+		previous.onAttachDocument === next.onAttachDocument &&
+		previous.onCrdtUpdate === next.onCrdtUpdate &&
+		previous.onInsertImage === next.onInsertImage &&
+		previous.onInsertTemplateCommand === next.onInsertTemplateCommand &&
+		previous.onMarkdownChange === next.onMarkdownChange &&
+		previous.onOpenWikiLink === next.onOpenWikiLink &&
+		previous.onRemoveAttachment === next.onRemoveAttachment &&
+		previous.persistDraft === next.persistDraft &&
+		previous.onShowVideoModal === next.onShowVideoModal &&
+		previous.onToggleActivePanel === next.onToggleActivePanel &&
+		previous.onToggleArticle === next.onToggleArticle &&
+		previous.onToggleRelatedNotes === next.onToggleRelatedNotes &&
+		previous.themeMode === next.themeMode &&
+		previous.variant === next.variant &&
+		safeAreaInsetsEqual(previous.safeAreaInsets, next.safeAreaInsets) &&
+		domPropsEqual(previous.dom, next.dom)
+	);
 }
 
-function EmptyPlaceholder() {
-  const [editor] = useLexicalComposerContext();
-  const [isEmpty, setIsEmpty] = useState(true);
+function EmptyPlaceholder({ text = "Start writing" }: { text?: string }) {
+	const [editor] = useLexicalComposerContext();
+	const [isEmpty, setIsEmpty] = useState(true);
 
-  useEffect(() => {
-    editor.getEditorState().read(() => {
-      setIsEmpty($getRoot().isEmpty());
-    });
+	useEffect(() => {
+		editor.getEditorState().read(() => {
+			setIsEmpty($getRoot().isEmpty());
+		});
 
-    return editor.registerUpdateListener(({ editorState }) => {
-      editorState.read(() => {
-        setIsEmpty($getRoot().isEmpty());
-      });
-    });
-  }, [editor]);
+		return editor.registerUpdateListener(({ editorState }) => {
+			editorState.read(() => {
+				setIsEmpty($getRoot().isEmpty());
+			});
+		});
+	}, [editor]);
 
-  if (!isEmpty) {
-    return null;
-  }
+	if (!isEmpty) {
+		return null;
+	}
 
-  return <div className="keeper-placeholder">Start writing</div>;
+	return <div className="keeper-placeholder">{text}</div>;
 }
 
 interface FindMatch {
-  anchorKey: string;
-  anchorOffset: number;
-  focusKey: string;
-  focusOffset: number;
+	anchorKey: string;
+	anchorOffset: number;
+	focusKey: string;
+	focusOffset: number;
 }
 
 interface CssHighlightRegistry {
-  delete: (name: string) => boolean;
-  set: (name: string, highlight: unknown) => void;
+	delete: (name: string) => boolean;
+	set: (name: string, highlight: unknown) => void;
 }
 
 const FIND_ACTIVE_HIGHLIGHT_NAME = "keeper-find-active-match";
 const FIND_HIGHLIGHT_NAME = "keeper-find-match";
 
 interface TextSegment {
-  end: number;
-  node: TextNode;
-  start: number;
+	end: number;
+	node: TextNode;
+	start: number;
 }
 
 function escapeRegex(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function resolveTextPoint(segments: TextSegment[], offset: number) {
-  for (const segment of segments) {
-    if (offset >= segment.start && offset <= segment.end) {
-      return {
-        key: segment.node.getKey(),
-        offset: Math.min(offset - segment.start, segment.node.getTextContentSize()),
-      };
-    }
-  }
+	for (const segment of segments) {
+		if (offset >= segment.start && offset <= segment.end) {
+			return {
+				key: segment.node.getKey(),
+				offset: Math.min(
+					offset - segment.start,
+					segment.node.getTextContentSize(),
+				),
+			};
+		}
+	}
 
-  const lastSegment = segments[segments.length - 1];
-  return lastSegment
-    ? {
-        key: lastSegment.node.getKey(),
-        offset: lastSegment.node.getTextContentSize(),
-      }
-    : null;
+	const lastSegment = segments[segments.length - 1];
+	return lastSegment
+		? {
+				key: lastSegment.node.getKey(),
+				offset: lastSegment.node.getTextContentSize(),
+			}
+		: null;
 }
 
 function collectFindMatches(
-  editor: LexicalEditor,
-  query: string,
-  matchCase: boolean,
+	editor: LexicalEditor,
+	query: string,
+	matchCase: boolean,
 ) {
-  if (!query) {
-    return [];
-  }
+	if (!query) {
+		return [];
+	}
 
-  const matches: FindMatch[] = [];
-  editor.getEditorState().read(() => {
-    const segments: TextSegment[] = [];
-    let content = "";
+	const matches: FindMatch[] = [];
+	editor.getEditorState().read(() => {
+		const segments: TextSegment[] = [];
+		let content = "";
 
-    for (const node of $getRoot().getAllTextNodes()) {
-      const text = node.getTextContent();
-      if (!text) {
-        continue;
-      }
-      const start = content.length;
-      content += text;
-      segments.push({ end: content.length, node, start });
-    }
+		for (const node of $getRoot().getAllTextNodes()) {
+			const text = node.getTextContent();
+			if (!text) {
+				continue;
+			}
+			const start = content.length;
+			content += text;
+			segments.push({ end: content.length, node, start });
+		}
 
-    if (!content || segments.length === 0) {
-      return;
-    }
+		if (!content || segments.length === 0) {
+			return;
+		}
 
-    const flags = matchCase ? "g" : "gi";
-    const expression = new RegExp(escapeRegex(query), flags);
-    for (const match of content.matchAll(expression)) {
-      const start = match.index ?? 0;
-      const end = start + query.length;
-      const anchor = resolveTextPoint(segments, start);
-      const focus = resolveTextPoint(segments, end);
-      if (!anchor || !focus) {
-        continue;
-      }
-      matches.push({
-        anchorKey: anchor.key,
-        anchorOffset: anchor.offset,
-        focusKey: focus.key,
-        focusOffset: focus.offset,
-      });
-    }
-  });
+		const flags = matchCase ? "g" : "gi";
+		const expression = new RegExp(escapeRegex(query), flags);
+		for (const match of content.matchAll(expression)) {
+			const start = match.index ?? 0;
+			const end = start + query.length;
+			const anchor = resolveTextPoint(segments, start);
+			const focus = resolveTextPoint(segments, end);
+			if (!anchor || !focus) {
+				continue;
+			}
+			matches.push({
+				anchorKey: anchor.key,
+				anchorOffset: anchor.offset,
+				focusKey: focus.key,
+				focusOffset: focus.offset,
+			});
+		}
+	});
 
-  return matches;
+	return matches;
 }
 
 function getCssHighlightRegistry() {
-  const css = globalThis.CSS as (typeof CSS & {
-    highlights?: CssHighlightRegistry;
-  }) | null;
-  const HighlightConstructor = (
-    globalThis as typeof globalThis & {
-      Highlight?: new (...ranges: Range[]) => unknown;
-    }
-  ).Highlight;
+	const css = globalThis.CSS as
+		| (typeof CSS & {
+				highlights?: CssHighlightRegistry;
+		  })
+		| null;
+	const HighlightConstructor = (
+		globalThis as typeof globalThis & {
+			Highlight?: new (...ranges: Range[]) => unknown;
+		}
+	).Highlight;
 
-  if (!css?.highlights || !HighlightConstructor) {
-    return null;
-  }
+	if (!css?.highlights || !HighlightConstructor) {
+		return null;
+	}
 
-  return { HighlightConstructor, highlights: css.highlights };
+	return { HighlightConstructor, highlights: css.highlights };
 }
 
 function clearFindHighlights() {
-  const registry = getCssHighlightRegistry();
-  if (!registry) {
-    return;
-  }
+	const registry = getCssHighlightRegistry();
+	if (!registry) {
+		return;
+	}
 
-  registry.highlights.delete(FIND_HIGHLIGHT_NAME);
-  registry.highlights.delete(FIND_ACTIVE_HIGHLIGHT_NAME);
+	registry.highlights.delete(FIND_HIGHLIGHT_NAME);
+	registry.highlights.delete(FIND_ACTIVE_HIGHLIGHT_NAME);
 }
 
 function resolveDomTextPoint(
-  element: HTMLElement | null,
-  offset: number,
+	element: HTMLElement | null,
+	offset: number,
 ): { node: Text; offset: number } | null {
-  if (!element) {
-    return null;
-  }
+	if (!element) {
+		return null;
+	}
 
-  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-  let remaining = offset;
-  let current = walker.nextNode();
-  while (current) {
-    const textNode = current as Text;
-    const length = textNode.data.length;
-    if (remaining <= length) {
-      return { node: textNode, offset: remaining };
-    }
-    remaining -= length;
-    current = walker.nextNode();
-  }
+	const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+	let remaining = offset;
+	let current = walker.nextNode();
+	while (current) {
+		const textNode = current as Text;
+		const length = textNode.data.length;
+		if (remaining <= length) {
+			return { node: textNode, offset: remaining };
+		}
+		remaining -= length;
+		current = walker.nextNode();
+	}
 
-  return null;
+	return null;
 }
 
 function createDomRange(editor: LexicalEditor, match: FindMatch) {
-  const anchor = resolveDomTextPoint(
-    editor.getElementByKey(match.anchorKey),
-    match.anchorOffset,
-  );
-  const focus = resolveDomTextPoint(
-    editor.getElementByKey(match.focusKey),
-    match.focusOffset,
-  );
-  if (!anchor || !focus) {
-    return null;
-  }
+	const anchor = resolveDomTextPoint(
+		editor.getElementByKey(match.anchorKey),
+		match.anchorOffset,
+	);
+	const focus = resolveDomTextPoint(
+		editor.getElementByKey(match.focusKey),
+		match.focusOffset,
+	);
+	if (!anchor || !focus) {
+		return null;
+	}
 
-  const range = document.createRange();
-  range.setStart(anchor.node, anchor.offset);
-  range.setEnd(focus.node, focus.offset);
-  return range;
+	const range = document.createRange();
+	range.setStart(anchor.node, anchor.offset);
+	range.setEnd(focus.node, focus.offset);
+	return range;
 }
 
 function paintFindHighlights(
-  editor: LexicalEditor,
-  matches: FindMatch[],
-  activeIndex: number,
+	editor: LexicalEditor,
+	matches: FindMatch[],
+	activeIndex: number,
 ) {
-  const registry = getCssHighlightRegistry();
-  if (!registry) {
-    return;
-  }
+	const registry = getCssHighlightRegistry();
+	if (!registry) {
+		return;
+	}
 
-  if (matches.length === 0) {
-    clearFindHighlights();
-    return;
-  }
+	if (matches.length === 0) {
+		clearFindHighlights();
+		return;
+	}
 
-  const ranges = matches
-    .map((match) => createDomRange(editor, match))
-    .filter((range): range is Range => range !== null);
-  const activeMatch = matches[Math.min(activeIndex, matches.length - 1)];
-  const activeRange = activeMatch ? createDomRange(editor, activeMatch) : null;
+	const ranges = matches
+		.map((match) => createDomRange(editor, match))
+		.filter((range): range is Range => range !== null);
+	const activeMatch = matches[Math.min(activeIndex, matches.length - 1)];
+	const activeRange = activeMatch ? createDomRange(editor, activeMatch) : null;
 
-  registry.highlights.set(
-    FIND_HIGHLIGHT_NAME,
-    new registry.HighlightConstructor(...ranges),
-  );
-  if (activeRange) {
-    registry.highlights.set(
-      FIND_ACTIVE_HIGHLIGHT_NAME,
-      new registry.HighlightConstructor(activeRange),
-    );
-  } else {
-    registry.highlights.delete(FIND_ACTIVE_HIGHLIGHT_NAME);
-  }
+	registry.highlights.set(
+		FIND_HIGHLIGHT_NAME,
+		new registry.HighlightConstructor(...ranges),
+	);
+	if (activeRange) {
+		registry.highlights.set(
+			FIND_ACTIVE_HIGHLIGHT_NAME,
+			new registry.HighlightConstructor(activeRange),
+		);
+	} else {
+		registry.highlights.delete(FIND_ACTIVE_HIGHLIGHT_NAME);
+	}
 }
 
 function findMatchesEqual(left: FindMatch[], right: FindMatch[]) {
-  if (left.length !== right.length) {
-    return false;
-  }
+	if (left.length !== right.length) {
+		return false;
+	}
 
-  return left.every((match, index) => {
-    const other = right[index];
-    return (
-      match.anchorKey === other.anchorKey &&
-      match.anchorOffset === other.anchorOffset &&
-      match.focusKey === other.focusKey &&
-      match.focusOffset === other.focusOffset
-    );
-  });
+	return left.every((match, index) => {
+		const other = right[index];
+		return (
+			match.anchorKey === other.anchorKey &&
+			match.anchorOffset === other.anchorOffset &&
+			match.focusKey === other.focusKey &&
+			match.focusOffset === other.focusOffset
+		);
+	});
 }
 
 function scrollSelectionIntoView() {
-  requestAnimationFrame(() => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-      return;
-    }
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    if (rect.height > 0 || rect.width > 0) {
-      window.scrollBy({
-        top: rect.top - window.innerHeight / 3,
-        behavior: "smooth",
-      });
-    }
-  });
+	requestAnimationFrame(() => {
+		const selection = window.getSelection();
+		if (!selection || selection.rangeCount === 0) {
+			return;
+		}
+		const range = selection.getRangeAt(0);
+		const rect = range.getBoundingClientRect();
+		if (rect.height > 0 || rect.width > 0) {
+			window.scrollBy({
+				top: rect.top - window.innerHeight / 3,
+				behavior: "smooth",
+			});
+		}
+	});
 }
 
 function scrollFindMatchIntoView(
-  editor: LexicalEditor,
-  match: FindMatch | undefined,
+	editor: LexicalEditor,
+	match: FindMatch | undefined,
 ) {
-  if (!match) {
-    return;
-  }
+	if (!match) {
+		return;
+	}
 
-  requestAnimationFrame(() => {
-    editor.getElementByKey(match.anchorKey)?.scrollIntoView({
-      block: "center",
-      inline: "nearest",
-      behavior: "smooth",
-    });
-  });
+	requestAnimationFrame(() => {
+		editor.getElementByKey(match.anchorKey)?.scrollIntoView({
+			block: "center",
+			inline: "nearest",
+			behavior: "smooth",
+		});
+	});
 }
 
 function selectFindMatch(
-  editor: LexicalEditor,
-  match: FindMatch | undefined,
-  options: { focusEditor?: boolean } = { focusEditor: true },
+	editor: LexicalEditor,
+	match: FindMatch | undefined,
+	options: { focusEditor?: boolean } = { focusEditor: true },
 ) {
-  if (!match) {
-    return;
-  }
+	if (!match) {
+		return;
+	}
 
-  editor.update(() => {
-    const anchorNode = $getNodeByKey(match.anchorKey);
-    const focusNode = $getNodeByKey(match.focusKey);
-    if (!$isTextNode(anchorNode) || !$isTextNode(focusNode)) {
-      return;
-    }
+	editor.update(() => {
+		const anchorNode = $getNodeByKey(match.anchorKey);
+		const focusNode = $getNodeByKey(match.focusKey);
+		if (!$isTextNode(anchorNode) || !$isTextNode(focusNode)) {
+			return;
+		}
 
-    const selection = $createRangeSelection();
-    selection.setTextNodeRange(
-      anchorNode,
-      match.anchorOffset,
-      focusNode,
-      match.focusOffset,
-    );
-    $setSelection(selection);
-  });
-  if (options.focusEditor) {
-    editor.focus();
-  }
-  scrollSelectionIntoView();
+		const selection = $createRangeSelection();
+		selection.setTextNodeRange(
+			anchorNode,
+			match.anchorOffset,
+			focusNode,
+			match.focusOffset,
+		);
+		$setSelection(selection);
+	});
+	if (options.focusEditor) {
+		editor.focus();
+	}
+	scrollSelectionIntoView();
 }
 
 function replaceFindMatch(
-  editor: LexicalEditor,
-  match: FindMatch | undefined,
-  replacement: string,
+	editor: LexicalEditor,
+	match: FindMatch | undefined,
+	replacement: string,
 ) {
-  if (!match) {
-    return;
-  }
+	if (!match) {
+		return;
+	}
 
-  editor.update(
-    () => {
-      const anchorNode = $getNodeByKey(match.anchorKey);
-      const focusNode = $getNodeByKey(match.focusKey);
-      if (!$isTextNode(anchorNode) || !$isTextNode(focusNode)) {
-        return;
-      }
+	editor.update(
+		() => {
+			const anchorNode = $getNodeByKey(match.anchorKey);
+			const focusNode = $getNodeByKey(match.focusKey);
+			if (!$isTextNode(anchorNode) || !$isTextNode(focusNode)) {
+				return;
+			}
 
-      if (anchorNode.is(focusNode)) {
-        const text = anchorNode.getTextContent();
-        anchorNode.setTextContent(
-          `${text.slice(0, match.anchorOffset)}${replacement}${text.slice(
-            match.focusOffset,
-          )}`,
-        );
-        return;
-      }
+			if (anchorNode.is(focusNode)) {
+				const text = anchorNode.getTextContent();
+				anchorNode.setTextContent(
+					`${text.slice(0, match.anchorOffset)}${replacement}${text.slice(
+						match.focusOffset,
+					)}`,
+				);
+				return;
+			}
 
-      const firstText = anchorNode.getTextContent();
-      const lastText = focusNode.getTextContent();
-      anchorNode.setTextContent(
-        `${firstText.slice(0, match.anchorOffset)}${replacement}${lastText.slice(
-          match.focusOffset,
-        )}`,
-      );
-      let nextSibling = anchorNode.getNextSibling();
-      while (nextSibling && !nextSibling.is(focusNode)) {
-        const current = nextSibling;
-        nextSibling = current.getNextSibling();
-        current.remove();
-      }
-      focusNode.remove();
-    },
-    { discrete: true },
-  );
+			const firstText = anchorNode.getTextContent();
+			const lastText = focusNode.getTextContent();
+			anchorNode.setTextContent(
+				`${firstText.slice(0, match.anchorOffset)}${replacement}${lastText.slice(
+					match.focusOffset,
+				)}`,
+			);
+			let nextSibling = anchorNode.getNextSibling();
+			while (nextSibling && !nextSibling.is(focusNode)) {
+				const current = nextSibling;
+				nextSibling = current.getNextSibling();
+				current.remove();
+			}
+			focusNode.remove();
+		},
+		{ discrete: true },
+	);
 }
 
 function FindReplaceBar({ command }: { command?: LexicalEditorCommand }) {
-  const [editor] = useLexicalComposerContext();
-  const [isOpen, setIsOpen] = useState(false);
-  const [isReplaceOpen, setIsReplaceOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [replacement, setReplacement] = useState("");
-  const [matchCase, setMatchCase] = useState(false);
-  const [matches, setMatches] = useState<FindMatch[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const findInputRef = useRef<HTMLInputElement | null>(null);
+	const [editor] = useLexicalComposerContext();
+	const [isOpen, setIsOpen] = useState(false);
+	const [isReplaceOpen, setIsReplaceOpen] = useState(false);
+	const [query, setQuery] = useState("");
+	const [replacement, setReplacement] = useState("");
+	const [matchCase, setMatchCase] = useState(false);
+	const [matches, setMatches] = useState<FindMatch[]>([]);
+	const [activeIndex, setActiveIndex] = useState(0);
+	const findInputRef = useRef<HTMLInputElement | null>(null);
 
-  const refreshMatches = useCallback(() => {
-    const nextMatches = collectFindMatches(editor, query, matchCase);
-    setMatches((current) =>
-      findMatchesEqual(current, nextMatches) ? current : nextMatches,
-    );
-    setActiveIndex((current) =>
-      nextMatches.length === 0 ? 0 : Math.min(current, nextMatches.length - 1),
-    );
-  }, [editor, matchCase, query]);
+	const refreshMatches = useCallback(() => {
+		const nextMatches = collectFindMatches(editor, query, matchCase);
+		setMatches((current) =>
+			findMatchesEqual(current, nextMatches) ? current : nextMatches,
+		);
+		setActiveIndex((current) =>
+			nextMatches.length === 0 ? 0 : Math.min(current, nextMatches.length - 1),
+		);
+	}, [editor, matchCase, query]);
 
-  useEffect(() => {
-    refreshMatches();
-    return editor.registerUpdateListener(() => {
-      refreshMatches();
-    });
-  }, [editor, refreshMatches]);
+	useEffect(() => {
+		refreshMatches();
+		return editor.registerUpdateListener(() => {
+			refreshMatches();
+		});
+	}, [editor, refreshMatches]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    findInputRef.current?.focus();
-    findInputRef.current?.select();
-  }, [isOpen]);
+	useEffect(() => {
+		if (!isOpen) {
+			return;
+		}
+		findInputRef.current?.focus();
+		findInputRef.current?.select();
+	}, [isOpen]);
 
-  useEffect(() => {
-    if (command?.type !== "openFindReplace") {
-      return;
-    }
-    setIsOpen(true);
-    setIsReplaceOpen(command.payload?.replace === true);
-  }, [command]);
+	useEffect(() => {
+		if (command?.type !== "openFindReplace") {
+			return;
+		}
+		setIsOpen(true);
+		setIsReplaceOpen(command.payload?.replace === true);
+	}, [command]);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isOpen) {
-        return;
-      }
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (!isOpen) {
+				return;
+			}
 
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setIsOpen(false);
-        editor.focus();
-      }
-    };
+			if (event.key === "Escape") {
+				event.preventDefault();
+				setIsOpen(false);
+				editor.focus();
+			}
+		};
 
-    document.addEventListener("keydown", handleKeyDown, true);
-    return () => document.removeEventListener("keydown", handleKeyDown, true);
-  }, [editor, isOpen]);
+		document.addEventListener("keydown", handleKeyDown, true);
+		return () => document.removeEventListener("keydown", handleKeyDown, true);
+	}, [editor, isOpen]);
 
-  const goToMatch = useCallback(
-    (direction: 1 | -1) => {
-      if (matches.length === 0) {
-        return;
-      }
-      const nextIndex =
-        (activeIndex + direction + matches.length) % matches.length;
-      setActiveIndex(nextIndex);
-      scrollFindMatchIntoView(editor, matches[nextIndex]);
-    },
-    [activeIndex, editor, matches],
-  );
+	const goToMatch = useCallback(
+		(direction: 1 | -1) => {
+			if (matches.length === 0) {
+				return;
+			}
+			const nextIndex =
+				(activeIndex + direction + matches.length) % matches.length;
+			setActiveIndex(nextIndex);
+			scrollFindMatchIntoView(editor, matches[nextIndex]);
+		},
+		[activeIndex, editor, matches],
+	);
 
-  const replaceCurrent = useCallback(() => {
-    const match = matches[activeIndex];
-    replaceFindMatch(editor, match, replacement);
-    setTimeout(() => {
-      const nextMatches = collectFindMatches(editor, query, matchCase);
-      setMatches(nextMatches);
-      setActiveIndex((current) =>
-        nextMatches.length === 0 ? 0 : Math.min(current, nextMatches.length - 1),
-      );
-    }, 0);
-  }, [activeIndex, editor, matchCase, matches, query, replacement]);
+	const replaceCurrent = useCallback(() => {
+		const match = matches[activeIndex];
+		replaceFindMatch(editor, match, replacement);
+		setTimeout(() => {
+			const nextMatches = collectFindMatches(editor, query, matchCase);
+			setMatches(nextMatches);
+			setActiveIndex((current) =>
+				nextMatches.length === 0
+					? 0
+					: Math.min(current, nextMatches.length - 1),
+			);
+		}, 0);
+	}, [activeIndex, editor, matchCase, matches, query, replacement]);
 
-  const replaceAll = useCallback(() => {
-    for (let index = matches.length - 1; index >= 0; index -= 1) {
-      replaceFindMatch(editor, matches[index], replacement);
-    }
-    setMatches([]);
-    setActiveIndex(0);
-  }, [editor, matches, replacement]);
+	const replaceAll = useCallback(() => {
+		for (let index = matches.length - 1; index >= 0; index -= 1) {
+			replaceFindMatch(editor, matches[index], replacement);
+		}
+		setMatches([]);
+		setActiveIndex(0);
+	}, [editor, matches, replacement]);
 
-  useEffect(() => {
-    if (!isOpen || !query) {
-      clearFindHighlights();
-      return;
-    }
+	useEffect(() => {
+		if (!isOpen || !query) {
+			clearFindHighlights();
+			return;
+		}
 
-    paintFindHighlights(editor, matches, activeIndex);
-    return clearFindHighlights;
-  }, [activeIndex, editor, isOpen, matches, query]);
+		paintFindHighlights(editor, matches, activeIndex);
+		return clearFindHighlights;
+	}, [activeIndex, editor, isOpen, matches, query]);
 
-  if (!isOpen) {
-    return null;
-  }
+	if (!isOpen) {
+		return null;
+	}
 
-  const hasMatches = matches.length > 0;
+	const hasMatches = matches.length > 0;
 
-  return (
-    <div className="keeper-find-panel">
-      <div className="keeper-find-row">
-        <button
-          aria-label={isReplaceOpen ? "Hide replace" : "Show replace"}
-          className="keeper-find-icon-button"
-          onClick={() => setIsReplaceOpen((value) => !value)}
-          type="button"
-        >
-          {isReplaceOpen ? "⌄" : "›"}
-        </button>
-        <input
-          ref={findInputRef}
-          aria-label="Find"
-          className="keeper-find-input"
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setActiveIndex(0);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              goToMatch(event.shiftKey ? -1 : 1);
-            }
-          }}
-          placeholder="Find"
-          value={query}
-        />
-        <span className="keeper-find-count">
-          {query ? (hasMatches ? `${activeIndex + 1}/${matches.length}` : "0/0") : ""}
-        </span>
-        <button
-          aria-label="Match case"
-          className={`keeper-find-text-button ${matchCase ? "keeper-find-active" : ""}`}
-          onClick={() => setMatchCase((value) => !value)}
-          type="button"
-        >
-          Aa
-        </button>
-        <button
-          aria-label="Previous match"
-          className="keeper-find-icon-button"
-          disabled={!hasMatches}
-          onClick={() => goToMatch(-1)}
-          type="button"
-        >
-          ↑
-        </button>
-        <button
-          aria-label="Next match"
-          className="keeper-find-icon-button"
-          disabled={!hasMatches}
-          onClick={() => goToMatch(1)}
-          type="button"
-        >
-          ↓
-        </button>
-        <button
-          aria-label="Close find"
-          className="keeper-find-icon-button"
-          onClick={() => {
-            setIsOpen(false);
-            editor.focus();
-          }}
-          type="button"
-        >
-          ×
-        </button>
-      </div>
-      {isReplaceOpen ? (
-        <div className="keeper-find-row">
-          <span className="keeper-find-spacer" />
-          <input
-            aria-label="Replace"
-            className="keeper-find-input"
-            onChange={(event) => setReplacement(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                replaceCurrent();
-              }
-            }}
-            placeholder="Replace"
-            value={replacement}
-          />
-          <button
-            className="keeper-find-replace-button"
-            disabled={!hasMatches}
-            onClick={replaceCurrent}
-            type="button"
-          >
-            Replace
-          </button>
-          <button
-            className="keeper-find-replace-button"
-            disabled={!hasMatches}
-            onClick={replaceAll}
-            type="button"
-          >
-            All
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
+	return (
+		<div className="keeper-find-panel">
+			<div className="keeper-find-row">
+				<button
+					aria-label={isReplaceOpen ? "Hide replace" : "Show replace"}
+					className="keeper-find-icon-button"
+					onClick={() => setIsReplaceOpen((value) => !value)}
+					type="button"
+				>
+					{isReplaceOpen ? "⌄" : "›"}
+				</button>
+				<input
+					ref={findInputRef}
+					aria-label="Find"
+					className="keeper-find-input"
+					onChange={(event) => {
+						setQuery(event.target.value);
+						setActiveIndex(0);
+					}}
+					onKeyDown={(event) => {
+						if (event.key === "Enter") {
+							event.preventDefault();
+							goToMatch(event.shiftKey ? -1 : 1);
+						}
+					}}
+					placeholder="Find"
+					value={query}
+				/>
+				<span className="keeper-find-count">
+					{query
+						? hasMatches
+							? `${activeIndex + 1}/${matches.length}`
+							: "0/0"
+						: ""}
+				</span>
+				<button
+					aria-label="Match case"
+					className={`keeper-find-text-button ${matchCase ? "keeper-find-active" : ""}`}
+					onClick={() => setMatchCase((value) => !value)}
+					type="button"
+				>
+					Aa
+				</button>
+				<button
+					aria-label="Previous match"
+					className="keeper-find-icon-button"
+					disabled={!hasMatches}
+					onClick={() => goToMatch(-1)}
+					type="button"
+				>
+					↑
+				</button>
+				<button
+					aria-label="Next match"
+					className="keeper-find-icon-button"
+					disabled={!hasMatches}
+					onClick={() => goToMatch(1)}
+					type="button"
+				>
+					↓
+				</button>
+				<button
+					aria-label="Close find"
+					className="keeper-find-icon-button"
+					onClick={() => {
+						setIsOpen(false);
+						editor.focus();
+					}}
+					type="button"
+				>
+					×
+				</button>
+			</div>
+			{isReplaceOpen ? (
+				<div className="keeper-find-row">
+					<span className="keeper-find-spacer" />
+					<input
+						aria-label="Replace"
+						className="keeper-find-input"
+						onChange={(event) => setReplacement(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key === "Enter") {
+								event.preventDefault();
+								replaceCurrent();
+							}
+						}}
+						placeholder="Replace"
+						value={replacement}
+					/>
+					<button
+						className="keeper-find-replace-button"
+						disabled={!hasMatches}
+						onClick={replaceCurrent}
+						type="button"
+					>
+						Replace
+					</button>
+					<button
+						className="keeper-find-replace-button"
+						disabled={!hasMatches}
+						onClick={replaceAll}
+						type="button"
+					>
+						All
+					</button>
+				</div>
+			) : null}
+		</div>
+	);
 }
 
 function useLatestGetter<T>(value: T) {
-  const ref = useRef(value);
+	const ref = useRef(value);
 
-  useEffect(() => {
-    ref.current = value;
-  }, [value]);
+	useEffect(() => {
+		ref.current = value;
+	}, [value]);
 
-  return useCallback(() => ref.current, []);
+	return useCallback(() => ref.current, []);
 }
 
 function LexicalMarkdownEditor({
-  command,
-  crdtInitialMarkdown,
-  crdtInitialUpdate,
-  hasAttachment = false,
-  isNativeDom = false,
-  keyboardHeight = 0,
-  markdown,
-  noteId,
-  notesRoot,
-  onAttachDocument,
-  onCrdtUpdate,
-  onInsertImage,
-  onMarkdownChange,
-  onInsertTemplateCommand,
-  onOpenWikiLink,
-  onRemoveAttachment,
-  onShowVideoModal,
-  onToggleActivePanel,
-  onToggleArticle,
-  onToggleRelatedNotes,
-  safeAreaInsets,
-  themeMode,
+	accessibilityLabel,
+	autoFocus = true,
+	command,
+	crdtInitialMarkdown,
+	crdtInitialUpdate,
+	hasAttachment = false,
+	isNativeDom = false,
+	keyboardHeight = 0,
+	markdown,
+	noteId,
+	notesRoot,
+	onAttachDocument,
+	onCrdtUpdate,
+	onInsertImage,
+	onMarkdownChange,
+	onInsertTemplateCommand,
+	onOpenWikiLink,
+	onRemoveAttachment,
+	persistDraft = true,
+	onShowVideoModal,
+	onToggleActivePanel,
+	onToggleArticle,
+	onToggleRelatedNotes,
+	safeAreaInsets,
+	themeMode,
+	variant = "full",
 }: LexicalMarkdownEditorProps) {
-  if (notesRoot && NOTES_ROOT !== notesRoot) {
-    setNotesRoot(notesRoot);
-  }
+	if (notesRoot && NOTES_ROOT !== notesRoot) {
+		setNotesRoot(notesRoot);
+	}
 
-  const palette = themeMode === "light" ? lightTheme.colors : darkTheme.colors;
-  const editorContentElementRef = useRef<HTMLDivElement | null>(null);
-  const hasCrdtState = (crdtInitialUpdate?.length ?? 0) > 0;
-  const initialMarkdownRef = useRef(crdtInitialMarkdown ?? markdown);
-  const commandRef = useRef<LexicalEditorCommand | undefined>(command);
-  const crdtDocRef = useRef<Y.Doc | null>(null);
-  if (hasCrdtState && crdtDocRef.current === null) {
-    const doc = new Y.Doc();
-    Y.applyUpdate(doc, Uint8Array.from(crdtInitialUpdate ?? []));
-    crdtDocRef.current = doc;
-  }
-  const crdtProviderFactory = useMemo(() => {
-    const doc = crdtDocRef.current;
-    if (!doc || !hasCrdtState) {
-      return null;
-    }
-    return (id: string, yjsDocMap: Map<string, Y.Doc>) => {
-      yjsDocMap.set(id, doc);
-      return createLocalProvider(doc, onCrdtUpdate);
-    };
-  }, [hasCrdtState, onCrdtUpdate]);
-  const handleMarkdownChange = useCallback(
-    (nextMarkdown: string) => {
-      writeEditorDraft(noteId, nextMarkdown);
-      onMarkdownChange(nextMarkdown);
-    },
-    [noteId, onMarkdownChange],
-  );
-  const getOnMarkdownChange = useLatestGetter(handleMarkdownChange);
-  const getOnInsertTemplateCommand = useLatestGetter(onInsertTemplateCommand);
-  const getOnOpenWikiLink = useLatestGetter(onOpenWikiLink);
-  const getHasAttachment = useLatestGetter(hasAttachment ?? false);
-  const getOnAttachDocument = useLatestGetter(onAttachDocument);
-  const getOnInsertImage = useLatestGetter(onInsertImage);
-  const getOnRemoveAttachment = useLatestGetter(onRemoveAttachment);
-  const getOnShowVideoModal = useLatestGetter(onShowVideoModal);
-  const getOnToggleActivePanel = useLatestGetter(onToggleActivePanel);
-  const getOnToggleArticle = useLatestGetter(onToggleArticle);
-  const getOnToggleRelatedNotes = useLatestGetter(onToggleRelatedNotes);
-  const setEditorContentElement = useCallback(
-    (element: HTMLDivElement | null) => {
-      editorContentElementRef.current = element;
-    },
-    [],
-  );
+	const palette = themeMode === "light" ? lightTheme.colors : darkTheme.colors;
+	const editorContentElementRef = useRef<HTMLDivElement | null>(null);
+	const hasCrdtState = (crdtInitialUpdate?.length ?? 0) > 0;
+	const initialMarkdownRef = useRef(crdtInitialMarkdown ?? markdown);
+	const commandRef = useRef<LexicalEditorCommand | undefined>(command);
+	const crdtDocRef = useRef<Y.Doc | null>(null);
+	if (hasCrdtState && crdtDocRef.current === null) {
+		const doc = new Y.Doc();
+		Y.applyUpdate(doc, Uint8Array.from(crdtInitialUpdate ?? []));
+		crdtDocRef.current = doc;
+	}
+	const crdtProviderFactory = useMemo(() => {
+		const doc = crdtDocRef.current;
+		if (!doc || !hasCrdtState) {
+			return null;
+		}
+		return (id: string, yjsDocMap: Map<string, Y.Doc>) => {
+			yjsDocMap.set(id, doc);
+			return createLocalProvider(doc, onCrdtUpdate);
+		};
+	}, [hasCrdtState, onCrdtUpdate]);
+	const handleMarkdownChange = useCallback(
+		(nextMarkdown: string) => {
+			if (persistDraft) {
+				writeEditorDraft(noteId, nextMarkdown);
+			}
+			onMarkdownChange(nextMarkdown);
+		},
+		[noteId, onMarkdownChange, persistDraft],
+	);
+	const getOnMarkdownChange = useLatestGetter(handleMarkdownChange);
+	const getOnInsertTemplateCommand = useLatestGetter(onInsertTemplateCommand);
+	const getOnOpenWikiLink = useLatestGetter(onOpenWikiLink);
+	const getHasAttachment = useLatestGetter(hasAttachment ?? false);
+	const getOnAttachDocument = useLatestGetter(onAttachDocument);
+	const getOnInsertImage = useLatestGetter(onInsertImage);
+	const getOnRemoveAttachment = useLatestGetter(onRemoveAttachment);
+	const getOnShowVideoModal = useLatestGetter(onShowVideoModal);
+	const getOnToggleActivePanel = useLatestGetter(onToggleActivePanel);
+	const getOnToggleArticle = useLatestGetter(onToggleArticle);
+	const getOnToggleRelatedNotes = useLatestGetter(onToggleRelatedNotes);
+	const setEditorContentElement = useCallback(
+		(element: HTMLDivElement | null) => {
+			editorContentElementRef.current = element;
+		},
+		[],
+	);
 
-  useEffect(() => {
-    commandRef.current = command;
-    flushAllPendingEditorDispatches();
-  }, [command]);
+	useEffect(() => {
+		commandRef.current = command;
+		flushAllPendingEditorDispatches();
+	}, [command]);
 
-  const editorExtension = useMemo(
-    () =>
-      createKeeperEditorExtension({
-        getCommand: () => commandRef.current,
-        getDraggableBlockAnchorElem: () => editorContentElementRef.current,
-        getOnInsertTemplateCommand,
-        getOnMarkdownChange,
-        getOnOpenWikiLink,
-        getHasAttachment,
-        getOnAttachDocument,
-        getOnInsertImage,
-        getOnRemoveAttachment,
-        getOnShowVideoModal,
-        getOnToggleActivePanel,
-        getOnToggleArticle,
-        getOnToggleRelatedNotes,
-        nodes: KEEPER_EDITOR_NODES,
-        editorState: hasCrdtState
-          ? null
-          : () => importMarkdownToLexical(initialMarkdownRef.current),
-        theme: KEEPER_EDITOR_THEME,
-      }),
-    [
-      getHasAttachment,
-      getOnAttachDocument,
-      getOnInsertImage,
-      getOnInsertTemplateCommand,
-      getOnMarkdownChange,
-      getOnOpenWikiLink,
-      getOnRemoveAttachment,
-      getOnShowVideoModal,
-      getOnToggleActivePanel,
-      getOnToggleArticle,
-      getOnToggleRelatedNotes,
-      hasCrdtState,
-    ],
-  );
+	const editorExtension = useMemo(
+		() =>
+			createKeeperEditorExtension({
+				autoFocus,
+				getCommand: () => commandRef.current,
+				getDraggableBlockAnchorElem: () => editorContentElementRef.current,
+				getOnInsertTemplateCommand,
+				getOnMarkdownChange,
+				getOnOpenWikiLink,
+				getHasAttachment,
+				getOnAttachDocument,
+				getOnInsertImage,
+				getOnRemoveAttachment,
+				getOnShowVideoModal,
+				getOnToggleActivePanel,
+				getOnToggleArticle,
+				getOnToggleRelatedNotes,
+				nodes: KEEPER_EDITOR_NODES,
+				editorState: hasCrdtState
+					? null
+					: () => importMarkdownToLexical(initialMarkdownRef.current),
+				theme: KEEPER_EDITOR_THEME,
+			}),
+		[
+			getHasAttachment,
+			getOnAttachDocument,
+			getOnInsertImage,
+			getOnInsertTemplateCommand,
+			getOnMarkdownChange,
+			getOnOpenWikiLink,
+			getOnRemoveAttachment,
+			getOnShowVideoModal,
+			getOnToggleActivePanel,
+			getOnToggleArticle,
+			getOnToggleRelatedNotes,
+			hasCrdtState,
+			autoFocus,
+		],
+	);
 
-  return (
-    <div
-      style={{
-        background: palette.background,
-        color: palette.text,
-        height: isNativeDom ? "100vh" : "100%",
-        minHeight: "100%",
-        overflowY: "auto",
-        paddingTop: safeAreaInsets?.top ?? 0,
-        paddingRight: safeAreaInsets?.right ?? 0,
-        paddingBottom: Math.max(safeAreaInsets?.bottom ?? 0, keyboardHeight),
-        paddingLeft: safeAreaInsets?.left ?? 0,
-      }}
-    >
-      <style>{`
+	return (
+		<div
+			style={{
+				background: variant === "compact" ? palette.card : palette.background,
+				color: palette.text,
+				height: isNativeDom ? "100vh" : "100%",
+				minHeight: "100%",
+				overflowY: "auto",
+				paddingTop: safeAreaInsets?.top ?? 0,
+				paddingRight: safeAreaInsets?.right ?? 0,
+				paddingBottom: Math.max(safeAreaInsets?.bottom ?? 0, keyboardHeight),
+				paddingLeft: safeAreaInsets?.left ?? 0,
+			}}
+		>
+			<style>{`
 					.keeper-editor-shell {
-						min-height: 100vh;
-						padding: ${isNativeDom ? "0 18px 40px" : "18px 18px 40px"};
+						min-height: ${variant === "compact" ? "100%" : "100vh"};
+						padding: ${variant === "compact" ? "8px 0" : isNativeDom ? "0 18px 40px" : "18px 18px 40px"};
 						box-sizing: border-box;
 						font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 						position: relative;
 					}
 					.keeper-toolbar-sticky {
+						display: ${variant === "compact" ? "none" : "block"};
 						position: sticky;
 						top: 0;
 						z-index: 10;
@@ -946,9 +974,9 @@ function LexicalMarkdownEditor({
 					}
 					.keeper-editor {
 						box-sizing: border-box;
-						min-height: calc(100vh - 76px);
+						min-height: ${variant === "compact" ? "96px" : "calc(100vh - 76px)"};
 						outline: none;
-						padding-left: 28px;
+						padding-left: ${variant === "compact" ? "0" : "28px"};
 						font-size: 17px;
 						line-height: 1.55;
 						white-space: pre-wrap;
@@ -957,6 +985,7 @@ function LexicalMarkdownEditor({
 						position: relative;
 					}
 					.keeper-draggable-block-anchor {
+						display: ${variant === "compact" ? "none" : "block"};
 						inset: 0;
 						pointer-events: none;
 						position: absolute;
@@ -1046,7 +1075,7 @@ function LexicalMarkdownEditor({
 						pointer-events: none;
 						position: absolute;
 						top: 0;
-						left: 28px;
+						left: ${variant === "compact" ? "0" : "28px"};
 						font-size: 17px;
 						line-height: 1.55;
 					}
@@ -1318,30 +1347,35 @@ function LexicalMarkdownEditor({
 					color: ${palette.background};
 				}
 			`}</style>
-      <LexicalExtensionComposer
-        extension={editorExtension}
-        contentEditable={null}
-      >
-        <FindReplaceBar command={command} />
-        <div className="keeper-editor-content" ref={setEditorContentElement}>
-          <ContentEditable className="keeper-editor ContentEditable__root" />
-          <EmptyPlaceholder />
-        </div>
-        {crdtProviderFactory ? (
-          <CollaborationPlugin
-            id={noteId}
-            initialEditorState={() =>
-              importMarkdownToLexical(initialMarkdownRef.current)
-            }
-            providerFactory={crdtProviderFactory}
-            shouldBootstrap
-            username="Keeper"
-          />
-        ) : null}
-        <MarkdownShortcutPlugin transformers={KEEPER_MARKDOWN_TRANSFORMERS} />
-      </LexicalExtensionComposer>
-    </div>
-  );
+			<LexicalExtensionComposer
+				extension={editorExtension}
+				contentEditable={null}
+			>
+				<FindReplaceBar command={command} />
+				<div className="keeper-editor-content" ref={setEditorContentElement}>
+					<ContentEditable
+						aria-label={accessibilityLabel}
+						className="keeper-editor ContentEditable__root"
+					/>
+					<EmptyPlaceholder
+						text={variant === "compact" ? "Take a note..." : undefined}
+					/>
+				</div>
+				{crdtProviderFactory ? (
+					<CollaborationPlugin
+						id={noteId}
+						initialEditorState={() =>
+							importMarkdownToLexical(initialMarkdownRef.current)
+						}
+						providerFactory={crdtProviderFactory}
+						shouldBootstrap
+						username="Keeper"
+					/>
+				) : null}
+				<MarkdownShortcutPlugin transformers={KEEPER_MARKDOWN_TRANSFORMERS} />
+			</LexicalExtensionComposer>
+		</div>
+	);
 }
 
 export default React.memo(LexicalMarkdownEditor, editorPropsEqual);

@@ -473,7 +473,7 @@ describe("persistEditorEntry", () => {
 				createdAt: 1710000000000,
 				completedAt: null,
 			}),
-			false,
+			true,
 		);
 	});
 

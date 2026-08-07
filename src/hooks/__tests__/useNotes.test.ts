@@ -26,6 +26,7 @@ function makeNote(id: string): Note {
 		id,
 		title: id,
 		content: "",
+		lastUpdated: 0,
 		isPinned: false,
 		noteType: "note",
 	};

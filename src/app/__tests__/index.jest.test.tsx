@@ -15,6 +15,7 @@ const mockUseNotes = jest.fn();
 const mockShowToast = jest.fn();
 const mockRouterPush = jest.fn();
 const mockOpenDrawer = jest.fn();
+const mockEditorFocus = jest.fn();
 
 jest.mock("@/hooks/useNotes", () => ({
 	__esModule: true,
@@ -129,6 +130,35 @@ jest.mock("@/components/NoteGrid", () => {
 					`Loading more: ${isLoadingMore}`,
 				),
 			]),
+	};
+});
+
+jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
+	const React = require("react");
+	const { TextInput } = require("react-native");
+	return {
+		__esModule: true,
+		default: ({
+			accessibilityLabel,
+			command,
+			markdown,
+			onMarkdownChange,
+		}: {
+			accessibilityLabel: string;
+			command?: { type: string };
+			markdown: string;
+			onMarkdownChange: (markdown: string) => void;
+		}) => {
+			React.useEffect(() => {
+				if (command?.type === "focusEditor") mockEditorFocus();
+			}, [command]);
+			return React.createElement(TextInput, {
+				accessibilityLabel,
+				multiline: true,
+				value: markdown,
+				onChangeText: onMarkdownChange,
+			});
+		},
 	};
 });
 
@@ -318,7 +348,7 @@ describe("Index", () => {
 		expect(mockRouterPush).not.toHaveBeenCalled();
 
 		fireEvent(screen.getByLabelText("Note title"), "submitEditing");
-		expect(screen.getByLabelText("Note content")).toBeOnTheScreen();
+		expect(mockEditorFocus).toHaveBeenCalledTimes(1);
 	});
 
 	it("registers home route shortcuts for search focus and note creation", () => {

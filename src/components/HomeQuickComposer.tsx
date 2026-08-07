@@ -1,16 +1,19 @@
+import LexicalMarkdownEditor from "@/components/editor/lexical/LexicalMarkdownEditor";
+import type { LexicalEditorCommand } from "@/components/editor/lexical/extensions/CommandExtension";
 import { IconButton } from "@/components/shared/IconButton";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { NoteType } from "@/services/notes/types";
 import { FontAwesome } from "@expo/vector-icons";
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import {
+	Platform,
 	Pressable,
 	StyleSheet,
 	Text,
 	TextInput,
-	type TextInput as TextInputType,
 	View,
+	useColorScheme,
 } from "react-native";
 
 export default function HomeQuickComposer({
@@ -33,9 +36,11 @@ export default function HomeQuickComposer({
 	const [content, setContent] = useState("");
 	const [isPinned, setIsPinned] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
-	const contentInputRef = useRef<TextInputType>(null);
+	const [editorCommand, setEditorCommand] = useState<LexicalEditorCommand>();
+	const colorScheme = useColorScheme();
 
 	const expand = () => {
+		setEditorCommand(undefined);
 		setIsExpanded(true);
 	};
 
@@ -54,6 +59,7 @@ export default function HomeQuickComposer({
 		setTitle("");
 		setContent("");
 		setIsPinned(false);
+		setEditorCommand(undefined);
 		setIsExpanded(false);
 	};
 
@@ -72,22 +78,32 @@ export default function HomeQuickComposer({
 							placeholderTextColor={styles.placeholder.color}
 							value={title}
 							onChangeText={setTitle}
-							onSubmitEditing={() => contentInputRef.current?.focus()}
+							onSubmitEditing={() =>
+								setEditorCommand({ type: "focusEditor", timestamp: Date.now() })
+							}
 							returnKeyType="next"
 							blurOnSubmit={false}
 							style={styles.titleInput}
 						/>
-						<TextInput
-							ref={contentInputRef}
-							accessibilityLabel="Note content"
-							placeholder="Take a note..."
-							placeholderTextColor={styles.placeholder.color}
-							value={content}
-							onChangeText={setContent}
-							multiline
-							textAlignVertical="top"
-							style={styles.contentInput}
-						/>
+						<View style={styles.contentInput}>
+							<LexicalMarkdownEditor
+								accessibilityLabel="Note content"
+								autoFocus={false}
+								command={editorCommand}
+								markdown={content}
+								noteId="home-quick-composer"
+								onMarkdownChange={setContent}
+								persistDraft={false}
+								themeMode={colorScheme ?? "dark"}
+								variant="compact"
+								isNativeDom={Platform.OS !== "web"}
+								dom={{
+									scrollEnabled: true,
+									style: styles.domEditor,
+									containerStyle: styles.domEditor,
+								}}
+							/>
+						</View>
 						<Pressable
 							accessibilityRole="button"
 							accessibilityLabel={isPinned ? "Unpin note" : "Pin note"}
@@ -233,11 +249,12 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 		contentInput: {
 			minHeight: 104,
-			paddingTop: 8,
-			paddingBottom: 8,
-			fontSize: 16,
-			lineHeight: 22,
-			color: theme.colors.text,
+			height: 120,
+			overflow: "hidden",
+		},
+		domEditor: {
+			width: "100%",
+			height: 120,
 		},
 		pinButton: {
 			position: "absolute",

@@ -217,7 +217,7 @@ async function loadSectionMetadataSafely() {
 		return {
 			recentlyEditedNoteIds: new Set<string>(),
 			orphanedNoteIds: new Set<string>(),
-			acceptedClusterSections: [] as NoteSection[],
+			acceptedClusterSections: [] as ClusterSectionMetadata[],
 		};
 	}
 }

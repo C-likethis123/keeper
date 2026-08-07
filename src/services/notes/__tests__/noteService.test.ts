@@ -7,6 +7,10 @@ const mockDeleteNote = jest.fn();
 const mockListNoteFiles = jest.fn();
 const mockIndexUpsert = jest.fn();
 const mockIndexDelete = jest.fn();
+const mockWriteFileBytes = jest.fn();
+const mockListFilesRecursive = jest.fn();
+const mockReadFileBytes = jest.fn();
+const mockDeleteDirectory = jest.fn();
 const mockSaveMarkdownToCrdt = jest.fn((note: NoteSaveInput) =>
 	Promise.resolve(note),
 );
@@ -20,6 +24,10 @@ jest.mock("@/services/storage/storageEngine", () => ({
 		listNoteFiles: (...args: unknown[]) => mockListNoteFiles(...args),
 		indexUpsert: (...args: unknown[]) => mockIndexUpsert(...args),
 		indexDelete: (...args: unknown[]) => mockIndexDelete(...args),
+		writeFileBytes: (...args: unknown[]) => mockWriteFileBytes(...args),
+		listFilesRecursive: (...args: unknown[]) => mockListFilesRecursive(...args),
+		readFileBytes: (...args: unknown[]) => mockReadFileBytes(...args),
+		deleteDirectory: (...args: unknown[]) => mockDeleteDirectory(...args),
 	},
 }));
 
@@ -58,6 +66,8 @@ describe("NoteService", () => {
 		mockEnqueueNoteCreate.mockResolvedValue(undefined);
 		mockEnqueueNoteUpdate.mockResolvedValue(undefined);
 		mockEnqueueNoteDelete.mockResolvedValue(undefined);
+		mockWriteFileBytes.mockResolvedValue(undefined);
+		mockDeleteDirectory.mockResolvedValue(undefined);
 	});
 
 	describe("saveNote", () => {
@@ -228,6 +238,10 @@ describe("NoteService", () => {
 			});
 
 			expect(mockEnqueueNoteUpdate).toHaveBeenCalledWith(saved);
+			expect(mockWriteFileBytes).toHaveBeenCalledWith(
+				expect.stringContaining(".keeper/history/note-1/"),
+				expect.any(Uint8Array),
+			);
 			expect(mockScheduleSyncPush).toHaveBeenCalled();
 		});
 
@@ -240,7 +254,59 @@ describe("NoteService", () => {
 			await NoteService.deleteNote("note-1");
 
 			expect(mockEnqueueNoteDelete).toHaveBeenCalledWith("note-1");
+			expect(mockDeleteDirectory).toHaveBeenCalledWith(
+				".keeper/history/note-1",
+			);
 			expect(mockScheduleSyncPush).toHaveBeenCalled();
+		});
+	});
+
+	describe("restoreNoteVersion", () => {
+		it("restores snapshot through normal save path", async () => {
+			const oldNote = {
+				id: "note-1",
+				title: "Old title",
+				content: "Old body",
+				isPinned: true,
+				lastUpdated: 500,
+				noteType: "note" as const,
+				status: null,
+			};
+			const currentNote = {
+				...oldNote,
+				title: "Current title",
+				content: "Current body",
+				lastUpdated: 900,
+			};
+			mockReadFileBytes.mockResolvedValue(
+				new TextEncoder().encode(
+					JSON.stringify({
+						formatVersion: 1,
+						capturedAt: 600,
+						note: oldNote,
+					}),
+				),
+			);
+			mockLoadNote.mockResolvedValue(currentNote);
+			mockSaveNote.mockResolvedValue({ ...oldNote, lastUpdated: 1000 });
+
+			const restored = await NoteService.restoreNoteVersion(
+				"note-1",
+				".keeper/history/note-1/version.json",
+			);
+
+			expect(mockSaveMarkdownToCrdt).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: "note-1",
+					title: "Old title",
+					content: "Old body",
+				}),
+			);
+			expect(mockWriteFileBytes).toHaveBeenCalledWith(
+				expect.stringContaining(".keeper/history/note-1/"),
+				expect.any(Uint8Array),
+			);
+			expect(restored.content).toBe("Old body");
 		});
 	});
 });

@@ -178,6 +178,7 @@ function WikiLinkTypeahead() {
       anchorElementRef.current
         ? createPortal(
             <div
+              onMouseDown={(event) => event.preventDefault()}
               style={{
                 maxWidth: "calc(100vw - 36px)",
                 width: MENU_WIDTH,

@@ -180,7 +180,7 @@ export default function NoteEditorScreen() {
 	return (
 		<View style={styles.screen}>
 			<View testID="note-editor-card" style={styles.editorCard}>
-				<TabBar />
+				<TabBar activeView="note" />
 				<View style={styles.content}>
 					<QueryErrorBoundary
 						fallbackRender={(error, reset) => (
@@ -214,22 +214,13 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 	return StyleSheet.create({
 		screen: {
 			flex: 1,
-			alignItems: "center",
-			justifyContent: "center",
-			padding: 24,
-			backgroundColor: theme.colors.card,
+			backgroundColor: theme.colors.background,
 		},
 		editorCard: {
 			flex: 1,
 			width: "100%",
-			maxWidth: 960,
-			borderWidth: 1,
-			borderColor: theme.colors.border,
-			borderRadius: 16,
-			borderCurve: "continuous",
 			overflow: "hidden",
 			backgroundColor: theme.colors.background,
-			boxShadow: "0 8px 28px rgba(0, 0, 0, 0.18)",
 		},
 		content: {
 			flex: 1,
