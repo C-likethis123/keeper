@@ -79,8 +79,8 @@ describe("syncPullService", () => {
 				ok: true,
 				json: () =>
 					Promise.resolve({
-						cursor: 2,
-						ops: [
+					cursor: 1,
+					ops: [
 							{
 								serverId: 1,
 								deviceId: "phone",
@@ -94,8 +94,17 @@ describe("syncPullService", () => {
 									'---\npinned: false\ntitle: "Inbox"\nid: "note-1"\ntype: "note"\n---\nBody',
 								createdAt: "2026-07-11T10:00:00.000Z",
 							},
+					],
+				}),
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: () =>
+					Promise.resolve({
+						cursor: 2,
+						ops: [
 							{
-								serverId: 2,
+							serverId: 2,
 								deviceId: "phone",
 								opId: "phone:2",
 								seq: 2,
@@ -131,7 +140,7 @@ describe("syncPullService", () => {
 		expect(mockDeleteNote).toHaveBeenCalledWith("note-1");
 		expect(mockIndexDelete).toHaveBeenCalledWith("note-1");
 		expect(mockAsyncStorage.get("keeper:sync:pull-cursor")).toBe("2");
-		expect(mockBumpContentVersion).toHaveBeenCalled();
-		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(mockBumpContentVersion).toHaveBeenCalledTimes(1);
+		expect(fetchMock).toHaveBeenCalledTimes(3);
 	});
 });

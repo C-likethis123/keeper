@@ -963,12 +963,15 @@ function LexicalMarkdownEditor({
 						min-height: ${variant === "compact" ? "100%" : "100vh"};
 						padding: ${variant === "compact" ? "8px 0" : isNativeDom ? "0 18px 40px" : "18px 18px 40px"};
 						box-sizing: border-box;
+						display: flex;
+						flex-direction: column;
 						font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 						position: relative;
 					}
 					.keeper-toolbar-sticky {
-						display: ${variant === "compact" ? "none" : "block"};
-						position: sticky;
+						display: block;
+						order: ${variant === "compact" ? 1 : 0};
+						position: ${variant === "compact" ? "static" : "sticky"};
 						top: 0;
 						z-index: 10;
 						background: ${palette.background};

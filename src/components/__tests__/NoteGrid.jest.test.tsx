@@ -80,6 +80,23 @@ describe("NoteGrid", () => {
 		expect(onEndReached).not.toHaveBeenCalled();
 	});
 
+	it("renders a bounded initial window", () => {
+		render(
+			<NoteGrid
+				notes={makeNotes(20)}
+				onDelete={() => {}}
+				onPinToggle={() => {}}
+				onRefresh={() => {}}
+			/>,
+		);
+
+		const list = screen.UNSAFE_getByType(FlatList);
+		expect(list.props.initialNumToRender).toBe(20);
+		expect(list.props.maxToRenderPerBatch).toBe(20);
+		expect(list.props.updateCellsBatchingPeriod).toBe(0);
+		expect(list.props.windowSize).toBe(3);
+	});
+
 	it("keeps first load to one page when content cannot fill the viewport", () => {
 		const onEndReached = jest.fn();
 		render(

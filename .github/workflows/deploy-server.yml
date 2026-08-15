@@ -54,7 +54,6 @@ jobs:
           key: ${{ secrets.ORACLE_VM_SSH_KEY }}
           port: ${{ secrets.ORACLE_VM_SSH_PORT || 22 }}
           envs: KEEPER_REPO_URL,KEEPER_API_DOMAIN,ORACLE_VM_HOST,SERVER_GIT_REMOTE_URL,KEEPER_SEED_TOKEN
-          script_stop: true
           script: |
             set -eu
 

@@ -228,6 +228,10 @@ export default function NoteGrid({
 				data={rowData}
 				key={`note-grid-${numColumns}`}
 				keyExtractor={keyExtractor}
+				initialNumToRender={20}
+				maxToRenderPerBatch={20}
+				updateCellsBatchingPeriod={0}
+				windowSize={3}
 				contentContainerStyle={styles.contentContainer}
 				ListHeaderComponent={listHeader}
 				ListEmptyComponent={

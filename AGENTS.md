@@ -70,7 +70,6 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
    - `sync/` - server sync push/pull, operation queue, CRDT transport, and sync orchestration.
    - `storage/` - platform storage engine abstraction with mobile and Tauri engines.
    - `startup/` - startup steps, strategies, telemetry.
-   - `app/` - reset app data service.
    - `toast.ts` - toast facade.
 
 7. **Native/Rust**:

@@ -12,16 +12,12 @@ export default function HomeScreenHeader({
 	searchInputRef,
 	onMenuPress,
 	onOpenSuggestedMocs,
-	onReset,
-	resetDisabled = false,
 }: {
 	searchQuery: string;
 	setSearchQuery: (query: string) => void;
 	searchInputRef?: React.Ref<TextInput>;
 	onMenuPress: () => void;
 	onOpenSuggestedMocs: () => void;
-	onReset: () => void;
-	resetDisabled?: boolean;
 }) {
 	const styles = useStyles(createStyles);
 	const insets = useSafeAreaInsets();
@@ -47,13 +43,6 @@ export default function HomeScreenHeader({
 						name="sitemap"
 						variant="flat"
 						onPress={onOpenSuggestedMocs}
-					/>
-					<IconButton
-						label="Clear filters"
-						name="trash"
-						variant="flat"
-						onPress={onReset}
-						disabled={resetDisabled}
 					/>
 				</View>
 			</View>

@@ -120,14 +120,13 @@ async function applyRemoteOperation(operation: PulledSyncOperation): Promise<voi
 
 async function applyRemoteOperations(
 	operations: PulledSyncOperation[],
-): Promise<void> {
-	if (operations.length === 0) return;
+): Promise<boolean> {
+	if (operations.length === 0) return false;
 
 	for (const operation of operations) {
 		await applyRemoteOperation(operation);
 	}
-	invalidateNoteQueryCache();
-	useStorageStore.getState().bumpContentVersion();
+	return true;
 }
 
 export function scheduleSyncPull(delayMs = 0): void {
@@ -145,6 +144,7 @@ export async function pullPendingSyncOps(): Promise<void> {
 	pullPromise = (async () => {
 		if (!isServerSyncConfigured()) return;
 
+		let didApplyOperations = false;
 		try {
 			const deviceId = await getSyncDeviceId();
 			let cursor = await readSyncPullCursor();
@@ -152,7 +152,8 @@ export async function pullPendingSyncOps(): Promise<void> {
 			for (;;) {
 				const previousCursor = cursor;
 				const result = await pullSyncOperations(deviceId, cursor);
-				await applyRemoteOperations(result.ops);
+				didApplyOperations =
+					(await applyRemoteOperations(result.ops)) || didApplyOperations;
 				await writeSyncPullCursor(result.cursor);
 				cursor = result.cursor;
 				if (result.ops.length === 0 || result.cursor === previousCursor) {
@@ -170,6 +171,11 @@ export async function pullPendingSyncOps(): Promise<void> {
 			);
 			scheduleSyncPull(retryMs);
 			retryMs = Math.min(retryMs * 2, MAX_RETRY_MS);
+		} finally {
+			if (didApplyOperations) {
+				invalidateNoteQueryCache();
+				useStorageStore.getState().bumpContentVersion();
+			}
 		}
 	})();
 

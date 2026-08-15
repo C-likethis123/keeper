@@ -1,7 +1,6 @@
 import HomeQuickComposer from "@/components/HomeQuickComposer";
 import HomeScreenHeader from "@/components/HomeScreenHeader";
 import NoteGrid from "@/components/NoteGrid";
-import ResetAppDataModal from "@/components/ResetAppDataModal";
 import { TabBar } from "@/components/TabBar";
 import AddNoteToClusterModal from "@/components/moc/AddNoteToClusterModal";
 import RenameClusterModal from "@/components/moc/RenameClusterModal";
@@ -25,7 +24,6 @@ import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { showToast } from "@/services/toast";
-import { useFilterStore } from "@/stores/filterStore";
 import { useStorageStore } from "@/stores/storageStore";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
@@ -53,10 +51,7 @@ function IndexContent() {
 		loadMoreNotes,
 		setQuery,
 	} = useNotes();
-	const reset = useFilterStore((s) => s.reset);
 	const bumpContentVersion = useStorageStore((s) => s.bumpContentVersion);
-	const [isResetting, setIsResetting] = React.useState(false);
-	const [isResetModalVisible, setIsResetModalVisible] = useState(false);
 	const [renameTarget, setRenameTarget] = useState<NoteSection | null>(null);
 	const [addNoteTarget, setAddNoteTarget] = useState<NoteSection | null>(null);
 	const createAndOpenNote = useCreateAndOpenNote();
@@ -81,50 +76,6 @@ function IndexContent() {
 		},
 		[handleRefresh],
 	);
-
-	const runReset = useCallback(async () => {
-		if (isResetting) {
-			return;
-		}
-		setIsResetting(true);
-		showToast("Clearing app data...", 1500);
-		try {
-			const { resetAppData } = await import(
-				"@/services/app/resetAppDataService"
-			);
-			await resetAppData();
-			await handleRefresh();
-			showToast("App data cleared");
-		} catch (error) {
-			console.warn("Failed to reset app data:", error);
-			showToast(
-				error instanceof Error ? error.message : "Failed to clear app data",
-				6000,
-			);
-		} finally {
-			setIsResetting(false);
-		}
-	}, [handleRefresh, isResetting]);
-
-	const confirmReset = useCallback(() => {
-		if (isResetting) {
-			return;
-		}
-		setIsResetModalVisible(true);
-	}, [isResetting]);
-
-	const closeResetModal = useCallback(() => {
-		if (isResetting) {
-			return;
-		}
-		setIsResetModalVisible(false);
-	}, [isResetting]);
-
-	const handleConfirmReset = useCallback(() => {
-		setIsResetModalVisible(false);
-		void runReset();
-		reset();
-	}, [runReset, reset]);
 
 	const handleCreateQuickNote = useCallback(
 		async (draft: {
@@ -279,8 +230,6 @@ function IndexContent() {
 				searchInputRef={searchInputRef}
 				onMenuPress={handleMenuPress}
 				onOpenSuggestedMocs={() => router.push("/suggested-mocs")}
-				onReset={confirmReset}
-				resetDisabled={isResetting}
 			/>
 			<NoteGrid
 				notes={notes ?? []}
@@ -300,12 +249,6 @@ function IndexContent() {
 					/>
 				}
 				onReady={markStartupReady}
-			/>
-			<ResetAppDataModal
-				visible={isResetModalVisible}
-				isResetting={isResetting}
-				onClose={closeResetModal}
-				onConfirm={handleConfirmReset}
 			/>
 			<RenameClusterModal
 				visible={renameTarget !== null}

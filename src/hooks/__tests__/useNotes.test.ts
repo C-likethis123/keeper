@@ -43,15 +43,15 @@ describe("loadNotesPage", () => {
 	it("loads one page and preserves next-page cursor", async () => {
 		mockListNotes.mockResolvedValueOnce({
 			items: [makeItem("note-1")],
-			cursor: 60,
+			cursor: 20,
 		});
 
 		const result = await loadNotesPage({ query: "", filters, offset: 0 });
 
 		expect(result.items.map((item) => item.noteId)).toEqual(["note-1"]);
-		expect(result.cursor).toBe(60);
+		expect(result.cursor).toBe(20);
 		expect(mockListNotes).toHaveBeenCalledTimes(1);
-		expect(mockListNotes).toHaveBeenCalledWith("", 60, 0, filters);
+		expect(mockListNotes).toHaveBeenCalledWith("", 20, 0, filters);
 	});
 
 	it("limits cluster sections to notes loaded by pagination", () => {

@@ -456,4 +456,28 @@ describe("Index", () => {
 		expect(notesResult.handleRefresh).toHaveBeenCalled();
 		expect(mockRouterPush).not.toHaveBeenCalled();
 	});
+
+	it("creates a quick note when only content is present", async () => {
+		const user = userEvent.setup();
+		mockUseNotes.mockReturnValue(makeUseNotesResult());
+
+		render(<Index />);
+
+		await user.press(screen.getByRole("button", { name: "Take a note" }));
+		await user.type(screen.getByLabelText("Note content"), "Content only");
+		await user.press(screen.getByRole("button", { name: "Close note" }));
+
+		await waitFor(() => {
+			expect(NoteService.saveNote).toHaveBeenCalledWith(
+				{
+					id: "new-note-id",
+					title: "",
+					content: "Content only",
+					isPinned: false,
+					noteType: "note",
+				},
+				true,
+			);
+		});
+	});
 });

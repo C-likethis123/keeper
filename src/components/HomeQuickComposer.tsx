@@ -1,3 +1,4 @@
+import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import LexicalMarkdownEditor from "@/components/editor/lexical/LexicalMarkdownEditor";
 import type { LexicalEditorCommand } from "@/components/editor/lexical/extensions/CommandExtension";
 import { IconButton } from "@/components/shared/IconButton";
@@ -5,7 +6,7 @@ import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { NoteType } from "@/services/notes/types";
 import { FontAwesome } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
 	Platform,
 	Pressable,
@@ -34,6 +35,7 @@ export default function HomeQuickComposer({
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [title, setTitle] = useState("");
 	const [content, setContent] = useState("");
+	const contentRef = useRef("");
 	const [isPinned, setIsPinned] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [editorCommand, setEditorCommand] = useState<LexicalEditorCommand>();
@@ -46,10 +48,12 @@ export default function HomeQuickComposer({
 
 	const close = async () => {
 		if (isSaving) return;
-		if (title.trim() || content.trim()) {
+		flushAllPendingEditorDispatches();
+		const currentContent = contentRef.current;
+		if (title.trim() || currentContent.trim()) {
 			setIsSaving(true);
 			try {
-				await onSave({ title: title.trim(), content, isPinned });
+				await onSave({ title: title.trim(), content: currentContent, isPinned });
 			} catch {
 				return;
 			} finally {
@@ -58,6 +62,7 @@ export default function HomeQuickComposer({
 		}
 		setTitle("");
 		setContent("");
+		contentRef.current = "";
 		setIsPinned(false);
 		setEditorCommand(undefined);
 		setIsExpanded(false);
@@ -92,7 +97,10 @@ export default function HomeQuickComposer({
 								command={editorCommand}
 								markdown={content}
 								noteId="home-quick-composer"
-								onMarkdownChange={setContent}
+								onMarkdownChange={(nextContent) => {
+									contentRef.current = nextContent;
+									setContent(nextContent);
+								}}
 								persistDraft={false}
 								themeMode={colorScheme ?? "dark"}
 								variant="compact"
