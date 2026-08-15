@@ -67,6 +67,7 @@ test("git sync worker commits creates, updates, and deletes to remote", async ()
 			}),
 		);
 		assert.equal(await readFile(path.join(clone, "note-1.md"), "utf8"), "# Inbox");
+		await git(clone, ["checkout", "--detach", "HEAD"]);
 
 		await processor(
 			makeJob({

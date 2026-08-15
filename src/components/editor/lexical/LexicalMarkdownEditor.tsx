@@ -951,6 +951,7 @@ function LexicalMarkdownEditor({
 				height: isNativeDom ? "100vh" : "100%",
 				minHeight: "100%",
 				overflowY: "auto",
+				position: "relative",
 				paddingTop: safeAreaInsets?.top ?? 0,
 				paddingRight: safeAreaInsets?.right ?? 0,
 				paddingBottom: Math.max(safeAreaInsets?.bottom ?? 0, keyboardHeight),
@@ -1256,7 +1257,7 @@ function LexicalMarkdownEditor({
 					flex-direction: column;
 					gap: 6px;
 					padding: 8px;
-					position: fixed;
+					position: absolute;
 					right: ${Math.max((safeAreaInsets?.right ?? 0) + 18, 18)}px;
 					top: ${Math.max((safeAreaInsets?.top ?? 0) + 14, 14)}px;
 					width: min(520px, calc(100vw - 36px));

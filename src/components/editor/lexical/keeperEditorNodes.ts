@@ -1,5 +1,6 @@
 import { CodeHighlightNode, CodeNode } from "@lexical/code";
 import { AutoLinkNode } from "@lexical/link";
+import { HorizontalRuleNode } from "@lexical/react/LexicalHorizontalRuleNode";
 import {
   DetailsContentNode,
   DetailsNode,
@@ -12,6 +13,7 @@ export const KEEPER_EDITOR_NODES = [
   CodeNode,
   CodeHighlightNode,
   AutoLinkNode,
+  HorizontalRuleNode,
   DetailsContentNode,
   DetailsNode,
   DetailsSummaryNode,

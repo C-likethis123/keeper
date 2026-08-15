@@ -48,6 +48,7 @@ async function runGit(repoDir: string, args: string[]): Promise<string> {
 }
 
 async function ensureRepo(config: GitWorkerConfig): Promise<void> {
+	const branch = config.branch ?? "main";
 	await mkdir(path.dirname(config.repoDir), { recursive: true });
 	try {
 		await runGit(config.repoDir, ["rev-parse", "--is-inside-work-tree"]);
@@ -56,11 +57,30 @@ async function ensureRepo(config: GitWorkerConfig): Promise<void> {
 		await execFileAsync("git", [
 			"clone",
 			"--branch",
-			config.branch ?? "main",
+			branch,
 			config.remoteUrl,
 			config.repoDir,
 		]);
 	}
+
+	await runGit(config.repoDir, ["fetch", "origin", branch]);
+	try {
+		await runGit(config.repoDir, ["checkout", branch]);
+	} catch {
+		await runGit(config.repoDir, [
+			"checkout",
+			"-b",
+			branch,
+			"--track",
+			`origin/${branch}`,
+		]);
+	}
+	await runGit(config.repoDir, [
+		"branch",
+		"--set-upstream-to",
+		`origin/${branch}`,
+		branch,
+	]);
 
 	await runGit(config.repoDir, [
 		"config",

@@ -14,6 +14,11 @@ import {
   type SerializedLexicalNode,
 } from "lexical";
 import {
+  $createHorizontalRuleNode,
+  $isHorizontalRuleNode,
+  HorizontalRuleNode,
+} from "@lexical/react/LexicalHorizontalRuleNode";
+import {
   $createTableCellNode,
   $createTableNode,
   $createTableRowNode,
@@ -47,6 +52,23 @@ import { KEEPER_MARKDOWN_IMPORT_NODES } from "./keeperMarkdownImportNodes";
 
 const TABLE_ROW_REG_EXP = /^\|(.+)\|\s*$/;
 const TABLE_DIVIDER_REG_EXP = /^(\|\s*:?-{3,}:?\s*)+\|\s*$/;
+
+const DIVIDER: ElementTransformer = {
+  dependencies: [HorizontalRuleNode],
+  export: (node) => ($isHorizontalRuleNode(node) ? "---" : null),
+  regExp: /^---\s?$/,
+  replace: (parentNode, _children, _match, isImport) => {
+    const dividerNode = $createHorizontalRuleNode();
+    if (isImport || parentNode.getNextSibling() !== null) {
+      parentNode.replace(dividerNode);
+    } else {
+      parentNode.insertBefore(dividerNode);
+    }
+    dividerNode.selectNext();
+  },
+  triggerOnEnter: true,
+  type: "element",
+};
 
 function splitTableRow(line: string): string[] {
   return line
@@ -129,6 +151,32 @@ const BLOCK_EQUATION: ElementTransformer = {
     parentNode.replace($createEquationNode(equation, false));
   },
   type: "element",
+};
+
+const MULTILINE_BLOCK_EQUATION: MultilineElementTransformer = {
+  dependencies: [EquationNode],
+  export: (node) => {
+    if (
+      !$isEquationNode(node) ||
+      node.isInline() ||
+      !node.getEquation().includes("\n")
+    ) {
+      return null;
+    }
+
+    return `$$\n${node.getEquation()}\n$$`;
+  },
+  regExpEnd: /^\s*\$\$\s*$/,
+  regExpStart: /^\s*\$\$\s*$/,
+  replace: (rootNode, _children, _startMatch, _endMatch, linesInBetween) => {
+    const equation = linesInBetween?.join("\n").trim();
+    if (!equation) {
+      return false;
+    }
+
+    rootNode.append($createEquationNode(equation, false));
+  },
+  type: "multiline-element",
 };
 
 const DETAILS: MultilineElementTransformer = {
@@ -283,9 +331,11 @@ const INLINE_EQUATION: TextMatchTransformer = {
 };
 
 export const KEEPER_MARKDOWN_TRANSFORMERS = [
+  DIVIDER,
   DETAILS,
   TABLE,
   IMAGE,
+  MULTILINE_BLOCK_EQUATION,
   BLOCK_EQUATION,
   INLINE_EQUATION,
   WIKI_LINK,

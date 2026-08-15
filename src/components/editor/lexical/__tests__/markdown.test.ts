@@ -2,6 +2,10 @@ import { CodeHighlightNode, CodeNode } from "@lexical/code";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { CHECK_LIST, UNORDERED_LIST } from "@lexical/markdown";
+import {
+  $isHorizontalRuleNode,
+  HorizontalRuleNode,
+} from "@lexical/react/LexicalHorizontalRuleNode";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import {
   $createTableCellNode,
@@ -51,6 +55,7 @@ function roundTripMarkdown(markdown: string): string {
       CodeHighlightNode,
       LinkNode,
       AutoLinkNode,
+      HorizontalRuleNode,
       TableNode,
       TableCellNode,
       TableRowNode,
@@ -89,6 +94,7 @@ function getFirstImportedNode(markdown: string) {
       CodeHighlightNode,
       LinkNode,
       AutoLinkNode,
+      HorizontalRuleNode,
       TableNode,
       TableCellNode,
       TableRowNode,
@@ -344,6 +350,14 @@ describe("Keeper Lexical markdown transformers", () => {
 
   it("round-trips block equation markdown through EquationNode", () => {
     expect(roundTripMarkdown("$$x = y + z$$")).toBe("$$x = y + z$$");
+    expect(roundTripMarkdown("$$\nx = y\n+ z\n$$")).toBe(
+      "$$\nx = y\n+ z\n$$",
+    );
+  });
+
+  it("round-trips divider markdown through HorizontalRuleNode", () => {
+    expect(roundTripMarkdown("---")).toBe("---");
+    expect($isHorizontalRuleNode(getFirstImportedNode("---"))).toBe(true);
   });
 
   it("round-trips inline equation markdown through EquationNode", () => {

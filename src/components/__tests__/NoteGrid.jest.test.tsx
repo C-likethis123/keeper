@@ -80,7 +80,7 @@ describe("NoteGrid", () => {
 		expect(onEndReached).not.toHaveBeenCalled();
 	});
 
-	it("loads more when content cannot fill the viewport", () => {
+	it("keeps first load to one page when content cannot fill the viewport", () => {
 		const onEndReached = jest.fn();
 		render(
 			<NoteGrid
@@ -100,8 +100,9 @@ describe("NoteGrid", () => {
 		});
 		fireEvent(list, "contentSizeChange", 320, 400);
 		fireEvent(list, "contentSizeChange", 320, 400);
+		fireEvent(list, "endReached");
 
-		expect(onEndReached).toHaveBeenCalledTimes(1);
+		expect(onEndReached).not.toHaveBeenCalled();
 	});
 
 	it("loads one page per user scroll near bottom", () => {
