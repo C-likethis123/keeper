@@ -42,26 +42,30 @@ jobs:
       - name: Deploy over SSH
         if: steps.ssh-check.outputs.reachable == 'true'
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          KEEPER_REPO_URL: ${{ secrets.KEEPER_REPO_URL }}
+          KEEPER_API_DOMAIN: ${{ secrets.KEEPER_API_DOMAIN }}
+          ORACLE_VM_HOST: ${{ secrets.ORACLE_VM_HOST }}
+          SERVER_GIT_REMOTE_URL: ${{ secrets.SERVER_GIT_REMOTE_URL }}
+          KEEPER_SEED_TOKEN: ${{ secrets.KEEPER_SEED_TOKEN }}
         with:
           host: ${{ secrets.ORACLE_VM_HOST }}
           username: ${{ secrets.ORACLE_VM_USER }}
           key: ${{ secrets.ORACLE_VM_SSH_KEY }}
           port: ${{ secrets.ORACLE_VM_SSH_PORT || 22 }}
+          envs: KEEPER_REPO_URL,KEEPER_API_DOMAIN,ORACLE_VM_HOST,SERVER_GIT_REMOTE_URL,KEEPER_SEED_TOKEN
           script_stop: true
           script: |
             set -eu
 
             DEPLOY_PATH="${KEEPER_DEPLOY_PATH:-/opt/keeper}"
             DEPLOY_USER="$(id -un)"
-            DEPLOY_REPO="${{ secrets.KEEPER_REPO_URL }}"
-            KEEPER_API_DOMAIN="${{ secrets.KEEPER_API_DOMAIN }}"
-            SERVER_GIT_REMOTE_URL="${{ secrets.SERVER_GIT_REMOTE_URL }}"
-            KEEPER_SEED_TOKEN="${{ secrets.KEEPER_SEED_TOKEN }}"
+            DEPLOY_REPO="${KEEPER_REPO_URL:-}"
             if [ -z "$DEPLOY_REPO" ]; then
               DEPLOY_REPO="https://github.com/${{ github.repository }}.git"
             fi
             if [ -z "$KEEPER_API_DOMAIN" ]; then
-              KEEPER_API_DOMAIN="${{ secrets.ORACLE_VM_HOST }}"
+              KEEPER_API_DOMAIN="$ORACLE_VM_HOST"
             fi
             if [ -z "$KEEPER_API_DOMAIN" ]; then
               echo "Set KEEPER_API_DOMAIN or ORACLE_VM_HOST secret."
