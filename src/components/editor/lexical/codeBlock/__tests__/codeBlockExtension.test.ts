@@ -1,6 +1,42 @@
+import { $createCodeNode, $isCodeNode, CodeNode } from "@lexical/code";
+import {
+  $createTextNode,
+  $getRoot,
+  $getSelection,
+  $isParagraphNode,
+  $isRangeSelection,
+  createEditor,
+} from "lexical";
 import { handleCodeTextInsertion, handleEnter } from "../codeBlockSmartEdit";
+import { exitCodeBlock } from "../exitCodeBlock";
 
 describe("CodeBlockExtension smart edit", () => {
+  it("escapes a code block into a new paragraph", () => {
+    const editor = createEditor({ nodes: [CodeNode] });
+
+    editor.update(
+      () => {
+        const codeNode = $createCodeNode();
+        const textNode = $createTextNode("const answer = 42;");
+        codeNode.append(textNode);
+        $getRoot().append(codeNode);
+        textNode.selectEnd();
+        exitCodeBlock(codeNode);
+      },
+      { discrete: true },
+    );
+
+    editor.getEditorState().read(() => {
+      const children = $getRoot().getChildren();
+      expect(children).toHaveLength(2);
+      expect($isCodeNode(children[0])).toBe(true);
+      expect($isParagraphNode(children[1])).toBe(true);
+      const selection = $getSelection();
+      expect($isRangeSelection(selection)).toBe(true);
+      expect(selection?.anchor.getNode().getTopLevelElement()).toBe(children[1]);
+    });
+  });
+
   it("completes opening braces in code blocks", () => {
     expect(handleCodeTextInsertion("foo", 3, "{")).toEqual({
       handled: true,

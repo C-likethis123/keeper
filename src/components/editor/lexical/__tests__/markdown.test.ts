@@ -41,7 +41,10 @@ import {
 import { registerChecklistMarkdownPrefixTransform } from "../lists/checklistMarkdownPrefix";
 import { convertTodoTriggerAtSelection } from "../todoTrigger/todoTriggerTransform";
 import { ClipboardShortcutsExtension } from "../extensions/ClipboardShortcutsExtension";
-import { MarkdownPasteExtension } from "../extensions/MarkdownPasteExtension";
+import {
+  createMarkdownPasteExtension,
+  MarkdownPasteExtension,
+} from "../extensions/MarkdownPasteExtension";
 
 function roundTripMarkdown(markdown: string): string {
   const editor = createEditor({
@@ -183,6 +186,44 @@ describe("Keeper Lexical markdown transformers", () => {
 
     expect(preventDefault).toHaveBeenCalled();
     expect(markdown).toBe("# Pasted");
+
+    unregisterPaste();
+  });
+
+  it("handles pasted clipboard images", async () => {
+    const editor = createEditor({
+      namespace: "KeeperImagePasteTest",
+      onError: (error) => {
+        throw error;
+      },
+    });
+    const onPasteImage = jest.fn();
+    const extension = createMarkdownPasteExtension(() => onPasteImage);
+    const unregisterPaste =
+      extension.register?.(editor, {}, {} as never) ?? (() => {});
+    const preventDefault = jest.fn();
+    const bytes = new Uint8Array([137, 80, 78, 71]);
+    const image = {
+      name: "Screenshot.png",
+      type: "image/png",
+      arrayBuffer: () => Promise.resolve(bytes.buffer),
+    };
+
+    editor.dispatchCommand(PASTE_COMMAND, {
+      clipboardData: {
+        files: [image],
+        getData: () => "",
+      },
+      preventDefault,
+    } as unknown as ClipboardEvent);
+    await Promise.resolve();
+
+    expect(preventDefault).toHaveBeenCalled();
+    expect(onPasteImage).toHaveBeenCalledWith({
+      bytes,
+      mimeType: "image/png",
+      name: "Screenshot.png",
+    });
 
     unregisterPaste();
   });

@@ -11,6 +11,7 @@ import {
   defineExtension,
   KEY_DOWN_COMMAND,
   KEY_ENTER_COMMAND,
+  KEY_ESCAPE_COMMAND,
   KEY_TAB_COMMAND,
 } from "lexical";
 import {
@@ -20,6 +21,7 @@ import {
   type SmartEditResult,
   handleTab,
 } from "./codeBlockSmartEdit";
+import { exitCodeBlock } from "./exitCodeBlock";
 
 interface CodeSelectionContext {
   codeNode: CodeNode;
@@ -137,6 +139,21 @@ export const CodeBlockExtension = defineExtension({
       },
       COMMAND_PRIORITY_HIGH,
     );
+    const unregisterEscapeCommand = editor.registerCommand(
+      KEY_ESCAPE_COMMAND,
+      (event: KeyboardEvent) => {
+        const ctx = getCodeSelectionContext();
+        if (!ctx) {
+          return false;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        exitCodeBlock(ctx.codeNode);
+        return true;
+      },
+      COMMAND_PRIORITY_HIGH,
+    );
     const unregisterTextInsertionCommand = editor.registerCommand(
       CONTROLLED_TEXT_INSERTION_COMMAND,
       (payload: InputEvent | string) => {
@@ -217,6 +234,7 @@ export const CodeBlockExtension = defineExtension({
     return () => {
       unregisterTabCommand();
       unregisterEnterCommand();
+      unregisterEscapeCommand();
       unregisterTextInsertionCommand();
       unregisterKeyDownCommand();
       unregisterDeleteCommand();

@@ -30,6 +30,7 @@ import {
 import { persistEditorEntry } from "@/services/notes/editorEntryPersistence";
 import { NoteService } from "@/services/notes/noteService";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
+import { saveImageBytesToNotes } from "@/services/notes/imageStorage";
 import type { Note, NoteSaveInput } from "@/services/notes/types";
 import { showToast } from "@/services/toast";
 import { useTabStore } from "@/stores/tabStore";
@@ -622,6 +623,22 @@ export default function NoteEditorView({
     }
   }, [sendCommand]);
 
+  const handlePasteImage = useCallback(
+    async ({
+      bytes,
+      mimeType,
+      name,
+    }: { bytes: Uint8Array; mimeType: string; name: string }) => {
+      try {
+        const path = await saveImageBytesToNotes(bytes, mimeType, name);
+        sendCommand("insertImage", { src: path, altText: "" });
+      } catch {
+        showToast("Failed to paste image.");
+      }
+    },
+    [sendCommand],
+  );
+
   const hasDocAttachment = attachmentPath !== null && attachmentType !== null;
 
   const handleEditorAttachDocument = useCallback(() => {
@@ -793,6 +810,7 @@ export default function NoteEditorView({
                   notesRoot={NOTES_ROOT}
                   onAttachDocument={handleEditorAttachDocument}
                   onInsertImage={handleToolbarInsertImage}
+                  onPasteImage={handlePasteImage}
                   onInsertTemplateCommand={handleInsertTemplateCommand}
                   onOpenWikiLink={handleOpenWikiLink}
                   onRemoveAttachment={handleEditorRemoveAttachment}

@@ -10,6 +10,14 @@ import {
 } from "lexical";
 import { parseMarkdownToSerializedNodes } from "../markdown";
 
+export interface PastedImage {
+  bytes: Uint8Array;
+  mimeType: string;
+  name: string;
+}
+
+type PasteImageHandler = (image: PastedImage) => void | Promise<void>;
+
 const MARKDOWN_BLOCK_PATTERN =
   /(^|\n)(#{1,6}\s|[-*+]\s|\d+\.\s|>\s|```|~~~|\|.+\||!\[[^\]]*\]\(|\[[^\]]+\]\([^)]+\)|\$\$|:::)/;
 const MARKDOWN_INLINE_PATTERN =
@@ -29,6 +37,21 @@ function getHtmlFromPasteEvent(event: Event): string {
     return clipboardData?.getData("text/html") ?? "";
   }
   return "";
+}
+
+function getImageFromPasteEvent(event: Event): File | null {
+  if (!("clipboardData" in event)) return null;
+
+  const clipboardData = event.clipboardData as DataTransfer | null;
+  const file = Array.from(clipboardData?.files ?? []).find((candidate) =>
+    candidate.type.startsWith("image/"),
+  );
+  if (file) return file;
+
+  for (const item of Array.from(clipboardData?.items ?? [])) {
+    if (item.type.startsWith("image/")) return item.getAsFile();
+  }
+  return null;
 }
 
 function parseHtmlToLexicalNodes(
@@ -51,16 +74,53 @@ export function shouldImportPastedMarkdown(text: string): boolean {
   );
 }
 
-export const MarkdownPasteExtension = defineExtension({
-  name: "keeper/MarkdownPaste",
-  register(editor) {
-    return editor.registerCommand(
-      PASTE_COMMAND,
-      (event) => {
-        const markdown = getPlainTextFromPasteEvent(event);
-        if (shouldImportPastedMarkdown(markdown)) {
-          const serializedNodes = parseMarkdownToSerializedNodes(markdown);
-          if (serializedNodes.length > 0) {
+export function createMarkdownPasteExtension(
+  getOnPasteImage: () => PasteImageHandler | undefined,
+) {
+  return defineExtension({
+    name: "keeper/MarkdownPaste",
+    register(editor) {
+      return editor.registerCommand(
+        PASTE_COMMAND,
+        (event) => {
+          const image = getImageFromPasteEvent(event);
+          const onPasteImage = image ? getOnPasteImage() : undefined;
+          if (image && onPasteImage) {
+            event.preventDefault();
+            void image.arrayBuffer().then((buffer) =>
+              onPasteImage({
+                bytes: new Uint8Array(buffer),
+                mimeType: image.type,
+                name: image.name,
+              }),
+            );
+            return true;
+          }
+
+          const markdown = getPlainTextFromPasteEvent(event);
+          if (shouldImportPastedMarkdown(markdown)) {
+            const serializedNodes = parseMarkdownToSerializedNodes(markdown);
+            if (serializedNodes.length > 0) {
+              event.preventDefault();
+              editor.update(
+                () => {
+                  const selection = $getSelection();
+                  if (!$isRangeSelection(selection)) {
+                    return;
+                  }
+                  $insertNodes(
+                    serializedNodes.map((node) => $parseSerializedNode(node)),
+                  );
+                },
+                { discrete: true, tag: "paste" },
+              );
+              return true;
+            }
+          }
+
+          const html = getHtmlFromPasteEvent(event);
+          const htmlNodes = parseHtmlToLexicalNodes(editor, html);
+          if (htmlNodes.length > 0) {
             event.preventDefault();
             editor.update(
               () => {
@@ -68,36 +128,21 @@ export const MarkdownPasteExtension = defineExtension({
                 if (!$isRangeSelection(selection)) {
                   return;
                 }
-                $insertNodes(
-                  serializedNodes.map((node) => $parseSerializedNode(node)),
-                );
+                $insertNodes(htmlNodes);
               },
               { discrete: true, tag: "paste" },
             );
             return true;
           }
-        }
 
-        const html = getHtmlFromPasteEvent(event);
-        const htmlNodes = parseHtmlToLexicalNodes(editor, html);
-        if (htmlNodes.length > 0) {
-          event.preventDefault();
-          editor.update(
-            () => {
-              const selection = $getSelection();
-              if (!$isRangeSelection(selection)) {
-                return;
-              }
-              $insertNodes(htmlNodes);
-            },
-            { discrete: true, tag: "paste" },
-          );
-          return true;
-        }
+          return false;
+        },
+        COMMAND_PRIORITY_HIGH,
+      );
+    },
+  });
+}
 
-        return false;
-      },
-      COMMAND_PRIORITY_HIGH,
-    );
-  },
-});
+export const MarkdownPasteExtension = createMarkdownPasteExtension(
+  () => undefined,
+);

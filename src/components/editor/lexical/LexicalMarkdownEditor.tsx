@@ -11,6 +11,7 @@ import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { LexicalExtensionComposer } from "@lexical/react/LexicalExtensionComposer";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import type { Provider, ProviderAwareness } from "@lexical/yjs";
+import { ThemeProvider } from "@react-navigation/native";
 
 import {
 	$createRangeSelection,
@@ -37,6 +38,7 @@ import {
 	KEEPER_MARKDOWN_TRANSFORMERS,
 	importMarkdownToLexical,
 } from "./markdown";
+import type { PastedImage } from "./extensions/MarkdownPasteExtension";
 
 interface LexicalMarkdownEditorProps {
 	accessibilityLabel?: string;
@@ -55,6 +57,7 @@ interface LexicalMarkdownEditorProps {
 	onMarkdownChange: (markdown: string) => void;
 	onAttachDocument?: () => void;
 	onInsertImage?: () => void;
+	onPasteImage?: (image: PastedImage) => void | Promise<void>;
 	onInsertTemplateCommand?: () => void | Promise<void>;
 	onOpenWikiLink?: (title: string) => void | Promise<void>;
 	onRemoveAttachment?: () => void;
@@ -215,6 +218,7 @@ function editorPropsEqual(
 		previous.onAttachDocument === next.onAttachDocument &&
 		previous.onCrdtUpdate === next.onCrdtUpdate &&
 		previous.onInsertImage === next.onInsertImage &&
+		previous.onPasteImage === next.onPasteImage &&
 		previous.onInsertTemplateCommand === next.onInsertTemplateCommand &&
 		previous.onMarkdownChange === next.onMarkdownChange &&
 		previous.onOpenWikiLink === next.onOpenWikiLink &&
@@ -833,6 +837,7 @@ function LexicalMarkdownEditor({
 	onAttachDocument,
 	onCrdtUpdate,
 	onInsertImage,
+	onPasteImage,
 	onMarkdownChange,
 	onInsertTemplateCommand,
 	onOpenWikiLink,
@@ -886,6 +891,7 @@ function LexicalMarkdownEditor({
 	const getHasAttachment = useLatestGetter(hasAttachment ?? false);
 	const getOnAttachDocument = useLatestGetter(onAttachDocument);
 	const getOnInsertImage = useLatestGetter(onInsertImage);
+	const getOnPasteImage = useLatestGetter(onPasteImage);
 	const getOnRemoveAttachment = useLatestGetter(onRemoveAttachment);
 	const getOnShowVideoModal = useLatestGetter(onShowVideoModal);
 	const getOnToggleActivePanel = useLatestGetter(onToggleActivePanel);
@@ -915,6 +921,7 @@ function LexicalMarkdownEditor({
 				getHasAttachment,
 				getOnAttachDocument,
 				getOnInsertImage,
+				getOnPasteImage,
 				getOnRemoveAttachment,
 				getOnShowVideoModal,
 				getOnToggleActivePanel,
@@ -930,6 +937,7 @@ function LexicalMarkdownEditor({
 			getHasAttachment,
 			getOnAttachDocument,
 			getOnInsertImage,
+			getOnPasteImage,
 			getOnInsertTemplateCommand,
 			getOnMarkdownChange,
 			getOnOpenWikiLink,
@@ -943,7 +951,7 @@ function LexicalMarkdownEditor({
 		],
 	);
 
-	return (
+	const editor = (
 		<div
 			style={{
 				background: variant === "compact" ? palette.card : palette.background,
@@ -1379,6 +1387,12 @@ function LexicalMarkdownEditor({
 				<MarkdownShortcutPlugin transformers={KEEPER_MARKDOWN_TRANSFORMERS} />
 			</LexicalExtensionComposer>
 		</div>
+	);
+
+	return (
+		<ThemeProvider value={themeMode === "light" ? lightTheme : darkTheme}>
+			{editor}
+		</ThemeProvider>
 	);
 }
 

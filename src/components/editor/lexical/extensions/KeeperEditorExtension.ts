@@ -33,7 +33,10 @@ import { createDraggableBlockExtension } from "./DraggableBlockExtension";
 import { KeeperTableControlsExtension } from "./KeeperTableControlsExtension";
 import { LinkMarkdownEditExtension } from "./LinkMarkdownEditExtension";
 import { createMarkdownChangeExtension } from "./MarkdownChangeExtension";
-import { MarkdownPasteExtension } from "./MarkdownPasteExtension";
+import {
+	createMarkdownPasteExtension,
+	type PastedImage,
+} from "./MarkdownPasteExtension";
 
 interface CreateKeeperEditorExtensionOptions {
 	autoFocus?: boolean;
@@ -48,6 +51,9 @@ interface CreateKeeperEditorExtensionOptions {
 	getHasAttachment: () => boolean;
 	getOnAttachDocument: () => (() => void) | undefined;
 	getOnInsertImage: () => (() => void) | undefined;
+	getOnPasteImage: () =>
+		| ((image: PastedImage) => void | Promise<void>)
+		| undefined;
 	getOnRemoveAttachment: () => (() => void) | undefined;
 	getOnShowVideoModal: () => (() => void) | undefined;
 	getOnToggleArticle: () => (() => void) | undefined;
@@ -68,6 +74,7 @@ export function createKeeperEditorExtension({
 	getHasAttachment,
 	getOnAttachDocument,
 	getOnInsertImage,
+	getOnPasteImage,
 	getOnRemoveAttachment,
 	getOnShowVideoModal,
 	getOnToggleArticle,
@@ -118,7 +125,7 @@ export function createKeeperEditorExtension({
 				disabled: false,
 				maxIndent: null,
 			}),
-			MarkdownPasteExtension,
+			createMarkdownPasteExtension(getOnPasteImage),
 			ClipboardShortcutsExtension,
 			RichTextExtension,
 			CodePrismExtension,
