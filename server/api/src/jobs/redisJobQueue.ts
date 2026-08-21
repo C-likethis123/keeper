@@ -57,7 +57,13 @@ export class RedisJobQueue implements JobQueue {
 			removeOnComplete: { age: 7 * 24 * 60 * 60, count: 200 },
 			removeOnFail: { age: 30 * 24 * 60 * 60, count: 500 },
 		};
-		if (kind === "moc.classify") {
+		if (kind === "git.sync") {
+			options.attempts = Number(process.env.GIT_SYNC_JOB_ATTEMPTS ?? 8);
+			options.backoff = {
+				type: "exponential",
+				delay: Number(process.env.GIT_SYNC_RETRY_DELAY_MS ?? 1_000),
+			};
+		} else {
 			options.delay = Number(process.env.MOC_CLASSIFY_DELAY_MS ?? 15_000);
 		}
 		const job = await this.queue.add(kind, { kind, input }, options);

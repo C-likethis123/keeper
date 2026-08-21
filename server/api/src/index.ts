@@ -17,9 +17,10 @@ if (!databaseUrl) {
 const clusterRepository = createPgClusterRepository(databaseUrl);
 const syncRepository = createPgSyncRepository(databaseUrl);
 const localProcessors =
-	process.env.SERVER_GIT_REMOTE_URL && process.env.SERVER_GIT_REPO_DIR
+	(process.env.SERVER_GITHUB_TOKEN || process.env.SERVER_GIT_REMOTE_URL) &&
+	process.env.SERVER_GITHUB_REPOSITORY
 		? {
-				"git.sync": createGitSyncProcessorFromEnv(),
+				"git.sync": createGitSyncProcessorFromEnv(syncRepository),
 				"moc.classify": createMocClassificationProcessorFromEnv(clusterRepository),
 			}
 		: {};

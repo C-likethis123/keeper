@@ -1,27 +1,29 @@
-import { execFile } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
+import {
+	createOctokitGitHubCommitClient,
+	GitHubHeadConflictError,
+	type GitHubCommitClient,
+	type GitHubFileChanges,
+} from "../github/commitClient.js";
 import type { ServerJob } from "../jobs/types.js";
-import type { SyncOperation } from "../sync/types.js";
+import type { GitSyncNote, SyncOperation, SyncRepository } from "../sync/types.js";
 import { withRedisGitLock } from "./redisGitLock.js";
 
-const execFileAsync = promisify(execFile);
-
+import { createHash } from "node:crypto";
 type GitWorkerConfig = {
-	remoteUrl: string;
-	repoDir: string;
-	branch?: string;
+	client: GitHubCommitClient;
+	syncRepository: SyncRepository;
+	notesCacheDir?: string;
 	redisUrl?: string;
-	userName?: string;
-	userEmail?: string;
+	maxAttempts?: number;
 };
 
 function requiredString(value: unknown, name: string): string {
 	if (typeof value !== "string" || value.trim().length === 0) {
 		throw new Error(`${name} is required`);
 	}
-	return value;
+	return value.trim();
 }
 
 function syncOperationsFromJob(job: ServerJob): SyncOperation[] {
@@ -32,118 +34,220 @@ function syncOperationsFromJob(job: ServerJob): SyncOperation[] {
 	return operations as SyncOperation[];
 }
 
-function notePath(operation: SyncOperation): string {
-	if ("path" in operation && operation.path.trim().length > 0) {
-		return operation.path;
-	}
-	return `${operation.noteId}.md`;
+function affectedNoteIds(operations: SyncOperation[]): string[] {
+	return [...new Set(operations.map((operation) => operation.noteId))];
 }
 
-async function runGit(repoDir: string, args: string[]): Promise<string> {
-	const result = await execFileAsync("git", args, {
-		cwd: repoDir,
-		maxBuffer: 10 * 1024 * 1024,
-	});
-	return `${result.stdout}${result.stderr}`;
+function repositoryPath(value: string): string {
+	const candidate = value.trim();
+	const segments = candidate.split("/");
+	if (
+		!candidate ||
+		candidate.startsWith("/") ||
+		candidate.includes("\\") ||
+		segments.some((segment) => !segment || segment === "." || segment === "..")
+	) {
+		throw new Error(`Invalid Git repository path: ${value}`);
+	}
+	return candidate;
 }
 
-async function ensureRepo(config: GitWorkerConfig): Promise<void> {
-	const branch = config.branch ?? "main";
-	await mkdir(path.dirname(config.repoDir), { recursive: true });
-	try {
-		await runGit(config.repoDir, ["rev-parse", "--is-inside-work-tree"]);
-	} catch {
-		await rm(config.repoDir, { recursive: true, force: true });
-		await execFileAsync("git", [
-			"clone",
-			"--branch",
-			branch,
-			config.remoteUrl,
-			config.repoDir,
-		]);
-	}
+function resolveNotes(
+	operations: SyncOperation[],
+	databaseNotes: GitSyncNote[],
+): GitSyncNote[] {
+	const notes = new Map(databaseNotes.map((note) => [note.id, note]));
+	const latestOperations = new Map<string, SyncOperation>();
+	for (const operation of operations) latestOperations.set(operation.noteId, operation);
 
-	await runGit(config.repoDir, ["fetch", "origin", branch]);
-	try {
-		await runGit(config.repoDir, ["checkout", branch]);
-	} catch {
-		await runGit(config.repoDir, [
-			"checkout",
-			"-b",
-			branch,
-			"--track",
-			`origin/${branch}`,
-		]);
-	}
-	await runGit(config.repoDir, [
-		"branch",
-		"--set-upstream-to",
-		`origin/${branch}`,
-		branch,
-	]);
-
-	await runGit(config.repoDir, [
-		"config",
-		"user.name",
-		config.userName ?? "Keeper Server",
-	]);
-	await runGit(config.repoDir, [
-		"config",
-		"user.email",
-		config.userEmail ?? "keeper-server@example.com",
-	]);
-}
-
-async function writeOperations(repoDir: string, operations: SyncOperation[]) {
-	for (const operation of operations) {
-		const relativePath = notePath(operation);
-		const filePath = path.join(repoDir, relativePath);
+	for (const [noteId, operation] of latestOperations) {
+		if (notes.has(noteId)) continue;
 		if (operation.type === "note.delete") {
+			notes.set(noteId, {
+				id: noteId,
+				path: `${noteId}.md`,
+				markdown: "",
+				deletedAt: operation.deletedAt,
+			});
+			continue;
+		}
+		if (operation.type !== "note.rename") {
+			throw new Error(`Git sync note missing from database: ${noteId}`);
+		}
+	}
+
+	return [...notes.values()];
+}
+
+function gitBlobOid(contents: string): string {
+	const bytes = Buffer.from(contents, "utf8");
+	return createHash("sha1")
+		.update(Buffer.from(`blob ${bytes.length}\0`, "utf8"))
+		.update(bytes)
+		.digest("hex");
+}
+
+function buildFileChanges(
+	notes: GitSyncNote[],
+	remoteFileOids: ReadonlyMap<string, string>,
+): GitHubFileChanges {
+	const additions = new Map<string, string>();
+	const deletions = new Set<string>();
+
+	for (const note of notes) {
+		const notePath = repositoryPath(note.path);
+		if (note.deletedAt) {
+			if (remoteFileOids.has(notePath)) deletions.add(notePath);
+			continue;
+		}
+		if (remoteFileOids.get(notePath) !== gitBlobOid(note.markdown)) {
+			additions.set(notePath, note.markdown);
+		}
+	}
+
+	return {
+		additions: [...additions].map(([filePath, contents]) => ({
+			path: filePath,
+			contents,
+		})),
+		deletions: [...deletions],
+	};
+}
+
+function takeFileChanges(
+	changes: GitHubFileChanges,
+	limit = 100,
+): GitHubFileChanges {
+	const additions = changes.additions.slice(0, limit);
+	return {
+		additions,
+		deletions: changes.deletions.slice(0, limit - additions.length),
+	};
+}
+
+async function updateNotesCache(
+	notesCacheDir: string | undefined,
+	notes: GitSyncNote[],
+): Promise<void> {
+	if (!notesCacheDir) return;
+	for (const note of notes) {
+		const filePath = path.join(notesCacheDir, repositoryPath(note.path));
+		if (note.deletedAt) {
 			await rm(filePath, { force: true });
 			continue;
 		}
-		if (operation.type === "note.rename") {
-			continue;
-		}
 		await mkdir(path.dirname(filePath), { recursive: true });
-		await writeFile(filePath, operation.markdown, "utf8");
+		await writeFile(filePath, note.markdown, "utf8");
 	}
 }
 
-async function commitAndPush(repoDir: string, message: string): Promise<void> {
-	await runGit(repoDir, ["add", "-A"]);
-	const status = await runGit(repoDir, ["status", "--porcelain"]);
-	if (status.trim().length === 0) return;
-	await runGit(repoDir, ["commit", "-m", message]);
-	await runGit(repoDir, ["push"]);
+async function createCommitWithRetry(
+	client: GitHubCommitClient,
+	notes: GitSyncNote[],
+	message: string,
+	maxAttempts: number,
+): Promise<void> {
+	const attempts = Number.isInteger(maxAttempts) && maxAttempts > 0 ? maxAttempts : 4;
+	const maxCommits = Math.ceil(notes.length / 100) + 1;
+
+	for (let commitIndex = 0; commitIndex < maxCommits; commitIndex += 1) {
+		let committed = false;
+		for (let attempt = 1; attempt <= attempts; attempt += 1) {
+			const snapshot = await client.getBranchSnapshot();
+			const changes = buildFileChanges(notes, snapshot.fileOids);
+			if (changes.additions.length === 0 && changes.deletions.length === 0) return;
+
+			try {
+				await client.createCommit({
+					expectedHeadOid: snapshot.headOid,
+					message,
+					changes: takeFileChanges(changes),
+				});
+				committed = true;
+				break;
+			} catch (error) {
+				if (!(error instanceof GitHubHeadConflictError) || attempt === attempts) {
+					throw error;
+				}
+			}
+		}
+		if (!committed) throw new Error("GitHub commit retry exhausted");
+	}
+
+	throw new Error("GitHub reconciliation did not converge");
 }
 
 export function createGitSyncProcessor(config: GitWorkerConfig) {
 	return async function processGitSync(job: ServerJob): Promise<void> {
-		const operations = syncOperationsFromJob(job);
-		if (operations.length === 0) return;
+		const reconcileAll = job.input.reconcileAll === true;
+		const operations = reconcileAll ? [] : syncOperationsFromJob(job);
+		if (!reconcileAll && operations.length === 0) return;
 
 		await withRedisGitLock(config.redisUrl, async () => {
-			await ensureRepo(config);
-			await runGit(config.repoDir, ["pull", "--ff-only"]);
-			await writeOperations(config.repoDir, operations);
-			await commitAndPush(
-				config.repoDir,
-				`Sync ${operations.length} Keeper operation${operations.length === 1 ? "" : "s"}`,
+			const noteIds = affectedNoteIds(operations);
+			const notes = reconcileAll
+				? await config.syncRepository.readAllNotes()
+				: resolveNotes(
+						operations,
+						await config.syncRepository.readNotes(noteIds),
+					);
+			if (notes.length === 0) return;
+
+			const message = reconcileAll
+				? `Reconcile ${notes.length} Keeper note${notes.length === 1 ? "" : "s"}`
+				: `Sync ${noteIds.length} Keeper note${noteIds.length === 1 ? "" : "s"}`;
+			await createCommitWithRetry(
+				config.client,
+				notes,
+				message,
+				config.maxAttempts ?? 4,
 			);
+
+			try {
+				await updateNotesCache(config.notesCacheDir, notes);
+			} catch (error) {
+				console.warn("[GitWorker] GitHub commit succeeded but notes cache update failed", error);
+			}
 		});
 	};
 }
 
-export function createGitSyncProcessorFromEnv() {
-	const remoteUrl = requiredString(process.env.SERVER_GIT_REMOTE_URL, "SERVER_GIT_REMOTE_URL");
-	const repoDir = requiredString(process.env.SERVER_GIT_REPO_DIR, "SERVER_GIT_REPO_DIR");
+function tokenFromRemoteUrl(remoteUrl: string | undefined): string | undefined {
+	if (!remoteUrl) return undefined;
+	try {
+		const url = new URL(remoteUrl);
+		if (url.protocol !== "https:") return undefined;
+		if (url.password) return decodeURIComponent(url.password);
+		if (url.username && url.username !== "git" && url.username !== "x-access-token") {
+			return decodeURIComponent(url.username);
+		}
+	} catch {
+		return undefined;
+	}
+	return undefined;
+}
+
+export function createGitSyncProcessorFromEnv(syncRepository: SyncRepository) {
+	const token = requiredString(
+		process.env.SERVER_GITHUB_TOKEN ||
+			tokenFromRemoteUrl(process.env.SERVER_GIT_REMOTE_URL),
+		"SERVER_GITHUB_TOKEN or credentialed SERVER_GIT_REMOTE_URL",
+	);
+	const repositoryNameWithOwner = requiredString(
+		process.env.SERVER_GITHUB_REPOSITORY,
+		"SERVER_GITHUB_REPOSITORY",
+	);
+	const [owner, repository, ...extra] = repositoryNameWithOwner.split("/");
+	if (!owner || !repository || extra.length > 0) {
+		throw new Error("SERVER_GITHUB_REPOSITORY must use owner/repository format");
+	}
+	const branch = process.env.SERVER_GIT_BRANCH ?? "main";
+
 	return createGitSyncProcessor({
-		remoteUrl,
-		repoDir,
-		branch: process.env.SERVER_GIT_BRANCH ?? "main",
+		client: createOctokitGitHubCommitClient({ token, owner, repository, branch }),
+		syncRepository,
+		notesCacheDir: process.env.SERVER_GIT_REPO_DIR,
 		redisUrl: process.env.REDIS_URL,
-		userName: process.env.SERVER_GIT_USER_NAME,
-		userEmail: process.env.SERVER_GIT_USER_EMAIL,
+		maxAttempts: Number(process.env.SERVER_GITHUB_COMMIT_ATTEMPTS ?? 4),
 	});
 }

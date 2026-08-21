@@ -1,5 +1,6 @@
 import { SyncConflictError } from "./errors.js";
 import type {
+	GitSyncNote,
 	SyncOperation,
 	NoteCreateOperation,
 	SyncPullInput,
@@ -95,6 +96,24 @@ export class InMemorySyncRepository implements SyncRepository {
 			}));
 
 		return { ops, cursor };
+	}
+
+	async readNotes(noteIds: string[]): Promise<GitSyncNote[]> {
+		return noteIds.flatMap((noteId) => {
+			const note = this.notes.get(noteId);
+			return note
+				? [{ id: note.id, path: note.path, markdown: note.markdown, deletedAt: note.deletedAt }]
+				: [];
+		});
+	}
+
+	async readAllNotes(): Promise<GitSyncNote[]> {
+		return [...this.notes.values()].map((note) => ({
+			id: note.id,
+			path: note.path,
+			markdown: note.markdown,
+			deletedAt: note.deletedAt,
+		}));
 	}
 
 	async hasNotes(): Promise<boolean> {

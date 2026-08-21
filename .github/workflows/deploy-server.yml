@@ -47,13 +47,14 @@ jobs:
           KEEPER_API_DOMAIN: ${{ secrets.KEEPER_API_DOMAIN }}
           ORACLE_VM_HOST: ${{ secrets.ORACLE_VM_HOST }}
           SERVER_GIT_REMOTE_URL: ${{ secrets.SERVER_GIT_REMOTE_URL }}
+          SERVER_GITHUB_TOKEN: ${{ secrets.SERVER_GITHUB_TOKEN }}
           KEEPER_SEED_TOKEN: ${{ secrets.KEEPER_SEED_TOKEN }}
         with:
           host: ${{ secrets.ORACLE_VM_HOST }}
           username: ${{ secrets.ORACLE_VM_USER }}
           key: ${{ secrets.ORACLE_VM_SSH_KEY }}
           port: ${{ secrets.ORACLE_VM_SSH_PORT || 22 }}
-          envs: KEEPER_REPO_URL,KEEPER_API_DOMAIN,ORACLE_VM_HOST,SERVER_GIT_REMOTE_URL,KEEPER_SEED_TOKEN
+          envs: KEEPER_REPO_URL,KEEPER_API_DOMAIN,ORACLE_VM_HOST,SERVER_GIT_REMOTE_URL,SERVER_GITHUB_TOKEN,KEEPER_SEED_TOKEN
           script: |
             set -eu
 
@@ -158,6 +159,7 @@ jobs:
             {
               printf 'KEEPER_API_DOMAIN=%s\n' "$KEEPER_API_DOMAIN"
               printf 'SERVER_GIT_REMOTE_URL=%s\n' "$SERVER_GIT_REMOTE_URL"
+              printf 'SERVER_GITHUB_TOKEN=%s\n' "$SERVER_GITHUB_TOKEN"
               printf 'KEEPER_SEED_TOKEN=%s\n' "$KEEPER_SEED_TOKEN"
             } > server/.env
 

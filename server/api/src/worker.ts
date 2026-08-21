@@ -1,5 +1,6 @@
 import { Worker } from "bullmq";
 import { createPgClusterRepository } from "./clusters/pgClusterRepository.js";
+import { createPgSyncRepository } from "./sync/pgSyncRepository.js";
 import {
 	createRedisConnection,
 	RedisJobQueue,
@@ -15,9 +16,10 @@ if (!redisUrl) throw new Error("REDIS_URL is required");
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
 
 const clusterRepository = createPgClusterRepository(databaseUrl);
+const syncRepository = createPgSyncRepository(databaseUrl);
 const queue = new RedisJobQueue(redisUrl);
 const processors: Record<JobKind, JobProcessor> = {
-	"git.sync": createGitSyncProcessorFromEnv(),
+	"git.sync": createGitSyncProcessorFromEnv(syncRepository),
 	"moc.classify": createMocClassificationProcessorFromEnv(clusterRepository),
 };
 
@@ -52,6 +54,11 @@ worker.on("completed", (job) => {
 });
 worker.on("failed", (job, error) => {
 	console.error(`[Worker] ${job?.data.kind ?? "unknown"} ${job?.id ?? "unknown"} failed`, error);
+});
+
+await queue.enqueue("git.sync", {
+	reconcileAll: true,
+	reason: "worker-startup",
 });
 
 async function close(): Promise<void> {

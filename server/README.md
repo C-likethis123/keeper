@@ -49,9 +49,14 @@ For Git and MOC workers, set:
 ```bash
 SERVER_GIT_REMOTE_URL=<C-likethis/logseq git-remote-url>
 SERVER_GIT_REPO_DIR=/data/repos/keeper-notes
+SERVER_GITHUB_REPOSITORY=C-likethis/logseq
 REDIS_URL=redis://redis:6379
 KEEPER_SEED_TOKEN=<shared-token-for-github-action>
 ```
+
+`SERVER_GIT_REMOTE_URL` may contain existing HTTPS GitHub credentials. Git worker
+reuses embedded password/token for GraphQL commits. Set `SERVER_GITHUB_TOKEN`
+only when remote URL uses SSH or contains no credentials.
 
 Push operation:
 
@@ -114,7 +119,9 @@ When the sync server URL is set, clients keep local writes and server sync enabl
 - create, update, rename, delete note state
 - per-client pull cursor support
 - same-device operations are skipped during pull while the cursor still advances
-- `git.sync` worker clones the server repo, writes accepted note ops, commits, and pushes
+- `git.sync` worker reads canonical notes from Postgres and creates GitHub commits through GraphQL
+- GitHub commits use expected branch head OIDs and retry concurrent branch updates
+- Redis `git.sync` jobs retry with exponential backoff
 - Redis-backed Git lock when `REDIS_URL` is set
 - `POST /github/seed` seeds markdown notes from the configured GitHub repo
 - `/jobs` and `/jobs/:id`

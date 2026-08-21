@@ -90,9 +90,18 @@ export type SeedNotesResult = SyncPushResult & {
 	noteCount: number;
 };
 
+export type GitSyncNote = {
+	id: string;
+	path: string;
+	markdown: string;
+	deletedAt: string | null;
+};
+
 export type SyncRepository = {
 	pushOperations(input: SyncPushInput): Promise<SyncPushResult>;
 	pullOperations(input: SyncPullInput): Promise<SyncPullResult>;
+	readNotes(noteIds: string[]): Promise<GitSyncNote[]>;
+	readAllNotes(): Promise<GitSyncNote[]>;
 	hasNotes(): Promise<boolean>;
 	seedNotes(input: SeedNotesInput): Promise<SeedNotesResult>;
 };

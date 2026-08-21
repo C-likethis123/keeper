@@ -1,21 +1,18 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { promisify } from "node:util";
 import { InMemoryClusterRepository } from "../clusters/inMemoryClusterRepository.js";
+import {
+	GitHubHeadConflictError,
+	type CreateGitHubCommitInput,
+} from "../github/commitClient.js";
 import { InMemoryJobQueue } from "../jobs/inMemoryJobQueue.js";
 import type { ServerJob } from "../jobs/types.js";
+import { InMemorySyncRepository } from "../sync/inMemorySyncRepository.js";
 import { createGitSyncProcessor } from "./gitWorker.js";
 import { createMocClassificationProcessor } from "./mocWorker.js";
-
-const execFileAsync = promisify(execFile);
-
-async function git(cwd: string, args: string[]) {
-	await execFileAsync("git", args, { cwd });
-}
 
 function makeJob(input: Record<string, unknown>): ServerJob {
 	const now = new Date().toISOString();
@@ -29,66 +26,157 @@ function makeJob(input: Record<string, unknown>): ServerJob {
 	};
 }
 
-test("git sync worker commits creates, updates, and deletes to remote", async () => {
+test("git sync worker commits canonical note state through GitHub", async () => {
 	const root = await mkdtemp(path.join(os.tmpdir(), "keeper-git-worker-"));
-	const remote = path.join(root, "remote.git");
-	const seed = path.join(root, "seed");
-	const clone = path.join(root, "clone");
+	const syncRepository = new InMemorySyncRepository();
+	const commits: CreateGitHubCommitInput[] = [];
+	const fileOids = new Map<string, string>();
+	let head = 1;
+	const client = {
+		async getBranchSnapshot() {
+			return { headOid: `head-${head}`, fileOids: new Map(fileOids) };
+		},
+		async createCommit(input: CreateGitHubCommitInput) {
+			commits.push(input);
+			for (const addition of input.changes.additions) {
+				fileOids.set(addition.path, "9fd714ad5ec75749d31ab6526f4d94463526a737");
+			}
+			for (const deletion of input.changes.deletions) fileOids.delete(deletion);
+			head += 1;
+			return `head-${head}`;
+		},
+	};
 	try {
-		await git(root, ["init", "--bare", remote]);
-		await git(root, ["clone", remote, seed]);
-		await git(seed, ["checkout", "-b", "main"]);
-		await git(seed, ["config", "user.email", "keeper@example.com"]);
-		await git(seed, ["config", "user.name", "Keeper Server"]);
-		await writeFile(path.join(seed, "README.md"), "seed\n", "utf8");
-		await git(seed, ["add", "."]);
-		await git(seed, ["commit", "-m", "seed"]);
-		await git(seed, ["push", "-u", "origin", "main"]);
-
+		const createOperation = {
+			opId: "phone:1",
+			seq: 1,
+			type: "note.create" as const,
+			noteId: "note-1",
+			path: "notes/note-1.md",
+			title: "Inbox",
+			markdown: "# Inbox",
+			createdAt: "2026-07-11T10:00:00Z",
+		};
+		await syncRepository.pushOperations({ deviceId: "phone", ops: [createOperation] });
 		const processor = createGitSyncProcessor({
-			remoteUrl: remote,
-			repoDir: clone,
-			branch: "main",
+			client,
+			syncRepository,
+			notesCacheDir: root,
 		});
-		await processor(
-			makeJob({
-				operations: [
-					{
-						opId: "phone:1",
-						seq: 1,
-						type: "note.create",
-						noteId: "note-1",
-						path: "note-1.md",
-						title: "Inbox",
-						markdown: "# Inbox",
-						createdAt: "2026-07-11T10:00:00Z",
-					},
-				],
-			}),
-		);
-		assert.equal(await readFile(path.join(clone, "note-1.md"), "utf8"), "# Inbox");
-		await git(clone, ["checkout", "--detach", "HEAD"]);
+		await processor(makeJob({ operations: [createOperation] }));
+		assert.deepEqual(commits[0]?.changes, {
+			additions: [{ path: "notes/note-1.md", contents: "# Inbox" }],
+			deletions: [],
+		});
+		assert.equal(await readFile(path.join(root, "notes/note-1.md"), "utf8"), "# Inbox");
 
-		await processor(
-			makeJob({
-				operations: [
-					{
-						opId: "phone:2",
-						seq: 2,
-						type: "note.delete",
-						noteId: "note-1",
-						deletedAt: "2026-07-11T10:01:00Z",
-					},
-				],
-			}),
-		);
-
-		const verify = path.join(root, "verify");
-		await git(root, ["clone", "--branch", "main", remote, verify]);
-		await assert.rejects(readFile(path.join(verify, "note-1.md"), "utf8"));
+		const deleteOperation = {
+			opId: "phone:2",
+			seq: 2,
+			type: "note.delete" as const,
+			noteId: "note-1",
+			deletedAt: "2026-07-11T10:01:00Z",
+		};
+		await syncRepository.pushOperations({ deviceId: "phone", ops: [deleteOperation] });
+		await processor(makeJob({ operations: [deleteOperation] }));
+		assert.deepEqual(commits[1]?.changes, {
+			additions: [],
+			deletions: ["notes/note-1.md"],
+		});
+		await assert.rejects(readFile(path.join(root, "notes/note-1.md"), "utf8"));
 	} finally {
 		await rm(root, { recursive: true, force: true });
 	}
+});
+
+test("git sync worker retries changed GitHub head", async () => {
+	const syncRepository = new InMemorySyncRepository();
+	const operation = {
+		opId: "phone:1",
+		seq: 1,
+		type: "note.create" as const,
+		noteId: "note-1",
+		path: "note-1.md",
+		title: "Inbox",
+		markdown: "# Inbox",
+		createdAt: "2026-07-11T10:00:00Z",
+	};
+	await syncRepository.pushOperations({ deviceId: "phone", ops: [operation] });
+	const attemptedHeads: string[] = [];
+	let headReads = 0;
+	let synced = false;
+	const processor = createGitSyncProcessor({
+		syncRepository,
+		maxAttempts: 2,
+		client: {
+			async getBranchSnapshot() {
+				headReads += 1;
+				return {
+					headOid: `head-${headReads}`,
+					fileOids: synced
+						? new Map([["note-1.md", "9fd714ad5ec75749d31ab6526f4d94463526a737"]])
+						: new Map(),
+				};
+			},
+			async createCommit(input) {
+				attemptedHeads.push(input.expectedHeadOid);
+				if (attemptedHeads.length === 1) {
+					throw new GitHubHeadConflictError("branch head changed");
+				}
+				synced = true;
+				return "head-3";
+			},
+		},
+	});
+
+	await processor(makeJob({ operations: [operation] }));
+	assert.deepEqual(attemptedHeads, ["head-1", "head-2"]);
+});
+
+
+test("git sync worker reconciles existing database notes", async () => {
+	const syncRepository = new InMemorySyncRepository();
+	await syncRepository.pushOperations({
+		deviceId: "phone",
+		ops: [
+			{
+				opId: "phone:1",
+				seq: 1,
+				type: "note.create",
+				noteId: "existing-note",
+				path: "existing.md",
+				title: "Existing",
+				markdown: "# Existing",
+				createdAt: "2026-07-11T10:00:00Z",
+			},
+		],
+	});
+	const commits: CreateGitHubCommitInput[] = [];
+	let synced = false;
+	const processor = createGitSyncProcessor({
+		syncRepository,
+		client: {
+			async getBranchSnapshot() {
+				return {
+					headOid: synced ? "head-2" : "head-1",
+					fileOids: synced
+						? new Map([["existing.md", "6df9bf71bb9ec3dfaf8b07df253ce07985ffaab3"]])
+						: new Map(),
+				};
+			},
+			async createCommit(input) {
+				commits.push(input);
+				synced = true;
+				return "head-2";
+			},
+		},
+	});
+
+	await processor(makeJob({ reconcileAll: true }));
+	assert.deepEqual(commits[0]?.changes, {
+		additions: [{ path: "existing.md", contents: "# Existing" }],
+		deletions: [],
+	});
 });
 
 test("job queue runs moc classification after git sync succeeds", async () => {

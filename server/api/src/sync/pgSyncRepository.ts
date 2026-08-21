@@ -1,6 +1,7 @@
 import pg from "pg";
 import { SyncConflictError } from "./errors.js";
 import type {
+	GitSyncNote,
 	SyncOperation,
 	SyncPullInput,
 	SyncPullResult,
@@ -18,6 +19,13 @@ type ExistingDeviceSeqRow = {
 
 type IdRow = {
 	id: string | number;
+};
+
+type GitSyncNoteRow = {
+	id: string;
+	path: string;
+	markdown: string;
+	deleted_at: Date | string | null;
 };
 
 const { Pool } = pg;
@@ -139,6 +147,47 @@ export function createPgSyncRepository(databaseUrl: string): SyncRepository {
 					}));
 
 				return { ops, cursor };
+			} finally {
+				client.release();
+			}
+		},
+		async readNotes(noteIds: string[]): Promise<GitSyncNote[]> {
+			if (noteIds.length === 0) return [];
+			const client = await pool.connect();
+			try {
+				const result = await client.query<GitSyncNoteRow>(
+					`SELECT id, path, markdown, deleted_at
+					 FROM notes
+					 WHERE id = ANY($1::text[])`,
+					[noteIds],
+				);
+				return result.rows.map((row) => ({
+					id: row.id,
+					path: row.path,
+					markdown: row.markdown,
+					deletedAt:
+						row.deleted_at === null ? null : new Date(row.deleted_at).toISOString(),
+				}));
+			} finally {
+				client.release();
+			}
+		},
+
+		async readAllNotes(): Promise<GitSyncNote[]> {
+			const client = await pool.connect();
+			try {
+				const result = await client.query<GitSyncNoteRow>(
+					`SELECT id, path, markdown, deleted_at
+					 FROM notes
+					 ORDER BY id`,
+				);
+				return result.rows.map((row) => ({
+					id: row.id,
+					path: row.path,
+					markdown: row.markdown,
+					deletedAt:
+						row.deleted_at === null ? null : new Date(row.deleted_at).toISOString(),
+				}));
 			} finally {
 				client.release();
 			}
