@@ -1,8 +1,9 @@
-import { createServer } from "./server.js";
 import { createPgClusterRepository } from "./clusters/pgClusterRepository.js";
 import { createGitHubSeedServiceFromEnv } from "./github/seedService.js";
 import { InMemoryJobQueue } from "./jobs/inMemoryJobQueue.js";
 import { RedisJobQueue } from "./jobs/redisJobQueue.js";
+import { readServerSecurityConfig } from "./security/config.js";
+import { createServer } from "./server.js";
 import { createPgSyncRepository } from "./sync/pgSyncRepository.js";
 import { createGitSyncProcessorFromEnv } from "./workers/gitWorker.js";
 import { createMocClassificationProcessorFromEnv } from "./workers/mocWorker.js";
@@ -20,7 +21,8 @@ const localProcessors =
 	process.env.SERVER_GITHUB_TOKEN || process.env.SERVER_GIT_REMOTE_URL
 		? {
 				"git.sync": createGitSyncProcessorFromEnv(syncRepository),
-				"moc.classify": createMocClassificationProcessorFromEnv(clusterRepository),
+				"moc.classify":
+					createMocClassificationProcessorFromEnv(clusterRepository),
 			}
 		: {};
 const jobQueue = process.env.REDIS_URL
@@ -35,24 +37,24 @@ const server = createServer({
 	syncRepository,
 	jobQueue,
 	clusterRepository,
-	githubSeed:
-		process.env.KEEPER_SEED_TOKEN
-			? {
-					token: process.env.KEEPER_SEED_TOKEN,
-					service: seedService
-						? {
-								async seed(input) {
-									const result = await seedService.seed(input);
-									await jobQueue.enqueue("moc.classify", {
-										source: "github.seed",
-										sha: result.sha,
-									});
-									return result;
-								},
-							}
-						: undefined,
-				}
-			: undefined,
+	githubSeed: process.env.KEEPER_SEED_TOKEN
+		? {
+				token: process.env.KEEPER_SEED_TOKEN,
+				service: seedService
+					? {
+							async seed(input) {
+								const result = await seedService.seed(input);
+								await jobQueue.enqueue("moc.classify", {
+									source: "github.seed",
+									sha: result.sha,
+								});
+								return result;
+							},
+						}
+					: undefined,
+			}
+		: undefined,
+	security: readServerSecurityConfig(),
 });
 
 await server.listen({ host: "0.0.0.0", port });

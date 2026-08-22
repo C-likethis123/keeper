@@ -9,13 +9,36 @@ import {
 	markSyncOpsPushed,
 	readQueuedSyncOps,
 } from "@/services/sync/syncOpQueue";
+import { isSyncRequestError } from "@/services/sync/syncRequestError";
 
 const BASE_RETRY_MS = 1000;
 const MAX_RETRY_MS = 60_000;
+const MAX_PUSH_BODY_BYTES = 15 * 1024 * 1024;
+const MAX_PUSH_OPERATIONS = 100;
 
 let retryMs = BASE_RETRY_MS;
 let pushPromise: Promise<void> | null = null;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+function jsonByteLength(value: unknown): number {
+	return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+}
+
+export function selectSyncPushBatch(
+	deviceId: string,
+	queued: Awaited<ReturnType<typeof readQueuedSyncOps>>,
+	maxBodyBytes = MAX_PUSH_BODY_BYTES,
+): Awaited<ReturnType<typeof readQueuedSyncOps>> {
+	const batch: Awaited<ReturnType<typeof readQueuedSyncOps>> = [];
+	for (const operation of queued.slice(0, MAX_PUSH_OPERATIONS)) {
+		const candidate = [...batch, operation];
+		if (jsonByteLength({ deviceId, ops: candidate }) > maxBodyBytes) {
+			break;
+		}
+		batch.push(operation);
+	}
+	return batch;
+}
 
 function clearRetryTimer(): void {
 	if (retryTimer) {
@@ -31,10 +54,13 @@ export function scheduleSyncPush(delayMs = 0): void {
 		return;
 	}
 	clearRetryTimer();
-	retryTimer = setTimeout(() => {
-		retryTimer = null;
-		void pushPendingSyncOps();
-	}, Math.max(0, delayMs));
+	retryTimer = setTimeout(
+		() => {
+			retryTimer = null;
+			void pushPendingSyncOps();
+		},
+		Math.max(0, delayMs),
+	);
 }
 
 export async function pushPendingSyncOps(): Promise<void> {
@@ -52,7 +78,14 @@ export async function pushPendingSyncOps(): Promise<void> {
 
 		try {
 			const deviceId = await getSyncDeviceId();
-			const batch = queued.slice(0, 100);
+			const batch = selectSyncPushBatch(deviceId, queued);
+			if (batch.length === 0) {
+				showSyncDebugToast(
+					"Sync paused: first queued change exceeds server upload limit",
+					10000,
+				);
+				return;
+			}
 			const result = await pushSyncOperations(deviceId, batch);
 			await markSyncOpsPushed([
 				...result.accepted,
@@ -72,6 +105,17 @@ export async function pushPendingSyncOps(): Promise<void> {
 				}`,
 				10000,
 			);
+			if (isSyncRequestError(error) && error.status === 413) {
+				showSyncDebugToast(
+					"Sync paused: server rejected oversized upload",
+					10000,
+				);
+				return;
+			}
+			if (isSyncRequestError(error) && error.status === 429) {
+				scheduleSyncPush(error.retryAfterMs ?? retryMs);
+				return;
+			}
 			scheduleSyncPush(retryMs);
 			retryMs = Math.min(retryMs * 2, MAX_RETRY_MS);
 		}

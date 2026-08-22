@@ -65,58 +65,74 @@ export function registerSyncRoutes(
 	server: FastifyInstance,
 	syncRepository: SyncRepository,
 	jobQueue?: JobQueue,
+	syncBodyLimitBytes = 16 * 1024 * 1024,
 ) {
-	server.post("/sync/push", async (request, reply) => {
-		const parsed = pushRequestSchema.safeParse(request.body);
-
-		if (!parsed.success) {
-			return reply.code(400).send({
-				error: "invalid_sync_push",
-				issues: parsed.error.issues,
-			});
-		}
-
-		try {
-			const result = await syncRepository.pushOperations(parsed.data);
-			request.log.info(
-				{
-					accepted: result.accepted.length,
-					cursor: result.cursor,
-					deviceId: parsed.data.deviceId,
-					duplicateCount: result.duplicates.length,
-					opCount: parsed.data.ops.length,
+	server.post(
+		"/sync/push",
+		{
+			bodyLimit: syncBodyLimitBytes,
+			config: {
+				rateLimit: {
+					groupId: "sync-push",
+					max: 30,
+					timeWindow: "1 minute",
 				},
-				"sync push accepted",
-			);
-			if (jobQueue && result.accepted.length > 0) {
-				await jobQueue.enqueue("git.sync", {
-					opIds: result.accepted,
-					operations: parsed.data.ops.filter((operation) =>
-						result.accepted.includes(operation.opId),
-					),
-					noteIds: [
-						...new Set(
-							parsed.data.ops
-								.filter((operation) => result.accepted.includes(operation.opId))
-								.map((operation) => operation.noteId),
+			},
+		},
+		async (request, reply) => {
+			const parsed = pushRequestSchema.safeParse(request.body);
+
+			if (!parsed.success) {
+				return reply.code(400).send({
+					error: "invalid_sync_push",
+					issues: parsed.error.issues,
+				});
+			}
+
+			try {
+				const result = await syncRepository.pushOperations(parsed.data);
+				request.log.info(
+					{
+						accepted: result.accepted.length,
+						cursor: result.cursor,
+						deviceId: parsed.data.deviceId,
+						duplicateCount: result.duplicates.length,
+						opCount: parsed.data.ops.length,
+					},
+					"sync push accepted",
+				);
+				if (jobQueue && result.accepted.length > 0) {
+					await jobQueue.enqueue("git.sync", {
+						opIds: result.accepted,
+						operations: parsed.data.ops.filter((operation) =>
+							result.accepted.includes(operation.opId),
 						),
-					],
-					cursor: result.cursor,
-				});
-			}
+						noteIds: [
+							...new Set(
+								parsed.data.ops
+									.filter((operation) =>
+										result.accepted.includes(operation.opId),
+									)
+									.map((operation) => operation.noteId),
+							),
+						],
+						cursor: result.cursor,
+					});
+				}
 
-			return reply.code(202).send(result);
-		} catch (error) {
-			if (error instanceof SyncConflictError) {
-				return reply.code(409).send({
-					error: "sync_conflict",
-					message: error.message,
-				});
-			}
+				return reply.code(202).send(result);
+			} catch (error) {
+				if (error instanceof SyncConflictError) {
+					return reply.code(409).send({
+						error: "sync_conflict",
+						message: error.message,
+					});
+				}
 
-			throw error;
-		}
-	});
+				throw error;
+			}
+		},
+	);
 
 	server.get("/sync/pull", async (request, reply) => {
 		const parsed = pullQuerySchema.safeParse(request.query);
@@ -128,16 +144,16 @@ export function registerSyncRoutes(
 			});
 		}
 
-			const result = await syncRepository.pullOperations(parsed.data);
-			request.log.info(
-				{
-					cursor: result.cursor,
-					deviceId: parsed.data.deviceId,
-					opCount: result.ops.length,
-				},
-				"sync pull returned",
-			);
+		const result = await syncRepository.pullOperations(parsed.data);
+		request.log.info(
+			{
+				cursor: result.cursor,
+				deviceId: parsed.data.deviceId,
+				opCount: result.ops.length,
+			},
+			"sync pull returned",
+		);
 
-			return reply.code(200).send(result);
-		});
+		return reply.code(200).send(result);
+	});
 }

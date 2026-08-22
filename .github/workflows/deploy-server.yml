@@ -49,12 +49,16 @@ jobs:
           SERVER_GIT_REMOTE_URL: ${{ secrets.SERVER_GIT_REMOTE_URL }}
           SERVER_GITHUB_TOKEN: ${{ secrets.SERVER_GITHUB_TOKEN }}
           KEEPER_SEED_TOKEN: ${{ secrets.KEEPER_SEED_TOKEN }}
+          KEEPER_CORS_ALLOWED_ORIGINS: ${{ vars.KEEPER_CORS_ALLOWED_ORIGINS }}
+          KEEPER_RATE_LIMIT_MAX: ${{ vars.KEEPER_RATE_LIMIT_MAX }}
+          KEEPER_RATE_LIMIT_WINDOW_MS: ${{ vars.KEEPER_RATE_LIMIT_WINDOW_MS }}
+          KEEPER_SYNC_BODY_LIMIT_BYTES: ${{ vars.KEEPER_SYNC_BODY_LIMIT_BYTES }}
         with:
           host: ${{ secrets.ORACLE_VM_HOST }}
           username: ${{ secrets.ORACLE_VM_USER }}
           key: ${{ secrets.ORACLE_VM_SSH_KEY }}
           port: ${{ secrets.ORACLE_VM_SSH_PORT || 22 }}
-          envs: KEEPER_REPO_URL,KEEPER_API_DOMAIN,ORACLE_VM_HOST,SERVER_GIT_REMOTE_URL,SERVER_GITHUB_TOKEN,KEEPER_SEED_TOKEN
+          envs: KEEPER_REPO_URL,KEEPER_API_DOMAIN,ORACLE_VM_HOST,SERVER_GIT_REMOTE_URL,SERVER_GITHUB_TOKEN,KEEPER_SEED_TOKEN,KEEPER_CORS_ALLOWED_ORIGINS,KEEPER_RATE_LIMIT_MAX,KEEPER_RATE_LIMIT_WINDOW_MS,KEEPER_SYNC_BODY_LIMIT_BYTES
           script: |
             set -eu
 
@@ -161,6 +165,10 @@ jobs:
               printf 'SERVER_GIT_REMOTE_URL=%s\n' "$SERVER_GIT_REMOTE_URL"
               printf 'SERVER_GITHUB_TOKEN=%s\n' "$SERVER_GITHUB_TOKEN"
               printf 'KEEPER_SEED_TOKEN=%s\n' "$KEEPER_SEED_TOKEN"
+              printf 'KEEPER_CORS_ALLOWED_ORIGINS=%s\n' "$KEEPER_CORS_ALLOWED_ORIGINS"
+              printf 'KEEPER_RATE_LIMIT_MAX=%s\n' "$KEEPER_RATE_LIMIT_MAX"
+              printf 'KEEPER_RATE_LIMIT_WINDOW_MS=%s\n' "$KEEPER_RATE_LIMIT_WINDOW_MS"
+              printf 'KEEPER_SYNC_BODY_LIMIT_BYTES=%s\n' "$KEEPER_SYNC_BODY_LIMIT_BYTES"
             } > server/.env
 
             sudo docker compose --env-file server/.env -f server/docker-compose.yml up -d --build

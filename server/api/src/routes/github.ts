@@ -20,51 +20,55 @@ export function registerGitHubRoutes(
 	server: FastifyInstance,
 	dependencies: GitHubRouteDependencies,
 ) {
-	server.post("/github/seed", async (request, reply) => {
-		const authorization = request.headers.authorization ?? "";
-		if (authorization !== `Bearer ${dependencies.seedToken}`) {
-			return reply.code(401).send({ error: "unauthorized" });
-		}
+	server.post(
+		"/github/seed",
+		{ config: { rateLimit: { max: 5, timeWindow: "1 hour" } } },
+		async (request, reply) => {
+			const authorization = request.headers.authorization ?? "";
+			if (authorization !== `Bearer ${dependencies.seedToken}`) {
+				return reply.code(401).send({ error: "unauthorized" });
+			}
 
-		const parsed = seedRequestSchema.safeParse(request.body);
-		if (!parsed.success) {
-			return reply.code(400).send({
-				error: "invalid_github_seed",
-				issues: parsed.error.issues,
-			});
-		}
+			const parsed = seedRequestSchema.safeParse(request.body);
+			if (!parsed.success) {
+				return reply.code(400).send({
+					error: "invalid_github_seed",
+					issues: parsed.error.issues,
+				});
+			}
 
-		if (!dependencies.seedService) {
-			return reply.code(503).send({
-				error: "github_seed_not_configured",
-				message:
-					"GitHub seed requires SERVER_GIT_REMOTE_URL and SERVER_GIT_REPO_DIR on the Keeper server.",
-			});
-		}
+			if (!dependencies.seedService) {
+				return reply.code(503).send({
+					error: "github_seed_not_configured",
+					message:
+						"GitHub seed requires SERVER_GIT_REMOTE_URL and SERVER_GIT_REPO_DIR on the Keeper server.",
+				});
+			}
 
-		if (
-			!parsed.data.proceedIfDbHasData &&
-			(await dependencies.syncRepository.hasNotes())
-		) {
-			return reply.code(409).send({
-				error: "server_db_has_data",
-				message:
-					"Server DB already has notes. Re-run with proceedIfDbHasData=true to seed anyway.",
-			});
-		}
+			if (
+				!parsed.data.proceedIfDbHasData &&
+				(await dependencies.syncRepository.hasNotes())
+			) {
+				return reply.code(409).send({
+					error: "server_db_has_data",
+					message:
+						"Server DB already has notes. Re-run with proceedIfDbHasData=true to seed anyway.",
+				});
+			}
 
-		const result = await dependencies.seedService.seed(parsed.data);
-		request.log.info(
-			{
-				accepted: result.accepted.length,
-				duplicateCount: result.duplicates.length,
-				noteCount: result.noteCount,
-				repository: parsed.data.repository,
-				sha: parsed.data.sha,
-			},
-			"github seed completed",
-		);
+			const result = await dependencies.seedService.seed(parsed.data);
+			request.log.info(
+				{
+					accepted: result.accepted.length,
+					duplicateCount: result.duplicates.length,
+					noteCount: result.noteCount,
+					repository: parsed.data.repository,
+					sha: parsed.data.sha,
+				},
+				"github seed completed",
+			);
 
-		return reply.code(202).send(result);
-	});
+			return reply.code(202).send(result);
+		},
+	);
 }

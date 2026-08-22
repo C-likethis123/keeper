@@ -9,13 +9,7 @@ cd server
 docker compose up
 ```
 
-API:
-
-```bash
-curl http://localhost:8787/health
-```
-
-Proxy:
+API stays private on the Docker network. Use the HTTPS proxy from the host:
 
 ```bash
 curl -k https://localhost/health
@@ -53,6 +47,19 @@ REDIS_URL=redis://redis:6379
 KEEPER_SEED_TOKEN=<shared-token-for-github-action>
 ```
 
+Server request hardening accepts these optional settings:
+
+```bash
+KEEPER_CORS_ALLOWED_ORIGINS=tauri://localhost,http://tauri.localhost,http://localhost:8082
+KEEPER_SYNC_BODY_LIMIT_BYTES=16777216
+KEEPER_RATE_LIMIT_MAX=120
+KEEPER_RATE_LIMIT_WINDOW_MS=60000
+```
+
+Origins must be exact origins without paths. Omit `http://localhost:8082` in
+production unless browser UI is intentionally served from that origin. Requests
+without an `Origin` header, including native app requests, remain allowed.
+
 Git worker derives GitHub owner and repository from `SERVER_GIT_REMOTE_URL`.
 Remote may contain existing HTTPS GitHub credentials. Git worker reuses embedded
 password/token for GraphQL commits. Set `SERVER_GITHUB_TOKEN` when remote URL uses
@@ -61,7 +68,7 @@ SSH or contains no credentials.
 Push operation:
 
 ```bash
-curl -X POST http://localhost:8787/sync/push \
+curl -k -X POST https://localhost/sync/push \
   -H 'content-type: application/json' \
   -d '{
     "deviceId": "macbook",
@@ -81,7 +88,7 @@ curl -X POST http://localhost:8787/sync/push \
 Pull operations after a server cursor:
 
 ```bash
-curl 'http://localhost:8787/sync/pull?deviceId=macbook&cursor=0'
+curl -k 'https://localhost/sync/pull?deviceId=macbook&cursor=0'
 ```
 
 Seed from the configured Logseq Git remote. Set `SERVER_GIT_REMOTE_URL` to the
@@ -89,7 +96,7 @@ Seed from the configured Logseq Git remote. Set `SERVER_GIT_REMOTE_URL` to the
 at the Keeper application repository.
 
 ```bash
-curl -X POST http://localhost:8787/github/seed \
+curl -k -X POST https://localhost/github/seed \
   -H "authorization: Bearer $KEEPER_SEED_TOKEN" \
   -H "content-type: application/json" \
   -d '{

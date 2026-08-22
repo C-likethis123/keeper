@@ -233,7 +233,10 @@ test("sync push persists create, update, rename, and delete operations", async (
 		cursor: 4,
 	});
 	assert.equal(repository.notes.get("note-1")?.path, "notes/renamed.md");
-	assert.equal(repository.notes.get("note-1")?.deletedAt, "2026-07-11T10:03:00Z");
+	assert.equal(
+		repository.notes.get("note-1")?.deletedAt,
+		"2026-07-11T10:03:00Z",
+	);
 
 	await server.close();
 });
@@ -481,7 +484,6 @@ test("cluster API serves suggestions and persists feedback", async () => {
 	await server.close();
 });
 
-
 test("cluster API serves hierarchy and member curation", async () => {
 	const clusterRepository = new InMemoryClusterRepository();
 	await clusterRepository.importClusters({
@@ -651,6 +653,145 @@ test("sync push accepts rename for missing note", async () => {
 		duplicates: [],
 		cursor: 1,
 	});
+
+	await server.close();
+});
+
+test("CORS allows configured origins and rejects other origins", async () => {
+	const server = createServer({
+		syncRepository: new InMemorySyncRepository(),
+		security: { corsAllowedOrigins: ["https://keeper.example"] },
+	});
+
+	const allowed = await server.inject({
+		method: "GET",
+		url: "/health",
+		headers: { origin: "https://keeper.example" },
+	});
+	assert.equal(allowed.statusCode, 200);
+	assert.equal(
+		allowed.headers["access-control-allow-origin"],
+		"https://keeper.example",
+	);
+
+	const rejected = await server.inject({
+		method: "GET",
+		url: "/health",
+		headers: { origin: "https://evil.example" },
+	});
+	assert.equal(rejected.statusCode, 403);
+	assert.deepEqual(rejected.json(), { error: "origin_not_allowed" });
+
+	const native = await server.inject({ method: "GET", url: "/health" });
+	assert.equal(native.statusCode, 200);
+
+	await server.close();
+});
+
+test("CORS handles allowed preflight requests", async () => {
+	const server = createServer({
+		syncRepository: new InMemorySyncRepository(),
+		security: { corsAllowedOrigins: ["https://keeper.example"] },
+	});
+
+	const response = await server.inject({
+		method: "OPTIONS",
+		url: "/sync/push",
+		headers: {
+			origin: "https://keeper.example",
+			"access-control-request-headers": "content-type",
+			"access-control-request-method": "POST",
+		},
+	});
+
+	assert.equal(response.statusCode, 204);
+	assert.equal(
+		response.headers["access-control-allow-origin"],
+		"https://keeper.example",
+	);
+	await server.close();
+});
+
+test("request body limits use smaller global cap and larger sync cap", async () => {
+	const server = createServer({
+		syncRepository: new InMemorySyncRepository(),
+		jobQueue: new InMemoryJobQueue(),
+		security: {
+			bodyLimitBytes: 256,
+			syncBodyLimitBytes: 1_024,
+		},
+	});
+
+	const oversizedJob = await server.inject({
+		method: "POST",
+		url: "/jobs",
+		payload: { kind: "moc.classify", input: { body: "x".repeat(300) } },
+	});
+	assert.equal(oversizedJob.statusCode, 413);
+
+	const allowedSync = await server.inject({
+		method: "POST",
+		url: "/sync/push",
+		payload: {
+			deviceId: "phone",
+			ops: [
+				{
+					createdAt: "2026-08-22T12:00:00.000Z",
+					markdown: "x".repeat(300),
+					noteId: "note-1",
+					opId: "phone:1",
+					path: "note-1.md",
+					seq: 1,
+					title: "Note",
+					type: "note.create",
+				},
+			],
+		},
+	});
+	assert.equal(allowedSync.statusCode, 202);
+
+	const oversizedSync = await server.inject({
+		method: "POST",
+		url: "/sync/push",
+		payload: {
+			deviceId: "phone",
+			ops: [
+				{
+					createdAt: "2026-08-22T12:00:00.000Z",
+					markdown: "x".repeat(1_100),
+					noteId: "note-2",
+					opId: "phone:2",
+					path: "note-2.md",
+					seq: 2,
+					title: "Note",
+					type: "note.create",
+				},
+			],
+		},
+	});
+	assert.equal(oversizedSync.statusCode, 413);
+
+	await server.close();
+});
+
+test("rate limiter returns 429 with Retry-After and skips health", async () => {
+	const server = createServer({
+		syncRepository: new InMemorySyncRepository(),
+		security: { rateLimitMax: 2, rateLimitWindowMs: 60_000 },
+	});
+
+	for (let index = 0; index < 4; index += 1) {
+		const health = await server.inject({ method: "GET", url: "/health" });
+		assert.equal(health.statusCode, 200);
+	}
+
+	const first = await server.inject({ method: "GET", url: "/sync/pull" });
+	const second = await server.inject({ method: "GET", url: "/sync/pull" });
+	const limited = await server.inject({ method: "GET", url: "/sync/pull" });
+	assert.equal(first.statusCode, 200);
+	assert.equal(second.statusCode, 200);
+	assert.equal(limited.statusCode, 429);
+	assert.ok(limited.headers["retry-after"]);
 
 	await server.close();
 });

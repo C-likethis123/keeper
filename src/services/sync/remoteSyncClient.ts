@@ -1,4 +1,5 @@
 import { getSyncServerUrl } from "@/services/sync/config";
+import { createSyncRequestError } from "@/services/sync/syncRequestError";
 import type {
 	QueuedSyncOperation,
 	SyncPullResponse,
@@ -23,10 +24,7 @@ export async function pushSyncOperations(
 	});
 
 	if (!response.ok) {
-		const body = await response.text().catch(() => "");
-		throw new Error(
-			`Sync push failed with ${response.status}${body ? `: ${body}` : ""}`,
-		);
+		throw await createSyncRequestError(response, "Sync push");
 	}
 
 	return (await response.json()) as SyncPushResponse;
@@ -50,10 +48,7 @@ export async function pullSyncOperations(
 	const response = await fetch(`${serverUrl}/sync/pull?${params.toString()}`);
 
 	if (!response.ok) {
-		const body = await response.text().catch(() => "");
-		throw new Error(
-			`Sync pull failed with ${response.status}${body ? `: ${body}` : ""}`,
-		);
+		throw await createSyncRequestError(response, "Sync pull");
 	}
 
 	return (await response.json()) as SyncPullResponse;

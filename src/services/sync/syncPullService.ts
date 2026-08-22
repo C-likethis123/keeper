@@ -1,13 +1,10 @@
+import { deleteCrdtNote } from "@/services/notes/crdtNoteService";
 import { parseFrontmatter } from "@/services/notes/frontmatter";
+import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import type { NoteSaveInput } from "@/services/notes/types";
-import { deleteCrdtNote } from "@/services/notes/crdtNoteService";
-import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { storageEngine } from "@/services/storage/storageEngine";
-import { useStorageStore } from "@/stores/storageStore";
-import {
-	isServerSyncConfigured,
-} from "@/services/sync/config";
+import { isServerSyncConfigured } from "@/services/sync/config";
 import { showSyncDebugToast } from "@/services/sync/debug";
 import { pullSyncOperations } from "@/services/sync/remoteSyncClient";
 import {
@@ -15,7 +12,9 @@ import {
 	readSyncPullCursor,
 	writeSyncPullCursor,
 } from "@/services/sync/syncOpQueue";
+import { isSyncRequestError } from "@/services/sync/syncRequestError";
 import type { PulledSyncOperation } from "@/services/sync/types";
+import { useStorageStore } from "@/stores/storageStore";
 
 function base64ToBytes(value: string): Uint8Array {
 	const binary = globalThis.atob(value);
@@ -85,17 +84,25 @@ async function upsertRemoteNote(note: NoteSaveInput): Promise<void> {
 }
 
 async function restoreRemoteAttachment(
-	operation: Extract<PulledSyncOperation, { type: "note.create" | "note.update" }>,
+	operation: Extract<
+		PulledSyncOperation,
+		{ type: "note.create" | "note.update" }
+	>,
 ): Promise<void> {
 	if (!operation.attachmentBase64) return;
 	const parsed = parseFrontmatter(operation.markdown);
 	if (!parsed.attachment) return;
-	await storageEngine.writeFileBytes(parsed.attachment, base64ToBytes(operation.attachmentBase64));
+	await storageEngine.writeFileBytes(
+		parsed.attachment,
+		base64ToBytes(operation.attachmentBase64),
+	);
 }
 
-async function applyRemoteOperation(operation: PulledSyncOperation): Promise<void> {
+async function applyRemoteOperation(
+	operation: PulledSyncOperation,
+): Promise<void> {
 	switch (operation.type) {
-	case "note.create":
+		case "note.create":
 		case "note.update":
 			await restoreRemoteAttachment(operation);
 			await upsertRemoteNote(parseRemoteMarkdown(operation));
@@ -132,10 +139,13 @@ async function applyRemoteOperations(
 export function scheduleSyncPull(delayMs = 0): void {
 	if (!isServerSyncConfigured()) return;
 	clearRetryTimer();
-	retryTimer = setTimeout(() => {
-		retryTimer = null;
-		void pullPendingSyncOps();
-	}, Math.max(0, delayMs));
+	retryTimer = setTimeout(
+		() => {
+			retryTimer = null;
+			void pullPendingSyncOps();
+		},
+		Math.max(0, delayMs),
+	);
 }
 
 export async function pullPendingSyncOps(): Promise<void> {
@@ -169,6 +179,10 @@ export async function pullPendingSyncOps(): Promise<void> {
 				}`,
 				10000,
 			);
+			if (isSyncRequestError(error) && error.status === 429) {
+				scheduleSyncPull(error.retryAfterMs ?? retryMs);
+				return;
+			}
 			scheduleSyncPull(retryMs);
 			retryMs = Math.min(retryMs * 2, MAX_RETRY_MS);
 		} finally {

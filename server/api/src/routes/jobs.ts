@@ -14,40 +14,52 @@ const enqueueJobSchema = z.object({
 });
 
 export function registerJobRoutes(server: FastifyInstance, jobQueue: JobQueue) {
-	server.get("/jobs", async (request, reply) => {
-		const parsed = listJobsQuerySchema.safeParse(request.query);
-		if (!parsed.success) {
-			return reply.code(400).send({
-				error: "invalid_jobs_query",
-				issues: parsed.error.issues,
-			});
-		}
+	server.get(
+		"/jobs",
+		{ config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
+		async (request, reply) => {
+			const parsed = listJobsQuerySchema.safeParse(request.query);
+			if (!parsed.success) {
+				return reply.code(400).send({
+					error: "invalid_jobs_query",
+					issues: parsed.error.issues,
+				});
+			}
 
-		return reply.send(await jobQueue.listJobs(parsed.data.kind));
-	});
+			return reply.send(await jobQueue.listJobs(parsed.data.kind));
+		},
+	);
 
-	server.get("/jobs/:id", async (request, reply) => {
-		const { id } = request.params as { id: string };
-		const job = await jobQueue.getJob(id);
-		if (!job) {
-			return reply.code(404).send({ error: "job_not_found" });
-		}
-		return reply.send(job);
-	});
+	server.get(
+		"/jobs/:id",
+		{ config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
+		async (request, reply) => {
+			const { id } = request.params as { id: string };
+			const job = await jobQueue.getJob(id);
+			if (!job) {
+				return reply.code(404).send({ error: "job_not_found" });
+			}
+			return reply.send(job);
+		},
+	);
 
-	server.post("/jobs", async (request, reply) => {
-		const parsed = enqueueJobSchema.safeParse(request.body);
-		if (!parsed.success) {
-			return reply.code(400).send({
-				error: "invalid_job",
-				issues: parsed.error.issues,
-			});
-		}
+	server.post(
+		"/jobs",
+		{ config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
+		async (request, reply) => {
+			const parsed = enqueueJobSchema.safeParse(request.body);
+			if (!parsed.success) {
+				return reply.code(400).send({
+					error: "invalid_job",
+					issues: parsed.error.issues,
+				});
+			}
 
-		const job = await jobQueue.enqueue(
-			parsed.data.kind as JobKind,
-			parsed.data.input,
-		);
-		return reply.code(202).send(job);
-	});
+			const job = await jobQueue.enqueue(
+				parsed.data.kind as JobKind,
+				parsed.data.input,
+			);
+			return reply.code(202).send(job);
+		},
+	);
 }
