@@ -103,6 +103,43 @@ describe("useShareHandler", () => {
 		});
 	});
 
+	it("processes the same shared URL only once while intent remains active", async () => {
+		const sharedUrl = "https://youtu.be/dQw4w9WgXcQ";
+		const shareIntent = {
+			hasShareIntent: true,
+			shareIntent: {
+				webUrl: null,
+				text: sharedUrl,
+				files: null,
+				type: "text",
+			},
+			resetShareIntent: mockResetShareIntent,
+			error: null,
+		};
+		(useShareIntent as jest.Mock).mockReturnValue(shareIntent);
+		(NoteService.saveNote as unknown as TestMock).mockResolvedValue({ id: "test-id" });
+
+		const { rerender } = renderHook(() => useShareHandler(true));
+
+		await waitFor(() => {
+			expect(NoteService.saveNote).toHaveBeenCalledTimes(1);
+			expect(mockResetShareIntent).toHaveBeenCalledTimes(1);
+		});
+
+		(useShareIntent as jest.Mock).mockReturnValue({
+			...shareIntent,
+			shareIntent: {
+				...shareIntent.shareIntent,
+				webUrl: sharedUrl,
+			},
+		});
+		rerender(undefined);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(NoteService.saveNote).toHaveBeenCalledTimes(1);
+		expect(mockResetShareIntent).toHaveBeenCalledTimes(1);
+	});
+
 	it("creates a note when a YouTube URL is shared via text (Android / copy-link)", async () => {
 		const youtubeUrl = "https://youtu.be/dQw4w9WgXcQ";
 		(useShareIntent as jest.Mock).mockReturnValue({

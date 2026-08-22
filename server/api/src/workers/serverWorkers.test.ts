@@ -11,7 +11,10 @@ import {
 import { InMemoryJobQueue } from "../jobs/inMemoryJobQueue.js";
 import type { ServerJob } from "../jobs/types.js";
 import { InMemorySyncRepository } from "../sync/inMemorySyncRepository.js";
-import { createGitSyncProcessor } from "./gitWorker.js";
+import {
+	createGitSyncProcessor,
+	parseGitHubRepositoryFromRemoteUrl,
+} from "./gitWorker.js";
 import { createMocClassificationProcessor } from "./mocWorker.js";
 
 function makeJob(input: Record<string, unknown>): ServerJob {
@@ -25,6 +28,39 @@ function makeJob(input: Record<string, unknown>): ServerJob {
 		input,
 	};
 }
+
+test("git worker derives repository from GitHub remote URL", () => {
+	assert.deepEqual(
+		parseGitHubRepositoryFromRemoteUrl(
+			"https://x-access-token:secret@github.com/C-likethis123/logseq.git",
+		),
+		{ owner: "C-likethis123", repository: "logseq" },
+	);
+	assert.deepEqual(
+		parseGitHubRepositoryFromRemoteUrl("git@github.com:C-likethis123/logseq.git"),
+		{ owner: "C-likethis123", repository: "logseq" },
+	);
+	assert.deepEqual(
+		parseGitHubRepositoryFromRemoteUrl(
+			"ssh://git@github.com/C-likethis123/logseq.git",
+		),
+		{ owner: "C-likethis123", repository: "logseq" },
+	);
+});
+
+test("git worker rejects non-GitHub and malformed remote URLs", () => {
+	assert.throws(
+		() => parseGitHubRepositoryFromRemoteUrl("https://example.com/owner/repo.git"),
+		/SERVER_GIT_REMOTE_URL/,
+	);
+	assert.throws(
+		() =>
+			parseGitHubRepositoryFromRemoteUrl(
+				"https://github.com/owner/group/repo.git",
+			),
+		/SERVER_GIT_REMOTE_URL/,
+	);
+});
 
 test("git sync worker commits canonical note state through GitHub", async () => {
 	const root = await mkdtemp(path.join(os.tmpdir(), "keeper-git-worker-"));

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       source-ref:
-        description: "Branch or tag to seed from C-likethis/logseq"
+        description: "Branch or tag to seed from C-likethis123/logseq"
         required: true
         default: "main"
         type: string
@@ -27,7 +27,7 @@ jobs:
         env:
           KEEPER_API_DOMAIN: ${{ secrets.KEEPER_API_DOMAIN || secrets.ORACLE_VM_HOST }}
           KEEPER_SEED_TOKEN: ${{ secrets.KEEPER_SEED_TOKEN }}
-          SOURCE_REPOSITORY: C-likethis/logseq
+          SOURCE_REPOSITORY: C-likethis123/logseq
           SOURCE_REF: ${{ inputs.source-ref }}
           PROCEED_IF_DB_HAS_DATA: ${{ github.event.inputs.mode == 'proceed-even-if-db-has-data' }}
         run: |

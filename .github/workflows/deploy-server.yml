@@ -72,13 +72,13 @@ jobs:
               exit 1
             fi
             if [ -z "$SERVER_GIT_REMOTE_URL" ]; then
-              echo "SERVER_GIT_REMOTE_URL must point to C-likethis/logseq."
+              echo "SERVER_GIT_REMOTE_URL must point to C-likethis123/logseq."
               exit 1
             fi
             case "$SERVER_GIT_REMOTE_URL" in
-              *C-likethis/logseq*) ;;
+              *C-likethis123/logseq*) ;;
               *)
-                echo "SERVER_GIT_REMOTE_URL must point to C-likethis/logseq, not the Keeper app repository."
+                echo "SERVER_GIT_REMOTE_URL must point to C-likethis123/logseq, not the Keeper app repository."
                 exit 1
                 ;;
             esac

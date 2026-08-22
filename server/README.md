@@ -47,16 +47,16 @@ For production HTTPS, use a real DNS name and switch `Caddyfile` back to managed
 For Git and MOC workers, set:
 
 ```bash
-SERVER_GIT_REMOTE_URL=<C-likethis/logseq git-remote-url>
+SERVER_GIT_REMOTE_URL=<C-likethis123/logseq git-remote-url>
 SERVER_GIT_REPO_DIR=/data/repos/keeper-notes
-SERVER_GITHUB_REPOSITORY=C-likethis/logseq
 REDIS_URL=redis://redis:6379
 KEEPER_SEED_TOKEN=<shared-token-for-github-action>
 ```
 
-`SERVER_GIT_REMOTE_URL` may contain existing HTTPS GitHub credentials. Git worker
-reuses embedded password/token for GraphQL commits. Set `SERVER_GITHUB_TOKEN`
-only when remote URL uses SSH or contains no credentials.
+Git worker derives GitHub owner and repository from `SERVER_GIT_REMOTE_URL`.
+Remote may contain existing HTTPS GitHub credentials. Git worker reuses embedded
+password/token for GraphQL commits. Set `SERVER_GITHUB_TOKEN` when remote URL uses
+SSH or contains no credentials.
 
 Push operation:
 
@@ -85,7 +85,7 @@ curl 'http://localhost:8787/sync/pull?deviceId=macbook&cursor=0'
 ```
 
 Seed from the configured Logseq Git remote. Set `SERVER_GIT_REMOTE_URL` to the
-`C-likethis/logseq` remote (with credentials if it is private); do not point it
+`C-likethis123/logseq` remote (with credentials if it is private); do not point it
 at the Keeper application repository.
 
 ```bash

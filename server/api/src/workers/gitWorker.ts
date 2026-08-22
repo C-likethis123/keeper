@@ -227,20 +227,56 @@ function tokenFromRemoteUrl(remoteUrl: string | undefined): string | undefined {
 	return undefined;
 }
 
+export function parseGitHubRepositoryFromRemoteUrl(remoteUrl: string): {
+	owner: string;
+	repository: string;
+} {
+	const trimmed = remoteUrl.trim();
+	let hostname: string;
+	let pathname: string;
+
+	try {
+		if (trimmed.includes("://")) {
+			const url = new URL(trimmed);
+			hostname = url.hostname;
+			pathname = url.pathname;
+		} else {
+			const match = trimmed.match(/^(?:[^@/\s]+@)?([^:/\s]+):(.+)$/);
+			if (!match) throw new Error("invalid remote URL");
+			hostname = match[1];
+			pathname = match[2];
+		}
+	} catch {
+		throw new Error(
+			"SERVER_GIT_REMOTE_URL must use a GitHub HTTPS or SSH owner/repository URL",
+		);
+	}
+
+	const segments = pathname
+		.replace(/^\/+|\/+$/g, "")
+		.replace(/\.git$/, "")
+		.split("/");
+	if (
+		hostname.toLowerCase() !== "github.com" ||
+		segments.length !== 2 ||
+		segments.some((segment) => !segment)
+	) {
+		throw new Error("SERVER_GIT_REMOTE_URL must point to a GitHub owner/repository");
+	}
+
+	return { owner: segments[0], repository: segments[1] };
+}
+
 export function createGitSyncProcessorFromEnv(syncRepository: SyncRepository) {
+	const remoteUrl = requiredString(
+		process.env.SERVER_GIT_REMOTE_URL,
+		"SERVER_GIT_REMOTE_URL",
+	);
 	const token = requiredString(
-		process.env.SERVER_GITHUB_TOKEN ||
-			tokenFromRemoteUrl(process.env.SERVER_GIT_REMOTE_URL),
+		process.env.SERVER_GITHUB_TOKEN || tokenFromRemoteUrl(remoteUrl),
 		"SERVER_GITHUB_TOKEN or credentialed SERVER_GIT_REMOTE_URL",
 	);
-	const repositoryNameWithOwner = requiredString(
-		process.env.SERVER_GITHUB_REPOSITORY,
-		"SERVER_GITHUB_REPOSITORY",
-	);
-	const [owner, repository, ...extra] = repositoryNameWithOwner.split("/");
-	if (!owner || !repository || extra.length > 0) {
-		throw new Error("SERVER_GITHUB_REPOSITORY must use owner/repository format");
-	}
+	const { owner, repository } = parseGitHubRepositoryFromRemoteUrl(remoteUrl);
 	const branch = process.env.SERVER_GIT_BRANCH ?? "main";
 
 	return createGitSyncProcessor({

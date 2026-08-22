@@ -5,7 +5,7 @@ import { showToast } from "@/services/toast";
 import { useRouter } from "expo-router";
 import { useShareIntent } from "expo-share-intent";
 import { nanoid } from "nanoid";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 function extractFirstHttpUrl(input?: string | null): string | null {
 	const rawUrl = input
@@ -120,6 +120,8 @@ export function useShareHandler(isHydrated: boolean) {
 	const { hasShareIntent, shareIntent, resetShareIntent, error } =
 		useShareIntent();
 	const router = useRouter();
+	const processingSharedUrlRef = useRef<string | null>(null);
+
 	useEffect(() => {
 		if (error) {
 			console.error("[ShareHandler] Error:", error);
@@ -129,22 +131,31 @@ export function useShareHandler(isHydrated: boolean) {
 	}, [error, resetShareIntent]);
 
 	useEffect(() => {
+		if (!hasShareIntent) {
+			processingSharedUrlRef.current = null;
+			return;
+		}
+
 		if (
 			!isHydrated ||
-			!hasShareIntent ||
 			(!shareIntent.webUrl && !shareIntent.text)
 		) {
 			return;
 		}
 
-		const processShareIntent = async () => {
-			const sharedUrl = getSharedUrl(shareIntent.webUrl, shareIntent.text);
-			if (!sharedUrl) {
-				showToast("No link found in shared content");
-				resetShareIntent();
-				return;
-			}
+		const sharedUrl = getSharedUrl(shareIntent.webUrl, shareIntent.text);
+		if (!sharedUrl) {
+			showToast("No link found in shared content");
+			resetShareIntent();
+			return;
+		}
 
+		if (processingSharedUrlRef.current === sharedUrl) {
+			return;
+		}
+		processingSharedUrlRef.current = sharedUrl;
+
+		const processShareIntent = async () => {
 			console.log("[ShareHandler] Processing share intent:", sharedUrl);
 
 			try {
