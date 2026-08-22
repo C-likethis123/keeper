@@ -9,6 +9,7 @@ import {
 } from "lexical";
 import { handleCodeTextInsertion, handleEnter } from "../codeBlockSmartEdit";
 import { exitCodeBlock } from "../exitCodeBlock";
+import { convertTodoTriggerAtSelection } from "../../todoTrigger/todoTriggerTransform";
 
 describe("CodeBlockExtension smart edit", () => {
   it("escapes a code block into a new paragraph", () => {
@@ -58,6 +59,28 @@ describe("CodeBlockExtension smart edit", () => {
       handled: false,
       newCursorOffset: 3,
       newText: "foo",
+    });
+  });
+
+  it("does not apply TODO link styling inside code blocks", () => {
+    const editor = createEditor({ nodes: [CodeNode] });
+    let converted = true;
+
+    editor.update(
+      () => {
+        const codeNode = $createCodeNode();
+        const textNode = $createTextNode("TODO: keep literal");
+        codeNode.append(textNode);
+        $getRoot().append(codeNode);
+        textNode.selectEnd();
+        converted = convertTodoTriggerAtSelection();
+      },
+      { discrete: true },
+    );
+
+    expect(converted).toBe(false);
+    editor.getEditorState().read(() => {
+      expect($getRoot().getTextContent()).toBe("TODO: keep literal");
     });
   });
 

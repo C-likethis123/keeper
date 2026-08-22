@@ -492,6 +492,29 @@ describe("Keeper Lexical markdown transformers", () => {
     expect(roundTripMarkdown(markdown)).toBe(markdown);
   });
 
+  it("keeps markdown styles literal inside fenced code blocks", () => {
+    const markdown = [
+      "```",
+      "# Not a heading",
+      "**not bold**",
+      "[[not a wiki link]]",
+      "TODO: not a todo link",
+      "```",
+    ].join("\n");
+
+    expect(roundTripMarkdown(markdown)).toBe(markdown);
+    expect(parseMarkdownToSerializedNodes(markdown)).toEqual([
+      expect.objectContaining({
+        children: expect.arrayContaining([
+          expect.objectContaining({
+            text: expect.stringContaining("# Not a heading"),
+          }),
+        ]),
+        type: "code",
+      }),
+    ]);
+  });
+
   it("round-trips unchecked checklist items", () => {
     expect(roundTripMarkdown("- [ ] Follow up")).toBe("- [ ] Follow up");
   });

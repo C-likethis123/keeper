@@ -15,6 +15,7 @@ import {
 	COMMAND_PRIORITY_LOW,
 	configExtension,
 	defineExtension,
+	type LexicalEditor,
 	safeCast,
 	type TextNode,
 } from "lexical";
@@ -25,6 +26,7 @@ import {
   type SlashCommandItem,
 } from "./SlashCommandOverlay";
 import { findSlashCommandTriggerStart } from "./SlashCommandTrigger";
+import { $isSelectionInCodeBlock } from "../codeBlock/isSelectionInCodeBlock";
 import {
   $createDetailsContentNode,
   $createDetailsNode,
@@ -77,7 +79,14 @@ function insertCollapsibleBlock() {
   paragraphNode.selectEnd();
 }
 
-function slashTriggerFn(text: string): MenuTextMatch | null {
+function slashTriggerFn(
+  text: string,
+  editor: LexicalEditor,
+): MenuTextMatch | null {
+  if (editor.getEditorState().read($isSelectionInCodeBlock)) {
+    return null;
+  }
+
   const slashStart = findSlashCommandTriggerStart(text, text.length);
   if (slashStart === null) {
     return null;

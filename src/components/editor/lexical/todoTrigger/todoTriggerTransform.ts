@@ -11,8 +11,13 @@ import {
   type LexicalEditor,
 } from "lexical";
 import { createWikiLinkUrl } from "../wikilinks/wikiLinkUrl";
+import { $isSelectionInCodeBlock } from "../codeBlock/isSelectionInCodeBlock";
 
 export function convertTodoTriggerAtSelection(): boolean {
+  if ($isSelectionInCodeBlock()) {
+    return false;
+  }
+
   const selection = $getSelection();
   if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
     return false;

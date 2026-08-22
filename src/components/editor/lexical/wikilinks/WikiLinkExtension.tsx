@@ -13,6 +13,7 @@ import {
   COMMAND_PRIORITY_LOW,
   configExtension,
   defineExtension,
+  type LexicalEditor,
   safeCast,
   type TextNode,
 } from "lexical";
@@ -28,6 +29,7 @@ import {
 } from "@/components/editor/lexical/wikilinks/wikiLinkUtils";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import { createWikiLinkUrl, parseWikiLinkUrl } from "./wikiLinkUrl";
+import { $isSelectionInCodeBlock } from "../codeBlock/isSelectionInCodeBlock";
 
 interface WikiLinkExtensionConfig {
   getOnOpenWikiLink: () =>
@@ -57,7 +59,14 @@ function findWikiLinkTitle(target: EventTarget | null): string | null {
   return href ? parseWikiLinkUrl(href) : null;
 }
 
-function wikiLinkTriggerFn(text: string): MenuTextMatch | null {
+function wikiLinkTriggerFn(
+  text: string,
+  editor: LexicalEditor,
+): MenuTextMatch | null {
+  if (editor.getEditorState().read($isSelectionInCodeBlock)) {
+    return null;
+  }
+
   const triggerStart = text.lastIndexOf("[[");
   if (triggerStart === -1) {
     return null;
