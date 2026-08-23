@@ -107,7 +107,7 @@ async function buildSharedResourceNote(url: string): Promise<NoteSaveInput> {
 	return {
 		id: nanoid(),
 		title: `Resource: ${resourceTitle}`,
-		content: isVideo ? `![video](${url})\n\nShared from YouTube.` : "",
+		content: isVideo ? "Shared from YouTube." : "",
 		isPinned: false,
 		noteType: "resource",
 		status: null,

@@ -1,3 +1,4 @@
+import { parseEmbeddedVideoUrl } from "@/components/editor/video/videoUtils";
 import {
   $convertFromMarkdownString,
   $convertToMarkdownString,
@@ -123,6 +124,11 @@ const IMAGE: ElementTransformer = {
     const [, altText = "", src = ""] = match;
     if (!src.trim()) {
       return false;
+    }
+
+    if (altText.toLowerCase() === "video" && parseEmbeddedVideoUrl(src)) {
+      parentNode.replace($createParagraphNode());
+      return;
     }
 
     const imageNode = $createImageNode(src.trim(), altText);

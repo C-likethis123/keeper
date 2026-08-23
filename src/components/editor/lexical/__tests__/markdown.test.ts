@@ -349,6 +349,14 @@ describe("Keeper Lexical markdown transformers", () => {
     );
   });
 
+  it("removes legacy YouTube image markers", () => {
+    expect(
+      roundTripMarkdown(
+        "![video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)\n\nShared from YouTube.",
+      ),
+    ).toBe("Shared from YouTube.");
+  });
+
   it("exports an inserted image instead of empty paragraph text", () => {
     const editor = createEditor({
       namespace: "KeeperInsertedImageMarkdownTest",

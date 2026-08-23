@@ -90,6 +90,7 @@ describe("useShareHandler", () => {
 				expect.objectContaining({
 					id: "test-id",
 					title: "Resource: YouTube Video",
+					content: "Shared from YouTube.",
 					noteType: "resource",
 					attachedVideo: youtubeUrl,
 				}),
