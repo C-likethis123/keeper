@@ -43,6 +43,7 @@ import { convertTodoTriggerAtSelection } from "../todoTrigger/todoTriggerTransfo
 import { ClipboardShortcutsExtension } from "../extensions/ClipboardShortcutsExtension";
 import {
   createMarkdownPasteExtension,
+  escapePastedCurrency,
   MarkdownPasteExtension,
 } from "../extensions/MarkdownPasteExtension";
 
@@ -125,6 +126,12 @@ function getFirstImportedNode(markdown: string) {
 }
 
 describe("Keeper Lexical markdown transformers", () => {
+  it("escapes currency amounts without changing equation delimiters", () => {
+    expect(escapePastedCurrency("$50, $60, and $x$")).toBe(
+      "\\$50, \\$60, and $x$",
+    );
+  });
+
   it("parses pasted markdown into serialized lexical nodes", () => {
     const nodes = parseMarkdownToSerializedNodes("# Heading\n\n- **bold** item");
 
@@ -350,11 +357,18 @@ describe("Keeper Lexical markdown transformers", () => {
   });
 
   it("removes legacy YouTube image markers", () => {
+    const markdown =
+      "![video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)\n\nShared from YouTube.";
+
     expect(
-      roundTripMarkdown(
-        "![video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)\n\nShared from YouTube.",
-      ),
+      roundTripMarkdown(markdown),
     ).toBe("Shared from YouTube.");
+    expect(parseMarkdownToSerializedNodes(markdown)).toMatchObject([
+      {
+        children: [{ text: "Shared from YouTube.", type: "text" }],
+        type: "paragraph",
+      },
+    ]);
   });
 
   it("exports an inserted image instead of empty paragraph text", () => {

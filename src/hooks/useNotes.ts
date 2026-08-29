@@ -222,12 +222,17 @@ async function loadSectionMetadataSafely() {
 	}
 }
 
-export default function useNotes() {
+export default function useNotes(controlledQuery?: {
+	query: string;
+	setQuery: (query: string) => void;
+}) {
 	const initializationStatus = useStorageStore((s) => s.initializationStatus);
 	const initializationError = useStorageStore((s) => s.initializationError);
 	const contentVersion = useStorageStore((s) => s.contentVersion);
 	const deferredContentVersion = useDeferredValue(contentVersion);
-	const [query, setQuery] = useState("");
+	const [localQuery, setLocalQuery] = useState("");
+	const query = controlledQuery?.query ?? localQuery;
+	const setQuery = controlledQuery?.setQuery ?? setLocalQuery;
 	const debouncedQuery = useDebounce(query, 300);
 	const deferredQuery = debouncedQuery;
 	const noteTypeFilter = useFilterStore((s) => s.noteTypes);

@@ -127,7 +127,7 @@ const IMAGE: ElementTransformer = {
     }
 
     if (altText.toLowerCase() === "video" && parseEmbeddedVideoUrl(src)) {
-      parentNode.replace($createParagraphNode());
+      parentNode.remove();
       return;
     }
 
@@ -322,8 +322,10 @@ const INLINE_EQUATION: TextMatchTransformer = {
 
     return `$${node.getEquation()}$`;
   },
-  importRegExp: /(?<!\$)\$([^$\n]+)\$(?!\$)/,
-  regExp: /(?<!\$)\$([^$\n]+)\$(?!\$)$/,
+  // A backslash escapes a dollar sign. Keep `\\$` as literal text instead of
+  // letting the second dollar become an equation delimiter.
+  importRegExp: /(?<![\\$])\$([^$\n]+)(?<!\\)\$(?!\$)/,
+  regExp: /(?<![\\$])\$([^$\n]+)(?<!\\)\$(?!\$)$/,
   replace: (textNode, match) => {
     const equation = match[1]?.trim();
     if (!equation) {

@@ -74,6 +74,11 @@ export function shouldImportPastedMarkdown(text: string): boolean {
   );
 }
 
+/** Keep currency amounts from being interpreted as inline equations. */
+export function escapePastedCurrency(text: string): string {
+  return text.replace(/(?<!\\)\$(?=\d)/g, "\\$");
+}
+
 export function createMarkdownPasteExtension(
   getOnPasteImage: () => PasteImageHandler | undefined,
 ) {
@@ -99,7 +104,9 @@ export function createMarkdownPasteExtension(
 
           const markdown = getPlainTextFromPasteEvent(event);
           if (shouldImportPastedMarkdown(markdown)) {
-            const serializedNodes = parseMarkdownToSerializedNodes(markdown);
+            const serializedNodes = parseMarkdownToSerializedNodes(
+              escapePastedCurrency(markdown),
+            );
             if (serializedNodes.length > 0) {
               event.preventDefault();
               editor.update(

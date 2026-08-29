@@ -25,6 +25,7 @@ import {
 } from "@/components/editor/lexical/wikilinks/WikiLinkOverlay";
 import {
   findExactWikiLinkMatch,
+  resolveOrCreateWikiLinkNoteId,
   shouldOpenWikiLink,
 } from "@/components/editor/lexical/wikilinks/wikiLinkUtils";
 import { NotesIndexService } from "@/services/notes/notesIndex";
@@ -96,6 +97,15 @@ function insertWikiLink(
   wikiLink.append($createTextNode(title));
   textNodeContainingQuery.replace(wikiLink);
   wikiLink.selectNext();
+}
+
+export async function ensureWikiLinkTarget(
+  result: WikiLinkResult,
+  resolveOrCreate = resolveOrCreateWikiLinkNoteId,
+): Promise<void> {
+  if (result.type === "create") {
+    await resolveOrCreate(result.title);
+  }
 }
 
 function WikiLinkTypeahead() {
@@ -178,6 +188,9 @@ function WikiLinkTypeahead() {
   const selectResult = useCallback(
     (result: WikiLinkResult, textNodeContainingQuery: TextNode | null) => {
       insertWikiLink(textNodeContainingQuery, result.title);
+      void ensureWikiLinkTarget(result).catch((error) => {
+        console.warn("[WikiLinkExtension] note creation failed:", error);
+      });
     },
     [],
   );
@@ -261,10 +274,8 @@ export const WikiLinkExtension = defineExtension({
     };
 
     return editor.registerRootListener((root, previousRoot) => {
-      previousRoot?.removeEventListener("click", handleActivation, true);
-      previousRoot?.removeEventListener("contextmenu", handleActivation, true);
-      root?.addEventListener("click", handleActivation, true);
-      root?.addEventListener("contextmenu", handleActivation, true);
+      previousRoot?.removeEventListener("mousedown", handleActivation, true);
+      root?.addEventListener("mousedown", handleActivation, true);
     });
   },
 });

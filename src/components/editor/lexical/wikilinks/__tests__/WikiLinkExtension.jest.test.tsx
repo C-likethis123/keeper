@@ -1,4 +1,7 @@
-import { WikiLinkExtension } from "../WikiLinkExtension";
+import {
+	ensureWikiLinkTarget,
+	WikiLinkExtension,
+} from "../WikiLinkExtension";
 import { createWikiLinkUrl } from "../wikiLinkUrl";
 
 jest.mock("@lexical/react/LexicalTypeaheadMenuPlugin", () => ({
@@ -65,15 +68,15 @@ describe("WikiLinkExtension interactions", () => {
 		global.Element = originalElement;
 	});
 
-	it("opens wiki links from the Lexical editor root on control-click", () => {
+	it("opens wiki links from the Lexical editor root on control-mousedown", () => {
 		const root = createRootMock();
 		const editor = createEditorMock(root);
 		const onOpenWikiLink = jest.fn();
 
 		registerWikiLinkExtension(editor, onOpenWikiLink);
 
-		const handleClick = root.addEventListener.mock.calls.find(
-			([eventName]) => eventName === "click",
+		const handleMouseDown = root.addEventListener.mock.calls.find(
+			([eventName]) => eventName === "mousedown",
 		)?.[1];
 		const event = {
 			ctrlKey: true,
@@ -81,30 +84,7 @@ describe("WikiLinkExtension interactions", () => {
 			preventDefault: jest.fn(),
 			stopPropagation: jest.fn(),
 		};
-		handleClick(event);
-
-		expect(onOpenWikiLink).toHaveBeenCalledWith("Project Alpha");
-		expect(event.preventDefault).toHaveBeenCalled();
-		expect(event.stopPropagation).toHaveBeenCalled();
-	});
-
-	it("opens wiki links from the context menu event on control-click", () => {
-		const root = createRootMock();
-		const editor = createEditorMock(root);
-		const onOpenWikiLink = jest.fn();
-
-		registerWikiLinkExtension(editor, onOpenWikiLink);
-
-		const handleContextMenu = root.addEventListener.mock.calls.find(
-			([eventName]) => eventName === "contextmenu",
-		)?.[1];
-		const event = {
-			ctrlKey: true,
-			target: new TestElement(createWikiLinkUrl("Project Alpha")),
-			preventDefault: jest.fn(),
-			stopPropagation: jest.fn(),
-		};
-		handleContextMenu(event);
+		handleMouseDown(event);
 
 		expect(onOpenWikiLink).toHaveBeenCalledWith("Project Alpha");
 		expect(event.preventDefault).toHaveBeenCalled();
@@ -118,15 +98,15 @@ describe("WikiLinkExtension interactions", () => {
 
 		registerWikiLinkExtension(editor, onOpenWikiLink);
 
-		const handleClick = root.addEventListener.mock.calls.find(
-			([eventName]) => eventName === "click",
+		const handleMouseDown = root.addEventListener.mock.calls.find(
+			([eventName]) => eventName === "mousedown",
 		)?.[1];
 		const event = {
 			target: new TestElement(createWikiLinkUrl("Project Alpha")),
 			preventDefault: jest.fn(),
 			stopPropagation: jest.fn(),
 		};
-		handleClick(event);
+		handleMouseDown(event);
 
 		expect(onOpenWikiLink).not.toHaveBeenCalled();
 		expect(event.preventDefault).not.toHaveBeenCalled();
@@ -139,8 +119,8 @@ describe("WikiLinkExtension interactions", () => {
 
 		registerWikiLinkExtension(editor, onOpenWikiLink);
 
-		const handleClick = root.addEventListener.mock.calls.find(
-			([eventName]) => eventName === "click",
+		const handleMouseDown = root.addEventListener.mock.calls.find(
+			([eventName]) => eventName === "mousedown",
 		)?.[1];
 		const event = {
 			ctrlKey: true,
@@ -148,9 +128,36 @@ describe("WikiLinkExtension interactions", () => {
 			preventDefault: jest.fn(),
 			stopPropagation: jest.fn(),
 		};
-		handleClick(event);
+		handleMouseDown(event);
 
 		expect(onOpenWikiLink).not.toHaveBeenCalled();
 		expect(event.preventDefault).not.toHaveBeenCalled();
+	});
+
+	it("creates a note for a create-result wikilink", async () => {
+		const resolveOrCreate = jest.fn().mockResolvedValue("new-note-id");
+
+		await ensureWikiLinkTarget(
+			{ id: "create-Project Alpha", title: "Project Alpha", type: "create" },
+			resolveOrCreate,
+		);
+
+		expect(resolveOrCreate).toHaveBeenCalledWith("Project Alpha");
+	});
+
+	it("does not create a note for an existing-result wikilink", async () => {
+		const resolveOrCreate = jest.fn();
+
+		await ensureWikiLinkTarget(
+			{
+				id: "note-project-alpha",
+				noteId: "note-project-alpha",
+				title: "Project Alpha",
+				type: "existing",
+			},
+			resolveOrCreate,
+		);
+
+		expect(resolveOrCreate).not.toHaveBeenCalled();
 	});
 });

@@ -29,7 +29,7 @@ import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
 import { router, useNavigation } from "expo-router";
 import { nanoid } from "nanoid";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { Suspense, useCallback, useMemo, useRef, useState } from "react";
 import {
 	Alert,
 	Platform,
@@ -38,29 +38,32 @@ import {
 	View,
 } from "react-native";
 
-function IndexContent() {
+function NotesContent({
+	query,
+	setQuery,
+	onSetQuery,
+}: {
+	query: string;
+	setQuery: (query: string) => void;
+	onSetQuery: (setter: (query: string) => void) => void;
+}) {
 	const {
 		notes,
 		sections,
-		query,
 		hasMore,
 		isRefreshing,
 		isLoadingMore,
 		error,
 		handleRefresh,
 		loadMoreNotes,
-		setQuery,
-	} = useNotes();
+		setQuery: contentSetQuery,
+	} = useNotes({ query, setQuery });
+	onSetQuery(contentSetQuery);
 	const bumpContentVersion = useStorageStore((s) => s.bumpContentVersion);
 	const [renameTarget, setRenameTarget] = useState<NoteSection | null>(null);
 	const [addNoteTarget, setAddNoteTarget] = useState<NoteSection | null>(null);
 	const createAndOpenNote = useCreateAndOpenNote();
 	const markStartupReady = useStartupReady();
-	const navigation = useNavigation<DrawerNavigationProp<ParamListBase>>();
-
-	const handleMenuPress = useCallback(() => {
-		navigation.openDrawer();
-	}, [navigation]);
 
 	const handleDeleteNote = useCallback(
 		async (note: Note) => {
@@ -207,30 +210,12 @@ function IndexContent() {
 		[safeSections, handleDeleteCluster, handleRemoveNote],
 	);
 
-	const searchInputRef = useRef<TextInput>(null);
-	useAppKeyboardShortcuts({
-		onFocusSearch: () => {
-			searchInputRef.current?.focus();
-		},
-		onCreateNote: () => {
-			void createAndOpenNote();
-		},
-	});
-
 	const styles = useStyles(createStyles);
 	const emptySubtitle =
 		"There are no notes that match existing filters. Create a note to get started";
 
 	return (
 		<View style={styles.container}>
-			<TabBar activeView="home" />
-			<HomeScreenHeader
-				searchQuery={query}
-				setSearchQuery={setQuery}
-				searchInputRef={searchInputRef}
-				onMenuPress={handleMenuPress}
-				onOpenSuggestedMocs={() => router.push("/suggested-mocs")}
-			/>
 			<NoteGrid
 				notes={notes ?? []}
 				sections={enhancedSections}
@@ -269,6 +254,46 @@ function IndexContent() {
 			{error ? (
 				<ErrorScreen error={new Error(error)} onRetry={handleRefresh} />
 			) : null}
+		</View>
+	);
+}
+
+function IndexContent() {
+	const [query, setQuery] = useState("");
+	const searchQuerySetter = useRef(setQuery);
+	const updateSearchQuery = useCallback((nextQuery: string) => {
+		setQuery(nextQuery);
+		searchQuerySetter.current(nextQuery);
+	}, []);
+	const searchInputRef = useRef<TextInput>(null);
+	const createAndOpenNote = useCreateAndOpenNote();
+	const navigation = useNavigation<DrawerNavigationProp<ParamListBase>>();
+	const handleMenuPress = useCallback(() => navigation.openDrawer(), [navigation]);
+
+	useAppKeyboardShortcuts({
+		onFocusSearch: () => searchInputRef.current?.focus(),
+		onCreateNote: () => void createAndOpenNote(),
+	});
+
+	return (
+		<View style={useStyles(createStyles).container}>
+			<TabBar activeView="home" />
+			<HomeScreenHeader
+				searchQuery={query}
+				setSearchQuery={updateSearchQuery}
+				searchInputRef={searchInputRef}
+				onMenuPress={handleMenuPress}
+				onOpenSuggestedMocs={() => router.push("/suggested-mocs")}
+			/>
+			<Suspense fallback={null}>
+				<NotesContent
+					query={query}
+					setQuery={updateSearchQuery}
+					onSetQuery={(setter) => {
+						if (setter !== updateSearchQuery) searchQuerySetter.current = setter;
+					}}
+				/>
+			</Suspense>
 		</View>
 	);
 }
