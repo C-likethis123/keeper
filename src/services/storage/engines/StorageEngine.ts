@@ -131,6 +131,13 @@ export class PlatformStorageEngine implements StorageEngine {
 		await getFileAtRelativePath(relativePath).write(data);
 	}
 
+	async deleteFile(relativePath: string): Promise<boolean> {
+		const file = getFileAtRelativePath(relativePath);
+		if (!file.exists) return false;
+		file.delete();
+		return true;
+	}
+
 	async listFilesRecursive(relativeDir: string): Promise<string[]> {
 		const dir = getDirectoryAtRelativePath(relativeDir);
 		return listFilesRecursiveFromDirectory(dir, relativeDir);

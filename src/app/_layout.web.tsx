@@ -22,6 +22,18 @@ export default function RootLayout() {
 	useEffect(() => {
 		traceStartupBootstrapEvent("bootstrap.root_layout_first_render");
 	}, []);
+	useEffect(() => {
+		if (
+			process.env.NODE_ENV !== "production" ||
+			!("serviceWorker" in navigator) ||
+			!window.isSecureContext ||
+			window.location.protocol !== "https:"
+		) {
+			return;
+		}
+
+		navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
+	}, []);
 	const themeMode = useColorScheme();
 	const { isHydrated, initError, statusMessage } = useAppStartup();
 

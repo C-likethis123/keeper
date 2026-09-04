@@ -62,6 +62,10 @@ export class PlatformStorageEngine implements StorageEngine {
 		});
 	}
 
+	async deleteFile(relativePath: string): Promise<boolean> {
+		return this.invoke<boolean>("storage_delete_file", { relativePath });
+	}
+
 	async listFilesRecursive(relativeDir: string): Promise<string[]> {
 		return this.invoke<string[]>("storage_list_files_recursive", {
 			relativeDir,

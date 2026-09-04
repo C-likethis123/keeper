@@ -58,3 +58,7 @@ export function resolveImageUri(relativePath: string): string {
 	const base = NOTES_ROOT.endsWith("/") ? NOTES_ROOT : `${NOTES_ROOT}/`;
 	return `${base}${relativePath}`;
 }
+
+export function releaseImageUri(_relativePath: string): void {
+	// Native file URIs do not need cleanup.
+}

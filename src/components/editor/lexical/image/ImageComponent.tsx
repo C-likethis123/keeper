@@ -1,4 +1,7 @@
-import { resolveImageUri } from "@/services/notes/imageStorage";
+import {
+	releaseImageUri,
+	resolveImageUri,
+} from "@/services/notes/imageStorage";
 import { Image, type ImageLoadEventData } from "expo-image";
 import * as React from "react";
 
@@ -9,8 +12,23 @@ export default function ImageComponent({
 		src: string;
 		altText: string;
 	}): React.ReactElement {
-	const resolvedSrc = resolveImageUri(src);
+	const [resolvedSrc, setResolvedSrc] = React.useState(src);
 	const [aspectRatio, setAspectRatio] = React.useState<number | null>(null);
+
+	React.useEffect(() => {
+		let isCancelled = false;
+		Promise.resolve(resolveImageUri(src))
+			.then((uri) => {
+				if (!isCancelled) setResolvedSrc(uri);
+			})
+			.catch(() => {
+				if (!isCancelled) setResolvedSrc(src);
+			});
+		return () => {
+			isCancelled = true;
+			releaseImageUri(src);
+		};
+	}, [src]);
 
 	const handleLoad = React.useCallback((event: ImageLoadEventData) => {
 		const { width, height } = event.source;

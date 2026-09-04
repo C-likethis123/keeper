@@ -514,6 +514,7 @@ export default function NoteEditorView({
       const relativePath = await copyPickedAttachmentToNote(
         pickedDocument.uri,
         id,
+		pickedDocument.name,
       );
       setAttachmentPath(relativePath);
       setAttachmentType(pickedDocument.type);

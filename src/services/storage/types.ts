@@ -39,6 +39,7 @@ export interface StorageEngine {
 	resetAllData(): Promise<void>;
 	readFileBytes(relativePath: string): Promise<Uint8Array | null>;
 	writeFileBytes(relativePath: string, data: Uint8Array): Promise<void>;
+	deleteFile(relativePath: string): Promise<boolean>;
 	listFilesRecursive(relativeDir: string): Promise<string[]>;
 	deleteDirectory(relativeDir: string): Promise<void>;
 	loadNote(id: string): Promise<Note | null>;

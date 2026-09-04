@@ -1,6 +1,7 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import {
   type AttachmentType,
+	releaseAttachmentUri,
   resolveAttachmentUri,
 } from "@/services/notes/attachmentStorage";
 import { FontAwesome } from "@expo/vector-icons";
@@ -179,14 +180,24 @@ export function useDocumentPanelState({
 
   const filename = attachmentPath.split("/").pop() ?? attachmentPath;
 
-  useEffect(() => {
-    const resolved = resolveAttachmentUri(attachmentPath);
-    setFileUri(resolved);
-    setSavedPosition(null);
-    loadDocumentPosition(noteId, attachmentPath).then((position) => {
-      if (position) setSavedPosition(position);
-    });
-  }, [noteId, attachmentPath]);
+	useEffect(() => {
+		let isCancelled = false;
+		Promise.resolve(resolveAttachmentUri(attachmentPath))
+			.then((resolved) => {
+				if (!isCancelled) setFileUri(resolved);
+			})
+			.catch(() => {
+				if (!isCancelled) setFileUri(null);
+			});
+		setSavedPosition(null);
+		loadDocumentPosition(noteId, attachmentPath).then((position) => {
+			if (!isCancelled && position) setSavedPosition(position);
+		});
+		return () => {
+			isCancelled = true;
+			releaseAttachmentUri(attachmentPath);
+		};
+	}, [noteId, attachmentPath]);
 
   const flushPendingPosition = useCallback(() => {
     if (positionSaveTimeoutRef.current) {

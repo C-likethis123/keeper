@@ -22,8 +22,9 @@ function uniqueId(): string {
 export async function copyPickedAttachmentToNote(
   uri: string,
   noteId: string,
+  originalName?: string,
 ): Promise<string> {
-  const ext = getExtension(uri);
+  const ext = getExtension(originalName ?? uri);
   const filename = `${noteId}_${uniqueId()}${ext}`;
   const attachmentsDir = new Directory(NOTES_ROOT, "_attachments");
   if (!attachmentsDir.exists) {
@@ -46,4 +47,8 @@ export async function deleteAttachment(relativePath: string): Promise<void> {
   if (file.exists) {
     file.delete();
   }
+}
+
+export function releaseAttachmentUri(_relativePath: string): void {
+	// Native file URIs do not need cleanup.
 }
