@@ -11,7 +11,9 @@ import type {
 } from "@/services/storage/types";
 
 const DATABASE_NAME = "keeper-pwa-storage";
-const DATABASE_VERSION = 1;
+// Version 2 retries the upgrade for browsers which created version 1 before
+// both stores existed. Existing notes remain untouched.
+const DATABASE_VERSION = 2;
 const FILE_STORE = "files";
 const INDEX_STORE = "note-index";
 
@@ -86,6 +88,14 @@ export class BrowserStorageEngine implements StorageEngine {
 					const database = request.result;
 					if (!database) {
 						reject(new Error("Browser storage did not return a database"));
+						return;
+					}
+					if (
+						!database.objectStoreNames.contains(FILE_STORE) ||
+						!database.objectStoreNames.contains(INDEX_STORE)
+					) {
+						database.close();
+						reject(new Error("Browser storage is missing required stores"));
 						return;
 					}
 					database.onversionchange = () => {

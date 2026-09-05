@@ -32,7 +32,19 @@ export default function RootLayout() {
 			return;
 		}
 
-		navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
+		let reloadingForNewWorker = false;
+		const reloadForNewWorker = () => {
+			if (reloadingForNewWorker) return;
+			reloadingForNewWorker = true;
+			window.location.reload();
+		};
+
+		navigator.serviceWorker.addEventListener("controllerchange", reloadForNewWorker);
+		void navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
+
+		return () => {
+			navigator.serviceWorker.removeEventListener("controllerchange", reloadForNewWorker);
+		};
 	}, []);
 	const themeMode = useColorScheme();
 	const { isHydrated, initError, statusMessage } = useAppStartup();

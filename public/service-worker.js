@@ -1,9 +1,14 @@
-const CACHE_NAME = "keeper-shell-v3";
+const CACHE_NAME = "keeper-shell-v4";
 const APP_SHELL = ["/", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
 const STATIC_DESTINATIONS = new Set(["font", "image", "script", "style", "worker"]);
 
 self.addEventListener("install", (event) => {
-	event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+	event.waitUntil(
+		caches
+			.open(CACHE_NAME)
+			.then((cache) => cache.addAll(APP_SHELL))
+			.then(() => self.skipWaiting()),
+	);
 });
 
 self.addEventListener("activate", (event) => {
