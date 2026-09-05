@@ -156,4 +156,13 @@ export function registerSyncRoutes(
 
 		return reply.code(200).send(result);
 	});
+
+	server.get("/sync/note-ids", async (_request, reply) => {
+		const notes = await syncRepository.readAllNotes();
+		return reply.code(200).send({
+			noteIds: notes
+				.filter((note) => note.deletedAt === null)
+				.map((note) => note.id),
+		});
+	});
 }

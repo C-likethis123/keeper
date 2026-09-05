@@ -121,11 +121,12 @@ describe("syncPullService", () => {
 			});
 		global.fetch = fetchMock as typeof fetch;
 
-		const { pullPendingSyncOps } = await import(
+		const { pullPendingSyncOps, stopSyncPullService } = await import(
 			"@/services/sync/syncPullService"
 		);
 
 		await pullPendingSyncOps();
+		stopSyncPullService();
 
 		expect(mockSaveNote).toHaveBeenCalledWith(
 			expect.objectContaining({

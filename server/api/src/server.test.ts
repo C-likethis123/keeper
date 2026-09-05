@@ -712,6 +712,89 @@ test("CORS handles allowed preflight requests", async () => {
 	await server.close();
 });
 
+test("CORS allows Tauri's random localhost port", async () => {
+	const server = createServer({
+		syncRepository: new InMemorySyncRepository(),
+		security: { corsAllowedOrigins: ["http://localhost:8082"] },
+	});
+
+	const response = await server.inject({
+		method: "GET",
+		url: "/health",
+		headers: { origin: "http://localhost:54321" },
+	});
+
+	assert.equal(response.statusCode, 200);
+	assert.equal(
+		response.headers["access-control-allow-origin"],
+		"http://localhost:54321",
+	);
+	await server.close();
+});
+
+test("a Tauri desktop note is visible to localhost web", async () => {
+	const server = createServer({
+		syncRepository: new InMemorySyncRepository(),
+		security: { corsAllowedOrigins: ["http://localhost:8082"] },
+	});
+
+	const push = await server.inject({
+		method: "POST",
+		url: "/sync/push",
+		headers: {
+			origin: "http://localhost:54321",
+			"content-type": "application/json",
+		},
+		payload: {
+			deviceId: "desktop",
+			ops: [
+				{
+					opId: "desktop:1",
+					seq: 1,
+					type: "note.create",
+					noteId: "desktop-note",
+					path: "desktop-note.md",
+					title: "From desktop",
+					markdown: "# From desktop",
+					createdAt: "2026-09-06T04:00:00.000Z",
+				},
+			],
+		},
+	});
+	assert.equal(push.statusCode, 202);
+	assert.equal(
+		push.headers["access-control-allow-origin"],
+		"http://localhost:54321",
+	);
+
+	const pull = await server.inject({
+		method: "GET",
+		url: "/sync/pull?deviceId=web&cursor=0",
+		headers: { origin: "http://localhost:8082" },
+	});
+	assert.equal(pull.statusCode, 200);
+	assert.equal(
+		pull.headers["access-control-allow-origin"],
+		"http://localhost:8082",
+	);
+	assert.deepEqual(pull.json().ops, [
+		{
+			opId: "desktop:1",
+			seq: 1,
+			type: "note.create",
+			noteId: "desktop-note",
+			path: "desktop-note.md",
+			title: "From desktop",
+			markdown: "# From desktop",
+			createdAt: "2026-09-06T04:00:00.000Z",
+			serverId: 1,
+			deviceId: "desktop",
+		},
+	]);
+
+	await server.close();
+});
+
 test("request body limits use smaller global cap and larger sync cap", async () => {
 	const server = createServer({
 		syncRepository: new InMemorySyncRepository(),

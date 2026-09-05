@@ -1,6 +1,9 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { stringifyFrontmatter } from "@/services/notes/frontmatter";
 import type { Note } from "@/services/notes/types";
+import {
+	getSyncStateItem,
+	setSyncStateItem,
+} from "@/services/sync/syncStateStorage";
 import type { QueuedSyncOperation } from "@/services/sync/types";
 import { storageEngine } from "@/services/storage/storageEngine";
 
@@ -8,6 +11,7 @@ const DEVICE_ID_KEY = "keeper:sync:device-id";
 const SEQ_KEY = "keeper:sync:next-seq";
 const QUEUE_KEY = "keeper:sync:op-queue";
 const PULL_CURSOR_KEY = "keeper:sync:pull-cursor";
+const LEGACY_BACKFILL_KEY = "keeper:sync:legacy-backfill-v1";
 
 let queueMutex = Promise.resolve();
 
@@ -53,7 +57,7 @@ async function attachmentBase64(note: Note): Promise<string | undefined> {
 }
 
 async function readQueueUnsafe(): Promise<QueuedSyncOperation[]> {
-	const raw = await AsyncStorage.getItem(QUEUE_KEY);
+	const raw = await getSyncStateItem(QUEUE_KEY);
 	if (!raw) return [];
 	try {
 		const parsed = JSON.parse(raw) as QueuedSyncOperation[];
@@ -64,15 +68,15 @@ async function readQueueUnsafe(): Promise<QueuedSyncOperation[]> {
 }
 
 async function writeQueueUnsafe(ops: QueuedSyncOperation[]): Promise<void> {
-	await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(ops));
+	await setSyncStateItem(QUEUE_KEY, JSON.stringify(ops));
 }
 
 export async function getSyncDeviceId(): Promise<string> {
 	return serializeQueue(async () => {
-		const existing = await AsyncStorage.getItem(DEVICE_ID_KEY);
+		const existing = await getSyncStateItem(DEVICE_ID_KEY);
 		if (existing) return existing;
 		const next = createDeviceId();
-		await AsyncStorage.setItem(DEVICE_ID_KEY, next);
+		await setSyncStateItem(DEVICE_ID_KEY, next);
 		return next;
 	});
 }
@@ -83,7 +87,7 @@ export async function readQueuedSyncOps(): Promise<QueuedSyncOperation[]> {
 
 export async function readSyncPullCursor(): Promise<number> {
 	return serializeQueue(async () => {
-		const raw = await AsyncStorage.getItem(PULL_CURSOR_KEY);
+		const raw = await getSyncStateItem(PULL_CURSOR_KEY);
 		const cursor = raw ? Number(raw) : 0;
 		return Number.isFinite(cursor) && cursor >= 0 ? cursor : 0;
 	});
@@ -91,7 +95,7 @@ export async function readSyncPullCursor(): Promise<number> {
 
 export async function writeSyncPullCursor(cursor: number): Promise<void> {
 	await serializeQueue(async () => {
-		await AsyncStorage.setItem(
+		await setSyncStateItem(
 			PULL_CURSOR_KEY,
 			String(Math.max(0, Math.floor(cursor))),
 		);
@@ -108,10 +112,10 @@ export async function markSyncOpsPushed(opIds: string[]): Promise<void> {
 }
 
 async function nextSyncSequenceUnsafe(): Promise<number> {
-	const raw = await AsyncStorage.getItem(SEQ_KEY);
+	const raw = await getSyncStateItem(SEQ_KEY);
 	const current = raw ? Number(raw) : 0;
 	const next = Number.isFinite(current) && current >= 0 ? current + 1 : 1;
-	await AsyncStorage.setItem(SEQ_KEY, String(next));
+	await setSyncStateItem(SEQ_KEY, String(next));
 	return next;
 }
 
@@ -123,8 +127,8 @@ async function appendSyncOp(
 ): Promise<QueuedSyncOperation> {
 	return serializeQueue(async () => {
 		const deviceId =
-			(await AsyncStorage.getItem(DEVICE_ID_KEY)) ?? createDeviceId();
-		await AsyncStorage.setItem(DEVICE_ID_KEY, deviceId);
+			(await getSyncStateItem(DEVICE_ID_KEY)) ?? createDeviceId();
+		await setSyncStateItem(DEVICE_ID_KEY, deviceId);
 		const seq = await nextSyncSequenceUnsafe();
 		const op = {
 			opId: `${deviceId}:${seq}`,
@@ -168,4 +172,29 @@ export async function enqueueNoteDelete(noteId: string): Promise<QueuedSyncOpera
 		noteId,
 		deletedAt: new Date().toISOString(),
 	}));
+}
+
+export async function enqueueMissingLocalNotes(
+	remoteNoteIds: Iterable<string>,
+): Promise<number> {
+	const completed = await getSyncStateItem(LEGACY_BACKFILL_KEY);
+	if (completed) return 0;
+
+	const remoteIds = new Set(remoteNoteIds);
+	const queuedIds = new Set(
+		(await readQueuedSyncOps()).map((operation) => operation.noteId),
+	);
+	let queuedCount = 0;
+
+	for (const file of await storageEngine.listNoteFiles()) {
+		if (remoteIds.has(file.id) || queuedIds.has(file.id)) continue;
+		const note = await storageEngine.loadNote(file.id);
+		if (!note) continue;
+		await enqueueNoteCreate(note);
+		queuedIds.add(note.id);
+		queuedCount += 1;
+	}
+
+	await setSyncStateItem(LEGACY_BACKFILL_KEY, "complete");
+	return queuedCount;
 }

@@ -2,12 +2,15 @@ import {
 	enqueueNoteCreate,
 	enqueueNoteDelete,
 	enqueueNoteUpdate,
+	enqueueMissingLocalNotes,
 	markSyncOpsPushed,
 	readQueuedSyncOps,
 } from "@/services/sync/syncOpQueue";
 import type { Note } from "@/services/notes/types";
 
 const mockAsyncStorage = new Map<string, string>();
+const mockListNoteFiles = jest.fn();
+const mockLoadNote = jest.fn();
 
 jest.mock("@react-native-async-storage/async-storage", () => ({
 	__esModule: true,
@@ -19,6 +22,14 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 			mockAsyncStorage.set(key, value);
 			return Promise.resolve();
 		}),
+	},
+}));
+
+jest.mock("@/services/storage/storageEngine", () => ({
+	storageEngine: {
+		listNoteFiles: (...args: unknown[]) => mockListNoteFiles(...args),
+		loadNote: (...args: unknown[]) => mockLoadNote(...args),
+		readFileBytes: jest.fn(),
 	},
 }));
 
@@ -45,6 +56,8 @@ function makeNote(overrides: Partial<Note> = {}): Note {
 describe("syncOpQueue", () => {
 	beforeEach(() => {
 		mockAsyncStorage.clear();
+		mockListNoteFiles.mockResolvedValue([]);
+		mockLoadNote.mockResolvedValue(null);
 	});
 
 	it("queues create, update, and delete operations in device sequence order", async () => {
@@ -94,5 +107,21 @@ describe("syncOpQueue", () => {
 		const queued = await readQueuedSyncOps();
 		expect(queued).toHaveLength(1);
 		expect(queued[0]?.type).toBe("note.update");
+	});
+
+	it("queues local notes missing from the server once", async () => {
+		mockListNoteFiles.mockResolvedValue([
+			{ id: "remote-note", updatedAt: 1 },
+			{ id: "desktop-only", updatedAt: 2 },
+		]);
+		mockLoadNote.mockImplementation((id: string) =>
+			Promise.resolve(makeNote({ id, title: id })),
+		);
+
+		expect(await enqueueMissingLocalNotes(["remote-note"])).toBe(1);
+		expect(await enqueueMissingLocalNotes(["remote-note"])).toBe(0);
+		expect(await readQueuedSyncOps()).toEqual([
+			expect.objectContaining({ type: "note.create", noteId: "desktop-only" }),
+		]);
 	});
 });

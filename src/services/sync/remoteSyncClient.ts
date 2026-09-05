@@ -2,6 +2,7 @@ import { getSyncServerUrl } from "@/services/sync/config";
 import { createSyncRequestError } from "@/services/sync/syncRequestError";
 import type {
 	QueuedSyncOperation,
+	SyncNoteIdsResponse,
 	SyncPullResponse,
 	SyncPushResponse,
 } from "@/services/sync/types";
@@ -52,4 +53,18 @@ export async function pullSyncOperations(
 	}
 
 	return (await response.json()) as SyncPullResponse;
+}
+
+export async function listSyncNoteIds(): Promise<SyncNoteIdsResponse> {
+	const serverUrl = getSyncServerUrl();
+	if (!serverUrl) {
+		throw new Error("Sync server URL is not configured");
+	}
+
+	const response = await fetch(`${serverUrl}/sync/note-ids`);
+	if (!response.ok) {
+		throw await createSyncRequestError(response, "Sync note inventory");
+	}
+
+	return (await response.json()) as SyncNoteIdsResponse;
 }

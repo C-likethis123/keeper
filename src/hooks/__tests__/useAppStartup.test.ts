@@ -6,7 +6,18 @@ jest.mock("@/services/startup/startupTelemetry", () => ({
 	traceStartupBootstrapEvent: jest.fn(),
 }));
 
+jest.mock("@/services/sync/syncPullService", () => ({
+	startSyncPullService: jest.fn(),
+	stopSyncPullService: jest.fn(),
+}));
+
+jest.mock("@/services/sync/syncPushService", () => ({
+	startSyncPushService: jest.fn(),
+}));
+
 import { runStartupStrategy } from "@/services/startup/startupStrategies";
+import { startSyncPullService } from "@/services/sync/syncPullService";
+import { startSyncPushService } from "@/services/sync/syncPushService";
 import { renderHook, waitFor } from "@testing-library/react-native";
 import { useAppStartup } from "../useAppStartup";
 
@@ -33,6 +44,27 @@ describe("useAppStartup", () => {
 		});
 		expect(result.current.isHydrated).toBe(true);
 		expect(result.current.initError).toBeNull();
+	});
+
+	it("starts sync only after storage startup finishes", async () => {
+		let finishStartup: (() => void) | undefined;
+		(runStartupStrategy as jest.Mock).mockImplementation(
+			() =>
+				new Promise<void>((resolve) => {
+					finishStartup = resolve;
+				}),
+		);
+
+		renderHook(() => useAppStartup());
+
+		expect(startSyncPushService).not.toHaveBeenCalled();
+		expect(startSyncPullService).not.toHaveBeenCalled();
+		finishStartup?.();
+
+		await waitFor(() => {
+			expect(startSyncPushService).toHaveBeenCalledTimes(1);
+			expect(startSyncPullService).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	it("moves to error state when startup surfaces an init error", async () => {

@@ -50,7 +50,7 @@ KEEPER_SEED_TOKEN=<shared-token-for-github-action>
 Server request hardening accepts these optional settings:
 
 ```bash
-KEEPER_CORS_ALLOWED_ORIGINS=tauri://localhost,http://tauri.localhost,http://localhost:8082
+KEEPER_CORS_ALLOWED_ORIGINS=https://keeper.pages.dev,tauri://localhost,http://tauri.localhost,http://localhost:8082
 KEEPER_SYNC_BODY_LIMIT_BYTES=16777216
 KEEPER_RATE_LIMIT_MAX=120
 KEEPER_RATE_LIMIT_WINDOW_MS=60000
@@ -59,6 +59,8 @@ KEEPER_RATE_LIMIT_WINDOW_MS=60000
 Origins must be exact origins without paths. Omit `http://localhost:8082` in
 production unless browser UI is intentionally served from that origin. Requests
 without an `Origin` header, including native app requests, remain allowed.
+When `tauri://localhost` or `http://localhost:8082` is allowed, Keeper also
+accepts Tauri's random `http://localhost:<port>` production origin.
 
 Git worker derives GitHub owner and repository from `SERVER_GIT_REMOTE_URL`.
 Remote may contain existing HTTPS GitHub credentials. Git worker reuses embedded

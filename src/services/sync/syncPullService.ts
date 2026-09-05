@@ -25,6 +25,7 @@ function base64ToBytes(value: string): Uint8Array {
 
 const BASE_RETRY_MS = 1000;
 const MAX_RETRY_MS = 60_000;
+const SYNC_POLL_INTERVAL_MS = 30_000;
 
 let retryMs = BASE_RETRY_MS;
 let pullPromise: Promise<void> | null = null;
@@ -155,6 +156,7 @@ export async function pullPendingSyncOps(): Promise<void> {
 		if (!isServerSyncConfigured()) return;
 
 		let didApplyOperations = false;
+		let shouldPollAgain = false;
 		try {
 			const deviceId = await getSyncDeviceId();
 			let cursor = await readSyncPullCursor();
@@ -171,6 +173,7 @@ export async function pullPendingSyncOps(): Promise<void> {
 				}
 			}
 			retryMs = BASE_RETRY_MS;
+			shouldPollAgain = true;
 		} catch (error) {
 			console.warn("[SyncPullService] Pull failed:", error);
 			showSyncDebugToast(
@@ -190,6 +193,9 @@ export async function pullPendingSyncOps(): Promise<void> {
 				invalidateNoteQueryCache();
 				useStorageStore.getState().bumpContentVersion();
 			}
+			if (shouldPollAgain) {
+				scheduleSyncPull(SYNC_POLL_INTERVAL_MS);
+			}
 		}
 	})();
 
@@ -202,4 +208,8 @@ export async function pullPendingSyncOps(): Promise<void> {
 
 export function startSyncPullService(): void {
 	scheduleSyncPull(0);
+}
+
+export function stopSyncPullService(): void {
+	clearRetryTimer();
 }

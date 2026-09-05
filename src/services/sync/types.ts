@@ -59,3 +59,7 @@ export type SyncPullResponse = {
 	ops: PulledSyncOperation[];
 	cursor: number;
 };
+
+export type SyncNoteIdsResponse = {
+	noteIds: string[];
+};

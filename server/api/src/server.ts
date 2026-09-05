@@ -32,6 +32,13 @@ export function createServer(dependencies: ServerDependencies) {
 		...dependencies.security,
 	};
 	const allowedOrigins = new Set(security.corsAllowedOrigins);
+	const allowsTauriLocalhost =
+		allowedOrigins.has("tauri://localhost") ||
+		allowedOrigins.has("http://localhost:8082");
+	const isAllowedOrigin = (origin: string | undefined): boolean =>
+		!origin ||
+		allowedOrigins.has(origin) ||
+		(allowsTauriLocalhost && /^http:\/\/localhost:\d+$/.test(origin));
 	const server = Fastify({
 		bodyLimit: security.bodyLimitBytes,
 		logger: true,
@@ -40,7 +47,7 @@ export function createServer(dependencies: ServerDependencies) {
 
 	server.addHook("onRequest", async (request, reply) => {
 		const origin = request.headers.origin;
-		if (origin && !allowedOrigins.has(origin)) {
+		if (!isAllowedOrigin(origin)) {
 			return reply.code(403).send({ error: "origin_not_allowed" });
 		}
 	});
@@ -50,7 +57,7 @@ export function createServer(dependencies: ServerDependencies) {
 		credentials: false,
 		maxAge: 600,
 		methods: ["GET", "POST", "DELETE", "OPTIONS"],
-		origin: security.corsAllowedOrigins,
+		origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
 		strictPreflight: true,
 	});
 	void server.register(async (limitedServer) => {

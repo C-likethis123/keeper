@@ -1,7 +1,11 @@
 import { runStartupStrategy } from "@/services/startup/startupStrategies";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
-import { startSyncPullService } from "@/services/sync/syncPullService";
+import {
+	startSyncPullService,
+	stopSyncPullService,
+} from "@/services/sync/syncPullService";
 import { startSyncPushService } from "@/services/sync/syncPushService";
+import { queueMissingLegacyNotes } from "@/services/sync/syncLegacyBackfillService";
 import { useEffect, useState } from "react";
 
 type StartupStatus = "idle" | "running" | "ready" | "error";
@@ -59,6 +63,18 @@ export function useAppStartup(): AppStartupState {
 		}));
 		traceStartupBootstrapEvent("bootstrap.run_startup_strategy_invoked");
 
+		let isStorageReady = false;
+		const startSync = () => {
+			if (!isStorageReady) return;
+			// Do not hold normal sync behind the legacy scan. A large desktop vault
+			// can take long enough that newly saved notes otherwise sit unsent.
+			startSyncPushService();
+			startSyncPullService();
+			void queueMissingLegacyNotes().then((queued) => {
+				if (queued > 0) startSyncPushService();
+			});
+		};
+
 		void runStartupStrategy({
 			setHydrated: () =>
 				safeSetState((prev) => ({
@@ -75,25 +91,27 @@ export function useAppStartup(): AppStartupState {
 				})),
 			setStatusMessage: (message) =>
 				safeSetState((prev) => ({ ...prev, statusMessage: message })),
-		}).catch((error) => {
-			console.error("[App] Startup error:", error);
-			safeSetState((prev) => ({
-				...prev,
-				isHydrated: true,
-				status: "error",
-				initError:
-					prev.initError ??
-					(error instanceof Error
-						? error.message
-						: "Startup failed unexpectedly."),
-			}));
-		});
+		})
+			.then(() => {
+				isStorageReady = true;
+				startSync();
+			})
+			.catch((error) => {
+				console.error("[App] Startup error:", error);
+				safeSetState((prev) => ({
+					...prev,
+					isHydrated: true,
+					status: "error",
+					initError:
+						prev.initError ??
+						(error instanceof Error
+							? error.message
+							: "Startup failed unexpectedly."),
+				}));
+			});
 
-		startSyncPushService();
-		startSyncPullService();
 		const handleOnline = () => {
-			startSyncPushService();
-			startSyncPullService();
+			startSync();
 		};
 		const canListenForOnline =
 			typeof window !== "undefined" &&
@@ -105,6 +123,7 @@ export function useAppStartup(): AppStartupState {
 
 		return () => {
 			isCancelled = true;
+			stopSyncPullService();
 			if (
 				typeof window !== "undefined" &&
 				typeof window.removeEventListener === "function"
