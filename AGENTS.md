@@ -37,7 +37,7 @@ Run `npm run lint` for CI-style checks. Run `npm test` when touching covered Typ
 
 ## Architecture
 
-Keeper is an Expo Router React Native note app for iOS, Android, web, and Tauri desktop. It stores Markdown notes on local storage, indexes metadata/search in SQLite, and syncs with Git/GitHub through Rust-backed engines.
+Keeper is an Expo Router React Native note app for iOS, Android, web/PWA, and Tauri desktop. It stores Markdown notes locally, indexes metadata/search in SQLite or browser storage, and syncs note operations through the server when configured.
 
 ### Source Root
 
@@ -50,12 +50,11 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
 2. **Components** (`src/components/`) - UI layer. Core screens use `NoteGrid`, `NoteCard`, `HomeQuickComposer`, `HomeScreenHeader`, `NoteEditorView`, `NoteEditorHeader`, `TabBar`, drawers, modals, and shared UI in `src/components/shared/`.
 
 3. **Editor** (`src/components/editor/`) - Markdown editing and attachment panes.
-   - `DomEditor.tsx` wraps editor surface.
-   - `lexical/` is canonical rich Markdown editor: toolbar, code blocks, slash commands, equations, images, tables, checklist transforms, wiki links, and Markdown transforms.
-   - `slash-commands/` owns slash command overlay and trigger logic.
-   - `wikilinks/` owns wiki link overlay utilities outside Lexical node/transformer code.
-   - `document/`, `article/`, and `video/` render split panels and embedded PDF/EPUB/video experiences.
-   - `core/` now only contains shared editor primitives such as `Selection` and pending dispatch registry. Do not reintroduce old block model or block renderer paths.
+   - `lexical/LexicalMarkdownEditor.tsx` is canonical DOM-backed rich Markdown editor.
+   - `lexical/` owns toolbar, code blocks, slash commands, equations, images, tables, checklist transforms, wiki links, and Markdown transforms.
+   - `lexical/slashCommand/` and `lexical/wikilinks/` own their overlays and trigger logic.
+   - `document/` and `video/` render split panels and embedded PDF/EPUB/video experiences.
+   - `core/` contains shared editor primitives such as pending dispatch registry. Do not reintroduce old block-model or block-renderer paths.
 
 4. **State** (`src/stores/`) - Zustand stores:
    - `filterStore.ts` - home filtering.
@@ -68,7 +67,7 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
 6. **Services** (`src/services/`) - Persistence and side effects:
    - `notes/` - note CRUD, frontmatter, note type derivation, templates, attachments/images, wiki link parsing, query cache, SQLite/index DB sync, cluster and cluster feedback services.
    - `sync/` - server sync push/pull, operation queue, CRDT transport, and sync orchestration.
-   - `storage/` - platform storage engine abstraction with mobile and Tauri engines.
+   - `storage/` - platform storage engine abstraction with native/Tauri and browser IndexedDB engines.
    - `startup/` - startup steps, strategies, telemetry.
    - `toast.ts` - toast facade.
 
@@ -76,14 +75,14 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
    - `src-tauri/src/` - Tauri app commands and desktop storage bridge.
    - `src-tauri/storage_core/` - Rust SQLite/storage core crate and migrations.
 
-8. **MOC Pipeline**:
+8. **MOC classification**:
    - `src/components/moc/` - UI for suggestions, related notes, cluster add/rename/merge.
-   - `src/services/notes/clusterService*` and `clusterFeedbackService*` - app-side cluster data.
-   - `scripts/moc_pipeline/` - Python clustering, embedding, feedback, learning, pipeline tests.
+   - `src/services/notes/clusterService*`, `clusterFeedbackService*`, and `serverClusterClient.ts` - client access to server-owned clusters and feedback.
+   - `server/api/src/workers/mocWorker.ts` runs the Python classifier. `scripts/moc_pipeline/` remains server/development tooling, not normal client workflow.
 
 ## Data Persistence
 
-1. **Storage engine** - `src/services/storage/*` chooses mobile or Tauri storage implementation.
+1. **Storage engine** - `src/services/storage/*` chooses native/Tauri or browser IndexedDB storage implementation.
 2. **Notes service** - `src/services/notes/noteService.ts` reads/writes Markdown and metadata.
 3. **Index DB/SQLite** - `src/services/notes/indexDb/*`, `notesIndexDb*`, and migrations keep search, metadata, wiki links, clusters, and feedback queryable.
 4. **Server sync** - `src/services/sync/*` queues note operations and pushes/pulls them through the sync server.

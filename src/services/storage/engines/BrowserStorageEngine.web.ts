@@ -65,9 +65,10 @@ export class BrowserStorageEngine implements StorageEngine {
 					request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
 				} catch (error) {
 					reject(
-						error instanceof Error
-							? error
-							: new Error("Browser storage is unavailable"),
+						new Error(
+							"Browser storage is unavailable: IndexedDB could not be opened",
+							{ cause: error },
+						),
 					);
 					return;
 				}
@@ -118,14 +119,23 @@ export class BrowserStorageEngine implements StorageEngine {
 		return this.databasePromise;
 	}
 
-	private async getFile(path: string): Promise<StoredFile | undefined> {
+	private async getUsableDatabase(): Promise<IDBDatabase> {
 		const database = await this.getDatabase();
+		if (!database || typeof database.transaction !== "function") {
+			this.databasePromise = null;
+			throw new Error("Browser storage is unavailable: IndexedDB did not return a usable database");
+		}
+		return database;
+	}
+
+	private async getFile(path: string): Promise<StoredFile | undefined> {
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction(FILE_STORE, "readonly");
 		return requestResult(transaction.objectStore(FILE_STORE).get(path));
 	}
 
 	async initialize(): Promise<StorageInitializeResult> {
-		const database = await this.getDatabase();
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction([FILE_STORE, INDEX_STORE], "readonly");
 		const files = await requestResult(transaction.objectStore(FILE_STORE).getAllKeys());
 		const indexEntries = await requestResult(transaction.objectStore(INDEX_STORE).count());
@@ -136,7 +146,7 @@ export class BrowserStorageEngine implements StorageEngine {
 	}
 
 	async resetAllData(): Promise<void> {
-		const database = await this.getDatabase();
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction([FILE_STORE, INDEX_STORE], "readwrite");
 		transaction.objectStore(FILE_STORE).clear();
 		transaction.objectStore(INDEX_STORE).clear();
@@ -149,7 +159,7 @@ export class BrowserStorageEngine implements StorageEngine {
 	}
 
 	async writeFileBytes(relativePath: string, data: Uint8Array): Promise<void> {
-		const database = await this.getDatabase();
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction(FILE_STORE, "readwrite");
 		transaction.objectStore(FILE_STORE).put({
 			path: assertSafeRelativePath(relativePath),
@@ -162,7 +172,7 @@ export class BrowserStorageEngine implements StorageEngine {
 	async deleteFile(relativePath: string): Promise<boolean> {
 		const path = assertSafeRelativePath(relativePath);
 		if (!(await this.getFile(path))) return false;
-		const database = await this.getDatabase();
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction(FILE_STORE, "readwrite");
 		transaction.objectStore(FILE_STORE).delete(path);
 		await transactionComplete(transaction);
@@ -171,7 +181,7 @@ export class BrowserStorageEngine implements StorageEngine {
 
 	async listFilesRecursive(relativeDir: string): Promise<string[]> {
 		const directory = assertSafeRelativePath(relativeDir);
-		const database = await this.getDatabase();
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction(FILE_STORE, "readonly");
 		const paths = await requestResult(transaction.objectStore(FILE_STORE).getAllKeys());
 		return paths.filter((path): path is string => typeof path === "string" && path.startsWith(`${directory}/`));
@@ -180,7 +190,7 @@ export class BrowserStorageEngine implements StorageEngine {
 	async deleteDirectory(relativeDir: string): Promise<void> {
 		const paths = await this.listFilesRecursive(relativeDir);
 		if (paths.length === 0) return;
-		const database = await this.getDatabase();
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction(FILE_STORE, "readwrite");
 		const store = transaction.objectStore(FILE_STORE);
 		for (const path of paths) store.delete(path);
@@ -226,7 +236,7 @@ export class BrowserStorageEngine implements StorageEngine {
 	async deleteNote(id: string): Promise<boolean> {
 		const path = `${id}.md`;
 		if (!(await this.getFile(path))) return false;
-		const database = await this.getDatabase();
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction(FILE_STORE, "readwrite");
 		transaction.objectStore(FILE_STORE).delete(path);
 		await transactionComplete(transaction);
@@ -234,7 +244,7 @@ export class BrowserStorageEngine implements StorageEngine {
 	}
 
 	async listNoteFiles(): Promise<NoteFileEntry[]> {
-		const database = await this.getDatabase();
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction(FILE_STORE, "readonly");
 		const files = await requestResult(transaction.objectStore(FILE_STORE).getAll());
 		return files
@@ -248,21 +258,21 @@ export class BrowserStorageEngine implements StorageEngine {
 	}
 
 	async indexUpsert(item: NoteIndexPersistenceItem): Promise<void> {
-		const database = await this.getDatabase();
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction(INDEX_STORE, "readwrite");
 		transaction.objectStore(INDEX_STORE).put(item);
 		await transactionComplete(transaction);
 	}
 
 	async indexDelete(noteId: string): Promise<void> {
-		const database = await this.getDatabase();
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction(INDEX_STORE, "readwrite");
 		transaction.objectStore(INDEX_STORE).delete(noteId);
 		await transactionComplete(transaction);
 	}
 
 	async indexList(query: string, limit: number, offset = 0, filters?: NoteIndexQueryFilters): Promise<NoteIndexListResult> {
-		const database = await this.getDatabase();
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction(INDEX_STORE, "readonly");
 		const items = await requestResult(transaction.objectStore(INDEX_STORE).getAll()) as NoteIndexPersistenceItem[];
 		const term = query.trim().toLocaleLowerCase();
@@ -279,7 +289,7 @@ export class BrowserStorageEngine implements StorageEngine {
 	async indexRebuildFromDisk(): Promise<NotesIndexRebuildMetrics> {
 		const startedAt = Date.now();
 		const files = await this.listNoteFiles();
-		const database = await this.getDatabase();
+		const database = await this.getUsableDatabase();
 		const transaction = database.transaction(INDEX_STORE, "readwrite");
 		const store = transaction.objectStore(INDEX_STORE);
 		store.clear();

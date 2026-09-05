@@ -1,6 +1,6 @@
 # TODO
 
-See `ROADMAP.md` for the development roadmap, critical issues, and planned phases.
+Historical quick reference. Not current source of truth. Use `README.md` for current direction and focused, dated plans for active work.
 
 ## Quick Reference
 

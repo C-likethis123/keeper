@@ -11,7 +11,11 @@ export type ServerSecurityConfig = {
 
 export const DEFAULT_SERVER_SECURITY_CONFIG: ServerSecurityConfig = {
 	bodyLimitBytes: 64 * KIB,
-	corsAllowedOrigins: ["tauri://localhost", "http://tauri.localhost"],
+	corsAllowedOrigins: [
+		"tauri://localhost",
+		"http://tauri.localhost",
+		"http://localhost:8082",
+	],
 	rateLimitMax: 120,
 	rateLimitWindowMs: 60_000,
 	syncBodyLimitBytes: 16 * MIB,

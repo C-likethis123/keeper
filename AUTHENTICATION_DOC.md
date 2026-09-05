@@ -1,4 +1,8 @@
-  Best immediate model: single-user opaque bearer token. Fits current architecture. No login server needed.
+# Future Design: Server Authentication
+
+> Status: proposed design. Not implemented in current client/server stack. Required before public, user-scoped sync release.
+
+Best immediate model: single-user opaque bearer token. Fits current architecture. No login server needed.
 
   ## Route policy
 

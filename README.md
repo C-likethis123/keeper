@@ -1,12 +1,14 @@
-# keeper
+# Keeper
 
-This is a cross-platform rich-text editor, built on both mobile and desktop.
+Local-first Markdown notes for iOS, Android, web/PWA, and Tauri desktop.
 
 ## Tech stack
 
-1. [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app)
-2. React Native
-3. Server sync with local Markdown and SQLite persistence
+1. [Expo](https://expo.dev), Expo Router, React Native, and React Native Web
+2. [Lexical](https://lexical.dev/) rich Markdown editor, rendered through Expo DOM
+3. Local storage: native/Tauri Markdown plus SQLite indexes; browser IndexedDB storage
+4. Tauri 2 desktop shell
+5. Optional server sync for note operations, Git mirroring, and MOC classification
 
 ## Get started
 
@@ -17,11 +19,18 @@ This is a cross-platform rich-text editor, built on both mobile and desktop.
 
    ```
 
-2. Build the production Android app
+2. Start development
 
    ```bash
-   npm run build:android
+   npm start
    ```
+
+Useful commands:
+
+- `npm run build:android` — prebuild and install Android release
+- `npm run ios` / `npm run android` — run native development builds
+- `npm run build:web` — export static web/PWA bundle
+- `npm run lint` and `npm test` — lint and unit suite
 
 - [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
 - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
@@ -38,6 +47,12 @@ The web app can run in a desktop window via [Tauri](https://tauri.app/). Prerequ
 
 The first run may prompt for system permissions (e.g. macOS).
 
+### Web / PWA
+
+Web is an installable local-first direction, not yet full release parity. Production static exports include a manifest and service worker; browser notes and attachments use IndexedDB rather than Tauri or device filesystem APIs.
+
+Current release blockers: authenticated, user-scoped sync; complete browser index/cluster parity; attachment quota UX; and cross-browser offline/update testing. See [`plans/pwa-migration.md`](plans/pwa-migration.md).
+
 ### Sync backend configuration
 
 Configure the sync server URL:
@@ -46,51 +61,11 @@ Configure the sync server URL:
 EXPO_PUBLIC_SYNC_SERVER_URL=https://your-backend.example.com
 ```
 
-## MOC Suggestions (semantic clustering)
+## MOC Suggestions
 
-Keeper can surface suggested Maps of Content (MOCs) by clustering your notes semantically. This requires a one-time Python setup and a manual pipeline run whenever you want fresh suggestions.
+MOC classification belongs to server sync. When `EXPO_PUBLIC_SYNC_SERVER_URL` is configured, client cluster services read and update server-owned suggestions. Server workers run the Python embedding and clustering pipeline after sync work; clients review, accept, rename, dismiss, and organize returned clusters.
 
-### First-time setup
-
-```bash
-cd scripts/moc_pipeline
-pip install -r requirements.txt
-```
-
-The pipeline uses `sentence-transformers` and `scikit-learn`. A virtual environment is recommended:
-
-```bash
-python -m venv ../../mlx-env
-source ../../mlx-env/bin/activate
-pip install -r requirements.txt
-```
-
-### Running the pipeline
-
-Point the script at your local notes directory (the root of your cloned git repo):
-
-```bash
-python scripts/moc_pipeline/pipeline.py /path/to/your/notes
-```
-
-This reads all `*.md` files, generates embeddings, clusters them, and writes `.moc_clusters.json` to your notes root. The next time you open the app, it imports the clusters automatically and shows a **Suggested MOCs** section on the home screen.
-
-### How often to re-run
-
-Re-run the pipeline whenever your notes have changed enough to warrant fresh suggestions — there is no automatic trigger. A reasonable cadence is after a significant batch of new or edited notes (e.g. weekly, or after adding 10+ notes). Each run recomputes embeddings for all notes from scratch.
-
-```bash
-python scripts/moc_pipeline/pipeline.py /path/to/your/notes
-```
-
-Then reopen (or background/foreground) the app to pick up the new `.moc_clusters.json`.
-
-### Reviewing suggestions
-
-On the home screen, each cluster card shows an auto-generated name and its member notes. You can:
-- **Accept** — creates a real MOC note pre-populated with wiki links to all cluster members
-- **Rename** — edit the suggested name before accepting (iOS/desktop; Android support is limited)
-- **Dismiss** — hides the suggestion permanently
+Server setup and operator details: [`server/README.md`](server/README.md) and [`docs/server-sync-cutover.md`](docs/server-sync-cutover.md). `scripts/moc_pipeline/` is server/development tooling, not normal client setup.
 
 ---
 

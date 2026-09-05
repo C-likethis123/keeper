@@ -1,6 +1,6 @@
-# Keeper Development Roadmap
+# Keeper Historical Roadmap
 
-This is the central planning document for Keeper. It outlines critical issues, development phases, and high-level features. Refer to this document before starting new work.
+Historical development notes and completed-work record. Not current source of truth. Use `README.md` for current product direction and focused, dated plans for active work.
 
 ## Critical Issues (P1)
 

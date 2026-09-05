@@ -25,7 +25,7 @@ Ship Keeper as installable, offline-capable web app from shared Expo UI. Keep na
    - Define update behavior: install new worker, prompt/reload only when no editor changes remain.
 
 3. Browser parity
-   - Implement browser index/backlinks/MOC persistence or explicitly move these queries server-side.
+   - Implement browser index/backlinks persistence. Use server cluster APIs for MOC suggestions when server sync is configured; do not run client-side MOC classification.
    - Test note CRUD, images, PDF/EPUB import, drawing, history, full-text search, offline restart.
    - Establish attachment size limits and quota/error UI.
 
@@ -51,4 +51,4 @@ Ship Keeper as installable, offline-capable web app from shared Expo UI. Keep na
 
 ## Current implementation slice
 
-Foundation only: browser storage, browser file import, manifest/service worker, browser startup smoke test. Authenticated public sync and full browser index/cluster parity remain release blockers.
+Foundation only: browser storage, browser file import, manifest/service worker, browser startup smoke test. Authenticated public sync and full browser index parity remain release blockers; MOC classification is server-owned.

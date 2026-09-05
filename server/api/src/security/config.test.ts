@@ -32,3 +32,11 @@ test("security config rejects wildcard and path origins", () => {
 		} as NodeJS.ProcessEnv),
 	);
 });
+
+test("security config allows local Expo web by default", () => {
+	assert.ok(
+		readServerSecurityConfig({} as NodeJS.ProcessEnv).corsAllowedOrigins.includes(
+			"http://localhost:8082",
+		),
+	);
+});

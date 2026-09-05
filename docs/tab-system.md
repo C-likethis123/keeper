@@ -6,14 +6,14 @@ Keeper supports a browser-style tab system that lets users keep multiple notes o
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Editor Screen  (app/editor.tsx)                     │
+│  Editor Screen  (src/app/editor.tsx)                 │
 │  ┌───────────────────────────────────────────────┐  │
-│  │  TabBar  (components/TabBar.tsx)              │  │
+│  │  TabBar  (src/components/TabBar.tsx)          │  │
 │  │  [📌 Note A ✕]  [Note B ✕]  [📌 Note C ✕]    │  │
 │  └───────────────────────────────────────────────┘  │
 │  ┌───────────────────────────────────────────────┐  │
 │  │  NoteEditorContent                            │  │
-│  │  (HybridEditor + blocks)                      │  │
+│  │  (LexicalMarkdownEditor)                      │  │
 │  └───────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────┘
           ▲                        ▲
@@ -125,9 +125,9 @@ Tabs can be opened from three entry points:
 
 | Source | File | Flow |
 |--------|------|------|
-| **Home grid** | `components/NoteCard.tsx` | Tapping a note card calls `openTab(noteId, title)` + `router.push(/editor?id=...)` |
-| **Keyboard shortcut** | `hooks/useCreateAndOpenNote.ts` | `Meta+T` creates a new note, calls `openTab(newId, title)` + `router.push` with `isNew: "true"` |
-| **Wiki links** | `components/editor/HybridEditor.tsx` | Clicking `[[Some Note]]` resolves/creates the note ID, calls `openTab(noteId, title)` + `router.push` |
+| **Home grid** | `src/components/NoteCard.tsx` | Tapping a note card calls `openTab(noteId, title)` + `router.push(/editor?id=...)` |
+| **Keyboard shortcut** | `src/hooks/useCreateAndOpenNote.ts` | `Meta+T` creates a new note, calls `openTab(newId, title)` + `router.push` with `isNew: "true"` |
+| **Wiki links** | `src/components/editor/lexical/LexicalMarkdownEditor.tsx` | Clicking `[[Some Note]]` resolves/creates the note ID, calls `openTab(noteId, title)` + `router.push` |
 
 ## URL ↔ Store Synchronization
 
@@ -154,4 +154,4 @@ The URL param `id` is the **source of truth** for which note the editor displays
 | `src/hooks/appShortcutRegistry.ts` | Maps `Meta+T`/`Ctrl+T` → `newTab`, `Meta+W`/`Ctrl+W` → `closeTab` |
 | `src/hooks/useAppKeyboardShortcuts.ts` | Web-only keyboard event dispatcher |
 | `src/components/NoteCard.tsx` | Opens notes in tabs from the home grid |
-| `src/components/editor/HybridEditor.tsx` | Opens wiki link targets in new tabs |
+| `src/components/editor/lexical/LexicalMarkdownEditor.tsx` | Opens wiki link targets in new tabs |

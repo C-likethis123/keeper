@@ -1,6 +1,6 @@
 # Known Issues & Bugs
 
-See `ROADMAP.md` for detailed issue descriptions and root causes.
+This is a historical issue list. `ROADMAP.md` is also historical; neither document is current product direction.
 
 ## Critical Issues (P1)
 
