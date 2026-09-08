@@ -1,4 +1,5 @@
 import { getSyncServerUrl, isServerSyncEnabled } from "@/services/sync/config";
+import { keeperApiFetch } from "@/services/sync/keeperApiFetch";
 import type {
 	ClusterMemberRow,
 	ClusterRow,
@@ -66,9 +67,7 @@ export function shouldUseServerClusters(): boolean {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-	const serverUrl = getSyncServerUrl();
-	if (!serverUrl) throw new Error("Sync server URL is not configured");
-	const response = await fetch(`${serverUrl}${path}`, init);
+	const response = await keeperApiFetch(path, init);
 	if (!response.ok) {
 		const body = await response.text().catch(() => "");
 		throw new Error(

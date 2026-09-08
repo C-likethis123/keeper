@@ -1,6 +1,7 @@
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
+import type { CloudflareAccessVerifier } from "./auth/cloudflareAccess.js";
 import type { ClusterRepository } from "./clusters/types.js";
 import type { GitHubSeedService } from "./github/seedService.js";
 import type { JobQueue } from "./jobs/types.js";
@@ -16,6 +17,7 @@ import {
 import type { SyncRepository } from "./sync/types.js";
 
 export type ServerDependencies = {
+	cloudflareAccess?: CloudflareAccessVerifier;
 	syncRepository: SyncRepository;
 	jobQueue?: JobQueue;
 	clusterRepository?: ClusterRepository;
@@ -54,7 +56,7 @@ export function createServer(dependencies: ServerDependencies) {
 
 	void server.register(cors, {
 		allowedHeaders: ["Content-Type", "Authorization"],
-		credentials: false,
+		credentials: true,
 		maxAge: 600,
 		methods: ["GET", "POST", "DELETE", "OPTIONS"],
 		origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
@@ -71,12 +73,6 @@ export function createServer(dependencies: ServerDependencies) {
 		});
 
 		registerHealthRoutes(limitedServer);
-		registerSyncRoutes(
-			limitedServer,
-			dependencies.syncRepository,
-			dependencies.jobQueue,
-			security.syncBodyLimitBytes,
-		);
 		if (dependencies.githubSeed) {
 			registerGitHubRoutes(limitedServer, {
 				syncRepository: dependencies.syncRepository,
@@ -84,12 +80,36 @@ export function createServer(dependencies: ServerDependencies) {
 				seedService: dependencies.githubSeed.service,
 			});
 		}
-		if (dependencies.jobQueue) {
-			registerJobRoutes(limitedServer, dependencies.jobQueue);
-		}
-		if (dependencies.clusterRepository) {
-			registerClusterRoutes(limitedServer, dependencies.clusterRepository);
-		}
+		void limitedServer.register(async (protectedServer) => {
+			const cloudflareAccess = dependencies.cloudflareAccess;
+			if (cloudflareAccess) {
+				protectedServer.addHook("onRequest", async (request, reply) => {
+					if (request.method === "OPTIONS") return;
+					const token = request.headers["cf-access-jwt-assertion"];
+					if (!token || Array.isArray(token)) {
+						return reply.code(403).send({ error: "cloudflare_access_required" });
+					}
+					try {
+						await cloudflareAccess(token);
+					} catch {
+						return reply.code(403).send({ error: "cloudflare_access_required" });
+					}
+				});
+			}
+
+			registerSyncRoutes(
+				protectedServer,
+				dependencies.syncRepository,
+				dependencies.jobQueue,
+				security.syncBodyLimitBytes,
+			);
+			if (dependencies.jobQueue) {
+				registerJobRoutes(protectedServer, dependencies.jobQueue);
+			}
+			if (dependencies.clusterRepository) {
+				registerClusterRoutes(protectedServer, dependencies.clusterRepository);
+			}
+		});
 	});
 
 	return server;

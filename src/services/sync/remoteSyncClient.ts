@@ -1,4 +1,4 @@
-import { getSyncServerUrl } from "@/services/sync/config";
+import { keeperApiFetch } from "@/services/sync/keeperApiFetch";
 import { createSyncRequestError } from "@/services/sync/syncRequestError";
 import type {
 	QueuedSyncOperation,
@@ -11,12 +11,7 @@ export async function pushSyncOperations(
 	deviceId: string,
 	ops: QueuedSyncOperation[],
 ): Promise<SyncPushResponse> {
-	const serverUrl = getSyncServerUrl();
-	if (!serverUrl) {
-		throw new Error("Sync server URL is not configured");
-	}
-
-	const response = await fetch(`${serverUrl}/sync/push`, {
+	const response = await keeperApiFetch("/sync/push", {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -36,17 +31,12 @@ export async function pullSyncOperations(
 	cursor: number,
 	limit = 100,
 ): Promise<SyncPullResponse> {
-	const serverUrl = getSyncServerUrl();
-	if (!serverUrl) {
-		throw new Error("Sync server URL is not configured");
-	}
-
 	const params = new URLSearchParams({
 		deviceId,
 		cursor: String(Math.max(0, cursor)),
 		limit: String(limit),
 	});
-	const response = await fetch(`${serverUrl}/sync/pull?${params.toString()}`);
+	const response = await keeperApiFetch(`/sync/pull?${params.toString()}`);
 
 	if (!response.ok) {
 		throw await createSyncRequestError(response, "Sync pull");
@@ -56,12 +46,7 @@ export async function pullSyncOperations(
 }
 
 export async function listSyncNoteIds(): Promise<SyncNoteIdsResponse> {
-	const serverUrl = getSyncServerUrl();
-	if (!serverUrl) {
-		throw new Error("Sync server URL is not configured");
-	}
-
-	const response = await fetch(`${serverUrl}/sync/note-ids`);
+	const response = await keeperApiFetch("/sync/note-ids");
 	if (!response.ok) {
 		throw await createSyncRequestError(response, "Sync note inventory");
 	}

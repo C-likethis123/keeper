@@ -2,8 +2,12 @@ import { createPgClusterRepository } from "./clusters/pgClusterRepository.js";
 import { createGitHubSeedServiceFromEnv } from "./github/seedService.js";
 import { InMemoryJobQueue } from "./jobs/inMemoryJobQueue.js";
 import { RedisJobQueue } from "./jobs/redisJobQueue.js";
-import { readServerSecurityConfig } from "./security/config.js";
+import {
+	readCloudflareAccessConfig,
+	readServerSecurityConfig,
+} from "./security/config.js";
 import { createServer } from "./server.js";
+import { createCloudflareAccessVerifier } from "./auth/cloudflareAccess.js";
 import { createPgSyncRepository } from "./sync/pgSyncRepository.js";
 import { createGitSyncProcessorFromEnv } from "./workers/gitWorker.js";
 import { createMocClassificationProcessorFromEnv } from "./workers/mocWorker.js";
@@ -34,6 +38,7 @@ const seedService =
 		: undefined;
 
 const server = createServer({
+	cloudflareAccess: createCloudflareAccessVerifier(readCloudflareAccessConfig()),
 	syncRepository,
 	jobQueue,
 	clusterRepository,

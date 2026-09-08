@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { readServerSecurityConfig } from "./config.js";
+import {
+	readCloudflareAccessConfig,
+	readServerSecurityConfig,
+} from "./config.js";
 
 test("security config parses exact CORS origins and numeric limits", () => {
 	const config = readServerSecurityConfig({
@@ -38,5 +41,26 @@ test("security config allows local Expo web by default", () => {
 		readServerSecurityConfig({} as NodeJS.ProcessEnv).corsAllowedOrigins.includes(
 			"http://localhost:8082",
 		),
+	);
+});
+
+test("Cloudflare Access config requires an HTTPS team origin and audience", () => {
+	assert.deepEqual(
+		readCloudflareAccessConfig({
+			CLOUDFLARE_ACCESS_AUD: "keeper-audience",
+			CLOUDFLARE_ACCESS_TEAM_DOMAIN:
+				"https://keeper.cloudflareaccess.com/",
+		} as NodeJS.ProcessEnv),
+		{
+			audience: "keeper-audience",
+			teamDomain: "https://keeper.cloudflareaccess.com",
+		},
+	);
+	assert.throws(() => readCloudflareAccessConfig({} as NodeJS.ProcessEnv));
+	assert.throws(() =>
+		readCloudflareAccessConfig({
+			CLOUDFLARE_ACCESS_AUD: "keeper-audience",
+			CLOUDFLARE_ACCESS_TEAM_DOMAIN: "http://keeper.cloudflareaccess.com",
+		} as NodeJS.ProcessEnv),
 	);
 });

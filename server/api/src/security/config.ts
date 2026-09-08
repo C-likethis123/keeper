@@ -1,6 +1,11 @@
 const KIB = 1024;
 const MIB = 1024 * KIB;
 
+export type CloudflareAccessConfig = {
+	audience: string;
+	teamDomain: string;
+};
+
 export type ServerSecurityConfig = {
 	bodyLimitBytes: number;
 	corsAllowedOrigins: string[];
@@ -80,4 +85,32 @@ export function readServerSecurityConfig(
 			"KEEPER_SYNC_BODY_LIMIT_BYTES",
 		),
 	};
+}
+
+export function readCloudflareAccessConfig(
+	env: NodeJS.ProcessEnv = process.env,
+): CloudflareAccessConfig {
+	const teamDomain = env.CLOUDFLARE_ACCESS_TEAM_DOMAIN?.trim();
+	const audience = env.CLOUDFLARE_ACCESS_AUD?.trim();
+	if (!teamDomain || !audience) {
+		throw new Error(
+			"CLOUDFLARE_ACCESS_TEAM_DOMAIN and CLOUDFLARE_ACCESS_AUD are required",
+		);
+	}
+
+	let parsed: URL;
+	try {
+		parsed = new URL(teamDomain);
+	} catch {
+		throw new Error("CLOUDFLARE_ACCESS_TEAM_DOMAIN must be an HTTPS origin");
+	}
+	if (
+		parsed.protocol !== "https:" ||
+		parsed.origin !== teamDomain.replace(/\/$/, "") ||
+		parsed.pathname !== "/"
+	) {
+		throw new Error("CLOUDFLARE_ACCESS_TEAM_DOMAIN must be an HTTPS origin");
+	}
+
+	return { audience, teamDomain: parsed.origin };
 }

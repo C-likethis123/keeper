@@ -21,6 +21,48 @@ test("health route returns ok", async () => {
 	await server.close();
 });
 
+test("Cloudflare Access protects sync routes but not health or preflight", async () => {
+	const server = createServer({
+		syncRepository: new InMemorySyncRepository(),
+		cloudflareAccess: async (token) => {
+			if (token !== "valid-access-jwt") throw new Error("invalid token");
+		},
+	});
+
+	const missing = await server.inject({ method: "GET", url: "/sync/note-ids" });
+	assert.equal(missing.statusCode, 403);
+	assert.deepEqual(missing.json(), { error: "cloudflare_access_required" });
+
+	const invalid = await server.inject({
+		method: "GET",
+		url: "/sync/note-ids",
+		headers: { "cf-access-jwt-assertion": "invalid-access-jwt" },
+	});
+	assert.equal(invalid.statusCode, 403);
+
+	const valid = await server.inject({
+		method: "GET",
+		url: "/sync/note-ids",
+		headers: { "cf-access-jwt-assertion": "valid-access-jwt" },
+	});
+	assert.equal(valid.statusCode, 200);
+
+	const health = await server.inject({ method: "GET", url: "/health" });
+	assert.equal(health.statusCode, 200);
+
+	const preflight = await server.inject({
+		method: "OPTIONS",
+		url: "/sync/push",
+		headers: {
+			origin: "https://keeper.pages.dev",
+			"access-control-request-method": "POST",
+		},
+	});
+	assert.equal(preflight.statusCode, 204);
+
+	await server.close();
+});
+
 test("github seed rejects missing bearer token", async () => {
 	const repository = new InMemorySyncRepository();
 	const seedService: GitHubSeedService = {
@@ -709,6 +751,7 @@ test("CORS handles allowed preflight requests", async () => {
 		response.headers["access-control-allow-origin"],
 		"https://keeper.example",
 	);
+	assert.equal(response.headers["access-control-allow-credentials"], "true");
 	await server.close();
 });
 

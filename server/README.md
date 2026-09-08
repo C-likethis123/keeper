@@ -98,7 +98,7 @@ Seed from the configured Logseq Git remote. Set `SERVER_GIT_REMOTE_URL` to the
 at the Keeper application repository.
 
 ```bash
-curl -k -X POST https://localhost/github/seed \
+curl -X POST https://localhost/github/seed \
   -H "authorization: Bearer $KEEPER_SEED_TOKEN" \
   -H "content-type: application/json" \
   -d '{
@@ -112,11 +112,24 @@ curl -k -X POST https://localhost/github/seed \
 Client cutover flag:
 
 ```bash
-EXPO_PUBLIC_SYNC_SERVER_URL=https://161.118.229.1
+EXPO_PUBLIC_SYNC_SERVER_URL=https://keeper.example.com
 ```
 
 When `EXPO_PUBLIC_SYNC_SERVER_URL` is set, server sync is enabled by default.
 When the sync server URL is set, clients keep local writes and server sync enabled but stop direct client Git journal writes.
+
+## Cloudflare Access
+
+Deploy API through Cloudflare Tunnel. Protect its hostname, or the `/api/*` path on the web hostname, with the same Cloudflare Access application as the web app. The API verifies Cloudflare's signed `Cf-Access-Jwt-Assertion` header before serving sync, cluster, or job routes.
+
+Set these required API environment variables:
+
+```bash
+CLOUDFLARE_ACCESS_TEAM_DOMAIN=https://your-team.cloudflareaccess.com
+CLOUDFLARE_ACCESS_AUD=your-access-application-audience
+```
+
+Use the deployed HTTPS hostname, never a direct origin IP, for `EXPO_PUBLIC_SYNC_SERVER_URL`. Browser requests include the Access cookie; the token remains HttpOnly and never enters the app bundle.
 
 ## Implemented Scope
 

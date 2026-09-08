@@ -51,15 +51,17 @@ The first run may prompt for system permissions (e.g. macOS).
 
 Web is an installable local-first direction, not yet full release parity. Production static exports include a manifest and service worker; browser notes and attachments use IndexedDB rather than Tauri or device filesystem APIs.
 
-Current release blockers: authenticated, user-scoped sync; complete browser index/cluster parity; attachment quota UX; and cross-browser offline/update testing. See [`plans/pwa-migration.md`](plans/pwa-migration.md).
+Current release blockers: complete browser index/cluster parity; attachment quota UX; and cross-browser offline/update testing. See [`plans/pwa-migration.md`](plans/pwa-migration.md).
 
 ### Sync backend configuration
 
 Configure the sync server URL:
 
 ```bash
-EXPO_PUBLIC_SYNC_SERVER_URL=https://your-backend.example.com
+EXPO_PUBLIC_SYNC_SERVER_URL=https://keeper.example.com
 ```
+
+For deployed web sync, route the API through Cloudflare Access. Use the same Access application as the web app. Do not put an API token in an `EXPO_PUBLIC_*` variable.
 
 ## MOC Suggestions
 
