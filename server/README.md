@@ -122,6 +122,16 @@ When the sync server URL is set, clients keep local writes and server sync enabl
 
 Deploy API through Cloudflare Tunnel. Protect its hostname, or the `/api/*` path on the web hostname, with the same Cloudflare Access application as the web app. The API verifies Cloudflare's signed `Cf-Access-Jwt-Assertion` header before serving sync, cluster, or job routes.
 
+The Compose stack runs `cloudflared` as a container. Add this repository secret
+before deploying:
+
+```bash
+gh secret set CLOUDFLARE_TUNNEL_TOKEN --repo OWNER/REPO --body 'eyJ...'
+```
+
+In the Cloudflare Tunnel route, point the public hostname at `http://api:8787`.
+Do not publish a port for `cloudflared`; it connects outbound to Cloudflare.
+
 Set these required API environment variables:
 
 ```bash

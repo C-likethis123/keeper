@@ -55,6 +55,16 @@ services:
       timeout: 5s
       retries: 20
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?required}
+    command: tunnel --no-autoupdate run --token $${TUNNEL_TOKEN}
+    depends_on:
+      api:
+        condition: service_healthy
+
   worker:
     build:
       context: ..
