@@ -123,15 +123,17 @@ builds need a separate direct API URL and are not covered by this web-only path.
 When the sync server URL is set, clients keep local writes and server sync
 enabled but stop direct client Git journal writes.
 
-## Private Cloudflare Pages proxy
+## Private Cloudflare Worker proxy
 
-To keep the Oracle API private while serving the web app from `*.pages.dev`, use
-the Pages Function and private Worker in `cloudflare/private-api-proxy/`. The
-browser calls same-origin `/api/*`; only the Worker can reach Oracle through the
-Tunnel. Follow [`cloudflare/private-api-proxy/README.md`](../cloudflare/private-api-proxy/README.md).
+To keep the Oracle API private while serving the web app from the `keeper`
+Cloudflare Worker, use the private Worker in `cloudflare/private-api-proxy/`.
+The browser calls same-origin `/api/*`; only the Worker can reach Oracle through
+the Tunnel. Follow
+[`cloudflare/private-api-proxy/README.md`](../cloudflare/private-api-proxy/README.md).
 
-Set `EXPO_PUBLIC_SYNC_SERVER_URL=/api` in the Cloudflare Pages production build
-environment. This setting is web-only; do not use it in a native app build.
+Deploy the frontend with `npm run deploy:web:cloudflare`, which sets
+`EXPO_PUBLIC_SYNC_SERVER_URL=/api`. This setting is web-only; do not use it in a
+native app build.
 
 ## Optional Cloudflare Access
 

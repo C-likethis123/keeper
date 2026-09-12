@@ -1,6 +1,5 @@
 import { IconButton } from "@/components/shared/IconButton";
 import { SearchBar } from "@/components/shared/SearchBar";
-import { PwaInstallButton } from "@/components/PwaInstallButton";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type React from "react";
@@ -38,7 +37,6 @@ export default function HomeScreenHeader({
 					setSearchQuery={setSearchQuery}
 					compact
 				/>
-				<PwaInstallButton />
 				<IconButton
 					label="Open suggested MOCs"
 					name="sitemap"

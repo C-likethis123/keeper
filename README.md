@@ -61,8 +61,9 @@ Configure the sync server URL:
 EXPO_PUBLIC_SYNC_SERVER_URL=https://keeper.example.com
 ```
 
-For a Cloudflare Pages deployment without a custom domain, set this build
-variable to `/api` and use the private Pages/Workers VPC proxy in
+For this project's Cloudflare Worker deployment without a custom domain, build
+with `npm run build:web:cloudflare`. It sets this value to `/api` and routes the
+request through the private Workers VPC proxy in
 [`cloudflare/private-api-proxy/README.md`](cloudflare/private-api-proxy/README.md).
 Do not put an API token in an `EXPO_PUBLIC_*` variable.
 

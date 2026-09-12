@@ -9,6 +9,8 @@
     "desktop": "tauri dev",
     "desktop:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "build:web": "expo export --platform web",
+    "build:web:cloudflare": "EXPO_PUBLIC_SYNC_SERVER_URL=/api expo export --platform web",
+    "deploy:web:cloudflare": "npm run build:web:cloudflare && npx wrangler deploy",
     "desktop:devtools": "sh -c 'trap \"kill 0\" INT TERM EXIT; react-devtools & npm run desktop & wait'",
     "build:desktop": "tauri build",
     "build:desktop:dev": "tauri build --config src-tauri/tauri.dev.conf.json --bundles app",
