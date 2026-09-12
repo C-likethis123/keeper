@@ -63,6 +63,32 @@ test("Cloudflare Access protects sync routes but not health or preflight", async
 	await server.close();
 });
 
+test("private proxy token protects sync routes without exposing an Access token", async () => {
+	const server = createServer({
+		syncRepository: new InMemorySyncRepository(),
+		cloudflareAccess: async () => {
+			throw new Error("Access token should not be needed for private proxy");
+		},
+		privateProxyToken: "private-proxy-token",
+	});
+
+	const invalid = await server.inject({
+		method: "GET",
+		url: "/sync/note-ids",
+		headers: { "x-keeper-private-proxy-token": "wrong-token" },
+	});
+	assert.equal(invalid.statusCode, 403);
+
+	const valid = await server.inject({
+		method: "GET",
+		url: "/sync/note-ids",
+		headers: { "x-keeper-private-proxy-token": "private-proxy-token" },
+	});
+	assert.equal(valid.statusCode, 200);
+
+	await server.close();
+});
+
 test("github seed rejects missing bearer token", async () => {
 	const repository = new InMemorySyncRepository();
 	const seedService: GitHubSeedService = {

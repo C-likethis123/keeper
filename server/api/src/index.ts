@@ -3,7 +3,7 @@ import { createGitHubSeedServiceFromEnv } from "./github/seedService.js";
 import { InMemoryJobQueue } from "./jobs/inMemoryJobQueue.js";
 import { RedisJobQueue } from "./jobs/redisJobQueue.js";
 import {
-	readCloudflareAccessConfig,
+	readOptionalCloudflareAccessConfig,
 	readServerSecurityConfig,
 } from "./security/config.js";
 import { createServer } from "./server.js";
@@ -14,6 +14,7 @@ import { createMocClassificationProcessorFromEnv } from "./workers/mocWorker.js"
 
 const port = Number(process.env.PORT ?? 8787);
 const databaseUrl = process.env.DATABASE_URL;
+const cloudflareAccessConfig = readOptionalCloudflareAccessConfig();
 
 if (!databaseUrl) {
 	throw new Error("DATABASE_URL is required");
@@ -38,7 +39,10 @@ const seedService =
 		: undefined;
 
 const server = createServer({
-	cloudflareAccess: createCloudflareAccessVerifier(readCloudflareAccessConfig()),
+	cloudflareAccess: cloudflareAccessConfig
+		? createCloudflareAccessVerifier(cloudflareAccessConfig)
+		: undefined,
+	privateProxyToken: process.env.KEEPER_PRIVATE_PROXY_TOKEN,
 	syncRepository,
 	jobQueue,
 	clusterRepository,

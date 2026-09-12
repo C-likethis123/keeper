@@ -114,3 +114,12 @@ export function readCloudflareAccessConfig(
 
 	return { audience, teamDomain: parsed.origin };
 }
+
+export function readOptionalCloudflareAccessConfig(
+	env: NodeJS.ProcessEnv = process.env,
+): CloudflareAccessConfig | undefined {
+	const teamDomain = env.CLOUDFLARE_ACCESS_TEAM_DOMAIN?.trim();
+	const audience = env.CLOUDFLARE_ACCESS_AUD?.trim();
+	if (!teamDomain && !audience) return undefined;
+	return readCloudflareAccessConfig(env);
+}

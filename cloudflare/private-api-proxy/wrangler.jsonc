@@ -1,0 +1,13 @@
+{
+	"$schema": "https://unpkg.com/wrangler@latest/config-schema.json",
+	"name": "keeper-private-api-proxy",
+	"main": "src/index.js",
+	"compatibility_date": "2026-09-12",
+	"workers_dev": false,
+	"vpc_services": [
+		{
+			"binding": "PRIVATE_API",
+			"service_id": "01a09496-ff9a-7fe1-928e-01202253578a"
+		}
+	]
+}

@@ -1,5 +1,6 @@
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
+import { timingSafeEqual } from "node:crypto";
 import Fastify from "fastify";
 import type { CloudflareAccessVerifier } from "./auth/cloudflareAccess.js";
 import type { ClusterRepository } from "./clusters/types.js";
@@ -18,6 +19,7 @@ import type { SyncRepository } from "./sync/types.js";
 
 export type ServerDependencies = {
 	cloudflareAccess?: CloudflareAccessVerifier;
+	privateProxyToken?: string;
 	syncRepository: SyncRepository;
 	jobQueue?: JobQueue;
 	clusterRepository?: ClusterRepository;
@@ -41,6 +43,16 @@ export function createServer(dependencies: ServerDependencies) {
 		!origin ||
 		allowedOrigins.has(origin) ||
 		(allowsTauriLocalhost && /^http:\/\/localhost:\d+$/.test(origin));
+	const hasValidPrivateProxyToken = (value: string | string[] | undefined) => {
+		if (!dependencies.privateProxyToken || !value || Array.isArray(value)) {
+			return false;
+		}
+		const expected = Buffer.from(dependencies.privateProxyToken);
+		const received = Buffer.from(value);
+		return (
+			expected.length === received.length && timingSafeEqual(expected, received)
+		);
+	};
 	const server = Fastify({
 		bodyLimit: security.bodyLimitBytes,
 		logger: true,
@@ -82,9 +94,19 @@ export function createServer(dependencies: ServerDependencies) {
 		}
 		void limitedServer.register(async (protectedServer) => {
 			const cloudflareAccess = dependencies.cloudflareAccess;
-			if (cloudflareAccess) {
+			if (cloudflareAccess || dependencies.privateProxyToken) {
 				protectedServer.addHook("onRequest", async (request, reply) => {
 					if (request.method === "OPTIONS") return;
+					if (
+						hasValidPrivateProxyToken(
+							request.headers["x-keeper-private-proxy-token"],
+						)
+					) {
+						return;
+					}
+					if (!cloudflareAccess) {
+						return reply.code(403).send({ error: "cloudflare_access_required" });
+					}
 					const token = request.headers["cf-access-jwt-assertion"];
 					if (!token || Array.isArray(token)) {
 						return reply.code(403).send({ error: "cloudflare_access_required" });

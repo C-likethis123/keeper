@@ -35,8 +35,9 @@ services:
       SERVER_GIT_BRANCH: main
       SERVER_GITHUB_TOKEN: ${SERVER_GITHUB_TOKEN:-}
       KEEPER_SEED_TOKEN: ${KEEPER_SEED_TOKEN:-}
-      CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${CLOUDFLARE_ACCESS_TEAM_DOMAIN:?required}
-      CLOUDFLARE_ACCESS_AUD: ${CLOUDFLARE_ACCESS_AUD:?required}
+      KEEPER_PRIVATE_PROXY_TOKEN: ${KEEPER_PRIVATE_PROXY_TOKEN:?required}
+      CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${CLOUDFLARE_ACCESS_TEAM_DOMAIN:-}
+      CLOUDFLARE_ACCESS_AUD: ${CLOUDFLARE_ACCESS_AUD:-}
       KEEPER_CORS_ALLOWED_ORIGINS: ${KEEPER_CORS_ALLOWED_ORIGINS:-https://keeper.pages.dev,tauri://localhost,http://tauri.localhost,http://localhost:8082}
       KEEPER_RATE_LIMIT_MAX: ${KEEPER_RATE_LIMIT_MAX:-120}
       KEEPER_RATE_LIMIT_WINDOW_MS: ${KEEPER_RATE_LIMIT_WINDOW_MS:-60000}
@@ -60,7 +61,7 @@ services:
     restart: unless-stopped
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?required}
-    command: tunnel --no-autoupdate run
+    command: tunnel --no-autoupdate run --token $${TUNNEL_TOKEN}
     depends_on:
       api:
         condition: service_healthy
@@ -101,8 +102,8 @@ services:
     environment:
       KEEPER_API_DOMAIN: ${KEEPER_API_DOMAIN:-localhost}
     ports:
-      - "80:80"
-      - "443:443"
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - keeper-caddy-data:/data

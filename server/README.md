@@ -28,7 +28,9 @@ docker compose up -d
 docker compose logs -f caddy
 ```
 
-Open inbound TCP `443` in the VM cloud firewall/security list. Caddy terminates HTTPS with a self-signed certificate and proxies to the API container on `8787`.
+Do not open inbound TCP `80` or `443` in the VM cloud firewall/security list.
+Caddy binds to the Oracle loopback interface only for local health checks and
+proxies to the API container on `8787`.
 
 Export the Caddy root cert if a client needs to trust it:
 
@@ -36,7 +38,8 @@ Export the Caddy root cert if a client needs to trust it:
 docker compose cp caddy:/data/keeper-self-signed.crt ./keeper-caddy-root.crt
 ```
 
-For production HTTPS, use a real DNS name and switch `Caddyfile` back to managed TLS so Caddy can get a public Let's Encrypt certificate.
+For direct public ingress only, use a real DNS name and switch `Caddyfile` back
+to managed TLS so Caddy can get a public Let's Encrypt certificate.
 
 For Git and MOC workers, set:
 
@@ -112,15 +115,30 @@ curl -X POST https://localhost/github/seed \
 Client cutover flag:
 
 ```bash
-EXPO_PUBLIC_SYNC_SERVER_URL=https://keeper.example.com
+EXPO_PUBLIC_SYNC_SERVER_URL=/api
 ```
 
-When `EXPO_PUBLIC_SYNC_SERVER_URL` is set, server sync is enabled by default.
-When the sync server URL is set, clients keep local writes and server sync enabled but stop direct client Git journal writes.
+For the private Pages proxy, set this in the Pages build environment. Native
+builds need a separate direct API URL and are not covered by this web-only path.
+When the sync server URL is set, clients keep local writes and server sync
+enabled but stop direct client Git journal writes.
 
-## Cloudflare Access
+## Private Cloudflare Pages proxy
 
-Deploy API through Cloudflare Tunnel. Protect its hostname, or the `/api/*` path on the web hostname, with the same Cloudflare Access application as the web app. The API verifies Cloudflare's signed `Cf-Access-Jwt-Assertion` header before serving sync, cluster, or job routes.
+To keep the Oracle API private while serving the web app from `*.pages.dev`, use
+the Pages Function and private Worker in `cloudflare/private-api-proxy/`. The
+browser calls same-origin `/api/*`; only the Worker can reach Oracle through the
+Tunnel. Follow [`cloudflare/private-api-proxy/README.md`](../cloudflare/private-api-proxy/README.md).
+
+Set `EXPO_PUBLIC_SYNC_SERVER_URL=/api` in the Cloudflare Pages production build
+environment. This setting is web-only; do not use it in a native app build.
+
+## Optional Cloudflare Access
+
+This is only for a separate public API hostname. The private Pages proxy uses
+`KEEPER_PRIVATE_PROXY_TOKEN` instead and does not require an Access application.
+If enabled, the API verifies Cloudflare's signed `Cf-Access-Jwt-Assertion`
+header before serving sync, cluster, or job routes.
 
 The Compose stack runs `cloudflared` as a container. Add this repository secret
 before deploying:
@@ -129,17 +147,14 @@ before deploying:
 gh secret set CLOUDFLARE_TUNNEL_TOKEN --repo OWNER/REPO --body 'eyJ...'
 ```
 
-In the Cloudflare Tunnel route, point the public hostname at `http://api:8787`.
-Do not publish a port for `cloudflared`; it connects outbound to Cloudflare.
-
-Set these required API environment variables:
+Set both values to enable Access verification:
 
 ```bash
 CLOUDFLARE_ACCESS_TEAM_DOMAIN=https://your-team.cloudflareaccess.com
 CLOUDFLARE_ACCESS_AUD=your-access-application-audience
 ```
 
-Use the deployed HTTPS hostname, never a direct origin IP, for `EXPO_PUBLIC_SYNC_SERVER_URL`. Browser requests include the Access cookie; the token remains HttpOnly and never enters the app bundle.
+Do not create a published tunnel route when using the private Pages proxy.
 
 ## Implemented Scope
 

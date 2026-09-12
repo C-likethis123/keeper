@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
 	readCloudflareAccessConfig,
+	readOptionalCloudflareAccessConfig,
 	readServerSecurityConfig,
 } from "./config.js";
 
@@ -61,6 +62,18 @@ test("Cloudflare Access config requires an HTTPS team origin and audience", () =
 		readCloudflareAccessConfig({
 			CLOUDFLARE_ACCESS_AUD: "keeper-audience",
 			CLOUDFLARE_ACCESS_TEAM_DOMAIN: "http://keeper.cloudflareaccess.com",
+		} as NodeJS.ProcessEnv),
+	);
+});
+
+test("optional Cloudflare Access config is absent when both values are absent", () => {
+	assert.equal(
+		readOptionalCloudflareAccessConfig({} as NodeJS.ProcessEnv),
+		undefined,
+	);
+	assert.throws(() =>
+		readOptionalCloudflareAccessConfig({
+			CLOUDFLARE_ACCESS_AUD: "keeper-audience",
 		} as NodeJS.ProcessEnv),
 	);
 });

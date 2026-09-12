@@ -61,7 +61,10 @@ Configure the sync server URL:
 EXPO_PUBLIC_SYNC_SERVER_URL=https://keeper.example.com
 ```
 
-For deployed web sync, route the API through Cloudflare Access. Use the same Access application as the web app. Do not put an API token in an `EXPO_PUBLIC_*` variable.
+For a Cloudflare Pages deployment without a custom domain, set this build
+variable to `/api` and use the private Pages/Workers VPC proxy in
+[`cloudflare/private-api-proxy/README.md`](cloudflare/private-api-proxy/README.md).
+Do not put an API token in an `EXPO_PUBLIC_*` variable.
 
 ## MOC Suggestions
 
