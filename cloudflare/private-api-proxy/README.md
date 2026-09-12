@@ -1,8 +1,8 @@
 # Private API proxy
 
-This Worker has no public `workers.dev` route. Cloudflare Pages invokes it through
-a Service Binding, and the Worker reaches Oracle through a Workers VPC Service
-bound to the Cloudflare Tunnel.
+This Worker has no public `workers.dev` route. The `keeper` frontend Worker
+invokes it through a Service Binding, and it reaches Oracle through a Workers VPC
+Service bound to the Cloudflare Tunnel.
 
 ## Configure
 
@@ -18,14 +18,16 @@ bound to the Cloudflare Tunnel.
    npx wrangler deploy
    ```
 
-4. In Workers & Pages > your Pages project > Settings > Bindings, add a Service
-   Binding named `PRIVATE_API_PROXY` and select `keeper-private-api-proxy`.
-5. Add `EXPO_PUBLIC_SYNC_SERVER_URL=/api` to the Pages production build
-   environment and redeploy Pages.
+4. The frontend's [`wrangler.jsonc`](../../wrangler.jsonc) binds
+   `PRIVATE_API_PROXY` to this Worker. Deploy it with:
 
-The Pages Function strips browser authority headers and the Worker adds the
-private token. Oracle therefore only accepts requests that traversed this
-Worker.
+   ```bash
+   npm run deploy:web:cloudflare
+   ```
+
+The frontend Worker strips `/api` from the path. This Worker strips browser
+authority headers and adds the private token. Oracle therefore only accepts
+requests that traversed both Workers.
 
 Use the same value for the Worker secret and the GitHub repository secret
 `KEEPER_PRIVATE_PROXY_TOKEN`. Generate it locally with:
