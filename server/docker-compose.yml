@@ -60,7 +60,7 @@ services:
     restart: unless-stopped
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?required}
-    command: tunnel --no-autoupdate run --token $${TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run
     depends_on:
       api:
         condition: service_healthy
