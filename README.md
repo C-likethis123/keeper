@@ -67,6 +67,18 @@ request through the private Workers VPC proxy in
 [`cloudflare/private-api-proxy/README.md`](cloudflare/private-api-proxy/README.md).
 Do not put an API token in an `EXPO_PUBLIC_*` variable.
 
+Cloudflare Worker configuration is checked in under `wrangler.jsonc` and
+`cloudflare/private-api-proxy/wrangler.jsonc`. Use Wrangler-backed commands for
+Cloudflare Worker changes:
+
+```bash
+npm run build:web:cloudflare
+npm run deploy:web:cloudflare
+```
+
+Cloudflare Access policies are managed separately through Cloudflare's dashboard,
+API, or Terraform; Wrangler does not manage them.
+
 ## MOC Suggestions
 
 MOC classification belongs to server sync. When `EXPO_PUBLIC_SYNC_SERVER_URL` is configured, client cluster services read and update server-owned suggestions. Server workers run the Python embedding and clustering pipeline after sync work; clients review, accept, rename, dismiss, and organize returned clusters.

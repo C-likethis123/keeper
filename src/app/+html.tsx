@@ -3,6 +3,8 @@ import type { PropsWithChildren } from "react";
 
 export default function Root({ children }: PropsWithChildren) {
 	const isDevelopment = process.env.NODE_ENV === "development";
+	const useCredentialedManifest =
+		process.env.EXPO_PUBLIC_CLOUDFLARE_DEPLOYMENT === "true";
 	const scrollbarStyles = `
 		html {
 			color-scheme: dark light;
@@ -127,7 +129,11 @@ export default function Root({ children }: PropsWithChildren) {
 				<meta name="apple-mobile-web-app-capable" content="yes" />
 				<meta name="apple-mobile-web-app-status-bar-style" content="black" />
 				<meta name="apple-mobile-web-app-title" content="Keeper" />
-				<link rel="manifest" href="/manifest.json" />
+				<link
+					rel="manifest"
+					href="/manifest.json"
+					crossOrigin={useCredentialedManifest ? "use-credentials" : undefined}
+				/>
 				<link rel="apple-touch-icon" href="/icons/icon-192.png" />
 				<link
 					rel="stylesheet"

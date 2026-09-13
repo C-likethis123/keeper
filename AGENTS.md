@@ -20,6 +20,8 @@ npm run desktop:dev      # Start Tauri desktop with dev config
 npm run build:desktop    # Build production desktop app
 npm run build:desktop:dev # Build dev desktop app bundle
 npm run build:web        # Export Expo web build
+npm run build:web:cloudflare # Export web bundle for Cloudflare Worker
+npm run deploy:web:cloudflare # Build and deploy web Worker with Wrangler
 
 # Mobile
 npm run build:android    # Prebuild and install release APK
@@ -34,6 +36,13 @@ npm run build:viewers    # Build PDF/EPUB viewer assets
 ```
 
 Run `npm run lint` for CI-style checks. Run `npm test` when touching covered TypeScript, UI, services, or store logic. Run Cargo checks/tests when touching `src-tauri/*_core`.
+
+## Cloudflare
+
+- Use Wrangler for Cloudflare Worker, static asset, binding, route, and deployment changes. Worker configuration lives in `wrangler.jsonc`; private API proxy configuration lives in `cloudflare/private-api-proxy/wrangler.jsonc`.
+- Use `npm run deploy:web:cloudflare` for production web deploys. It builds the `dist/` bundle, then runs `wrangler deploy`.
+- Do not make Cloudflare Worker configuration changes only in the dashboard. Keep configuration in the Wrangler files.
+- Cloudflare Access policies are not managed by Wrangler. Use the Cloudflare dashboard, API, or Terraform for Access policy changes.
 
 ## Architecture
 
