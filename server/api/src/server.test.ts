@@ -63,11 +63,11 @@ test("Cloudflare Access protects sync routes but not health or preflight", async
 	await server.close();
 });
 
-test("private proxy token protects sync routes without exposing an Access token", async () => {
+test("private proxy requires Access identity when Access verification is configured", async () => {
 	const server = createServer({
 		syncRepository: new InMemorySyncRepository(),
-		cloudflareAccess: async () => {
-			throw new Error("Access token should not be needed for private proxy");
+		cloudflareAccess: async (token) => {
+			if (token !== "valid-access-jwt") throw new Error("invalid token");
 		},
 		privateProxyToken: "private-proxy-token",
 	});
@@ -79,10 +79,20 @@ test("private proxy token protects sync routes without exposing an Access token"
 	});
 	assert.equal(invalid.statusCode, 403);
 
-	const valid = await server.inject({
+	const missingIdentity = await server.inject({
 		method: "GET",
 		url: "/sync/note-ids",
 		headers: { "x-keeper-private-proxy-token": "private-proxy-token" },
+	});
+	assert.equal(missingIdentity.statusCode, 403);
+
+	const valid = await server.inject({
+		method: "GET",
+		url: "/sync/note-ids",
+		headers: {
+			"x-keeper-private-proxy-token": "private-proxy-token",
+			"cf-access-jwt-assertion": "valid-access-jwt",
+		},
 	});
 	assert.equal(valid.statusCode, 200);
 

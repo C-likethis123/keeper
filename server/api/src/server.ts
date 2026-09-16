@@ -97,14 +97,14 @@ export function createServer(dependencies: ServerDependencies) {
 			if (cloudflareAccess || dependencies.privateProxyToken) {
 				protectedServer.addHook("onRequest", async (request, reply) => {
 					if (request.method === "OPTIONS") return;
-					if (
-						hasValidPrivateProxyToken(
-							request.headers["x-keeper-private-proxy-token"],
-						)
-					) {
-						return;
+					const hasPrivateProxyToken = hasValidPrivateProxyToken(
+						request.headers["x-keeper-private-proxy-token"],
+					);
+					if (!hasPrivateProxyToken && dependencies.privateProxyToken) {
+						return reply.code(403).send({ error: "cloudflare_access_required" });
 					}
 					if (!cloudflareAccess) {
+						if (hasPrivateProxyToken) return;
 						return reply.code(403).send({ error: "cloudflare_access_required" });
 					}
 					const token = request.headers["cf-access-jwt-assertion"];
