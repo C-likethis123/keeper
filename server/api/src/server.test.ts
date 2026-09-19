@@ -91,7 +91,7 @@ test("private proxy requires Access identity when Access verification is configu
 		url: "/sync/note-ids",
 		headers: {
 			"x-keeper-private-proxy-token": "private-proxy-token",
-			"cf-access-jwt-assertion": "valid-access-jwt",
+			"x-keeper-access-jwt-assertion": "valid-access-jwt",
 		},
 	});
 	assert.equal(valid.statusCode, 200);

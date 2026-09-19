@@ -13,7 +13,22 @@ export default {
 			return env.ASSETS.fetch(request);
 		}
 
+		const headers = new Headers(request.headers);
+		// Service bindings can remove Cloudflare-owned cf-* headers. Copy the
+		// assertion injected by Access before the first internal hop. Delete any
+		// caller-controlled value of the application-owned header first.
+		headers.delete("x-keeper-access-jwt-assertion");
+		const accessAssertion = headers.get("cf-access-jwt-assertion");
+		if (accessAssertion) {
+			headers.set("x-keeper-access-jwt-assertion", accessAssertion);
+		}
 		url.pathname = url.pathname.slice("/api".length) || "/";
-		return env.PRIVATE_API_PROXY.fetch(new Request(url, request));
+		return env.PRIVATE_API_PROXY.fetch(
+			new Request(url, {
+				body: request.body,
+				headers,
+				method: request.method,
+			}),
+		);
 	},
 };

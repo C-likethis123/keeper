@@ -107,7 +107,9 @@ export function createServer(dependencies: ServerDependencies) {
 						if (hasPrivateProxyToken) return;
 						return reply.code(403).send({ error: "cloudflare_access_required" });
 					}
-					const token = request.headers["cf-access-jwt-assertion"];
+					const token =
+						request.headers["x-keeper-access-jwt-assertion"] ??
+						request.headers["cf-access-jwt-assertion"];
 					if (!token || Array.isArray(token)) {
 						return reply.code(403).send({ error: "cloudflare_access_required" });
 					}
