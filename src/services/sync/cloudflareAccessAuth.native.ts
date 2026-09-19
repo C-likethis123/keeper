@@ -4,8 +4,6 @@ import * as WebBrowser from "expo-web-browser";
 import { getSyncServerUrl } from "@/services/sync/config";
 
 const STORAGE_KEY = "keeper.cloudflare-access-auth";
-const OAUTH_REDIRECT_URI =
-	"https://keeper.chowjiaying211.workers.dev/auth/callback";
 const APP_REDIRECT_URI = "native://auth/callback";
 
 type Discovery = AuthSession.DiscoveryDocument & {
@@ -111,7 +109,7 @@ async function registerClient(
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
-			redirect_uris: [OAUTH_REDIRECT_URI],
+			redirect_uris: [APP_REDIRECT_URI],
 			response_types: ["code"],
 			grant_types: ["authorization_code"],
 			token_endpoint_auth_method: "none",
@@ -133,7 +131,7 @@ export async function signInToSync(): Promise<void> {
 	const clientId = await registerClient(discoveryDocument, resource);
 	const request = new AuthSession.AuthRequest({
 		clientId,
-		redirectUri: OAUTH_REDIRECT_URI,
+		redirectUri: APP_REDIRECT_URI,
 		responseType: AuthSession.ResponseType.Code,
 		usePKCE: true,
 		extraParams: { resource },
@@ -152,7 +150,7 @@ export async function signInToSync(): Promise<void> {
 		{
 			clientId,
 			code: parsed.params.code,
-			redirectUri: OAUTH_REDIRECT_URI,
+			redirectUri: APP_REDIRECT_URI,
 			extraParams: { code_verifier: request.codeVerifier ?? "" },
 		},
 		discoveryDocument,
