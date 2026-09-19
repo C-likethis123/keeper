@@ -63,6 +63,8 @@ export default ({ config }) => {
 				"./plugins/withAndroidBundleInputExcludes",
 				"expo-router",
 				"expo-share-intent",
+				"expo-secure-store",
+				"expo-web-browser",
 				[
 					"expo-splash-screen",
 					{
