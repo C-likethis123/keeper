@@ -166,11 +166,13 @@ export class InMemorySyncRepository implements SyncRepository {
 
 	private applyOperation(operation: SyncOperation): void {
 		switch (operation.type) {
-			case "note.create":
-				if ([...this.notes.values()].some((note) => note.path === operation.path)) {
-					throw new SyncConflictError("operation conflicts with existing note");
-				}
-				if (this.notes.has(operation.noteId)) {
+			case "note.create": {
+				const existing = this.notes.get(operation.noteId);
+				if (
+					[...this.notes.values()].some(
+						(note) => note.id !== operation.noteId && note.path === operation.path,
+					)
+				) {
 					throw new SyncConflictError("operation conflicts with existing note");
 				}
 				this.notes.set(operation.noteId, {
@@ -178,12 +180,13 @@ export class InMemorySyncRepository implements SyncRepository {
 					path: operation.path,
 					title: operation.title,
 					markdown: operation.markdown,
-					createdAt: operation.createdAt,
+					createdAt: existing?.createdAt ?? operation.createdAt,
 					updatedAt: operation.createdAt,
 					deletedAt: null,
-					version: (this.notes.get(operation.noteId)?.version ?? 0) + 1,
+					version: (existing?.version ?? 0) + 1,
 				});
 				return;
+			}
 			case "note.update": {
 				const note = this.notes.get(operation.noteId);
 				if (!note || note.deletedAt) {

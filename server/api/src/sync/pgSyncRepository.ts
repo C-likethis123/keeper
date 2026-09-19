@@ -310,7 +310,14 @@ async function applyOperation(
 		case "note.create":
 			await client.query(
 				`INSERT INTO notes (id, path, title, markdown, created_at, updated_at, deleted_at, version)
-				 VALUES ($1, $2, $3, $4, $5, $5, NULL, 1)`,
+				 VALUES ($1, $2, $3, $4, $5, $5, NULL, 1)
+				 ON CONFLICT (id) DO UPDATE
+				 SET path = EXCLUDED.path,
+				     title = EXCLUDED.title,
+				     markdown = EXCLUDED.markdown,
+				     updated_at = EXCLUDED.updated_at,
+				     deleted_at = NULL,
+				     version = notes.version + 1`,
 				[
 					operation.noteId,
 					operation.path,

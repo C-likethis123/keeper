@@ -21,6 +21,51 @@ test("health route returns ok", async () => {
 	await server.close();
 });
 
+test("sync create replays upsert an existing note ID", async () => {
+	const repository = new InMemorySyncRepository();
+	await repository.pushOperations({
+		deviceId: "desktop",
+		ops: [
+			{
+				opId: "desktop:1",
+				seq: 1,
+				type: "note.create",
+				noteId: "note-1",
+				path: "note-1.md",
+				title: "Old title",
+				markdown: "# Old",
+				createdAt: "2026-09-01T00:00:00.000Z",
+			},
+		],
+	});
+
+	const replay = await repository.pushOperations({
+		deviceId: "phone",
+		ops: [
+			{
+				opId: "phone:1",
+				seq: 1,
+				type: "note.create",
+				noteId: "note-1",
+				path: "note-1.md",
+				title: "New title",
+				markdown: "# New",
+				createdAt: "2026-09-02T00:00:00.000Z",
+			},
+		],
+	});
+
+	assert.deepEqual(replay.accepted, ["phone:1"]);
+	assert.deepEqual(await repository.readNotes(["note-1"]), [
+		{
+			id: "note-1",
+			path: "note-1.md",
+			markdown: "# New",
+			deletedAt: null,
+		},
+	]);
+});
+
 test("Cloudflare Access protects sync routes but not health or preflight", async () => {
 	const server = createServer({
 		syncRepository: new InMemorySyncRepository(),

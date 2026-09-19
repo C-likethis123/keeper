@@ -3,6 +3,7 @@ import {
 	isServerSyncConfigured,
 } from "@/services/sync/config";
 import { showSyncDebugToast } from "@/services/sync/debug";
+import { parseFrontmatter } from "@/services/notes/frontmatter";
 import { pushSyncOperations } from "@/services/sync/remoteSyncClient";
 import {
 	getSyncDeviceId,
@@ -10,6 +11,7 @@ import {
 	readQueuedSyncOps,
 } from "@/services/sync/syncOpQueue";
 import { isSyncRequestError } from "@/services/sync/syncRequestError";
+import type { QueuedSyncOperation } from "@/services/sync/types";
 
 const BASE_RETRY_MS = 1000;
 const MAX_RETRY_MS = 60_000;
@@ -22,6 +24,26 @@ let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
 function jsonByteLength(value: unknown): number {
 	return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+}
+
+export function describeSyncOperation(operation: QueuedSyncOperation) {
+	const title =
+		operation.type === "note.create" || operation.type === "note.rename"
+			? operation.title
+			: operation.type === "note.update"
+				? parseFrontmatter(operation.markdown).title
+				: undefined;
+	return {
+		noteId: operation.noteId,
+		opId: operation.opId,
+		path:
+			operation.type === "note.create" || operation.type === "note.rename"
+				? operation.path
+				: undefined,
+		seq: operation.seq,
+		title: title || undefined,
+		type: operation.type,
+	};
 }
 
 export function selectSyncPushBatch(
@@ -70,6 +92,7 @@ export async function pushPendingSyncOps(): Promise<void> {
 		if (!isServerSyncConfigured()) return;
 
 		const queued = await readQueuedSyncOps();
+		let batch: QueuedSyncOperation[] = [];
 		if (queued.length === 0) {
 			retryMs = BASE_RETRY_MS;
 			showSyncDebugToast("Sync skipped: queue empty");
@@ -78,7 +101,7 @@ export async function pushPendingSyncOps(): Promise<void> {
 
 		try {
 			const deviceId = await getSyncDeviceId();
-			const batch = selectSyncPushBatch(deviceId, queued);
+			batch = selectSyncPushBatch(deviceId, queued);
 			if (batch.length === 0) {
 				showSyncDebugToast(
 					"Sync paused: first queued change exceeds server upload limit",
@@ -86,7 +109,17 @@ export async function pushPendingSyncOps(): Promise<void> {
 				);
 				return;
 			}
+			console.info("[SyncPushService] Pushing batch:", {
+				batch: batch.map(describeSyncOperation),
+				deviceId,
+				queuedCount: queued.length,
+			});
 			const result = await pushSyncOperations(deviceId, batch);
+			console.info("[SyncPushService] Push succeeded:", {
+				accepted: result.accepted,
+				duplicates: result.duplicates ?? [],
+				cursor: result.cursor,
+			});
 			await markSyncOpsPushed([
 				...result.accepted,
 				...(result.duplicates ?? []),
@@ -98,7 +131,10 @@ export async function pushPendingSyncOps(): Promise<void> {
 				scheduleSyncPush(0);
 			}
 		} catch (error) {
-			console.warn("[SyncPushService] Push failed:", error);
+			console.warn("[SyncPushService] Push failed:", {
+				batch: batch.map(describeSyncOperation),
+				error,
+			});
 			showSyncDebugToast(
 				`Sync push failed: ${
 					error instanceof Error ? error.message : String(error)
