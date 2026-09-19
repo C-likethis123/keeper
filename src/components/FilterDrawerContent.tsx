@@ -1,5 +1,6 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
+import { SyncAccessButton } from "@/components/SyncAccessButton";
 import type { NoteStatus, NoteType } from "@/services/notes/types";
 import { useFilterStore } from "@/stores/filterStore";
 import { FontAwesome } from "@expo/vector-icons";
@@ -105,6 +106,7 @@ export function FilterDrawerContent({
 				</Pressable>
 			</View>
 			<ScrollView style={styles.content}>
+				<SyncAccessButton style={styles.option} textStyle={styles.optionText} />
 				<Text style={styles.sectionTitle}>Type</Text>
 				{FILTER_OPTIONS.map((option) => (
 					<FilterRow
