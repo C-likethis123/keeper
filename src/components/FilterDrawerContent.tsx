@@ -1,6 +1,6 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
-import { SyncAccessButton } from "@/components/SyncAccessButton";
+import { SyncAccessButton } from "@/components/SyncAccessButton.web";
 import type { NoteStatus, NoteType } from "@/services/notes/types";
 import { useFilterStore } from "@/stores/filterStore";
 import { FontAwesome } from "@expo/vector-icons";

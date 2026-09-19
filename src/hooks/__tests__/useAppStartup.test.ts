@@ -1,4 +1,4 @@
-jest.mock("@/services/startup/startupStrategies", () => ({
+jest.mock("@/services/startup/startupStrategies.web", () => ({
 	runStartupStrategy: jest.fn(),
 }));
 
@@ -15,7 +15,7 @@ jest.mock("@/services/sync/syncPushService", () => ({
 	startSyncPushService: jest.fn(),
 }));
 
-import { runStartupStrategy } from "@/services/startup/startupStrategies";
+import { runStartupStrategy } from "@/services/startup/startupStrategies.web";
 import { startSyncPullService } from "@/services/sync/syncPullService";
 import { startSyncPushService } from "@/services/sync/syncPushService";
 import { renderHook, waitFor } from "@testing-library/react-native";

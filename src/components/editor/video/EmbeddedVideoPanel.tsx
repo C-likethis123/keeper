@@ -1,8 +1,7 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import React, { useMemo } from "react";
-import { Platform, StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { WebView } from "react-native-webview";
+import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import type { EmbeddedVideoSource } from "./videoUtils";
 import { buildVideoEmbedHtml, resolveVideoEmbedOrigin } from "./videoUtils";
 
@@ -23,38 +22,23 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
 		[source.embedUrl, origin],
 	);
 
-	const nativeSource = useMemo(
-		() => ({ html: embedHtml, baseUrl: origin }),
-		[embedHtml, origin],
-	);
-
 	return (
 		<View style={[styles.panel, style]} testID={"embedded-video-panel"}>
 			<View style={styles.header}>
 				<Text style={styles.eyebrow}>Video</Text>
 			</View>
 			<View style={styles.playerFrame}>
-				{Platform.OS === "web" ? (
-					<iframe
-						srcDoc={embedHtml}
-						title={"Youtube video"}
-						style={{
-							border: "0",
-							width: "100%",
-							height: "100%",
-							borderRadius: 12,
-							backgroundColor: "#000",
-						}}
-					/>
-				) : (
-					<WebView
-						allowsFullscreenVideo
-						allowsInlineMediaPlayback
-						mediaPlaybackRequiresUserAction={false}
-						source={nativeSource}
-						style={styles.webView}
-					/>
-				)}
+				<iframe
+					srcDoc={embedHtml}
+					title={"Youtube video"}
+					style={{
+						border: "0",
+						width: "100%",
+						height: "100%",
+						borderRadius: 12,
+						backgroundColor: "#000",
+					}}
+				/>
 			</View>
 			<Text numberOfLines={1} style={styles.caption}>
 				{source.rawUrl}
@@ -64,17 +48,16 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
 }
 
 function createStyles(theme: ExtendedTheme) {
-	const isWeb = Platform.OS === "web";
 	return StyleSheet.create({
 		panel: {
-			borderWidth: isWeb ? 1 : 0,
+			borderWidth: 1,
 			borderLeftWidth: 0,
 			borderRightWidth: 0,
 			borderColor: theme.colors.border,
 			backgroundColor: theme.colors.card,
-			borderRadius: isWeb ? 16 : 0,
-			padding: isWeb ? 12 : 0,
-			paddingVertical: isWeb ? 12 : 8,
+			borderRadius: 16,
+			padding: 12,
+			paddingVertical: 12,
 			gap: 10,
 		},
 		header: {
@@ -92,17 +75,13 @@ function createStyles(theme: ExtendedTheme) {
 		playerFrame: {
 			flex: 1,
 			overflow: "hidden",
-			borderRadius: isWeb ? 12 : 0,
-			backgroundColor: "#000000",
-		},
-		webView: {
-			flex: 1,
+			borderRadius: 12,
 			backgroundColor: "#000000",
 		},
 		caption: {
 			fontSize: 12,
 			color: theme.colors.textMuted,
-			paddingHorizontal: isWeb ? 0 : 16,
+			paddingHorizontal: 0,
 		},
 	});
 }

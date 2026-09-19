@@ -113,14 +113,6 @@ jest.mock("@expo/vector-icons", () => {
 	};
 });
 
-jest.mock("react-native-webview", () => {
-	const React = require("react");
-	const { Text } = require("react-native");
-	return {
-		WebView: () => React.createElement(Text, null, "Mock WebView"),
-	};
-});
-
 jest.mock("@/services/notes/noteService", () => ({
 	NoteService: {
 		loadNote: (...args: unknown[]) => mockLoadNote(...args),
@@ -266,7 +258,7 @@ jest.mock("@/components/editor/lexical/LexicalMarkdownEditor", () => {
 	};
 });
 
-jest.mock("@/components/editor/document/DocumentPanel", () => {
+jest.mock("@/components/editor/document/DocumentPanel.web", () => {
 	const React = require("react");
 	const { Text } = require("react-native");
 	return {

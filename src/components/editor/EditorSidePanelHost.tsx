@@ -6,7 +6,7 @@ import {
 	View,
 	type ViewStyle,
 } from "react-native";
-import { DocumentPanel } from "./document/DocumentPanel";
+import { DocumentPanel } from "./document/DocumentPanel.web";
 import VideoSplitPanel from "./video/VideoSplitPanel";
 
 type EditorSidePanel = "document" | "video" | "article";

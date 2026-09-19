@@ -10,7 +10,7 @@ module.exports = {
 	},
 	testPathIgnorePatterns: ["/node_modules/", "/android/", "/ios/"],
 	transformIgnorePatterns: [
-		"node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|expo-router|@react-navigation/.*|expo-share-intent))",
+		"node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|expo-router|@react-navigation/.*))",
 	],
 	clearMocks: true,
 	watchman: false,

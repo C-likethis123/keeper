@@ -2,24 +2,6 @@ import { EmbeddedVideoPanel } from "@/components/editor/video/EmbeddedVideoPanel
 import type { EmbeddedVideoSource } from "@/components/editor/video/videoUtils";
 import { render, screen } from "@testing-library/react-native";
 
-jest.mock("react-native-webview", () => {
-	const React = require("react");
-	const { View } = require("react-native");
-	return {
-		WebView: ({
-			testID,
-			source,
-		}: {
-			testID?: string;
-			source?: { uri?: string; headers?: Record<string, string> };
-		}) =>
-			React.createElement(View, {
-				testID: testID ?? "webview",
-				accessibilityLabel: source ? JSON.stringify(source) : undefined,
-			}),
-	};
-});
-
 jest.mock("@expo/vector-icons", () => {
 	const React = require("react");
 	const { Text } = require("react-native");
@@ -65,9 +47,11 @@ describe("EmbeddedVideoPanel", () => {
 	});
 
 	it("renders the video panel with a YouTube source", () => {
-		render(<EmbeddedVideoPanel source={youtubeSource} />);
+		const { UNSAFE_getByType } = render(
+			<EmbeddedVideoPanel source={youtubeSource} />,
+		);
 		expect(screen.getByTestId("embedded-video-panel")).toBeTruthy();
-		expect(screen.getByTestId("webview")).toBeTruthy();
+		expect(UNSAFE_getByType("iframe")).toBeTruthy();
 	});
 
 	it("displays the video raw URL as caption", () => {
@@ -75,13 +59,12 @@ describe("EmbeddedVideoPanel", () => {
 		expect(screen.getByText(youtubeSource.rawUrl)).toBeTruthy();
 	});
 
-	it("passes the app origin as the native webview base URL", () => {
-		render(<EmbeddedVideoPanel source={youtubeSource} />);
-		expect(screen.getByTestId("webview").props.accessibilityLabel).toContain(
-			'"baseUrl":"https://keeper.app"',
+	it("renders the video inside an iframe", () => {
+		const { UNSAFE_getByType } = render(
+			<EmbeddedVideoPanel source={youtubeSource} />,
 		);
-		expect(
-			screen.getByTestId("webview").props.accessibilityLabel,
-		).not.toContain('"Origin":"https://keeper.app"');
+		expect(UNSAFE_getByType("iframe").props.srcDoc).toContain(
+		"https://www.youtube.com/embed/dQw4w9WgXcQ",
+	);
 	});
 });

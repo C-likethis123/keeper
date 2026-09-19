@@ -1,5 +1,5 @@
 import { getSyncServerUrl } from "@/services/sync/config";
-import { getSyncAuthorizationHeaders } from "@/services/sync/cloudflareAccessAuth";
+import { getSyncAuthorizationHeaders } from "@/services/sync/cloudflareAccessAuth.web";
 
 export async function keeperApiFetch(
 	path: string,

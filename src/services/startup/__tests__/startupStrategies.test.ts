@@ -1,8 +1,7 @@
-import { runStartupStrategy } from "../startupStrategies";
+import { runStartupStrategy } from "../startupStrategies.web";
 
 const mockInitializeStorageStep = jest.fn();
 const mockCreateStartupTelemetry = jest.fn();
-const mockCheckForUpdates = jest.fn();
 
 jest.mock("../startupSteps", () => ({
 	initializeStorageStep: (...args: unknown[]) =>
@@ -12,10 +11,6 @@ jest.mock("../startupSteps", () => ({
 jest.mock("../startupTelemetry", () => ({
 	createStartupTelemetry: (...args: unknown[]) =>
 		mockCreateStartupTelemetry(...args),
-}));
-
-jest.mock("@/utils/checkForUpdates", () => ({
-	checkForUpdates: (...args: unknown[]) => mockCheckForUpdates(...args),
 }));
 
 function createTelemetry() {
@@ -40,7 +35,6 @@ describe("runStartupStrategy", () => {
 		jest.clearAllMocks();
 		mockCreateStartupTelemetry.mockReturnValue(createTelemetry());
 		mockInitializeStorageStep.mockResolvedValue(undefined);
-		mockCheckForUpdates.mockResolvedValue(undefined);
 	});
 
 	it("waits for storage initialization before hydrating", async () => {

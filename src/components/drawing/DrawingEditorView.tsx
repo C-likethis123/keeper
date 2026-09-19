@@ -1,6 +1,6 @@
 import NoteEditorHeader from "@/components/NoteEditorHeader";
 import NoteHistoryModal from "@/components/NoteHistoryModal";
-import DrawingCanvas from "@/components/drawing/DrawingCanvas";
+import DrawingCanvas from "@/components/drawing/DrawingCanvas.web";
 import DrawingToolbar from "@/components/drawing/DrawingToolbar";
 import {
 	type DrawingBackgroundPattern,

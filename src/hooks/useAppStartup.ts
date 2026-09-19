@@ -1,4 +1,4 @@
-import { runStartupStrategy } from "@/services/startup/startupStrategies";
+import { runStartupStrategy } from "@/services/startup/startupStrategies.web";
 import { traceStartupBootstrapEvent } from "@/services/startup/startupTelemetry";
 import {
 	startSyncPullService,

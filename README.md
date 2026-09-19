@@ -1,6 +1,6 @@
 # Keeper
 
-Local-first Markdown notes for iOS, Android, web/PWA, and Tauri desktop.
+Local-first Markdown notes for web/PWA and Tauri desktop.
 
 ## Tech stack
 
@@ -27,13 +27,8 @@ Local-first Markdown notes for iOS, Android, web/PWA, and Tauri desktop.
 
 Useful commands:
 
-- `npm run build:android` — prebuild and install Android release
-- `npm run ios` / `npm run android` — run native development builds
 - `npm run build:web` — export static web/PWA bundle
 - `npm run lint` and `npm test` — lint and unit suite
-
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
 
 App source lives in `src/`. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
@@ -42,7 +37,7 @@ App source lives in `src/`. This project uses [file-based routing](https://docs.
 The web app can run in a desktop window via [Tauri](https://tauri.app/). Prerequisites: [Rust](https://rustup.rs/) and Xcode Command Line Tools (macOS: `xcode-select --install`).
 
 - **Dev**: `npm run desktop` — starts the Expo web server on `http://localhost:8082` and opens the Tauri window.
-- **Concurrent mobile + desktop dev**: desktop uses Expo web on `8082`, while mobile dev keeps Metro on `8081`.
+- **Concurrent PWA + desktop dev**: desktop uses Expo web on `8082`; use `npm start -- --web` for the PWA dev server.
 - **Production build**: `npm run build:desktop` — exports the web bundle then builds the desktop app. Outputs are in `src-tauri/target/release/` (and bundle artifacts for your OS).
 
 The first run may prompt for system permissions (e.g. macOS).
@@ -98,7 +93,7 @@ Server setup and operator details: [`server/README.md`](server/README.md) and [`
 To learn more about developing your project with Expo, look at the following resources:
 
 - [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- [Expo web guide](https://docs.expo.dev/workflow/web/): Learn Expo's web build and deployment workflow.
 
 ## Join the community
 

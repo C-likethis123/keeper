@@ -4,7 +4,7 @@ Keeper emits structured startup timing logs under the `[StartupTrace]` prefix so
 
 ## Where the logs come from
 
-- `src/services/startup/startupStrategies.ts`
+- `src/services/startup/startupStrategies.web.ts`
 - `src/services/startup/startupSteps.ts`
 - `src/services/startup/startupTelemetry.ts`
 - `src/services/notes/notesIndexDb.ts`
@@ -12,8 +12,7 @@ Keeper emits structured startup timing logs under the `[StartupTrace]` prefix so
 ## How to view them
 
 - Desktop Tauri: run `npm run desktop` and watch the app or dev terminal output.
-- Android production build: run `npm run build:android`, then use `adb logcat` for native-side context.
-- iOS production build: use an EAS production build or Xcode release archive, then inspect device logs.
+- PWA: run `npm start -- --web` and inspect browser developer tools.
 
 Search for `[StartupTrace]` to isolate the structured startup events.
 
@@ -24,7 +23,7 @@ Each line uses a stable prefix plus a structured object:
 ```text
 [StartupTrace] {
   runId: "startup-...",
-  runtime: "desktop-tauri" | "mobile-native" | "unsupported",
+  runtime: "desktop-tauri" | "unsupported",
   event: "...",
   timestampMs: 1234,
   ...
@@ -63,7 +62,6 @@ Per-step markers:
 Common `step` values:
 
 - `desktop.hydrate_ui`
-- `mobile.hydrate_ui`
 - `unsupported.hydrate_ui`
 - `storage.initialize`
 - `storage.index_rebuild_after_init`

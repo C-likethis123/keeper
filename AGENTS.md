@@ -23,9 +23,6 @@ npm run build:web        # Export Expo web build
 npm run build:web:cloudflare # Export web bundle for Cloudflare Worker
 npm run deploy:web:cloudflare # Build and deploy web Worker with Wrangler
 
-# Mobile
-npm run build:android    # Prebuild and install release APK
-
 # Utilities
 npm test                 # Jest unit suite
 npm run test:watch       # Jest watch mode
@@ -46,7 +43,7 @@ Run `npm run lint` for CI-style checks. Run `npm test` when touching covered Typ
 
 ## Architecture
 
-Keeper is an Expo Router React Native note app for iOS, Android, web/PWA, and Tauri desktop. It stores Markdown notes locally, indexes metadata/search in SQLite or browser storage, and syncs note operations through the server when configured.
+Keeper is an Expo Router React Native Web note app for web/PWA and Tauri desktop. It stores Markdown notes locally, indexes metadata/search in browser storage or Tauri SQLite, and syncs note operations through the server when configured.
 
 ### Source Root
 
@@ -54,7 +51,7 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
 
 ### Layers
 
-1. **Routes** (`src/app/`) - Expo Router screens. `_layout.tsx` re-exports native layout. `_layout.native.tsx` handles mobile startup, drawer navigation, share intents, and toast overlay. `_layout.web.tsx` handles web/Tauri startup plus desktop close-time git flush. `index.tsx` is note grid. `editor.tsx` is editor. `suggested-mocs.tsx` shows MOC suggestions.
+1. **Routes** (`src/app/`) - Expo Router screens. `_layout.web.tsx` handles web/Tauri startup, service-worker registration, and navigation. `index.tsx` is note grid. `editor.tsx` is editor. `suggested-mocs.tsx` shows MOC suggestions.
 
 2. **Components** (`src/components/`) - UI layer. Core screens use `NoteGrid`, `NoteCard`, `HomeQuickComposer`, `HomeScreenHeader`, `NoteEditorView`, `NoteEditorHeader`, `TabBar`, drawers, modals, and shared UI in `src/components/shared/`.
 
@@ -71,7 +68,7 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
    - `tabStore.ts` - open note tabs.
    - `toastStore.ts` - toast notifications.
 
-5. **Hooks** (`src/hooks/`) - App and screen behavior: startup, autosave, note loading, note listing, related notes, note creation/opening, keyboard shortcuts, share handling, layout, styles, debounce, and suspense loaders.
+5. **Hooks** (`src/hooks/`) - App and screen behavior: startup, autosave, note loading, note listing, related notes, note creation/opening, keyboard shortcuts, layout, styles, debounce, and suspense loaders.
 
 6. **Services** (`src/services/`) - Persistence and side effects:
    - `notes/` - note CRUD, frontmatter, note type derivation, templates, attachments/images, wiki link parsing, query cache, SQLite/index DB sync, cluster and cluster feedback services.

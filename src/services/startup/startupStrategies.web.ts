@@ -1,4 +1,3 @@
-import { checkForUpdates } from "@/utils/checkForUpdates";
 import { initializeStorageStep } from "./startupSteps";
 import {
 	type StartupTelemetry,
@@ -30,10 +29,6 @@ export async function runStartupStrategy(
 	telemetry.trace("startup_run_started", {
 		platform: "web",
 	});
-	if (!__DEV__) {
-		void checkForUpdates(context.setStatusMessage);
-	}
-
 	try {
 		await runDesktopStartup({ ...context, telemetry });
 		const totalMs = Math.round(performance.now() - appStartTime);
