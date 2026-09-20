@@ -16,8 +16,9 @@ import { LinkNode } from "@lexical/link";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { INSERT_TABLE_COMMAND, TableCellNode, TableNode, TableRowNode } from "@lexical/table";
 import { $setBlocksType } from "@lexical/selection";
+import { registerListKeyboardBehavior } from "@/ui/listKeyboard";
 import type { InitialConfigType } from "@lexical/react/LexicalComposer";
-import { $getSelection, $isRangeSelection, FORMAT_TEXT_COMMAND, REDO_COMMAND, UNDO_COMMAND } from "lexical";
+import { $getSelection, $isRangeSelection, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND, OUTDENT_CONTENT_COMMAND, REDO_COMMAND, UNDO_COMMAND } from "lexical";
 import type { EditorState } from "lexical";
 import { type ReactNode, useEffect, useMemo, useRef } from "react";
 
@@ -48,6 +49,10 @@ function EditorToolbar() {
 			<ToolbarButton label="Undo" onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}>↶</ToolbarButton>
 			<ToolbarButton label="Redo" onClick={() => editor.dispatchCommand(REDO_COMMAND, undefined)}>↷</ToolbarButton>
 		</div>
+		<div className="editor-toolbar__group" aria-label="Indentation">
+			<ToolbarButton label="Outdent" onClick={() => editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined)}>⇤</ToolbarButton>
+			<ToolbarButton label="Indent" onClick={() => editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined)}>⇥</ToolbarButton>
+		</div>
 		<div className="editor-toolbar__group" aria-label="Text style">
 			<ToolbarButton label="Bold" onClick={() => format("bold")}><b>B</b></ToolbarButton>
 			<ToolbarButton label="Italic" onClick={() => format("italic")}><i>I</i></ToolbarButton>
@@ -60,6 +65,12 @@ function EditorToolbar() {
 			<ToolbarButton label="Insert table" onClick={() => editor.dispatchCommand(INSERT_TABLE_COMMAND, { columns: "3", includeHeaders: true, rows: "3" })}>▦</ToolbarButton>
 		</div>
 	</div>;
+}
+
+function ListKeyboardPlugin() {
+	const [editor] = useLexicalComposerContext();
+	useEffect(() => registerListKeyboardBehavior(editor), [editor]);
+	return null;
 }
 
 function Editor({ value, onChange }: Props) {
@@ -96,6 +107,7 @@ function Editor({ value, onChange }: Props) {
 			</div>
 			<HistoryPlugin />
 			<ListPlugin />
+			<ListKeyboardPlugin />
 			<TablePlugin />
 			<LinkPlugin />
 			<MarkdownShortcutPlugin transformers={TRANSFORMERS} />
