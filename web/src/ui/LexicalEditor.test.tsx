@@ -16,7 +16,7 @@ describe("LexicalEditor", () => {
 	it("exposes the core Keeper formatting toolbar", () => {
 		render(<LexicalEditor value="" onChange={vi.fn()} />);
 
-		for (const label of ["Undo", "Redo", "Bold", "Italic", "Heading", "Code block", "Quote", "Bulleted list", "Insert table"]) {
+		for (const label of ["Undo", "Redo", "Indent", "Outdent", "Bold", "Italic", "Heading", "Code block", "Quote", "Bulleted list", "Numbered list", "Checklist", "Insert table"]) {
 			expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
 		}
 	});

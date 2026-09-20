@@ -9,7 +9,7 @@ import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
-import { INSERT_UNORDERED_LIST_COMMAND, ListItemNode, ListNode } from "@lexical/list";
+import { INSERT_CHECK_LIST_COMMAND, INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND, ListItemNode, ListNode } from "@lexical/list";
 import { CodeNode } from "@lexical/code";
 import { $convertFromMarkdownString, $convertToMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { LinkNode } from "@lexical/link";
@@ -62,6 +62,8 @@ function EditorToolbar() {
 		</div>
 		<div className="editor-toolbar__group" aria-label="Insert">
 			<ToolbarButton label="Bulleted list" onClick={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)}>•≡</ToolbarButton>
+			<ToolbarButton label="Numbered list" onClick={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)}>1≡</ToolbarButton>
+			<ToolbarButton label="Checklist" onClick={() => editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined)}>☑</ToolbarButton>
 			<ToolbarButton label="Insert table" onClick={() => editor.dispatchCommand(INSERT_TABLE_COMMAND, { columns: "3", includeHeaders: true, rows: "3" })}>▦</ToolbarButton>
 		</div>
 	</div>;
