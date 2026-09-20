@@ -4,10 +4,10 @@ Local-first Markdown notes for web/PWA and Tauri desktop.
 
 ## Tech stack
 
-1. [Expo](https://expo.dev), Expo Router, React Native, and React Native Web
-2. [Lexical](https://lexical.dev/) rich Markdown editor, rendered through Expo DOM
-3. Local storage: native/Tauri Markdown plus SQLite indexes; browser IndexedDB storage
-4. Tauri 2 desktop shell
+1. [Vite](https://vite.dev/) and React browser app
+2. [Lexical](https://lexical.dev/) rich Markdown editor
+3. Browser IndexedDB storage, attachments, clipboard, and downloads
+4. Tauri 2 desktop shell, isolated behind the browser/desktop service boundary
 5. Optional server sync for note operations, Git mirroring, and MOC classification
 
 ## Get started
@@ -27,18 +27,18 @@ Local-first Markdown notes for web/PWA and Tauri desktop.
 
 Useful commands:
 
-- `npm run build:web` — export static web/PWA bundle
+- `npm run build:web` — build static web/PWA bundle into `dist/`
 - `npm run lint` and `npm test` — lint and unit suite
 
-App source lives in `src/`. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Browser source lives in `web/src/`. Routes use React Router.
 
 ### Desktop (Tauri)
 
 The web app can run in a desktop window via [Tauri](https://tauri.app/). Prerequisites: [Rust](https://rustup.rs/) and Xcode Command Line Tools (macOS: `xcode-select --install`).
 
-- **Dev**: `npm run desktop` — starts the Expo web server on `http://localhost:8082` and opens the Tauri window.
-- **Concurrent PWA + desktop dev**: desktop uses Expo web on `8082`; use `npm start -- --web` for the PWA dev server.
-- **Production build**: `npm run build:desktop` — exports the web bundle then builds the desktop app. Outputs are in `src-tauri/target/release/` (and bundle artifacts for your OS).
+- **Dev**: `npm run desktop` — starts Vite on `http://localhost:8082` and opens the Tauri window.
+- **Concurrent PWA + desktop dev**: desktop uses Vite on `8082`; use `npm start` for the PWA dev server.
+- **Production build**: `npm run build:desktop` — builds the Vite bundle then builds the desktop app. Outputs are in `src-tauri/target/release/` (and bundle artifacts for your OS).
 
 The first run may prompt for system permissions (e.g. macOS).
 
@@ -53,14 +53,14 @@ Current release blockers: complete browser index/cluster parity; attachment quot
 Configure the sync server URL:
 
 ```bash
-EXPO_PUBLIC_SYNC_SERVER_URL=https://keeper.example.com
+VITE_SYNC_SERVER_URL=https://keeper.example.com
 ```
 
 For this project's Cloudflare Worker deployment without a custom domain, build
 with `npm run build:web:cloudflare`. It sets this value to `/api` and routes the
 request through the private Workers VPC proxy in
 [`cloudflare/private-api-proxy/README.md`](cloudflare/private-api-proxy/README.md).
-Do not put an API token in an `EXPO_PUBLIC_*` variable.
+Do not put an API token in a `VITE_*` variable.
 
 Cloudflare Worker configuration is checked in under `wrangler.jsonc` and
 `cloudflare/private-api-proxy/wrangler.jsonc`. Use Wrangler-backed commands for
@@ -76,7 +76,7 @@ API, or Terraform; Wrangler does not manage them.
 
 ## MOC Suggestions
 
-MOC classification belongs to server sync. When `EXPO_PUBLIC_SYNC_SERVER_URL` is configured, client cluster services read and update server-owned suggestions. Server workers run the Python embedding and clustering pipeline after sync work; clients review, accept, rename, dismiss, and organize returned clusters.
+MOC classification belongs to server sync. When `VITE_SYNC_SERVER_URL` is configured, client cluster services read and update server-owned suggestions. Server workers run the Python embedding and clustering pipeline after sync work; clients review, accept, rename, dismiss, and organize returned clusters.
 
 Server setup and operator details: [`server/README.md`](server/README.md) and [`docs/server-sync-cutover.md`](docs/server-sync-cutover.md). `scripts/moc_pipeline/` is server/development tooling, not normal client setup.
 
@@ -87,17 +87,3 @@ Server setup and operator details: [`server/README.md`](server/README.md) and [`
 - In CI, run `npm run lint` to use Biome.
 - For startup profiling, see `docs/Startup telemetry.md` for the `[StartupTrace]` log format and the main timing fields.
 
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Expo web guide](https://docs.expo.dev/workflow/web/): Learn Expo's web build and deployment workflow.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
