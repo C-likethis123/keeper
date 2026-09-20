@@ -1,0 +1,15 @@
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { LexicalEditor } from "@/ui/LexicalEditor";
+
+describe("LexicalEditor", () => {
+	it("loads Markdown extensions into a browser contenteditable", () => {
+		const onChange = vi.fn();
+		render(<LexicalEditor value={"## Browser heading\n\n- task"} onChange={onChange} />);
+
+		const editor = screen.getByLabelText("Note content");
+		expect(editor).toHaveTextContent("Browser heading");
+		expect(editor).toHaveTextContent("task");
+		expect(onChange).not.toHaveBeenCalled();
+	});
+});

@@ -8,8 +8,10 @@ import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { ListItemNode, ListNode } from "@lexical/list";
+import { CodeNode } from "@lexical/code";
 import { $convertFromMarkdownString, $convertToMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { LinkNode } from "@lexical/link";
+import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import type { InitialConfigType } from "@lexical/react/LexicalComposer";
 import type { EditorState } from "lexical";
 import { useEffect, useMemo, useRef } from "react";
@@ -23,7 +25,7 @@ function Editor({ value, onChange }: Props) {
 		<LexicalComposer
 			initialConfig={useMemo<InitialConfigType>(() => ({
 				namespace: "keeper-vite",
-				nodes: [ListNode, ListItemNode, LinkNode],
+				nodes: [HeadingNode, QuoteNode, CodeNode, ListNode, ListItemNode, LinkNode],
 				theme: { paragraph: "lexical-paragraph", text: { bold: "lexical-bold", italic: "lexical-italic" } },
 				onError: (error) => console.error("Lexical error", error),
 				editorState: () => { $convertFromMarkdownString(value, TRANSFORMERS); },
