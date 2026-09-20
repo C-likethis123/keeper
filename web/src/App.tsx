@@ -1,4 +1,5 @@
 import { LexicalEditor } from "@/ui/LexicalEditor";
+import { DrawingPad } from "@/ui/DrawingPad";
 import { type BrowserNote, type BrowserNoteType, loadBrowserNotes, persistBrowserNotes } from "@/ui/noteRepository";
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { createContext, type FormEvent, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -24,7 +25,7 @@ function HomeRoute() {
 }
 
 function SpecialEditor({ note, onChange }: { note: BrowserNote; onChange: (change: Partial<BrowserNote>) => void }) {
-	if (note.noteType === "drawing") return <section className="special-editor drawing-editor"><p>Drawing route ready. Browser attachment storage handles assets.</p><textarea aria-label="Drawing description" value={note.content} onChange={(event) => onChange({ content: event.target.value })} placeholder="Describe drawing" /></section>;
+	if (note.noteType === "drawing") return <DrawingPad value={note.content} onChange={(content) => onChange({ content })} />;
 	if (note.noteType === "video") return <section className="special-editor"><label>Video URL<input aria-label="Video URL" value={note.content} onChange={(event) => onChange({ content: event.target.value })} placeholder="https://…" /></label>{note.content ? <iframe title="Video preview" src={note.content} sandbox="allow-scripts allow-same-origin allow-presentation" /> : null}</section>;
 	return <section className="special-editor"><label>Document URL or browser attachment path<textarea aria-label="Document location" value={note.content} onChange={(event) => onChange({ content: event.target.value })} placeholder="attachments/example.pdf" /></label><p>Document route ready. File URLs resolve through browser media service.</p></section>;
 }

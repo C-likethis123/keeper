@@ -12,4 +12,12 @@ describe("LexicalEditor", () => {
 		expect(editor).toHaveTextContent("task");
 		expect(onChange).not.toHaveBeenCalled();
 	});
+
+	it("exposes the core Keeper formatting toolbar", () => {
+		render(<LexicalEditor value="" onChange={vi.fn()} />);
+
+		for (const label of ["Undo", "Redo", "Bold", "Italic", "Heading", "Code block", "Quote", "Bulleted list", "Insert table"]) {
+			expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
+		}
+	});
 });
