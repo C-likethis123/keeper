@@ -21,7 +21,7 @@ import { $getSelection, $isRangeSelection, FORMAT_TEXT_COMMAND, REDO_COMMAND, UN
 import type { EditorState } from "lexical";
 import { type ReactNode, useEffect, useMemo, useRef } from "react";
 
-type Props = { value: string; onChange: (value: string) => void };
+type Props = { value: string; onChange: (value: string) => void; editorKey?: string };
 
 function ToolbarButton({ label, children, onClick }: { label: string; children: ReactNode; onClick: () => void }) {
 	return <button className="editor-tool" type="button" aria-label={label} title={label} onClick={onClick}>{children}</button>;
@@ -115,5 +115,7 @@ function Editor({ value, onChange }: Props) {
 
 /** DOM-first Lexical baseline: Markdown, lists, links, undo/redo. */
 export function LexicalEditor(props: Props) {
-	return <Editor key={props.value} {...props} />;
+	// A content value changes on every keystroke. Using it as a React key destroys
+	// the Lexical tree and loses selection; only change the key for another note.
+	return <Editor key={props.editorKey} {...props} />;
 }
