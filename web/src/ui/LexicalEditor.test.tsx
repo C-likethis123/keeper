@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { LexicalEditor } from "@/ui/LexicalEditor";
 
@@ -19,5 +19,11 @@ describe("LexicalEditor", () => {
 		for (const label of ["Undo", "Redo", "Indent", "Outdent", "Bold", "Italic", "Heading", "Code block", "Quote", "Bulleted list", "Numbered list", "Checklist", "Insert table"]) {
 			expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
 		}
+	});
+
+	it("uses Prism syntax highlighting for fenced code blocks", async () => {
+		const { container } = render(<LexicalEditor value={"```javascript\nconst answer = 42;\n```"} onChange={vi.fn()} />);
+
+		await waitFor(() => expect(container.querySelector(".lexical-token-keyword")).toHaveTextContent("const"));
 	});
 });

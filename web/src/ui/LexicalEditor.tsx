@@ -10,7 +10,8 @@ import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { INSERT_CHECK_LIST_COMMAND, INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND, ListItemNode, ListNode } from "@lexical/list";
-import { CodeNode } from "@lexical/code";
+import { CodeHighlightNode, CodeNode } from "@lexical/code";
+import { registerCodeHighlighting } from "@lexical/code-prism";
 import { $convertFromMarkdownString, $convertToMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { LinkNode } from "@lexical/link";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
@@ -75,6 +76,13 @@ function ListKeyboardPlugin() {
 	return null;
 }
 
+/** Same Prism highlighter used by the React Native DOM editor. */
+function CodeHighlightingPlugin() {
+	const [editor] = useLexicalComposerContext();
+	useEffect(() => registerCodeHighlighting(editor), [editor]);
+	return null;
+}
+
 function Editor({ value, onChange }: Props) {
 	const lastValue = useRef(value);
 	useEffect(() => { lastValue.current = value; }, [value]);
@@ -82,13 +90,16 @@ function Editor({ value, onChange }: Props) {
 		<LexicalComposer
 			initialConfig={useMemo<InitialConfigType>(() => ({
 				namespace: "keeper-vite",
-				nodes: [HeadingNode, QuoteNode, CodeNode, ListNode, ListItemNode, LinkNode, TableNode, TableRowNode, TableCellNode],
+				nodes: [HeadingNode, QuoteNode, CodeNode, CodeHighlightNode, ListNode, ListItemNode, LinkNode, TableNode, TableRowNode, TableCellNode],
 				theme: {
 					paragraph: "lexical-paragraph",
 					text: { bold: "lexical-bold", italic: "lexical-italic" },
 					heading: { h1: "lexical-heading lexical-heading--h1", h2: "lexical-heading lexical-heading--h2", h3: "lexical-heading lexical-heading--h3" },
 					quote: "lexical-quote",
 					code: "lexical-code",
+					codeHighlight: {
+						attr: "lexical-token-attr", boolean: "lexical-token-constant", builtin: "lexical-token-builtin", "class-name": "lexical-token-class", comment: "lexical-token-comment", constant: "lexical-token-constant", function: "lexical-token-function", keyword: "lexical-token-keyword", number: "lexical-token-number", operator: "lexical-token-operator", property: "lexical-token-property", punctuation: "lexical-token-punctuation", string: "lexical-token-string", variable: "lexical-token-variable",
+					},
 					table: "lexical-table",
 					tableCell: "lexical-table-cell",
 					tableCellHeader: "lexical-table-cell lexical-table-cell--header",
@@ -110,6 +121,7 @@ function Editor({ value, onChange }: Props) {
 			<HistoryPlugin />
 			<ListPlugin />
 			<ListKeyboardPlugin />
+			<CodeHighlightingPlugin />
 			<TablePlugin />
 			<LinkPlugin />
 			<MarkdownShortcutPlugin transformers={TRANSFORMERS} />
