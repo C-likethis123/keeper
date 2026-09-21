@@ -1,5 +1,7 @@
-export type EditorNoteType = "journal" | "resource" | "todo" | "note" | "template" | "drawing";
-export type EditorNoteStatus = "open" | "blocked" | "doing" | "done";
+import type { CanonicalNoteType, CanonicalNoteStatus } from "../../notes/note-contract";
+
+export type EditorNoteType = CanonicalNoteType;
+export type EditorNoteStatus = CanonicalNoteStatus;
 
 export type EditorSessionDraft = {
 	id: string;

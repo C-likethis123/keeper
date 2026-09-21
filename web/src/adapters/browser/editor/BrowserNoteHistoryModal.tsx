@@ -8,7 +8,7 @@ type CurrentVersion = NoteHistoryVersion<BrowserNote> & { id: "current" };
 export function BrowserNoteHistoryModal({ open, note, onDismiss, onRestore }: { open: boolean; note: BrowserNote; onDismiss: () => void; onRestore: (version: NoteHistoryVersion<BrowserNote>) => Promise<void> }) {
 	const [versions, setVersions] = useState<NoteHistoryVersion<BrowserNote>[]>([]); const [selectedId, setSelectedId] = useState<string>("current"); const [loading, setLoading] = useState(false); const [restoring, setRestoring] = useState(false); const [error, setError] = useState<string | null>(null);
 	useEffect(() => { if (!open) return; setLoading(true); setError(null); void listBrowserNoteVersions(note.id).then(setVersions, () => setError("Failed to load version history.")).finally(() => setLoading(false)); setSelectedId("current"); }, [note.id, open]);
-	const entries = useMemo<(CurrentVersion | NoteHistoryVersion<BrowserNote>)[]>(() => [{ id: "current", capturedAt: note.updatedAt, note }, ...versions], [note, versions]);
+	const entries = useMemo<(CurrentVersion | NoteHistoryVersion<BrowserNote>)[]>(() => [{ id: "current", capturedAt: note.lastUpdated, note }, ...versions], [note, versions]);
 	const selected = entries.find((entry) => entry.id === selectedId) ?? entries[0];
 	async function restore() { if (!selected || selected.id === "current") return; setRestoring(true); setError(null); try { await onRestore(selected); onDismiss(); } catch { setError("Failed to restore version."); } finally { setRestoring(false); } }
 	if (!open) return null;

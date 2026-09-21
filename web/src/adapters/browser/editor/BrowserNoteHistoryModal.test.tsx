@@ -5,8 +5,8 @@ import { captureBrowserNoteVersion } from "@/services/noteHistory";
 import { browserStorage } from "@/services/storage";
 import { BrowserNoteHistoryModal } from "./BrowserNoteHistoryModal";
 
-const oldNote = { id: "note-1", title: "Plan", content: "Old content", noteType: "note" as const, isPinned: false, updatedAt: 1 };
-const currentNote = { ...oldNote, content: "Current content", updatedAt: 2 };
+const oldNote = { id: "note-1", title: "Plan", content: "Old content", noteType: "note" as const, isPinned: false, lastUpdated: 1, modified: 1, status: null, createdAt: null, completedAt: null, attachment: null, attachedVideo: null, resourceUrl: null, documentPositions: null };
+const currentNote = { ...oldNote, content: "Current content", lastUpdated: 2, modified: 2 };
 
 describe("BrowserNoteHistoryModal", () => {
 	beforeEach(async () => { await browserStorage.setState("note-history:v1:note-1", "[]"); });

@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useBrowserEditorSession } from "./useBrowserEditorSession";
 
-const note = { id: "note-1", title: "Plan", content: "Before", noteType: "note" as const, isPinned: false, updatedAt: 1 };
+const note = { id: "note-1", title: "Plan", content: "Before", noteType: "note" as const, isPinned: false, lastUpdated: 1, modified: 1, status: null, createdAt: null, completedAt: null, attachment: null, attachedVideo: null, resourceUrl: null, documentPositions: null };
 
 describe("useBrowserEditorSession", () => {
 	it("applies shared draft patches before persistence", async () => {
