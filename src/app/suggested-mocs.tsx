@@ -26,6 +26,7 @@ export default function SuggestedMOCsScreen() {
 						name={canGoBack ? "arrow-left" : "bars"}
 						label={canGoBack ? "Back" : "Open filters"}
 						variant="flat"
+						tooltipAlignment="start"
 						onPress={() => {
 							if (canGoBack) {
 								router.back();

@@ -14,6 +14,7 @@ export function IconButton({
 	testID,
 	variant = "circle",
 	label,
+	tooltipAlignment = "center",
 }: {
 	name: FontAwesomeName;
 	size?: number;
@@ -22,6 +23,7 @@ export function IconButton({
 	testID?: string;
 	variant?: "circle" | "flat";
 	label?: string;
+	tooltipAlignment?: "start" | "center" | "end";
 }) {
 	const styles = useStyles(createStyles);
 	const [isHovered, setIsHovered] = React.useState(false);
@@ -56,7 +58,15 @@ export function IconButton({
 				/>
 			</Pressable>
 			{showTooltip ? (
-				<View pointerEvents="none" style={styles.tooltip}>
+				<View
+					pointerEvents="none"
+					testID={testID ? `${testID}-tooltip` : undefined}
+					style={[
+						styles.tooltip,
+						tooltipAlignment === "start" && styles.tooltipStart,
+						tooltipAlignment === "end" && styles.tooltipEnd,
+					]}
+				>
 					<Text numberOfLines={1} style={styles.tooltipText}>
 						{label}
 					</Text>
@@ -112,6 +122,12 @@ function createStyles(theme: ExtendedTheme) {
 			shadowOffset: { width: 0, height: 4 },
 			elevation: 4,
 			zIndex: 10,
+		},
+		tooltipStart: {
+			left: 0,
+		},
+		tooltipEnd: {
+			right: 0,
 		},
 		tooltipText: {
 			fontSize: 12,

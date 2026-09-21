@@ -29,6 +29,7 @@ export default function HomeScreenHeader({
 					name="bars"
 					label="Open filters"
 					variant="flat"
+					tooltipAlignment="start"
 					onPress={onMenuPress}
 				/>
 				<SearchBar
@@ -41,6 +42,7 @@ export default function HomeScreenHeader({
 					label="Open suggested MOCs"
 					name="sitemap"
 					variant="flat"
+					tooltipAlignment="end"
 					onPress={onOpenSuggestedMocs}
 				/>
 			</View>

@@ -41,4 +41,23 @@ describe("IconButton", () => {
 		fireEvent.press(getByTestId("btn"));
 		expect(onPress).not.toHaveBeenCalled();
 	});
+
+	it("positions flat tooltip at its trigger edge", () => {
+		const { getByTestId } = render(
+			<IconButton
+				name="bars"
+				label="Open filters"
+				variant="flat"
+				tooltipAlignment="start"
+				onPress={jest.fn()}
+				testID="btn"
+			/>,
+		);
+
+		fireEvent(getByTestId("btn"), "hoverIn");
+
+		expect(getByTestId("btn-tooltip").props.style).toEqual(
+			expect.arrayContaining([expect.objectContaining({ left: 0 })]),
+		);
+	});
 });
