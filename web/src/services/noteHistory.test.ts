@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { browserStorage } from "@/services/storage";
-import { captureBrowserNoteVersion, getBrowserNoteVersion, listBrowserNoteVersions } from "@/services/noteHistory";
+import { browserStorage } from "@web/services/storage";
+import { captureBrowserNoteVersion, getBrowserNoteVersion, listBrowserNoteVersions } from "@web/services/noteHistory";
 
 const note = { id: "note-1", title: "First", content: "Old text", noteType: "note" as const, isPinned: false, lastUpdated: 1, modified: 1, status: null, createdAt: null, completedAt: null, attachment: null, attachedVideo: null, resourceUrl: null, documentPositions: null };
 

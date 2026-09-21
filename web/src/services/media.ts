@@ -1,5 +1,5 @@
-import { browserStorage } from "@/services/storage";
-import { getDesktopBridge } from "@/services/platform";
+import { browserStorage } from "@web/services/storage";
+import { getDesktopBridge } from "@web/services/platform";
 
 const urls = new Map<string, string>();
 function id(): string { return `${Date.now().toString(36)}-${crypto.randomUUID()}`; }

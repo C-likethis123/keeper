@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { browserStorage } from "@/services/storage";
+import { browserStorage } from "@web/services/storage";
 import { getBrowserNoteSurface, loadBrowserNotes } from "./noteRepository";
 
 describe("browser note repository", () => {

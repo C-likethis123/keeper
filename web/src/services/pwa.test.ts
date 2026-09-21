@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { registerServiceWorker } from "@/services/pwa";
+import { registerServiceWorker } from "@web/services/pwa";
 
 describe("PWA registration", () => {
 	it("registers the offline worker only for secure production pages", async () => {

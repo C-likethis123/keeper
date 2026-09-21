@@ -1,8 +1,8 @@
 import "fake-indexeddb/auto";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { captureBrowserNoteVersion } from "@/services/noteHistory";
-import { browserStorage } from "@/services/storage";
+import { captureBrowserNoteVersion } from "@web/services/noteHistory";
+import { browserStorage } from "@web/services/storage";
 import { BrowserNoteHistoryModal } from "./BrowserNoteHistoryModal";
 
 const oldNote = { id: "note-1", title: "Plan", content: "Old content", noteType: "note" as const, isPinned: false, lastUpdated: 1, modified: 1, status: null, createdAt: null, completedAt: null, attachment: null, attachedVideo: null, resourceUrl: null, documentPositions: null };

@@ -1,4 +1,4 @@
-import type { BrowserNote } from "@/ui/noteRepository";
+import type { BrowserNote } from "@web/ui/noteRepository";
 import { createEditorSessionDraft, patchEditorSessionDraft } from "@keeper/features/editor/session/editorSessionDraft";
 import type { EditorSessionDraft } from "@keeper/features/editor/session/editorSessionContract";
 import { useCallback, useEffect, useMemo, useState } from "react";

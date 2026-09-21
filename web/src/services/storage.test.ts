@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { BrowserStorage } from "@/services/storage";
+import { BrowserStorage } from "@web/services/storage";
 
 describe("BrowserStorage", () => {
 	let storage: BrowserStorage;

@@ -1,5 +1,5 @@
-import { listBrowserNoteVersions } from "@/services/noteHistory";
-import type { BrowserNote } from "@/ui/noteRepository";
+import { listBrowserNoteVersions } from "@web/services/noteHistory";
+import type { BrowserNote } from "@web/ui/noteRepository";
 import type { NoteHistoryVersion } from "@keeper/features/editor/note-history-contract";
 import { useEffect, useMemo, useState } from "react";
 

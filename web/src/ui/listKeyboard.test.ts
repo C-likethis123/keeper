@@ -1,7 +1,7 @@
 import { $createListItemNode, $createListNode, ListItemNode, ListNode } from "@lexical/list";
 import { $createTextNode, $getRoot, createEditor, KEY_TAB_COMMAND, OUTDENT_CONTENT_COMMAND, ParagraphNode } from "lexical";
 import { describe, expect, it, vi } from "vitest";
-import { $outdentTopLevelListItems, registerListKeyboardBehavior } from "@/ui/listKeyboard";
+import { $outdentTopLevelListItems, registerListKeyboardBehavior } from "@web/ui/listKeyboard";
 
 function createListItem(text: string) {
 	const textNode = $createTextNode(text);

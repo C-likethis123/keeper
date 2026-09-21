@@ -1,29 +1,29 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { LexicalEditor } from "@/ui/LexicalEditor";
+import { LexicalEditor } from "@web/ui/LexicalEditor";
 
 describe("LexicalEditor", () => {
-	it("loads Markdown extensions into a browser contenteditable", () => {
+	it("loads canonical Markdown into a browser contenteditable", () => {
 		const onChange = vi.fn();
 		render(<LexicalEditor value={"## Browser heading\n\n- task"} onChange={onChange} />);
 
 		const editor = screen.getByLabelText("Note content");
 		expect(editor).toHaveTextContent("Browser heading");
 		expect(editor).toHaveTextContent("task");
-		expect(onChange).not.toHaveBeenCalled();
+		expect(onChange).toHaveBeenCalledWith("## Browser heading\n\n- task");
 	});
 
-	it("exposes the core Keeper formatting toolbar", () => {
+	it("uses canonical Expo toolbar actions", () => {
 		render(<LexicalEditor value="" onChange={vi.fn()} />);
 
-		for (const label of ["Undo", "Redo", "Indent", "Outdent", "Bold", "Italic", "Heading", "Code block", "Quote", "Bulleted list", "Numbered list", "Checklist", "Insert table"]) {
+		for (const label of ["Insert table", "Insert image", "Attach PDF or ePub", "Attach video", "View article", "Show related notes", "Switch panel"]) {
 			expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
 		}
 	});
 
-	it("uses Prism syntax highlighting for fenced code blocks", async () => {
-		const { container } = render(<LexicalEditor value={"```javascript\nconst answer = 42;\n```"} onChange={vi.fn()} />);
-
-		await waitFor(() => expect(container.querySelector(".lexical-token-keyword")).toHaveTextContent("const"));
+	it("uses canonical code theme classes", async () => {
+		const { KEEPER_EDITOR_THEME } = await import("@keeper/components/editor/lexical/keeperEditorTheme");
+		expect(KEEPER_EDITOR_THEME.code).toBe("keeper-code");
+		expect(KEEPER_EDITOR_THEME.codeHighlight?.keyword).toBe("keeper-token-keyword");
 	});
 });

@@ -1,4 +1,4 @@
-import { browserStorage } from "@/services/storage";
+import { browserStorage } from "@web/services/storage";
 
 const DEVICE_ID_KEY = "sync:device-id";
 function serverUrl(): string | null { return import.meta.env.VITE_SYNC_SERVER_URL?.trim().replace(/\/+$/, "") || null; }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { downloadBytes, readClipboardImage, releaseLocalFile, resolveLocalFile, savePickedFile, writeClipboardText } from "@/services/media";
-import { browserStorage } from "@/services/storage";
+import { downloadBytes, readClipboardImage, releaseLocalFile, resolveLocalFile, savePickedFile, writeClipboardText } from "@web/services/media";
+import { browserStorage } from "@web/services/storage";
 
 describe("browser media boundary", () => {
 	beforeEach(() => {

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
-import { App } from "@/App";
+import { App } from "@web/App";
 
 it("renders the Vite home route", async () => {
 	render(

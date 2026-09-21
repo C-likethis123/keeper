@@ -1,12 +1,12 @@
-import { LexicalEditor } from "@/ui/LexicalEditor";
-import { DrawingPad } from "@/ui/DrawingPad";
-import { BrowserTabStrip } from "@/adapters/browser/tabs/BrowserTabStrip";
-import { BrowserEditorHeader } from "@/adapters/browser/editor/BrowserEditorHeader";
-import { BrowserNoteHistoryModal } from "@/adapters/browser/editor/BrowserNoteHistoryModal";
-import { useBrowserEditorSession } from "@/adapters/browser/editor/useBrowserEditorSession";
-import { captureBrowserNoteVersion, deleteBrowserNoteVersions } from "@/services/noteHistory";
+import { LexicalEditor } from "@web/ui/LexicalEditor";
+import { DrawingPad } from "@web/ui/DrawingPad";
+import { BrowserTabStrip } from "@web/adapters/browser/tabs/BrowserTabStrip";
+import { BrowserEditorHeader } from "@web/adapters/browser/editor/BrowserEditorHeader";
+import { BrowserNoteHistoryModal } from "@web/adapters/browser/editor/BrowserNoteHistoryModal";
+import { useBrowserEditorSession } from "@web/adapters/browser/editor/useBrowserEditorSession";
+import { captureBrowserNoteVersion, deleteBrowserNoteVersions } from "@web/services/noteHistory";
 import { useTabStore } from "@keeper/stores/tabStore";
-import { getBrowserNoteSurface, type BrowserNote, type BrowserNoteSurface, loadBrowserNotes, persistBrowserNotes } from "@/ui/noteRepository";
+import { getBrowserNoteSurface, type BrowserNote, type BrowserNoteSurface, loadBrowserNotes, persistBrowserNotes } from "@web/ui/noteRepository";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { createContext, type FormEvent, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 

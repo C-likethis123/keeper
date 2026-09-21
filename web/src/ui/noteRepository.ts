@@ -1,4 +1,4 @@
-import { browserStorage } from "@/services/storage";
+import { browserStorage } from "@web/services/storage";
 import type { CanonicalNote } from "@keeper/features/notes/note-contract";
 
 export type BrowserNote = CanonicalNote;

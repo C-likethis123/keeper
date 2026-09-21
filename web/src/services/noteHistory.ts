@@ -1,5 +1,5 @@
-import { browserStorage } from "@/services/storage";
-import { toCanonicalBrowserNote, type BrowserNote } from "@/ui/noteRepository";
+import { browserStorage } from "@web/services/storage";
+import { toCanonicalBrowserNote, type BrowserNote } from "@web/ui/noteRepository";
 import type { NoteHistoryVersion } from "@keeper/features/editor/note-history-contract";
 
 const VERSION_LIMIT = 100;
