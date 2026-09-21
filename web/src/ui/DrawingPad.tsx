@@ -65,7 +65,7 @@ export function DrawingPad({ value, onChange }: Props) {
 	return <section className="drawing-pad" aria-label="Drawing canvas">
 		<header className="drawing-pad__toolbar">
 			<span>Draw</span>
-			<div role="group" aria-label="Ink color">{COLORS.map((swatch) => <button key={swatch} type="button" className={color === swatch ? "drawing-color drawing-color--selected" : "drawing-color"} style={{ "--swatch": swatch } as CSSProperties} onClick={() => setColor(swatch)} aria-label={`Use ${swatch} ink`} />)}</div>
+			<fieldset className="drawing-colors"><legend className="sr-only">Ink color</legend>{COLORS.map((swatch) => <button key={swatch} type="button" className={color === swatch ? "drawing-color drawing-color--selected" : "drawing-color"} style={{ "--swatch": swatch } as CSSProperties} onClick={() => setColor(swatch)} aria-label={`Use ${swatch} ink`} />)}</fieldset>
 			<button type="button" className="text-button" onClick={clear}>Clear</button>
 		</header>
 		<canvas ref={canvasRef} className="drawing-canvas" width={1600} height={900} onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={end} />

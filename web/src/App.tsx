@@ -1,7 +1,9 @@
 import { LexicalEditor } from "@/ui/LexicalEditor";
 import { DrawingPad } from "@/ui/DrawingPad";
+import { BrowserTabStrip } from "@/adapters/browser/tabs/BrowserTabStrip";
+import { useTabStore } from "@keeper/stores/tabStore";
 import { type BrowserNote, type BrowserNoteType, loadBrowserNotes, persistBrowserNotes } from "@/ui/noteRepository";
-import { Link, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { createContext, type FormEvent, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 type NotesContextValue = { notes: BrowserNote[]; ready: boolean; createNote(type?: BrowserNoteType): BrowserNote; saveNote(note: BrowserNote): void; deleteNote(id: string): void };
@@ -11,9 +13,12 @@ function useNotes() { const value = useContext(NotesContext); if (!value) throw 
 function typeLabel(type: BrowserNoteType) { return ({ note: "Note", document: "Document", video: "Video", drawing: "Drawing" })[type]; }
 
 function AppShell({ children }: { children: ReactNode }) {
-	const { notes, createNote } = useNotes(); const [drawerOpen, setDrawerOpen] = useState(false); const navigate = useNavigate();
+	const { notes, createNote } = useNotes(); const [drawerOpen, setDrawerOpen] = useState(false); const navigate = useNavigate(); const location = useLocation();
+	const tabs = useTabStore((state) => state.tabs); const activeTabId = useTabStore((state) => state.activeTabId); const activateTab = useTabStore((state) => state.activateTab); const closeTab = useTabStore((state) => state.closeTab); const pinTab = useTabStore((state) => state.pinTab);
 	function newNote(type: BrowserNoteType = "note") { const note = createNote(type); navigate(`/editor/${note.id}`); }
-	return <div className="app-shell"><aside className={`drawer ${drawerOpen ? "drawer--open" : ""}`} aria-label="Keeper navigation"><div className="drawer__brand"><Link to="/" onClick={() => setDrawerOpen(false)}>Keeper</Link></div><nav><Link to="/" onClick={() => setDrawerOpen(false)}>Home</Link><Link to="/suggested-mocs" onClick={() => setDrawerOpen(false)}>Suggested MOCs</Link></nav><div className="drawer__section"><span>Recent notes</span>{notes.slice(0, 6).map((note) => <Link key={note.id} to={`/editor/${note.id}`} onClick={() => setDrawerOpen(false)}>{note.title || "Untitled"}</Link>)}</div></aside>{drawerOpen ? <button type="button" aria-label="Close navigation" className="drawer-backdrop" onClick={() => setDrawerOpen(false)} /> : null}<div className="app-main"><header className="app-header"><button type="button" className="icon-button" aria-label="Open navigation" onClick={() => setDrawerOpen(true)}>☰</button><Link className="app-header__title" to="/">Keeper</Link><div className="new-menu"><button type="button" className="button" onClick={() => newNote()}>New note</button><button type="button" className="icon-button" aria-label="New drawing" onClick={() => newNote("drawing")}>✎</button></div></header>{children}</div></div>;
+	function selectTab(tab: (typeof tabs)[number]) { activateTab(tab.id); navigate(`/editor/${tab.noteId}`); }
+	function removeTab(tabId: string) { closeTab(tabId); const next = useTabStore.getState().tabs.find((tab) => tab.id === useTabStore.getState().activeTabId); if (location.pathname !== "/") navigate(next ? `/editor/${next.noteId}` : "/"); }
+	return <div className="app-shell"><aside className={`drawer ${drawerOpen ? "drawer--open" : ""}`} aria-label="Keeper navigation"><div className="drawer__brand"><Link to="/" onClick={() => setDrawerOpen(false)}>Keeper</Link></div><nav><Link to="/" onClick={() => setDrawerOpen(false)}>Home</Link><Link to="/suggested-mocs" onClick={() => setDrawerOpen(false)}>Suggested MOCs</Link></nav><div className="drawer__section"><span>Recent notes</span>{notes.slice(0, 6).map((note) => <Link key={note.id} to={`/editor/${note.id}`} onClick={() => setDrawerOpen(false)}>{note.title || "Untitled"}</Link>)}</div></aside>{drawerOpen ? <button type="button" aria-label="Close navigation" className="drawer-backdrop" onClick={() => setDrawerOpen(false)} /> : null}<div className="app-main"><header className="app-header"><button type="button" className="icon-button" aria-label="Open navigation" onClick={() => setDrawerOpen(true)}>☰</button><Link className="app-header__title" to="/">Keeper</Link><div className="new-menu"><button type="button" className="button" onClick={() => newNote()}>New note</button><button type="button" className="icon-button" aria-label="New drawing" onClick={() => newNote("drawing")}>✎</button></div></header><BrowserTabStrip tabs={tabs} activeTabId={activeTabId} activeView={location.pathname === "/" ? "home" : "note"} onActivateHome={() => navigate("/")} onActivateTab={selectTab} onCloseTab={removeTab} onTogglePin={pinTab} />{children}</div></div>;
 }
 
 function HomeRoute() {
@@ -31,7 +36,9 @@ function SpecialEditor({ note, onChange }: { note: BrowserNote; onChange: (chang
 }
 
 function EditorRoute() {
-	const { noteId = "" } = useParams(); const { notes, saveNote, deleteNote } = useNotes(); const navigate = useNavigate(); const note = notes.find((item) => item.id === noteId); const [local, setLocal] = useState<BrowserNote | null>(note ?? null); useEffect(() => setLocal(note ?? null), [note]);
+	const { noteId = "" } = useParams(); const { notes, saveNote, deleteNote } = useNotes(); const navigate = useNavigate(); const note = notes.find((item) => item.id === noteId); const [local, setLocal] = useState<BrowserNote | null>(note ?? null); const openTab = useTabStore((state) => state.openTab); const updateTabTitle = useTabStore((state) => state.updateTabTitle); const tabs = useTabStore((state) => state.tabs); const localNoteId = local?.id; const localTitle = local?.title || "Untitled"; useEffect(() => setLocal(note ?? null), [note]);
+	useEffect(() => { if (localNoteId) openTab(localNoteId, localTitle); }, [localNoteId, localTitle, openTab]);
+	useEffect(() => { if (!localNoteId) return; const tab = tabs.find((item) => item.noteId === localNoteId); if (tab && tab.title !== localTitle) updateTabTitle(tab.id, localTitle); }, [localNoteId, localTitle, tabs, updateTabTitle]);
 	if (!local) return <main className="page"><section className="empty-state"><h1>Note not found</h1><Link to="/">Back home</Link></section></main>;
 	function update(change: Partial<BrowserNote>) { setLocal((current) => current ? { ...current, ...change, updatedAt: Date.now() } : current); }
 	function save() { if (local) saveNote(local); }
