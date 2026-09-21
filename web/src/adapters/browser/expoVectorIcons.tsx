@@ -11,3 +11,7 @@ export function FontAwesome({ name, size = 16, style }: { name: string; size?: n
 	const resolvedStyle = Array.isArray(style) ? Object.assign({}, ...style) : style;
 	return <span aria-hidden="true" style={{ display: "inline-block", fontSize: size, lineHeight: 1, ...resolvedStyle }}>{GLYPHS[name] ?? "•"}</span>;
 }
+
+export function MaterialCommunityIcons({ name, size = 16, color }: { name: string; size?: number; color?: string }) {
+	return <span aria-hidden="true" style={{ display: "inline-block", fontSize: size, lineHeight: 1, color }}>{name.includes("link") ? "⌁" : "▤"}</span>;
+}
