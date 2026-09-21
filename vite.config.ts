@@ -7,6 +7,9 @@ export default defineConfig({
 	plugins: [react()],
 	resolve: {
 		alias: {
+			"@/services/notes/noteService": fileURLToPath(new URL("./web/src/adapters/browser/noteService.ts", import.meta.url)),
+			"@/services/notes/attachmentStorage": fileURLToPath(new URL("./web/src/adapters/browser/attachmentStorage.ts", import.meta.url)),
+			"@/components/editor/document/documentPositionStore": fileURLToPath(new URL("./web/src/adapters/browser/documentPositionStore.ts", import.meta.url)),
 			"@/services/notes/Notes": fileURLToPath(new URL("./web/src/adapters/browser/notesRoot.ts", import.meta.url)),
 			"@/services/notes/notesIndex": fileURLToPath(new URL("./web/src/adapters/browser/notesIndex.ts", import.meta.url)),
 			"@/components/editor/lexical/wikilinks/wikiLinkUtils": fileURLToPath(new URL("./web/src/adapters/browser/wikiLinkUtils.ts", import.meta.url)),
