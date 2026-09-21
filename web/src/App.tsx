@@ -4,6 +4,7 @@ import { BrowserTabStrip } from "@web/adapters/browser/tabs/BrowserTabStrip";
 import { BrowserEditorHeader } from "@web/adapters/browser/editor/BrowserEditorHeader";
 import { BrowserNoteHistoryModal } from "@web/adapters/browser/editor/BrowserNoteHistoryModal";
 import { BrowserDocumentPanel } from "@web/adapters/browser/editor/BrowserDocumentPanel";
+import { BrowserVideoPanel } from "@web/adapters/browser/editor/BrowserVideoPanel";
 import { useBrowserEditorSession } from "@web/adapters/browser/editor/useBrowserEditorSession";
 import { captureBrowserNoteVersion, deleteBrowserNoteVersions } from "@web/services/noteHistory";
 import { pickBrowserFile, saveBytes, savePickedFile } from "@web/services/media";
@@ -38,7 +39,7 @@ function HomeRoute() {
 
 function SpecialEditor({ note, onChange }: { note: BrowserNote; onChange: (change: Partial<BrowserNote>) => void }) {
 	if (note.noteType === "drawing") return <DrawingPad value={note.content} onChange={(content) => onChange({ content })} />;
-	if (note.attachedVideo !== null) return <section className="special-editor"><label>Video URL<input aria-label="Video URL" value={note.attachedVideo} onChange={(event) => onChange({ attachedVideo: event.target.value })} placeholder="https://…" /></label>{note.attachedVideo ? <iframe title="Video preview" src={note.attachedVideo} sandbox="allow-scripts allow-same-origin allow-presentation" /> : null}</section>;
+	if (note.attachedVideo !== null) return note.attachedVideo ? <BrowserVideoPanel url={note.attachedVideo} onDismiss={() => onChange({ attachedVideo: null })} /> : <section className="special-editor"><label>Video URL<input aria-label="Video URL" value={note.attachedVideo} onChange={(event) => onChange({ attachedVideo: event.target.value })} placeholder="https://…" /></label></section>;
 	return note.attachment ? <BrowserDocumentPanel attachmentPath={note.attachment} noteId={note.id} onDismiss={() => onChange({ attachment: null })} onPositionChange={(path, position) => onChange({ documentPositions: { ...(note.documentPositions ?? {}), [path]: position } })} /> : <section className="special-editor"><p>Pick a PDF or ePub from editor toolbar.</p></section>;
 }
 
