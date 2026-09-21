@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 const GLYPHS: Record<string, string> = {
 	undo: "↶", repeat: "↷", indent: "⇥", dedent: "⇤", table: "▦",
 	image: "▧", "trash-o": "⌫", paperclip: "⌇", "video-camera": "▸",
-	"newspaper-o": "▤", link: "⌁", exchange: "⇄", times: "×",
+	"newspaper-o": "▤", link: "⌁", exchange: "⇄", times: "×", close: "×",
 };
 
 /** Browser presentation shim for Expo's icon surface used inside DOM editor. */
