@@ -15,11 +15,12 @@ type Props = {
 	hasAttachment?: boolean;
 	onInsertTemplateCommand?: () => void;
 	onOpenWikiLink?: (title: string) => void;
+	onToggleArticle?: () => void;
 	templateCommand?: { markdown: string; timestamp: number } | null;
 };
 
 /** Browser adapter for canonical Expo DOM editor. */
-export function LexicalEditor({ editorKey, hasAttachment, onAttachDocument, onChange, onInsertTemplateCommand, onOpenWikiLink, onPasteImage, onRemoveAttachment, onRequestImage, onShowVideoModal, templateCommand, value }: Props) {
+export function LexicalEditor({ editorKey, hasAttachment, onAttachDocument, onChange, onInsertTemplateCommand, onOpenWikiLink, onPasteImage, onRemoveAttachment, onRequestImage, onShowVideoModal, onToggleArticle, templateCommand, value }: Props) {
 	const [command, setCommand] = useState<LexicalEditorCommand>();
 	const insertImage = useCallback(async (image: { src: string; altText?: string } | null) => { if (image) setCommand({ type: "insertImage", payload: image, timestamp: Date.now() }); }, []);
 	useEffect(() => { if (templateCommand) setCommand({ type: "insertMarkdown", payload: { markdown: templateCommand.markdown }, timestamp: templateCommand.timestamp }); }, [templateCommand]);
@@ -36,6 +37,7 @@ export function LexicalEditor({ editorKey, hasAttachment, onAttachDocument, onCh
 			onPasteImage={(image) => onPasteImage?.(image).then(insertImage)}
 			onInsertTemplateCommand={onInsertTemplateCommand}
 			onOpenWikiLink={onOpenWikiLink}
+			onToggleArticle={onToggleArticle}
 			onMarkdownChange={onChange}
 			onRemoveAttachment={onRemoveAttachment}
 			onShowVideoModal={onShowVideoModal}
