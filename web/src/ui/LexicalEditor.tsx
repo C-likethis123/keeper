@@ -1,7 +1,7 @@
 import ExpoLexicalMarkdownEditor from "@keeper/components/editor/lexical/LexicalMarkdownEditor";
 import type { PastedImage } from "@keeper/components/editor/lexical/extensions/MarkdownPasteExtension";
 import type { LexicalEditorCommand } from "@keeper/components/editor/lexical/extensions/CommandExtension";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Props = {
 	value: string;
@@ -13,12 +13,15 @@ type Props = {
 	onRemoveAttachment?: () => void;
 	onShowVideoModal?: () => void;
 	hasAttachment?: boolean;
+	onInsertTemplateCommand?: () => void;
+	templateCommand?: { markdown: string; timestamp: number } | null;
 };
 
 /** Browser adapter for canonical Expo DOM editor. */
-export function LexicalEditor({ editorKey, hasAttachment, onAttachDocument, onChange, onPasteImage, onRemoveAttachment, onRequestImage, onShowVideoModal, value }: Props) {
+export function LexicalEditor({ editorKey, hasAttachment, onAttachDocument, onChange, onInsertTemplateCommand, onPasteImage, onRemoveAttachment, onRequestImage, onShowVideoModal, templateCommand, value }: Props) {
 	const [command, setCommand] = useState<LexicalEditorCommand>();
 	const insertImage = useCallback(async (image: { src: string; altText?: string } | null) => { if (image) setCommand({ type: "insertImage", payload: image, timestamp: Date.now() }); }, []);
+	useEffect(() => { if (templateCommand) setCommand({ type: "insertMarkdown", payload: { markdown: templateCommand.markdown }, timestamp: templateCommand.timestamp }); }, [templateCommand]);
 	return (
 		<ExpoLexicalMarkdownEditor
 			accessibilityLabel="Note content"
@@ -30,6 +33,7 @@ export function LexicalEditor({ editorKey, hasAttachment, onAttachDocument, onCh
 			onAttachDocument={onAttachDocument}
 			onInsertImage={() => { void onRequestImage?.().then(insertImage); }}
 			onPasteImage={(image) => onPasteImage?.(image).then(insertImage)}
+			onInsertTemplateCommand={onInsertTemplateCommand}
 			onMarkdownChange={onChange}
 			onRemoveAttachment={onRemoveAttachment}
 			onShowVideoModal={onShowVideoModal}
