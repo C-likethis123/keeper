@@ -24,6 +24,6 @@ it("creates a note and routes to its browser editor", async () => {
 	await user.type(await screen.findByLabelText("Quick note title"), "Route coverage");
 	await user.click(screen.getByRole("button", { name: "Create" }));
 
-	expect(await screen.findByLabelText("Note title")).toHaveValue("Route coverage");
+		expect(await screen.findByLabelText("Title")).toHaveValue("Route coverage");
 	expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
 });

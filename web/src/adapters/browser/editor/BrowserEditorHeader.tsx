@@ -1,0 +1,7 @@
+import type { EditorHeaderProps } from "@keeper/features/editor/editor-header-contract";
+import type { FormEvent } from "react";
+
+export function BrowserEditorHeader({ title, status, isPinned, onChangeTitle, onBlurTitle, onSubmitEditing, onBack, onShowHistory, onTogglePin, onDelete }: EditorHeaderProps) {
+	function submit(event: FormEvent) { event.preventDefault(); onSubmitEditing(); }
+	return <header className="browser-editor-header"><button type="button" className="browser-header-action" aria-label="Back" onClick={onBack}>←</button><form onSubmit={submit}><input className="browser-editor-header__title" aria-label="Title" value={title} onChange={(event) => onChangeTitle(event.target.value)} onBlur={onBlurTitle} placeholder="Title" /></form><output className={`browser-save-status browser-save-status--${status}`} aria-live="polite">{status === "saving" ? "Saving…" : status === "saved" ? "Saved" : ""}</output><div className="browser-editor-header__actions"><button type="button" className="browser-header-action" aria-label="Version history" title="Version history" onClick={onShowHistory}>↶</button><button type="button" className={isPinned ? "browser-header-action browser-header-action--active" : "browser-header-action"} aria-label="Pin note" title="Pin note" onClick={onTogglePin}>⚑</button><button type="button" className="browser-header-action" aria-label="Delete note" title="Delete note" onClick={onDelete}>⌫</button></div></header>;
+}

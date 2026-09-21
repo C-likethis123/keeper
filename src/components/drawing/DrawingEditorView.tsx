@@ -275,7 +275,6 @@ export default function DrawingEditorView({
 				title={title}
 				status={status}
 				isPinned={isPinned}
-				noteType="drawing"
 				onChangeTitle={setTitle}
 				onBlurTitle={() => void forceSave()}
 				onSubmitEditing={() => void forceSave()}

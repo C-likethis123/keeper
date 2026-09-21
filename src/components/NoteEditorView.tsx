@@ -717,7 +717,6 @@ export default function NoteEditorView({
         title={title}
         status={status}
         isPinned={isPinned}
-        noteType={noteType}
         onChangeTitle={applyTitleChange}
         onBlurTitle={() => {
           const derived = deriveNoteType(title);
