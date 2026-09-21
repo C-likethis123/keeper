@@ -11,6 +11,19 @@ export async function savePickedFile(file: File, folder: "assets" | "attachments
 	await browserStorage.writeFile(path, new Uint8Array(await file.arrayBuffer()));
 	return path;
 }
+export async function saveBytes(bytes: Uint8Array, name: string, folder: "assets" | "attachments"): Promise<string> {
+	const path = `${folder}/${id()}${extension(name, folder === "assets" ? ".jpg" : "")}`;
+	await browserStorage.writeFile(path, bytes);
+	return path;
+}
+export function pickBrowserFile(accept: string): Promise<File | null> {
+	return new Promise((resolve) => {
+		const input = document.createElement("input"); input.type = "file"; input.accept = accept;
+		input.onchange = () => resolve(input.files?.[0] ?? null);
+		input.oncancel = () => resolve(null);
+		input.click();
+	});
+}
 /** Desktop pickers pass an absolute path; browser pickers pass a File above. */
 export async function copyDesktopFile(sourcePath: string, noteId: string, kind: "image" | "attachment"): Promise<string> {
 	const bridge = getDesktopBridge();
