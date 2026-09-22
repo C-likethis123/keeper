@@ -388,8 +388,47 @@ function EditorRoute() {
 	function update(change: Partial<BrowserNote>) {
 		session.patchBrowser(change);
 	}
+	function changeTitle(title: string) {
+		const derived = deriveNoteType(title);
+		const noteType = derived === "note" ? local.noteType : derived;
+		session.patch({
+			title,
+			noteType,
+			status: noteType === "todo" ? (local.status ?? "open") : null,
+		});
+	}
 	async function save() {
 		await session.save();
+	}
+	async function handleBack() {
+		try {
+			await save();
+			navigate("/");
+		} catch {
+			notify("Failed to save note.");
+		}
+	}
+	async function handleDelete() {
+		try {
+			await session.remove();
+			navigate("/");
+		} catch {
+			notify("Failed to delete note.");
+		}
+	}
+	async function togglePin() {
+		const isPinned = !local.isPinned;
+		session.patch({ isPinned });
+		try {
+			await saveNote({
+				...local,
+				isPinned,
+				lastUpdated: Date.now(),
+				modified: Date.now(),
+			});
+		} catch {
+			notify("Failed to update pin.");
+		}
 	}
 	async function openHistory() {
 		try {
@@ -497,32 +536,24 @@ function EditorRoute() {
 					title={session.draft.title}
 					status={session.status}
 					isPinned={session.draft.isPinned}
-					onChangeTitle={(title) => session.patch({ title })}
-					onBlurTitle={() => {
-						const derived = deriveNoteType(session.draft.title);
-						const noteType = derived === "note" ? local.noteType : derived;
-						update({
-							noteType,
-							status: noteType === "todo" ? (local.status ?? "open") : null,
-						});
-					}}
+					onChangeTitle={changeTitle}
+					onBlurTitle={() => undefined}
 					onSubmitEditing={() =>
 						document
 							.querySelector<HTMLElement>("[aria-label='Note content']")
 							?.focus()
 					}
 					onBack={() => {
-						void save().then(() => navigate("/"));
+						void handleBack();
 					}}
 					onShowHistory={() => {
 						void openHistory();
 					}}
-					onTogglePin={() =>
-						session.patch({ isPinned: !session.draft.isPinned })
-					}
+					onTogglePin={() => {
+						void togglePin();
+					}}
 					onDelete={() => {
-						void session.remove();
-						navigate("/");
+						void handleDelete();
 					}}
 				/>
 				<BrowserNoteMetadata
