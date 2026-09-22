@@ -4,12 +4,16 @@ import { darkTheme } from "@keeper/constants/themes/darkTheme";
 import { ThemeProvider } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { type PointerEvent, useRef, useState } from "react";
+import { DrawingPad } from "@web/ui/DrawingPad";
 
 const patterns = ["none", "grid", "dots", "ruled"] as const;
 type Tool = DrawingTool | "eraser";
 
 /** DOM canvas adapter preserving canonical drawing document and toolbar contracts. */
 export function BrowserDrawingEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+	// Vite v1 stored raster PNG data. Preserve it; newly created drawings use
+	// the canonical stroke-document format above.
+	if (value.startsWith("data:image/")) return <DrawingPad value={value} onChange={onChange} />;
 	const [document, setDocument] = useState<DrawingDocument>(() => parseDrawingDocument(value)); const [tool, setTool] = useState<Tool>("pen"); const [color, setColor] = useState("#202124"); const [strokeWidth, setStrokeWidth] = useState(4); const [undo, setUndo] = useState<DrawingDocument[]>([]); const [redo, setRedo] = useState<DrawingDocument[]>([]); const active = useRef<ReturnType<typeof createDrawingStroke> | null>(null);
 	function apply(next: DrawingDocument, record = true) { if (record) { setUndo((items) => [...items.slice(-49), document]); setRedo([]); } setDocument(next); onChange(serializeDrawingDocument(next)); }
 	function point(event: PointerEvent<SVGSVGElement>) { const bounds = event.currentTarget.getBoundingClientRect(); return { x: (event.clientX - bounds.left) * (document.width / bounds.width), y: (event.clientY - bounds.top) * (document.height / bounds.height), pressure: event.pressure || undefined }; }
