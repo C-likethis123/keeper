@@ -26,6 +26,7 @@ describe("browser note sync", () => {
 		await Promise.all(
 			[
 				"sync:device-id",
+				"keeper:sync:device-id",
 				"keeper:sync:next-seq",
 				"keeper:sync:op-queue",
 				"keeper:sync:pull-cursor",
@@ -48,7 +49,7 @@ describe("browser note sync", () => {
 				new Response(JSON.stringify({ ops: [], cursor: 0 }), { status: 200 }),
 			);
 		vi.stubGlobal("fetch", fetchMock);
-		await browserStorage.setState("sync:device-id", "device-test");
+		await browserStorage.setState("keeper:sync:device-id", "device-test");
 		await enqueueBrowserNoteSave(note, true);
 		await syncBrowserNotes([note]);
 		expect(fetchMock.mock.calls[0]?.[0]).toBe("https://sync.example/sync/push");

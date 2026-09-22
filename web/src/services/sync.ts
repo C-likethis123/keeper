@@ -1,6 +1,7 @@
 import { browserStorage } from "@web/services/storage";
 
-const DEVICE_ID_KEY = "sync:device-id";
+const DEVICE_ID_KEY = "keeper:sync:device-id";
+const LEGACY_DEVICE_ID_KEY = "sync:device-id";
 let devicePromise: Promise<string> | null = null;
 function serverUrl(): string | null {
 	return (
@@ -29,6 +30,11 @@ export async function getSyncDeviceId(): Promise<string> {
 	devicePromise = (async () => {
 		const existing = await browserStorage.getState(DEVICE_ID_KEY);
 		if (existing) return existing;
+		const legacy = await browserStorage.getState(LEGACY_DEVICE_ID_KEY);
+		if (legacy) {
+			await browserStorage.setState(DEVICE_ID_KEY, legacy);
+			return legacy;
+		}
 		const id = `device-${crypto.randomUUID()}`;
 		await browserStorage.setState(DEVICE_ID_KEY, id);
 		return id;
