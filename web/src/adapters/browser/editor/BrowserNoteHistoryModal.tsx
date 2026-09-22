@@ -1,16 +1,147 @@
 import { listBrowserNoteVersions } from "@web/services/noteHistory";
 import type { BrowserNote } from "@web/ui/noteRepository";
 import type { NoteHistoryVersion } from "@keeper/features/editor/note-history-contract";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type CurrentVersion = NoteHistoryVersion<BrowserNote> & { id: "current" };
 
-export function BrowserNoteHistoryModal({ open, note, onDismiss, onRestore }: { open: boolean; note: BrowserNote; onDismiss: () => void; onRestore: (version: NoteHistoryVersion<BrowserNote>) => Promise<void> }) {
-	const [versions, setVersions] = useState<NoteHistoryVersion<BrowserNote>[]>([]); const [selectedId, setSelectedId] = useState<string>("current"); const [loading, setLoading] = useState(false); const [restoring, setRestoring] = useState(false); const [error, setError] = useState<string | null>(null);
-	useEffect(() => { if (!open) return; setLoading(true); setError(null); void listBrowserNoteVersions(note.id).then(setVersions, () => setError("Failed to load version history.")).finally(() => setLoading(false)); setSelectedId("current"); }, [note.id, open]);
-	const entries = useMemo<(CurrentVersion | NoteHistoryVersion<BrowserNote>)[]>(() => [{ id: "current", capturedAt: note.lastUpdated, note }, ...versions], [note, versions]);
-	const selected = entries.find((entry) => entry.id === selectedId) ?? entries[0];
-	async function restore() { if (!selected || selected.id === "current") return; setRestoring(true); setError(null); try { await onRestore(selected); onDismiss(); } catch { setError("Failed to restore version."); } finally { setRestoring(false); } }
+export function BrowserNoteHistoryModal({
+	open,
+	note,
+	onDismiss,
+	onRestore,
+}: {
+	open: boolean;
+	note: BrowserNote;
+	onDismiss: () => void;
+	onRestore: (version: NoteHistoryVersion<BrowserNote>) => Promise<void>;
+}) {
+	const [versions, setVersions] = useState<NoteHistoryVersion<BrowserNote>[]>(
+		[],
+	);
+	const [selectedId, setSelectedId] = useState<string>("current");
+	const [loading, setLoading] = useState(false);
+	const [restoring, setRestoring] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const loadVersions = useCallback(async () => {
+		setLoading(true);
+		setError(null);
+		try {
+			setVersions(await listBrowserNoteVersions(note.id));
+			setSelectedId("current");
+		} catch {
+			setError("Failed to load version history.");
+		} finally {
+			setLoading(false);
+		}
+	}, [note.id]);
+	useEffect(() => {
+		if (open) void loadVersions();
+	}, [loadVersions, open]);
+	const entries = useMemo<(CurrentVersion | NoteHistoryVersion<BrowserNote>)[]>(
+		() => [{ id: "current", capturedAt: note.modified ?? note.lastUpdated, note }, ...versions],
+		[note, versions],
+	);
+	const selected =
+		entries.find((entry) => entry.id === selectedId) ?? entries[0];
+	async function restore() {
+		if (!selected || selected.id === "current") return;
+		setRestoring(true);
+		setError(null);
+		try {
+			await onRestore(selected);
+			onDismiss();
+		} catch {
+			setError("Failed to restore version.");
+		} finally {
+			setRestoring(false);
+		}
+	}
 	if (!open) return null;
-	return <div className="browser-history-backdrop" role="presentation" onMouseDown={onDismiss}><dialog className="browser-history-modal" open aria-labelledby="history-title" onMouseDown={(event) => event.stopPropagation()}><header><div><h2 id="history-title">Version history</h2><p>{note.title || "Untitled"}</p></div><button type="button" aria-label="Close version history" onClick={onDismiss}>×</button></header>{loading ? <p className="browser-history-loading">Loading history…</p> : <div className="browser-history-content"><ul className="browser-history-list">{entries.map((entry, index) => <li key={entry.id}><button type="button" className={selected?.id === entry.id ? "browser-history-entry browser-history-entry--selected" : "browser-history-entry"} onClick={() => setSelectedId(entry.id)}><strong>{index === 0 ? "Current version" : new Date(entry.capturedAt).toLocaleString()}</strong><span>{entry.note.content.slice(0, 80) || "Empty note"}</span></button></li>)}</ul><article className="browser-history-preview"><header><div><h3>{selected?.id === "current" ? "Current version" : new Date(selected?.capturedAt ?? 0).toLocaleString()}</h3><p>{selected?.note.title || "Untitled"}</p></div>{selected?.id !== "current" && <button type="button" className="button" disabled={restoring} onClick={() => void restore()}>{restoring ? "Restoring…" : "Restore this version"}</button>}</header><pre>{selected?.note.noteType === "drawing" ? "Drawing snapshot" : selected?.note.content || "Empty note"}</pre></article></div>}{error && <p className="browser-history-error">{error}</p>}</dialog></div>;
+	return (
+		<div
+			className="browser-history-backdrop"
+			role="presentation"
+			onMouseDown={onDismiss}
+		>
+			<dialog
+				className="browser-history-modal"
+				open
+				aria-labelledby="history-title"
+				onMouseDown={(event) => event.stopPropagation()}
+			>
+				<header>
+					<div>
+						<h2 id="history-title">Version history</h2>
+						<p>{note.title || "Untitled"}</p>
+					</div>
+					<button
+						type="button"
+						aria-label="Close version history"
+						onClick={onDismiss}
+					>
+						×
+					</button>
+				</header>
+				{loading ? (
+					<p className="browser-history-loading">Loading history…</p>
+				) : (
+					<div className="browser-history-content">
+						<ul className="browser-history-list">
+							{entries.map((entry, index) => (
+								<li key={entry.id}>
+									<button
+										type="button"
+										className={
+											selected?.id === entry.id
+												? "browser-history-entry browser-history-entry--selected"
+												: "browser-history-entry"
+										}
+										onClick={() => setSelectedId(entry.id)}
+									>
+										<strong>
+											{index === 0
+												? "Current version"
+												: new Date(entry.capturedAt).toLocaleString()}
+										</strong>
+										<span>
+											{entry.note.content.slice(0, 80) || "Empty note"}
+										</span>
+									</button>
+								</li>
+							))}
+						</ul>
+						<article className="browser-history-preview">
+							<header>
+								<div>
+									<h3>
+										{selected?.id === "current"
+											? "Current version"
+											: new Date(selected?.capturedAt ?? 0).toLocaleString()}
+									</h3>
+									<p>{selected?.note.title || "Untitled"}</p>
+								</div>
+								{selected?.id !== "current" && (
+									<button
+										type="button"
+										className="button"
+										disabled={restoring}
+										onClick={() => void restore()}
+									>
+										{restoring ? "Restoring…" : "Restore this version"}
+									</button>
+								)}
+							</header>
+							<pre>
+								{selected?.note.noteType === "drawing"
+									? "Drawing snapshot"
+									: selected?.note.content || "Empty note"}
+							</pre>
+						</article>
+					</div>
+				)}
+				{error ? <p className="browser-history-error">{error} <button type="button" onClick={() => void loadVersions()}>Retry</button></p> : null}
+			</dialog>
+		</div>
+	);
 }
