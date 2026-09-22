@@ -662,9 +662,7 @@ function EditorRoute() {
 					onTextSelected={(text) =>
 						setTemplateCommand({ markdown: `> ${text}`, timestamp: Date.now() })
 					}
-					onVideoDismiss={() => {
-						void removeVideo();
-					}}
+					onVideoDismiss={() => setActivePanel(null)}
 				>
 					{local.noteType === "drawing" ? (
 						<BrowserDrawingEditor
