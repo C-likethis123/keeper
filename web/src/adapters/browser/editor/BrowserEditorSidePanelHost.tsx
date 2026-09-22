@@ -1,6 +1,7 @@
 import {
 	type PointerEvent as ReactPointerEvent,
 	type ReactNode,
+	useEffect,
 	useState,
 } from "react";
 import { BrowserArticlePanel } from "./BrowserArticlePanel";
@@ -38,7 +39,16 @@ export function BrowserEditorSidePanelHost({
 	videoUrl,
 }: Props) {
 	const [ratio, setRatio] = useState(45);
-	const vertical = activePanel === "video";
+	const [isNarrow, setIsNarrow] = useState(false);
+	useEffect(() => {
+		if (!window.matchMedia) return;
+		const media = window.matchMedia("(max-width: 48rem)");
+		const update = () => setIsNarrow(media.matches);
+		update();
+		media.addEventListener("change", update);
+		return () => media.removeEventListener("change", update);
+	}, []);
+	const vertical = activePanel === "video" || isNarrow;
 	function resize(event: ReactPointerEvent<HTMLElement>) {
 		if (!activePanel || !event.currentTarget.hasPointerCapture(event.pointerId))
 			return;
