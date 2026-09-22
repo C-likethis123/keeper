@@ -20,24 +20,52 @@ export const BROWSER_NOTES_CHANGED = "keeper:browser-notes-changed";
 function isLegacyBrowserNote(value: unknown): value is LegacyBrowserNote {
 	if (!value || typeof value !== "object") return false;
 	const note = value as Partial<LegacyBrowserNote>;
-	return typeof note.id === "string" && typeof note.title === "string" && typeof note.content === "string" && (note.noteType === "note" || note.noteType === "document" || note.noteType === "video" || note.noteType === "drawing") && typeof note.isPinned === "boolean" && typeof note.updatedAt === "number";
+	return (
+		typeof note.id === "string" &&
+		typeof note.title === "string" &&
+		typeof note.content === "string" &&
+		(note.noteType === "note" ||
+			note.noteType === "document" ||
+			note.noteType === "video" ||
+			note.noteType === "drawing") &&
+		typeof note.isPinned === "boolean" &&
+		typeof note.updatedAt === "number"
+	);
 }
 
 function isBrowserNote(value: unknown): value is BrowserNote {
 	if (!value || typeof value !== "object") return false;
 	const note = value as Partial<BrowserNote>;
-	return typeof note.id === "string" && typeof note.title === "string" && typeof note.content === "string" && typeof note.lastUpdated === "number" && typeof note.isPinned === "boolean" && ["journal", "resource", "todo", "note", "template", "drawing"].includes(note.noteType ?? "");
+	return (
+		typeof note.id === "string" &&
+		typeof note.title === "string" &&
+		typeof note.content === "string" &&
+		typeof note.lastUpdated === "number" &&
+		typeof note.isPinned === "boolean" &&
+		["journal", "resource", "todo", "note", "template", "drawing"].includes(
+			note.noteType ?? "",
+		)
+	);
 }
 
 export function toCanonicalBrowserNote(note: LegacyBrowserNote): BrowserNote {
 	const isDocument = note.noteType === "document";
 	const isVideo = note.noteType === "video";
 	return {
-		id: note.id, title: note.title, content: isDocument || isVideo ? "" : note.content,
-		lastUpdated: note.updatedAt, modified: note.updatedAt, isPinned: note.isPinned,
-		noteType: note.noteType === "drawing" ? "drawing" : "note", status: null,
-		createdAt: null, completedAt: null, attachment: isDocument ? note.content : null,
-		attachedVideo: isVideo ? note.content : null, resourceUrl: null, documentPositions: null,
+		id: note.id,
+		title: note.title,
+		content: isDocument || isVideo ? "" : note.content,
+		lastUpdated: note.updatedAt,
+		modified: note.updatedAt,
+		isPinned: note.isPinned,
+		noteType: note.noteType === "drawing" ? "drawing" : "note",
+		status: null,
+		createdAt: null,
+		completedAt: null,
+		attachment: isDocument ? note.content : null,
+		attachedVideo: isVideo ? note.content : null,
+		resourceUrl: null,
+		documentPositions: null,
 	};
 }
 
@@ -51,7 +79,12 @@ export function getBrowserNoteSurface(note: BrowserNote): BrowserNoteSurface {
 export async function loadBrowserNotes(): Promise<BrowserNote[]> {
 	const v2 = await browserStorage.getState(NOTES_V2_KEY);
 	if (v2) {
-		try { const parsed: unknown = JSON.parse(v2); if (Array.isArray(parsed) && parsed.every(isBrowserNote)) return parsed; } catch { /* use retained v1 data */ }
+		try {
+			const parsed: unknown = JSON.parse(v2);
+			if (Array.isArray(parsed) && parsed.every(isBrowserNote)) return parsed;
+		} catch {
+			/* use retained v1 data */
+		}
 	}
 	const v1 = await browserStorage.getState(NOTES_V1_KEY);
 	if (!v1) return [];
@@ -61,7 +94,9 @@ export async function loadBrowserNotes(): Promise<BrowserNote[]> {
 		const migrated = parsed.map(toCanonicalBrowserNote);
 		await browserStorage.setState(NOTES_V2_KEY, JSON.stringify(migrated));
 		return migrated;
-	} catch { return []; }
+	} catch {
+		return [];
+	}
 }
 
 export async function persistBrowserNotes(notes: BrowserNote[]): Promise<void> {
@@ -69,20 +104,42 @@ export async function persistBrowserNotes(notes: BrowserNote[]): Promise<void> {
 }
 
 /** Creates a canonical plain note for source editor features such as wiki links. */
-export async function createBrowserLinkedNote(title: string): Promise<BrowserNote | null> {
+export async function createBrowserLinkedNote(
+	title: string,
+): Promise<BrowserNote | null> {
 	const normalizedTitle = title.trim();
 	if (!normalizedTitle) return null;
 	const notes = await loadBrowserNotes();
-	const existing = notes.find((note) => note.title.trim().toLocaleLowerCase() === normalizedTitle.toLocaleLowerCase());
+	const existing = notes.find(
+		(note) =>
+			note.title.trim().toLocaleLowerCase() ===
+			normalizedTitle.toLocaleLowerCase(),
+	);
 	if (existing) return existing;
 	const now = Date.now();
 	const note: BrowserNote = {
-		id: crypto.randomUUID(), title: normalizedTitle, content: "", noteType: "note", isPinned: false,
-		lastUpdated: now, modified: now, status: null, createdAt: now, completedAt: null,
-		attachment: null, attachedVideo: null, resourceUrl: null, documentPositions: null,
+		id: crypto.randomUUID(),
+		title: normalizedTitle,
+		content: "",
+		noteType: "note",
+		isPinned: false,
+		lastUpdated: now,
+		modified: now,
+		status: null,
+		createdAt: now,
+		completedAt: null,
+		attachment: null,
+		attachedVideo: null,
+		resourceUrl: null,
+		documentPositions: null,
 	};
 	const updated = [note, ...notes];
 	await persistBrowserNotes(updated);
-	if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent<BrowserNote[]>(BROWSER_NOTES_CHANGED, { detail: updated }));
+	if (typeof window !== "undefined")
+		window.dispatchEvent(
+			new CustomEvent<BrowserNote[]>(BROWSER_NOTES_CHANGED, {
+				detail: updated,
+			}),
+		);
 	return note;
 }
