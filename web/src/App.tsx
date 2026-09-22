@@ -15,6 +15,7 @@ import {
 } from "@web/services/noteHistory";
 import {
 	pickBrowserFile,
+	deleteStoredBrowserFile,
 	saveBytes,
 	savePickedFile,
 } from "@web/services/media";
@@ -436,6 +437,40 @@ function EditorRoute() {
 			notify("Failed to update pin.");
 		}
 	}
+	async function removeAttachment() {
+		const attachment = local.attachment;
+		const next = {
+			...local,
+			attachment: null,
+			documentPositions: null,
+			lastUpdated: Date.now(),
+			modified: Date.now(),
+		};
+		session.patchBrowser({ attachment: null, documentPositions: null });
+		try {
+			if (attachment) await deleteStoredBrowserFile(attachment);
+			await saveNote(next);
+		} catch {
+			notify("Failed to remove attachment.");
+		}
+	}
+	async function saveDocumentPosition(path: string, position: string) {
+		const documentPositions = {
+			...(local.documentPositions ?? {}),
+			[path]: position,
+		};
+		session.patchBrowser({ documentPositions });
+		try {
+			await saveNote({
+				...local,
+				documentPositions,
+				lastUpdated: Date.now(),
+				modified: Date.now(),
+			});
+		} catch {
+			notify("Failed to save document position.");
+		}
+	}
 	async function openHistory() {
 		try {
 			await save();
@@ -618,18 +653,8 @@ function EditorRoute() {
 					noteId={local.id}
 					videoUrl={local.attachedVideo}
 					onArticleDismiss={() => setActivePanel(null)}
-					onAttachmentDismiss={() => {
-						session.patchBrowser({ attachment: null });
-						setActivePanel(null);
-					}}
-					onDocumentPositionChange={(path, position) =>
-						session.patchBrowser({
-							documentPositions: {
-								...(local.documentPositions ?? {}),
-								[path]: position,
-							},
-						})
-					}
+					onAttachmentDismiss={() => setActivePanel(null)}
+					onDocumentPositionChange={saveDocumentPosition}
 					onTextSelected={(text) =>
 						setTemplateCommand({ markdown: `> ${text}`, timestamp: Date.now() })
 					}
@@ -650,9 +675,9 @@ function EditorRoute() {
 							onChange={(content) => session.patch({ content })}
 							hasAttachment={local.attachment !== null}
 							onAttachDocument={attachDocument}
-							onRemoveAttachment={() =>
-								session.patchBrowser({ attachment: null })
-							}
+							onRemoveAttachment={() => {
+								void removeAttachment();
+							}}
 							onRequestImage={requestImage}
 							onPasteImage={pasteImage}
 							onShowVideoModal={showVideoModal}
