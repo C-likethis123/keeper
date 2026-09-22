@@ -18,6 +18,12 @@ import {
 	saveBytes,
 	savePickedFile,
 } from "@web/services/media";
+import {
+	enqueueBrowserNoteDelete,
+	enqueueBrowserNoteSave,
+	queueMissingBrowserNotes,
+	syncBrowserNotes,
+} from "@web/services/noteSync";
 import { useTabStore } from "@keeper/stores/tabStore";
 import { deriveNoteType } from "@keeper/services/notes/noteTypeDerivation";
 import {
@@ -760,8 +766,21 @@ function RoutedApp() {
 		void loadBrowserNotes()
 			.catch(() => [])
 			.then((loaded) => {
-				setNotes(loaded.sort((a, b) => b.lastUpdated - a.lastUpdated));
+				const sorted = loaded.sort((a, b) => b.lastUpdated - a.lastUpdated);
+				setNotes(sorted);
 				setReady(true);
+				void queueMissingBrowserNotes(sorted)
+					.then(() => syncBrowserNotes(sorted))
+					.then(async (remote) => {
+						const next = [...remote].sort(
+							(a, b) => b.lastUpdated - a.lastUpdated,
+						);
+						setNotes(next);
+						await persistBrowserNotes(next);
+					})
+					.catch((error) =>
+						console.warn("[BrowserSync] Startup sync failed:", error),
+					);
 			});
 	}, []);
 	useEffect(() => {
@@ -774,6 +793,26 @@ function RoutedApp() {
 		return () =>
 			window.removeEventListener(BROWSER_NOTES_CHANGED, receiveNotes);
 	}, []);
+	useEffect(() => {
+		if (!ready) return;
+		const sync = () => {
+			void syncBrowserNotes(notes)
+				.then(async (remote) => {
+					const next = [...remote].sort(
+						(a, b) => b.lastUpdated - a.lastUpdated,
+					);
+					setNotes(next);
+					await persistBrowserNotes(next);
+				})
+				.catch((error) => console.warn("[BrowserSync] Poll failed:", error));
+		};
+		window.addEventListener("online", sync);
+		const poll = window.setInterval(sync, 30_000);
+		return () => {
+			window.removeEventListener("online", sync);
+			window.clearInterval(poll);
+		};
+	}, [notes, ready]);
 	const commit = useCallback(
 		async (next: BrowserNote[], message: string) => {
 			const previous = new Map(notes.map((note) => [note.id, note]));
@@ -785,6 +824,30 @@ function RoutedApp() {
 			const sorted = next.sort((a, b) => b.lastUpdated - a.lastUpdated);
 			setNotes(sorted);
 			await persistBrowserNotes(sorted);
+			await Promise.all(
+				sorted.flatMap((note) => {
+					const old = previous.get(note.id);
+					return !old || changedNote(old, note)
+						? [enqueueBrowserNoteSave(note, !old)]
+						: [];
+				}),
+			);
+			await Promise.all(
+				notes
+					.filter((note) => !next.some((item) => item.id === note.id))
+					.map((note) => enqueueBrowserNoteDelete(note.id)),
+			);
+			void syncBrowserNotes(sorted)
+				.then(async (remote) => {
+					const synced = [...remote].sort(
+						(a, b) => b.lastUpdated - a.lastUpdated,
+					);
+					setNotes(synced);
+					await persistBrowserNotes(synced);
+				})
+				.catch((error) =>
+					console.warn("[BrowserSync] Save sync failed:", error),
+				);
 			setToast(message);
 		},
 		[notes],
