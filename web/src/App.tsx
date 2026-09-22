@@ -521,6 +521,13 @@ function EditorRoute() {
 			notify("Failed to attach document.");
 		}
 	}
+	function handleEditorAttachDocument() {
+		if (local.attachment) {
+			setActivePanel("document");
+			return;
+		}
+		void attachDocument();
+	}
 	async function attachVideo(url: string) {
 		const next = {
 			...local,
@@ -673,9 +680,7 @@ function EditorRoute() {
 							value={session.draft.content}
 							onChange={(content) => session.patch({ content })}
 							hasAttachment={local.attachment !== null}
-							onAttachDocument={() => {
-								void attachDocument();
-							}}
+							onAttachDocument={handleEditorAttachDocument}
 							onRemoveAttachment={() => {
 								void removeAttachment();
 							}}
