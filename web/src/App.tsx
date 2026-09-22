@@ -682,6 +682,7 @@ function EditorRoute() {
 								)
 							}
 							onToggleActivePanel={toggleActivePanel}
+							onToggleRelatedNotes={() => setRelatedOpen((current) => !current)}
 							templateCommand={templateCommand}
 						/>
 					)}

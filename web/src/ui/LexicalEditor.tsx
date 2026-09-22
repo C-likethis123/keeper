@@ -8,7 +8,9 @@ type Props = {
 	onChange: (value: string) => void;
 	editorKey?: string;
 	onRequestImage?: () => Promise<{ src: string; altText?: string } | null>;
-	onPasteImage?: (image: PastedImage) => Promise<{ src: string; altText?: string } | null>;
+	onPasteImage?: (
+		image: PastedImage,
+	) => Promise<{ src: string; altText?: string } | null>;
 	onAttachDocument?: () => void;
 	onRemoveAttachment?: () => void;
 	onShowVideoModal?: () => void;
@@ -17,17 +19,54 @@ type Props = {
 	onOpenWikiLink?: (title: string) => void;
 	onToggleArticle?: () => void;
 	onToggleActivePanel?: () => void;
+	onToggleRelatedNotes?: () => void;
 	templateCommand?: { markdown: string; timestamp: number } | null;
 };
 
 /** Browser adapter for canonical Expo DOM editor. */
-export function LexicalEditor({ editorKey, hasAttachment, onAttachDocument, onChange, onInsertTemplateCommand, onOpenWikiLink, onPasteImage, onRemoveAttachment, onRequestImage, onShowVideoModal, onToggleActivePanel, onToggleArticle, templateCommand, value }: Props) {
+export function LexicalEditor({
+	editorKey,
+	hasAttachment,
+	onAttachDocument,
+	onChange,
+	onInsertTemplateCommand,
+	onOpenWikiLink,
+	onPasteImage,
+	onRemoveAttachment,
+	onRequestImage,
+	onShowVideoModal,
+	onToggleActivePanel,
+	onToggleArticle,
+	onToggleRelatedNotes,
+	templateCommand,
+	value,
+}: Props) {
 	const [command, setCommand] = useState<LexicalEditorCommand>();
-	const insertImage = useCallback(async (image: { src: string; altText?: string } | null) => { if (image) setCommand({ type: "insertImage", payload: image, timestamp: Date.now() }); }, []);
-	useEffect(() => { if (templateCommand) setCommand({ type: "insertMarkdown", payload: { markdown: templateCommand.markdown }, timestamp: templateCommand.timestamp }); }, [templateCommand]);
+	const insertImage = useCallback(
+		async (image: { src: string; altText?: string } | null) => {
+			if (image)
+				setCommand({
+					type: "insertImage",
+					payload: image,
+					timestamp: Date.now(),
+				});
+		},
+		[],
+	);
+	useEffect(() => {
+		if (templateCommand)
+			setCommand({
+				type: "insertMarkdown",
+				payload: { markdown: templateCommand.markdown },
+				timestamp: templateCommand.timestamp,
+			});
+	}, [templateCommand]);
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
-			if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "f") {
+			if (
+				(event.metaKey || event.ctrlKey) &&
+				event.key.toLocaleLowerCase() === "f"
+			) {
 				event.preventDefault();
 				setCommand({ type: "openFindReplace", timestamp: Date.now() });
 			}
@@ -44,12 +83,15 @@ export function LexicalEditor({ editorKey, hasAttachment, onAttachDocument, onCh
 			command={command}
 			hasAttachment={hasAttachment}
 			onAttachDocument={onAttachDocument}
-			onInsertImage={() => { void onRequestImage?.().then(insertImage); }}
+			onInsertImage={() => {
+				void onRequestImage?.().then(insertImage);
+			}}
 			onPasteImage={(image) => onPasteImage?.(image).then(insertImage)}
 			onInsertTemplateCommand={onInsertTemplateCommand}
 			onOpenWikiLink={onOpenWikiLink}
 			onToggleArticle={onToggleArticle}
 			onToggleActivePanel={onToggleActivePanel}
+			onToggleRelatedNotes={onToggleRelatedNotes}
 			onMarkdownChange={onChange}
 			onRemoveAttachment={onRemoveAttachment}
 			onShowVideoModal={onShowVideoModal}
