@@ -28,6 +28,7 @@ import {
 } from "@web/services/noteSync";
 import { useTabStore } from "@keeper/stores/tabStore";
 import { deriveNoteType } from "@keeper/services/notes/noteTypeDerivation";
+import { resolveOrCreateWikiLinkNoteId } from "@web/adapters/browser/wikiLinkUtils";
 import {
 	BROWSER_NOTES_CHANGED,
 	getBrowserNoteSurface,
@@ -585,14 +586,19 @@ function EditorRoute() {
 				modified: timestamp,
 			});
 	}
-	const openWikiLink = (title: string) => {
-		const target = notes.find(
-			(item) =>
-				item.title.trim().toLocaleLowerCase() ===
-				title.trim().toLocaleLowerCase(),
-		);
-		if (target) navigate(`/editor/${target.id}`);
-		else notify(`No note named "${title}".`);
+	const openWikiLink = async (title: string) => {
+		try {
+			await save();
+			const linkedId = await resolveOrCreateWikiLinkNoteId(title);
+			if (!linkedId) return;
+			const target =
+				notes.find((item) => item.id === linkedId) ??
+				(await loadBrowserNotes()).find((item) => item.id === linkedId);
+			openTab(linkedId, target?.title || title);
+			navigate(`/editor/${linkedId}`);
+		} catch {
+			notify("Failed to open linked note.");
+		}
 	};
 	const toggleActivePanel = () => {
 		const available = [
