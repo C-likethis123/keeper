@@ -67,39 +67,61 @@ export function BrowserDrawingEditor({
 	const [document, setDocument] = useState<DrawingDocument>(() =>
 		parseDrawingDocument(value),
 	);
+	const documentRef = useRef(document);
 	const [tool, setTool] = useState<Tool>("pen");
 	const [color, setColor] = useState("#202124");
 	const [strokeWidth, setStrokeWidth] = useState(4);
 	const [undo, setUndo] = useState<DrawingDocument[]>([]);
 	const [redo, setRedo] = useState<DrawingDocument[]>([]);
 	const active = useRef<ReturnType<typeof createDrawingStroke> | null>(null);
+	const [activeStroke, setActiveStroke] = useState<ReturnType<
+		typeof createDrawingStroke
+	> | null>(null);
 	const serializedDocument = useRef(serializeDrawingDocument(document));
 	useEffect(() => {
 		if (serializedDocument.current === value) return;
 		serializedDocument.current = value;
 		active.current = null;
-		setDocument(parseDrawingDocument(value));
+		setActiveStroke(null);
+		const next = parseDrawingDocument(value);
+		documentRef.current = next;
+		setDocument(next);
 		setUndo([]);
 		setRedo([]);
 	}, [value]);
 	const apply = useCallback(
 		(next: DrawingDocument, record = true) => {
 			if (record) {
-				setUndo((items) => [...items.slice(-49), document]);
+				setUndo((items) => [...items.slice(-49), documentRef.current]);
 				setRedo([]);
 			}
+			documentRef.current = next;
 			setDocument(next);
 			const serialized = serializeDrawingDocument(next);
 			serializedDocument.current = serialized;
 			onChange(serialized);
 		},
-		[document, onChange],
+		[onChange],
 	);
 	function point(event: PointerEvent<SVGSVGElement>) {
 		const bounds = event.currentTarget.getBoundingClientRect();
 		return {
-			x: (event.clientX - bounds.left) * (document.width / bounds.width),
-			y: (event.clientY - bounds.top) * (document.height / bounds.height),
+			x: Math.max(
+				0,
+				Math.min(
+					documentRef.current.width,
+					((event.clientX - bounds.left) / Math.max(1, bounds.width)) *
+						documentRef.current.width,
+				),
+			),
+			y: Math.max(
+				0,
+				Math.min(
+					documentRef.current.height,
+					((event.clientY - bounds.top) / Math.max(1, bounds.height)) *
+						documentRef.current.height,
+				),
+			),
 			pressure: event.pressure || undefined,
 		};
 	}
@@ -107,11 +129,12 @@ export function BrowserDrawingEditor({
 		event.currentTarget.setPointerCapture(event.pointerId);
 		const next = point(event);
 		if (tool === "eraser") {
-			const id = findStrokeAtPoint(document.strokes, next, strokeWidth);
+			const current = documentRef.current;
+			const id = findStrokeAtPoint(current.strokes, next, 18);
 			if (id)
 				apply({
-					...document,
-					strokes: document.strokes.filter((stroke) => stroke.id !== id),
+					...current,
+					strokes: current.strokes.filter((stroke) => stroke.id !== id),
 				});
 			return;
 		}
@@ -121,6 +144,7 @@ export function BrowserDrawingEditor({
 			width: strokeWidth,
 			points: [next],
 		});
+		setActiveStroke(active.current);
 	}
 	function move(event: PointerEvent<SVGSVGElement>) {
 		const stroke = active.current;
@@ -129,35 +153,39 @@ export function BrowserDrawingEditor({
 			...stroke,
 			points: appendPoint(stroke.points, point(event)),
 		};
-		setDocument((current) => ({
-			...current,
-			strokes: [...document.strokes, active.current ?? stroke],
-		}));
+		setActiveStroke(active.current);
 	}
 	function end() {
 		const stroke = active.current;
 		active.current = null;
-		if (stroke) apply({ ...document, strokes: [...document.strokes, stroke] });
+		setActiveStroke(null);
+		if (stroke) {
+			const current = documentRef.current;
+			apply({ ...current, strokes: [...current.strokes, stroke] });
+		}
 	}
 	function cycleBackground() {
-		const current = document.background.pattern;
+		const current = documentRef.current.background.pattern;
 		const pattern = patterns[(patterns.indexOf(current) + 1) % patterns.length];
-		apply({ ...document, background: { ...document.background, pattern } });
+		apply({
+			...documentRef.current,
+			background: { ...documentRef.current.background, pattern },
+		});
 	}
 	const undoLast = useCallback(() => {
 		const previous = undo.at(-1);
 		if (!previous) return;
-		setRedo((items) => [...items, document]);
+		setRedo((items) => [...items.slice(-49), documentRef.current]);
 		setUndo((items) => items.slice(0, -1));
 		apply(previous, false);
-	}, [apply, document, undo]);
+	}, [apply, undo]);
 	const redoLast = useCallback(() => {
 		const next = redo.at(-1);
 		if (!next) return;
-		setUndo((items) => [...items, document]);
+		setUndo((items) => [...items.slice(-49), documentRef.current]);
 		setRedo((items) => items.slice(0, -1));
 		apply(next, false);
-	}, [apply, document, redo]);
+	}, [apply, redo]);
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			const target = event.target as HTMLElement | null;
@@ -175,8 +203,8 @@ export function BrowserDrawingEditor({
 		window.addEventListener("keydown", onKeyDown, true);
 		return () => window.removeEventListener("keydown", onKeyDown, true);
 	}, [redoLast, undoLast]);
-	const visible = active.current
-		? [...document.strokes, active.current]
+	const visible = activeStroke
+		? [...document.strokes, activeStroke]
 		: document.strokes;
 	useAppKeyboardShortcuts({ onForceSave });
 	return (
