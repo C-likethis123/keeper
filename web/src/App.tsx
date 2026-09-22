@@ -642,18 +642,6 @@ function EditorRoute() {
 					status={local.status}
 					onStatus={(status) => update({ status })}
 				/>
-				{local.noteType === "resource" ? (
-					<div className="browser-editor-type">
-						<label htmlFor="resource-url">Resource URL</label>
-						<input
-							id="resource-url"
-							aria-label="Resource URL"
-							value={local.resourceUrl ?? ""}
-							onChange={(event) => update({ resourceUrl: event.target.value })}
-							placeholder="https://…"
-						/>
-					</div>
-				) : null}
 				<BrowserEditorSidePanelHost
 					activePanel={activePanel}
 					articleUrl={local.resourceUrl}

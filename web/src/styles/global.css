@@ -394,26 +394,6 @@ a {
 	background: #414147;
 	color: white;
 }
-.browser-editor-type {
-	display: flex;
-	align-items: center;
-	gap: .5rem;
-	padding: .6rem .85rem;
-	border-bottom: 1px solid var(--border);
-	background: #1c1c1f;
-	color: var(--muted);
-	font-size: .78rem;
-}
-.browser-editor-type select {
-	padding: .35rem .5rem;
-	border: 1px solid #44444b;
-	border-radius: .4rem;
-	background: #29292d;
-	color: inherit;
-}
-.browser-editor-type .button {
-	margin-left: auto;
-}
 .browser-related-notes-container {
 	max-height: 17.5rem;
 	overflow: auto;
