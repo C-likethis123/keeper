@@ -1,12 +1,50 @@
 import { FilterChip } from "@keeper/components/shared/FilterChip";
+import { TODO_STATUS_OPTIONS } from "@keeper/constants/noteTypes";
 import { darkTheme } from "@keeper/constants/themes/darkTheme";
-import type { CanonicalNoteStatus, CanonicalNoteType } from "@keeper/features/notes/note-contract";
+import type {
+	CanonicalNoteStatus,
+	CanonicalNoteType,
+} from "@keeper/features/notes/note-contract";
 import { ThemeProvider } from "@react-navigation/native";
+import { StyleSheet, Text, View } from "react-native";
 
-const TYPES: Array<[CanonicalNoteType, string]> = [["note", "Note"], ["journal", "Journal"], ["resource", "Resource"], ["todo", "Todo"], ["template", "Template"], ["drawing", "Drawing"]];
-const STATUSES: Array<[CanonicalNoteStatus, string]> = [["open", "Open"], ["doing", "Doing"], ["blocked", "Blocked"], ["done", "Done"]];
-
-/** Browser wiring around canonical Expo metadata chips. */
-export function BrowserNoteMetadata({ noteType, status, onNoteType, onStatus }: { noteType: CanonicalNoteType; status: CanonicalNoteStatus | null; onNoteType: (type: CanonicalNoteType) => void; onStatus: (status: CanonicalNoteStatus) => void }) {
-	return <ThemeProvider value={darkTheme}><section className="browser-editor-type" aria-label="Note metadata"><div>{TYPES.map(([value, label]) => <FilterChip key={value} label={label} selected={noteType === value} onPress={() => onNoteType(value)} />)}</div>{noteType === "todo" ? <div>{STATUSES.map(([value, label]) => <FilterChip key={value} label={label} selected={(status ?? "open") === value} onPress={() => onStatus(value)} />)}</div> : null}</section></ThemeProvider>;
+/** Browser renderer for the same Todo status controls in NoteEditorView. */
+export function BrowserNoteMetadata({
+	noteType,
+	status,
+	onStatus,
+}: {
+	noteType: CanonicalNoteType;
+	status: CanonicalNoteStatus | null;
+	onStatus: (status: CanonicalNoteStatus) => void;
+}) {
+	if (noteType !== "todo") return null;
+	return (
+		<ThemeProvider value={darkTheme}>
+			<View style={styles.group} accessibilityLabel="Todo status">
+				<Text style={styles.label}>Status</Text>
+				<View style={styles.row}>
+					{TODO_STATUS_OPTIONS.map((option) => (
+						<FilterChip
+							key={option.value}
+							label={option.label}
+							selected={(status ?? "open") === option.value}
+							onPress={() => onStatus(option.value ?? "open")}
+						/>
+					))}
+				</View>
+			</View>
+		</ThemeProvider>
+	);
 }
+
+const styles = StyleSheet.create({
+	group: { gap: 6 },
+	label: {
+		fontSize: 12,
+		fontWeight: "600",
+		color: darkTheme.colors.textMuted,
+		textTransform: "uppercase",
+	},
+	row: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+});

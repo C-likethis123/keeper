@@ -640,12 +640,6 @@ function EditorRoute() {
 				<BrowserNoteMetadata
 					noteType={local.noteType}
 					status={local.status}
-					onNoteType={(noteType) =>
-						update({
-							noteType,
-							status: noteType === "todo" ? (local.status ?? "open") : null,
-						})
-					}
 					onStatus={(status) => update({ status })}
 				/>
 				{local.noteType === "resource" ? (
