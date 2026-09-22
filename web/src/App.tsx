@@ -9,6 +9,7 @@ import { BrowserEditorSidePanelHost } from "@web/adapters/browser/editor/Browser
 import { BrowserTemplatePicker } from "@web/adapters/browser/editor/BrowserTemplatePicker";
 import { BrowserAttachVideoModal } from "@web/adapters/browser/editor/BrowserAttachVideoModal";
 import { useBrowserEditorSession } from "@web/adapters/browser/editor/useBrowserEditorSession";
+import { useBrowserAutoSave } from "@web/adapters/browser/editor/useBrowserAutoSave";
 import {
 	captureBrowserNoteVersion,
 	deleteBrowserNoteVersions,
@@ -58,7 +59,7 @@ import {
 type NotesContextValue = {
 	notes: BrowserNote[];
 	ready: boolean;
-	createNote(surface?: BrowserNoteSurface): BrowserNote;
+	createNote(surface?: BrowserNoteSurface, title?: string): BrowserNote;
 	saveNote(note: BrowserNote): Promise<void>;
 	deleteNote(id: string): Promise<void>;
 	notify(message: string): void;
@@ -219,8 +220,7 @@ function HomeRoute() {
 	function quickCreate(event: FormEvent) {
 		event.preventDefault();
 		if (!draft.trim()) return;
-		const note = createNote();
-		saveNote({ ...note, title: draft.trim() });
+		const note = createNote("note", draft.trim());
 		setDraft("");
 		navigate(`/editor/${note.id}`);
 	}
@@ -376,13 +376,11 @@ function EditorRoute() {
 		const tab = tabs.find((item) => item.noteId === localNoteId);
 		if (tab && tab.title !== localTitle) updateTabTitle(tab.id, localTitle);
 	}, [localNoteId, localTitle, tabs, updateTabTitle]);
-	useEffect(() => {
-		if (!note) return;
-		const timer = window.setTimeout(() => {
-			void session.save().catch(() => notify("Autosave failed."));
-		}, 800);
-		return () => window.clearTimeout(timer);
-	}, [note, notify, session.save]);
+	useBrowserAutoSave({
+		dirty: session.isDirty,
+		save: session.save,
+		onError: () => notify("Autosave failed."),
+	});
 	if (!note)
 		return (
 			<main className="page">
@@ -887,9 +885,9 @@ function RoutedApp() {
 				const old = previous.get(note.id);
 				return old && changedNote(old, note) ? [old] : [];
 			});
-			await Promise.all(versions.map(captureBrowserNoteVersion));
 			const sorted = next.sort((a, b) => b.lastUpdated - a.lastUpdated);
 			setNotes(sorted);
+			await Promise.all(versions.map(captureBrowserNoteVersion));
 			await persistBrowserNotes(sorted);
 			await Promise.all(
 				sorted.flatMap((note) => {
@@ -923,11 +921,11 @@ function RoutedApp() {
 		() => ({
 			notes,
 			ready,
-			createNote: (surface = "note") => {
+			createNote: (surface = "note", title = "") => {
 				const timestamp = Date.now();
 				const note: BrowserNote = {
 					id: crypto.randomUUID(),
-					title: "",
+					title,
 					content: "",
 					noteType: surface === "drawing" ? "drawing" : "note",
 					isPinned: false,
