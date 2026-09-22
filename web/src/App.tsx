@@ -370,6 +370,12 @@ function EditorRoute() {
 	const localNoteId = note?.id;
 	const localTitle = local.title || "Untitled";
 	useEffect(() => {
+		if (note?.attachedVideo) setActivePanel("video");
+		else if (note?.resourceUrl) setActivePanel("article");
+		else if (note?.attachment) setActivePanel("document");
+		else setActivePanel(null);
+	}, [note?.attachment, note?.attachedVideo, note?.resourceUrl]);
+	useEffect(() => {
 		if (localNoteId) openTab(localNoteId, localTitle);
 	}, [localNoteId, localTitle, openTab]);
 	useEffect(() => {
