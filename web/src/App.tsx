@@ -556,42 +556,6 @@ function EditorRoute() {
 	function showVideoModal() {
 		setVideoModalOpen(true);
 	}
-	const surface = getBrowserNoteSurface(local);
-	function changeSurface(next: BrowserNoteSurface) {
-		const timestamp = Date.now();
-		if (next === "drawing")
-			update({
-				noteType: "drawing",
-				attachment: null,
-				attachedVideo: null,
-				lastUpdated: timestamp,
-				modified: timestamp,
-			});
-		else if (next === "document")
-			update({
-				noteType: "note",
-				attachment: local.attachment ?? "",
-				attachedVideo: null,
-				lastUpdated: timestamp,
-				modified: timestamp,
-			});
-		else if (next === "video")
-			update({
-				noteType: "note",
-				attachment: null,
-				attachedVideo: local.attachedVideo ?? "",
-				lastUpdated: timestamp,
-				modified: timestamp,
-			});
-		else
-			update({
-				noteType: "note",
-				attachment: null,
-				attachedVideo: null,
-				lastUpdated: timestamp,
-				modified: timestamp,
-			});
-	}
 	const openWikiLink = async (title: string) => {
 		try {
 			await save();
@@ -679,32 +643,6 @@ function EditorRoute() {
 						/>
 					</div>
 				) : null}
-				<div className="browser-editor-type">
-					<label htmlFor="note-surface">View</label>
-					<select
-						id="note-surface"
-						aria-label="Note view"
-						value={surface}
-						onChange={(event) =>
-							changeSurface(event.target.value as BrowserNoteSurface)
-						}
-					>
-						{TYPES.map((type) => (
-							<option key={type} value={type}>
-								{typeLabel(type)}
-							</option>
-						))}
-					</select>
-					<button
-						type="button"
-						className="button"
-						onClick={() => {
-							void save();
-						}}
-					>
-						Save
-					</button>
-				</div>
 				<BrowserEditorSidePanelHost
 					activePanel={activePanel}
 					articleUrl={local.resourceUrl}
