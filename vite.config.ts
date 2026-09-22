@@ -17,6 +17,7 @@ export default defineConfig({
 			"@": fileURLToPath(new URL("./src", import.meta.url)),
 			"@web": fileURLToPath(new URL("./web/src", import.meta.url)),
 			"react-native": "react-native-web",
+			"react-native-safe-area-context": fileURLToPath(new URL("./web/src/adapters/browser/safeArea.tsx", import.meta.url)),
 			"@expo/vector-icons": fileURLToPath(new URL("./web/src/adapters/browser/expoVectorIcons.tsx", import.meta.url)),
 			"react-native-mathjax-html-to-svg": fileURLToPath(new URL("./web/src/adapters/browser/nativeMathJax.tsx", import.meta.url)),
 			"expo-image": fileURLToPath(new URL("./web/src/adapters/browser/expoImage.tsx", import.meta.url)),
