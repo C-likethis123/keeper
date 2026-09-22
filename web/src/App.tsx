@@ -495,16 +495,58 @@ function EditorRoute() {
 			altText: image.name,
 		};
 	}
-	function attachDocument() {
-		void pickBrowserFile(
-			"application/pdf,application/epub+zip,.pdf,.epub",
-		).then(async (file) => {
+	async function attachDocument() {
+		try {
+			const file = await pickBrowserFile(
+				"application/pdf,application/epub+zip,.pdf,.epub",
+			);
 			if (!file) return;
-			session.patchBrowser({
-				attachment: await savePickedFile(file, "attachments"),
-			});
+			const attachment = await savePickedFile(file, "attachments");
+			const next = {
+				...local,
+				attachment,
+				documentPositions: null,
+				lastUpdated: Date.now(),
+				modified: Date.now(),
+			};
+			session.patchBrowser({ attachment, documentPositions: null });
+			await saveNote(next);
 			setActivePanel("document");
-		});
+		} catch {
+			notify("Failed to attach document.");
+		}
+	}
+	async function attachVideo(url: string) {
+		const next = {
+			...local,
+			attachedVideo: url,
+			lastUpdated: Date.now(),
+			modified: Date.now(),
+		};
+		session.patchBrowser({ attachedVideo: url });
+		try {
+			await saveNote(next);
+			setActivePanel("video");
+			setVideoModalOpen(false);
+		} catch {
+			notify("Failed to attach video.");
+		}
+	}
+	async function removeVideo() {
+		const next = {
+			...local,
+			attachedVideo: null,
+			lastUpdated: Date.now(),
+			modified: Date.now(),
+		};
+		session.patchBrowser({ attachedVideo: null });
+		try {
+			await saveNote(next);
+			setActivePanel(null);
+			setVideoModalOpen(false);
+		} catch {
+			notify("Failed to remove video.");
+		}
 	}
 	function showVideoModal() {
 		setVideoModalOpen(true);
@@ -659,8 +701,7 @@ function EditorRoute() {
 						setTemplateCommand({ markdown: `> ${text}`, timestamp: Date.now() })
 					}
 					onVideoDismiss={() => {
-						session.patchBrowser({ attachedVideo: null });
-						setActivePanel(null);
+						void removeVideo();
 					}}
 				>
 					{local.noteType === "drawing" ? (
@@ -674,7 +715,9 @@ function EditorRoute() {
 							value={session.draft.content}
 							onChange={(content) => session.patch({ content })}
 							hasAttachment={local.attachment !== null}
-							onAttachDocument={attachDocument}
+							onAttachDocument={() => {
+								void attachDocument();
+							}}
 							onRemoveAttachment={() => {
 								void removeAttachment();
 							}}
@@ -728,14 +771,10 @@ function EditorRoute() {
 					currentVideo={local.attachedVideo}
 					onDismiss={() => setVideoModalOpen(false)}
 					onSave={(url) => {
-						session.patchBrowser({ attachedVideo: url });
-						setActivePanel("video");
-						setVideoModalOpen(false);
+						void attachVideo(url);
 					}}
 					onRemove={() => {
-						session.patchBrowser({ attachedVideo: null });
-						setActivePanel(null);
-						setVideoModalOpen(false);
+						void removeVideo();
 					}}
 				/>
 			</section>
