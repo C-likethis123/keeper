@@ -19,6 +19,7 @@ import {
 	savePickedFile,
 } from "@web/services/media";
 import { useTabStore } from "@keeper/stores/tabStore";
+import { deriveNoteType } from "@keeper/services/notes/noteTypeDerivation";
 import {
 	BROWSER_NOTES_CHANGED,
 	getBrowserNoteSurface,
@@ -497,7 +498,14 @@ function EditorRoute() {
 					status={session.status}
 					isPinned={session.draft.isPinned}
 					onChangeTitle={(title) => session.patch({ title })}
-					onBlurTitle={() => undefined}
+					onBlurTitle={() => {
+						const derived = deriveNoteType(session.draft.title);
+						const noteType = derived === "note" ? local.noteType : derived;
+						update({
+							noteType,
+							status: noteType === "todo" ? (local.status ?? "open") : null,
+						});
+					}}
 					onSubmitEditing={() =>
 						document
 							.querySelector<HTMLElement>("[aria-label='Note content']")
