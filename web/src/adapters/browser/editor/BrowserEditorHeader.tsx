@@ -1,77 +1,16 @@
+import { NativeEditorHeader } from "@keeper/adapters/native/editor/NativeEditorHeader";
+import { darkTheme } from "@keeper/constants/themes/darkTheme";
 import type { EditorHeaderProps } from "@keeper/features/editor/editor-header-contract";
-import type { FormEvent } from "react";
-import { BrowserSaveIndicator } from "./BrowserSaveIndicator";
+import { ThemeProvider } from "@react-navigation/native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
-export function BrowserEditorHeader({
-	title,
-	status,
-	isPinned,
-	onChangeTitle,
-	onBlurTitle,
-	onSubmitEditing,
-	onBack,
-	onShowHistory,
-	onTogglePin,
-	onDelete,
-}: EditorHeaderProps) {
-	function submit(event: FormEvent) {
-		event.preventDefault();
-		onSubmitEditing();
-	}
+/** Browser boundary for the unchanged source editor header. */
+export function BrowserEditorHeader(props: EditorHeaderProps) {
 	return (
-		<header className="browser-editor-header">
-			<button
-				type="button"
-				className="browser-header-action"
-				aria-label="Back"
-				onClick={onBack}
-			>
-				←
-			</button>
-			<form onSubmit={submit}>
-				<input
-					className="browser-editor-header__title"
-					aria-label="Title"
-					value={title}
-					onChange={(event) => onChangeTitle(event.target.value)}
-					onBlur={onBlurTitle}
-					placeholder="Title"
-				/>
-			</form>
-			<BrowserSaveIndicator status={status} />
-			<div className="browser-editor-header__actions">
-				<button
-					type="button"
-					className="browser-header-action"
-					aria-label="Version history"
-					title="Version history"
-					onClick={onShowHistory}
-				>
-					↶
-				</button>
-				<button
-					type="button"
-					className={
-						isPinned
-							? "browser-header-action browser-header-action--active"
-							: "browser-header-action"
-					}
-					aria-label="Pin note"
-					title="Pin note"
-					onClick={onTogglePin}
-				>
-					⚑
-				</button>
-				<button
-					type="button"
-					className="browser-header-action"
-					aria-label="Delete note"
-					title="Delete note"
-					onClick={onDelete}
-				>
-					⌫
-				</button>
-			</div>
-		</header>
+		<ThemeProvider value={darkTheme}>
+			<SafeAreaProvider>
+				<NativeEditorHeader {...props} />
+			</SafeAreaProvider>
+		</ThemeProvider>
 	);
 }
