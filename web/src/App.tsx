@@ -595,6 +595,14 @@ function EditorRoute() {
 				],
 		);
 	};
+	const navigateToRelatedNote = async (id: string) => {
+		try {
+			await save();
+			navigate(`/editor/${id}`);
+		} catch {
+			notify("Failed to save note.");
+		}
+	};
 	return (
 		<main className="page editor-page">
 			<section className="editor-shell">
@@ -709,7 +717,9 @@ function EditorRoute() {
 						<BrowserRelatedNotes
 							note={local}
 							notes={notes}
-							onNavigate={(id) => navigate(`/editor/${id}`)}
+							onNavigate={(id) => {
+								void navigateToRelatedNote(id);
+							}}
 						/>
 					</div>
 				) : null}
