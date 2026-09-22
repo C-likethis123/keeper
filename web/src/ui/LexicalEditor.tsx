@@ -25,6 +25,16 @@ export function LexicalEditor({ editorKey, hasAttachment, onAttachDocument, onCh
 	const [command, setCommand] = useState<LexicalEditorCommand>();
 	const insertImage = useCallback(async (image: { src: string; altText?: string } | null) => { if (image) setCommand({ type: "insertImage", payload: image, timestamp: Date.now() }); }, []);
 	useEffect(() => { if (templateCommand) setCommand({ type: "insertMarkdown", payload: { markdown: templateCommand.markdown }, timestamp: templateCommand.timestamp }); }, [templateCommand]);
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "f") {
+				event.preventDefault();
+				setCommand({ type: "openFindReplace", timestamp: Date.now() });
+			}
+		};
+		window.addEventListener("keydown", onKeyDown, true);
+		return () => window.removeEventListener("keydown", onKeyDown, true);
+	}, []);
 	return (
 		<ExpoLexicalMarkdownEditor
 			accessibilityLabel="Note content"
