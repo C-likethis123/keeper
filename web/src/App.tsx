@@ -360,6 +360,7 @@ function EditorRoute() {
 	const [activePanel, setActivePanel] = useState<
 		"document" | "video" | "article" | null
 	>(null);
+	const [editorInstanceKey, setEditorInstanceKey] = useState(0);
 	const [templateCommand, setTemplateCommand] = useState<{
 		markdown: string;
 		timestamp: number;
@@ -486,6 +487,7 @@ function EditorRoute() {
 	}
 	async function restoreVersion(version: { note: BrowserNote }) {
 		await session.restore(version.note);
+		setEditorInstanceKey((key) => key + 1);
 		notify("Version restored.");
 	}
 	async function requestImage() {
@@ -674,7 +676,8 @@ function EditorRoute() {
 						/>
 					) : (
 						<LexicalEditor
-							editorKey={local.id}
+							editorKey={`${local.id}-${editorInstanceKey}`}
+							noteId={local.id}
 							value={session.draft.content}
 							onChange={(content) => session.patch({ content })}
 							hasAttachment={local.attachment !== null}
@@ -721,8 +724,10 @@ function EditorRoute() {
 					templates={notes.filter((item) => item.noteType === "template")}
 					onDismiss={() => setTemplateOpen(false)}
 					onApply={(markdown) => {
-						setTemplateCommand({ markdown, timestamp: Date.now() });
+						session.patch({ content: markdown });
+						setEditorInstanceKey((key) => key + 1);
 						setTemplateOpen(false);
+						notify("Template applied.");
 					}}
 				/>
 				<BrowserAttachVideoModal

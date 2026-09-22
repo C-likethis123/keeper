@@ -30,7 +30,7 @@ export function BrowserTemplatePicker({
 				<header>
 					<div>
 						<h2 id="template-title">Choose template</h2>
-						<p>Pick template content to insert.</p>
+						<p>Replace this note with template content.</p>
 					</div>
 					<button
 						type="button"

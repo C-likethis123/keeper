@@ -8,6 +8,7 @@ type Props = {
 	value: string;
 	onChange: (value: string) => void;
 	editorKey?: string;
+	noteId?: string;
 	onRequestImage?: () => Promise<{ src: string; altText?: string } | null>;
 	onPasteImage?: (
 		image: PastedImage,
@@ -28,6 +29,7 @@ type Props = {
 /** Browser adapter for canonical Expo DOM editor. */
 export function LexicalEditor({
 	editorKey,
+	noteId,
 	hasAttachment,
 	onAttachDocument,
 	onChange,
@@ -74,7 +76,7 @@ export function LexicalEditor({
 			accessibilityLabel="Note content"
 			key={editorKey}
 			markdown={value}
-			noteId={editorKey ?? "browser-note"}
+			noteId={noteId ?? editorKey ?? "browser-note"}
 			command={command}
 			hasAttachment={hasAttachment}
 			onAttachDocument={onAttachDocument}
