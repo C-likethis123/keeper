@@ -698,19 +698,14 @@ function EditorRoute() {
 						/>
 					)}
 				</BrowserEditorSidePanelHost>
-				<button
-					type="button"
-					className="button"
-					onClick={() => setRelatedOpen((value) => !value)}
-				>
-					{relatedOpen ? "Hide related notes" : "Show related notes"}
-				</button>
 				{relatedOpen ? (
-					<BrowserRelatedNotes
-						note={local}
-						notes={notes}
-						onNavigate={(id) => navigate(`/editor/${id}`)}
-					/>
+					<div className="browser-related-notes-container">
+						<BrowserRelatedNotes
+							note={local}
+							notes={notes}
+							onNavigate={(id) => navigate(`/editor/${id}`)}
+						/>
+					</div>
 				) : null}
 				<BrowserNoteHistoryModal
 					open={historyOpen}
