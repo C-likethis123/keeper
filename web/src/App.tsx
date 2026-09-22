@@ -624,12 +624,19 @@ function EditorRoute() {
 					status={session.status}
 					isPinned={session.draft.isPinned}
 					onChangeTitle={changeTitle}
-					onBlurTitle={() => undefined}
-					onSubmitEditing={() =>
+					onBlurTitle={() => {
+						if (local.noteType === "drawing")
+							void save().catch(() => notify("Failed to save drawing."));
+					}}
+					onSubmitEditing={() => {
+						if (local.noteType === "drawing") {
+							void save().catch(() => notify("Failed to save drawing."));
+							return;
+						}
 						document
 							.querySelector<HTMLElement>("[aria-label='Note content']")
-							?.focus()
-					}
+							?.focus();
+					}}
 					onBack={() => {
 						void handleBack();
 					}}
@@ -712,6 +719,9 @@ function EditorRoute() {
 						<BrowserDrawingEditor
 							value={local.content}
 							onChange={(content) => session.patch({ content })}
+							onForceSave={() => {
+								void save().catch(() => notify("Failed to save drawing."));
+							}}
 						/>
 					) : (
 						<LexicalEditor

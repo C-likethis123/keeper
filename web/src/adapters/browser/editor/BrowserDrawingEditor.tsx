@@ -20,6 +20,7 @@ import {
 	useState,
 } from "react";
 import { DrawingPad } from "@web/ui/DrawingPad";
+import { useAppKeyboardShortcuts } from "@keeper/hooks/useAppKeyboardShortcuts";
 
 const patterns = ["none", "grid", "dots", "ruled"] as const;
 type Tool = DrawingTool | "eraser";
@@ -53,7 +54,12 @@ function backgroundStyle(document: DrawingDocument) {
 export function BrowserDrawingEditor({
 	value,
 	onChange,
-}: { value: string; onChange: (value: string) => void }) {
+	onForceSave,
+}: {
+	value: string;
+	onChange: (value: string) => void;
+	onForceSave?: () => void;
+}) {
 	// Vite v1 stored raster PNG data. Preserve it; newly created drawings use
 	// the canonical stroke-document format above.
 	if (value.startsWith("data:image/"))
@@ -161,6 +167,7 @@ export function BrowserDrawingEditor({
 	const visible = active.current
 		? [...document.strokes, active.current]
 		: document.strokes;
+	useAppKeyboardShortcuts({ onForceSave });
 	return (
 		<ThemeProvider value={darkTheme}>
 			<SafeAreaProvider>
