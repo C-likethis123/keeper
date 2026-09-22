@@ -13,7 +13,7 @@ import { useBrowserEditorSession } from "@web/adapters/browser/editor/useBrowser
 import { captureBrowserNoteVersion, deleteBrowserNoteVersions } from "@web/services/noteHistory";
 import { pickBrowserFile, saveBytes, savePickedFile } from "@web/services/media";
 import { useTabStore } from "@keeper/stores/tabStore";
-import { getBrowserNoteSurface, type BrowserNote, type BrowserNoteSurface, loadBrowserNotes, persistBrowserNotes } from "@web/ui/noteRepository";
+import { BROWSER_NOTES_CHANGED, getBrowserNoteSurface, type BrowserNote, type BrowserNoteSurface, loadBrowserNotes, persistBrowserNotes } from "@web/ui/noteRepository";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { createContext, type FormEvent, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
@@ -72,6 +72,7 @@ function SuggestedMocsRoute() { const { notes } = useNotes(); const suggestions 
 function RoutedApp() {
 	const [notes, setNotes] = useState<BrowserNote[]>([]); const [ready, setReady] = useState(false); const [toast, setToast] = useState<string | null>(null);
 	useEffect(() => { void loadBrowserNotes().catch(() => []).then((loaded) => { setNotes(loaded.sort((a, b) => b.lastUpdated - a.lastUpdated)); setReady(true); }); }, []);
+	useEffect(() => { const receiveNotes = (event: Event) => { const next = (event as CustomEvent<BrowserNote[]>).detail; if (Array.isArray(next)) setNotes([...next].sort((a, b) => b.lastUpdated - a.lastUpdated)); }; window.addEventListener(BROWSER_NOTES_CHANGED, receiveNotes); return () => window.removeEventListener(BROWSER_NOTES_CHANGED, receiveNotes); }, []);
 	const commit = useCallback(async (next: BrowserNote[], message: string) => { const previous = new Map(notes.map((note) => [note.id, note])); const versions = next.flatMap((note) => { const old = previous.get(note.id); return old && changedNote(old, note) ? [old] : []; }); await Promise.all(versions.map(captureBrowserNoteVersion)); const sorted = next.sort((a, b) => b.lastUpdated - a.lastUpdated); setNotes(sorted); await persistBrowserNotes(sorted); setToast(message); }, [notes]);
 	const value = useMemo<NotesContextValue>(() => ({ notes, ready, createNote: (surface = "note") => { const timestamp = Date.now(); const note: BrowserNote = { id: crypto.randomUUID(), title: "", content: "", noteType: surface === "drawing" ? "drawing" : "note", isPinned: false, lastUpdated: timestamp, modified: timestamp, status: null, createdAt: timestamp, completedAt: null, attachment: surface === "document" ? "" : null, attachedVideo: surface === "video" ? "" : null, resourceUrl: null, documentPositions: null }; void commit([note, ...notes], "Note created locally"); return note; }, saveNote: (note) => commit([note, ...notes.filter((item) => item.id !== note.id)], "Saved locally"), deleteNote: async (id) => { await commit(notes.filter((note) => note.id !== id), "Deleted locally"); await deleteBrowserNoteVersions(id); }, notify: setToast }), [notes, ready, commit]);
 	if (!ready) return <main className="startup">Opening browser storage…</main>;

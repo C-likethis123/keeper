@@ -15,6 +15,7 @@ type LegacyBrowserNote = {
 
 const NOTES_V1_KEY = "notes:v1";
 const NOTES_V2_KEY = "notes:v2";
+export const BROWSER_NOTES_CHANGED = "keeper:browser-notes-changed";
 
 function isLegacyBrowserNote(value: unknown): value is LegacyBrowserNote {
 	if (!value || typeof value !== "object") return false;
@@ -65,4 +66,23 @@ export async function loadBrowserNotes(): Promise<BrowserNote[]> {
 
 export async function persistBrowserNotes(notes: BrowserNote[]): Promise<void> {
 	await browserStorage.setState(NOTES_V2_KEY, JSON.stringify(notes));
+}
+
+/** Creates a canonical plain note for source editor features such as wiki links. */
+export async function createBrowserLinkedNote(title: string): Promise<BrowserNote | null> {
+	const normalizedTitle = title.trim();
+	if (!normalizedTitle) return null;
+	const notes = await loadBrowserNotes();
+	const existing = notes.find((note) => note.title.trim().toLocaleLowerCase() === normalizedTitle.toLocaleLowerCase());
+	if (existing) return existing;
+	const now = Date.now();
+	const note: BrowserNote = {
+		id: crypto.randomUUID(), title: normalizedTitle, content: "", noteType: "note", isPinned: false,
+		lastUpdated: now, modified: now, status: null, createdAt: now, completedAt: null,
+		attachment: null, attachedVideo: null, resourceUrl: null, documentPositions: null,
+	};
+	const updated = [note, ...notes];
+	await persistBrowserNotes(updated);
+	if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent<BrowserNote[]>(BROWSER_NOTES_CHANGED, { detail: updated }));
+	return note;
 }

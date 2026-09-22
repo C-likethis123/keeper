@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { browserStorage } from "@web/services/storage";
-import { getBrowserNoteSurface, loadBrowserNotes } from "./noteRepository";
+import { createBrowserLinkedNote, getBrowserNoteSurface, loadBrowserNotes } from "./noteRepository";
 
 describe("browser note repository", () => {
 	beforeEach(async () => { await browserStorage.setState("notes:v1", "[]"); await browserStorage.setState("notes:v2", ""); });
@@ -18,5 +18,12 @@ describe("browser note repository", () => {
 		expect(notes[2]).toMatchObject({ id: "v", attachedVideo: "https://video.example", content: "", lastUpdated: 3 });
 		expect(notes[3]).toMatchObject({ id: "r", noteType: "drawing", content: "data:image/png;base64,a", lastUpdated: 4 });
 		expect(JSON.parse((await browserStorage.getState("notes:v2")) ?? "[]")).toHaveLength(4);
+	});
+	it("creates one canonical target for a new wiki link", async () => {
+		const created = await createBrowserLinkedNote(" Project Alpha ");
+		const duplicate = await createBrowserLinkedNote("project alpha");
+		expect(created).toMatchObject({ title: "Project Alpha", content: "", noteType: "note", isPinned: false });
+		expect(duplicate?.id).toBe(created?.id);
+		expect(await loadBrowserNotes()).toHaveLength(1);
 	});
 });
