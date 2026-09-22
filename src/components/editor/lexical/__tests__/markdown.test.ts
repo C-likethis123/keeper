@@ -23,7 +23,8 @@ import {
   PASTE_COMMAND,
   createEditor,
 } from "lexical";
-import { JSDOM } from "jsdom";
+// Root jsdom is Vitest's ESM-only v27. Jest-Expo bundles CJS-compatible v20.
+import { JSDOM } from "jest-expo/node_modules/jsdom";
 import {
   $isDetailsNode,
   DetailsContentNode,
