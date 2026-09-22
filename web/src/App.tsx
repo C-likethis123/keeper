@@ -733,6 +733,9 @@ function EditorRoute() {
 							}
 							onToggleActivePanel={toggleActivePanel}
 							onToggleRelatedNotes={() => setRelatedOpen((current) => !current)}
+							onForceSave={() => {
+								void save().catch(() => notify("Failed to save note."));
+							}}
 							templateCommand={templateCommand}
 						/>
 					)}

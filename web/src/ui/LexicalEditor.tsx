@@ -1,6 +1,7 @@
 import ExpoLexicalMarkdownEditor from "@keeper/components/editor/lexical/LexicalMarkdownEditor";
 import type { PastedImage } from "@keeper/components/editor/lexical/extensions/MarkdownPasteExtension";
 import type { LexicalEditorCommand } from "@keeper/components/editor/lexical/extensions/CommandExtension";
+import { useAppKeyboardShortcuts } from "@keeper/hooks/useAppKeyboardShortcuts";
 import { useCallback, useEffect, useState } from "react";
 
 type Props = {
@@ -20,6 +21,7 @@ type Props = {
 	onToggleArticle?: () => void;
 	onToggleActivePanel?: () => void;
 	onToggleRelatedNotes?: () => void;
+	onForceSave?: () => void;
 	templateCommand?: { markdown: string; timestamp: number } | null;
 };
 
@@ -38,6 +40,7 @@ export function LexicalEditor({
 	onToggleActivePanel,
 	onToggleArticle,
 	onToggleRelatedNotes,
+	onForceSave,
 	templateCommand,
 	value,
 }: Props) {
@@ -61,19 +64,11 @@ export function LexicalEditor({
 				timestamp: templateCommand.timestamp,
 			});
 	}, [templateCommand]);
-	useEffect(() => {
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (
-				(event.metaKey || event.ctrlKey) &&
-				event.key.toLocaleLowerCase() === "f"
-			) {
-				event.preventDefault();
-				setCommand({ type: "openFindReplace", timestamp: Date.now() });
-			}
-		};
-		window.addEventListener("keydown", onKeyDown, true);
-		return () => window.removeEventListener("keydown", onKeyDown, true);
-	}, []);
+	useAppKeyboardShortcuts({
+		onForceSave,
+		onOpenFindReplace: () =>
+			setCommand({ type: "openFindReplace", timestamp: Date.now() }),
+	});
 	return (
 		<ExpoLexicalMarkdownEditor
 			accessibilityLabel="Note content"
