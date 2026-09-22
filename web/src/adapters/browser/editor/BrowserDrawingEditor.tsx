@@ -73,6 +73,15 @@ export function BrowserDrawingEditor({
 	const [undo, setUndo] = useState<DrawingDocument[]>([]);
 	const [redo, setRedo] = useState<DrawingDocument[]>([]);
 	const active = useRef<ReturnType<typeof createDrawingStroke> | null>(null);
+	const serializedDocument = useRef(serializeDrawingDocument(document));
+	useEffect(() => {
+		if (serializedDocument.current === value) return;
+		serializedDocument.current = value;
+		active.current = null;
+		setDocument(parseDrawingDocument(value));
+		setUndo([]);
+		setRedo([]);
+	}, [value]);
 	const apply = useCallback(
 		(next: DrawingDocument, record = true) => {
 			if (record) {
@@ -80,7 +89,9 @@ export function BrowserDrawingEditor({
 				setRedo([]);
 			}
 			setDocument(next);
-			onChange(serializeDrawingDocument(next));
+			const serialized = serializeDrawingDocument(next);
+			serializedDocument.current = serialized;
+			onChange(serialized);
 		},
 		[document, onChange],
 	);
