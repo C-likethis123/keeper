@@ -1,16 +1,12 @@
-import { PlatformStorageEngine } from "@/services/storage/engines/StorageEngine";
 import { BrowserStorageEngine } from "@/services/storage/engines/BrowserStorageEngine.web";
 import { MemoryStorageEngine } from "@/services/storage/engines/MemoryStorageEngine.web";
-import { getTauriInvoke } from "@/services/storage/runtime";
 import type { StorageEngine, StorageInitializeResult } from "@/services/storage/types";
 
 let _engine: StorageEngine | null = null;
 
 function getEngine(): StorageEngine {
 	if (!_engine) {
-		_engine = getTauriInvoke()
-			? new PlatformStorageEngine()
-			: new BrowserStorageEngine();
+		_engine = new BrowserStorageEngine();
 	}
 	return _engine;
 }

@@ -1,5 +1,4 @@
 import { browserStorage } from "@web/services/storage";
-import { getDesktopBridge } from "@web/services/platform";
 
 const urls = new Map<string, string>();
 function id(): string {
@@ -48,29 +47,10 @@ export function pickBrowserFile(accept: string): Promise<File | null> {
 		input.click();
 	});
 }
-/** Desktop pickers pass an absolute path; browser pickers pass a File above. */
-export async function copyDesktopFile(
-	sourcePath: string,
-	noteId: string,
-	kind: "image" | "attachment",
-): Promise<string> {
-	const bridge = getDesktopBridge();
-	if (!bridge)
-		throw new Error("Desktop file copy is unavailable outside Tauri");
-	const filename = `${id()}${extension(sourcePath, kind === "image" ? ".jpg" : "")}`;
-	return bridge.invoke<string>(
-		kind === "image" ? "copy_image" : "copy_attachment",
-		kind === "image"
-			? { sourcePath, filename }
-			: { sourcePath, noteId, filename },
-	);
-}
 export async function resolveLocalFile(
 	path: string,
 	type = "application/octet-stream",
 ): Promise<string> {
-	const desktop = getDesktopBridge();
-	if (desktop?.convertFileSrc) return desktop.convertFileSrc(path);
 	const cached = urls.get(path);
 	if (cached) return cached;
 	const bytes = await browserStorage.readFile(path);

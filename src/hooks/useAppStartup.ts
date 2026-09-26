@@ -31,9 +31,7 @@ export function useAppStartup(): AppStartupState {
 		hasTracedHookEntry = true;
 		traceStartupBootstrapEvent("bootstrap.use_app_startup_hook_entered", {
 			executionContextNote:
-				getExecutionContext() === "server"
-					? "SSR render cannot detect Tauri globals"
-					: undefined,
+				getExecutionContext() === "server" ? "SSR render" : undefined,
 		});
 	}
 	const [state, setState] = useState<AppStartupState>({
@@ -66,7 +64,7 @@ export function useAppStartup(): AppStartupState {
 		let isStorageReady = false;
 		const startSync = () => {
 			if (!isStorageReady) return;
-			// Do not hold normal sync behind the legacy scan. A large desktop vault
+			// Do not hold normal sync behind the legacy scan. A large local vault
 			// can take long enough that newly saved notes otherwise sit unsent.
 			startSyncPushService();
 			startSyncPullService();

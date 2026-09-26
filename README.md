@@ -1,14 +1,13 @@
 # Keeper
 
-Local-first Markdown notes for web/PWA and Tauri desktop.
+Local-first Markdown notes for web/PWA.
 
 ## Tech stack
 
 1. [Expo](https://expo.dev), Expo Router, React Native, and React Native Web
 2. [Lexical](https://lexical.dev/) rich Markdown editor, rendered through Expo DOM
-3. Local storage: native/Tauri Markdown plus SQLite indexes; browser IndexedDB storage
-4. Tauri 2 desktop shell
-5. Optional server sync for note operations, Git mirroring, and MOC classification
+3. Browser IndexedDB storage
+4. Optional server sync for note operations, Git mirroring, and MOC classification
 
 ## Get started
 
@@ -32,19 +31,9 @@ Useful commands:
 
 App source lives in `src/`. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
-### Desktop (Tauri)
-
-The web app can run in a desktop window via [Tauri](https://tauri.app/). Prerequisites: [Rust](https://rustup.rs/) and Xcode Command Line Tools (macOS: `xcode-select --install`).
-
-- **Dev**: `npm run desktop` — starts the Expo web server on `http://localhost:8082` and opens the Tauri window.
-- **Concurrent PWA + desktop dev**: desktop uses Expo web on `8082`; use `npm start -- --web` for the PWA dev server.
-- **Production build**: `npm run build:desktop` — exports the web bundle then builds the desktop app. Outputs are in `src-tauri/target/release/` (and bundle artifacts for your OS).
-
-The first run may prompt for system permissions (e.g. macOS).
-
 ### Web / PWA
 
-Web is an installable local-first direction, not yet full release parity. Production static exports include a manifest and service worker; browser notes and attachments use IndexedDB rather than Tauri or device filesystem APIs.
+Web is an installable local-first direction, not yet full release parity. Production static exports include a manifest and service worker; browser notes and attachments use IndexedDB.
 
 Current release blockers: complete browser index/cluster parity; attachment quota UX; and cross-browser offline/update testing. See [`plans/pwa-migration.md`](plans/pwa-migration.md).
 

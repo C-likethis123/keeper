@@ -11,7 +11,6 @@ Keeper emits structured startup timing logs under the `[StartupTrace]` prefix so
 
 ## How to view them
 
-- Desktop Tauri: run `npm run desktop` and watch the app or dev terminal output.
 - PWA: run `npm start -- --web` and inspect browser developer tools.
 
 Search for `[StartupTrace]` to isolate the structured startup events.
@@ -23,7 +22,7 @@ Each line uses a stable prefix plus a structured object:
 ```text
 [StartupTrace] {
   runId: "startup-...",
-  runtime: "desktop-tauri" | "unsupported",
+  runtime: "browser-pwa" | "unsupported",
   event: "...",
   timestampMs: 1234,
   ...
@@ -61,36 +60,13 @@ Per-step markers:
 
 Common `step` values:
 
-- `desktop.hydrate_ui`
+- `browser.hydrate_ui`
 - `unsupported.hydrate_ui`
 - `storage.initialize`
 - `storage.index_rebuild_after_init`
-- `git.initialize`
-- `git.index_rebuild_after_clone`
 
 Additional trace events:
 
-- `git.fetch_completed`
-- `git.resolve_head_before_sync_completed`
-- `git.remote_branches_listed`
-- `git.current_branch_resolved`
-- `git.branch_resolution_completed`
-- `git.branch_checkout_completed`
-- `git.merge_fast_forward_failed`
-- `git.merge_completed`
-- `git.resolve_head_after_sync_completed`
-- `git.last_synced_oid_read`
-- `git.last_synced_oid_written`
-- `git.changed_paths_computed`
-- `git.changed_paths_fallback`
-- `git.db_sync_completed`
-- `git.db_sync_failed`
-- `git.db_sync_skipped`
-- `git.repository_validation`
-- `git.clone_completed`
-- `git.runtime_unsupported`
-- `git.initialize_metrics`
-- `git.unsupported_runtime`
 - `runtime.unsupported_reason`
 - `storage.read_only_mode`
 
@@ -99,33 +75,7 @@ Additional trace events:
 1. Find a single `runId`.
 2. Use the bootstrap events to measure the pre-startup gap before `startup_run_started`.
 3. Check `startup_run_completed.totalMs` for the measured startup-strategy time only.
-4. Compare `step_completed.durationMs` for `storage.initialize`, `git.initialize`, and any rebuild step.
-5. For git-heavy launches, inspect the `git.initialize` payload:
-   - `validateRepoMs`
-   - `fetchMs`
-   - `resolveHeadBeforeMs`
-   - `resolveHeadAfterMs`
-   - `branchResolveMs`
-   - `remoteBranchListMs`
-   - `currentBranchResolveMs`
-   - `mergeMs`
-   - `fastForwardMergeMs`
-   - `regularMergeMs`
-   - `checkoutMs`
-   - `dbSyncMs`
-   - `readLastSyncedOidMs`
-   - `writeLastSyncedOidMs`
-   - `changedPathsMs`
-   - `indexSyncMs`
-   - `didHeadChange`
-   - `didDbSync`
-   - `usedFastForward`
-6. Inspect `git.db_sync_completed` to see:
-   - `syncMode`: `incremental` or `full_rebuild`
-   - `changedPathCount`
-   - `markdownChangedPathCount`
-   - `metrics.noteCount`, `metrics.readParseMs`, `metrics.sqlInsertMs`, `metrics.ftsRebuildMs`, or incremental sync metrics
-7. Cross-check with `[notesIndexDb] rebuildFromDisk metrics` or `[notesIndexDb] syncChanges metrics` if indexing looks expensive.
+4. Compare `step_completed.durationMs` for `storage.initialize` and any rebuild step.
 
 To estimate true JS-side startup from first traced bootstrap event through startup completion:
 
@@ -138,39 +88,8 @@ To estimate how much time passed before the startup strategy even began:
 ## What the numbers usually mean
 
 - A large gap between `bootstrap.layout_module_evaluated` and `bootstrap.run_startup_strategy_invoked` means the missing time is in app/bootstrap/render/effect scheduling, not in git or storage startup steps.
-- High `validateRepoMs`: repo validation or storage access is slow before sync starts.
-- High `fetchMs`: network or remote negotiation is likely the bottleneck.
-- High `mergeMs`: merge work is expensive.
-- High `checkoutMs`: working tree checkout is a major startup cost.
 - High `dbSyncMs` or `storage.index_rebuild_after_init`: note indexing is dominating startup.
-- `git.db_sync_completed.syncMode: "full_rebuild"` on desktop means the current code rebuilt the whole index instead of replaying a small delta.
-- Small desktop hydration time but large git time: UI is ready quickly and the delay is mostly background sync.
 - Large mobile `git.initialize` before `mobile.hydrate_ui`: mobile is still blocked on git before the app becomes interactive.
-
-## Desktop profiling matrix
-
-For desktop startup bottleneck checks, capture 3 runs per scenario and compare medians:
-
-- No remote changes
-- Small remote delta
-- Larger remote delta
-- First launch after clone or cache reset
-
-Record these fields for each run:
-
-- `startup_run_completed.totalMs`
-- `git.initialize.durationMs`
-- `fetchMs`
-- `branchResolveMs`
-- `mergeMs`
-- `checkoutMs`
-- `dbSyncMs`
-- `changedPathsMs`
-- `indexSyncMs`
-- `git.db_sync_completed.syncMode`
-- `git.db_sync_completed.changedPathCount`
-- `git.db_sync_completed.markdownChangedPathCount`
-- `git.db_sync_completed.metrics.noteCount`
 
 ## Current limitations
 

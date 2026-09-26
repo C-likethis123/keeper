@@ -9,7 +9,7 @@ import {
 test("security config parses exact CORS origins and numeric limits", () => {
 	const config = readServerSecurityConfig({
 		KEEPER_CORS_ALLOWED_ORIGINS:
-			"https://keeper.example,tauri://localhost,https://keeper.example",
+			"https://keeper.example,https://preview.keeper.example,https://keeper.example",
 		KEEPER_RATE_LIMIT_MAX: "60",
 		KEEPER_RATE_LIMIT_WINDOW_MS: "30000",
 		KEEPER_SYNC_BODY_LIMIT_BYTES: "2048",
@@ -17,7 +17,7 @@ test("security config parses exact CORS origins and numeric limits", () => {
 
 	assert.deepEqual(config.corsAllowedOrigins, [
 		"https://keeper.example",
-		"tauri://localhost",
+		"https://preview.keeper.example",
 	]);
 	assert.equal(config.rateLimitMax, 60);
 	assert.equal(config.rateLimitWindowMs, 30_000);
@@ -37,11 +37,10 @@ test("security config rejects wildcard and path origins", () => {
 	);
 });
 
-test("security config allows local Expo web by default", () => {
-	assert.ok(
-		readServerSecurityConfig({} as NodeJS.ProcessEnv).corsAllowedOrigins.includes(
-			"http://localhost:8082",
-		),
+test("security config allows production PWA by default", () => {
+	assert.deepEqual(
+		readServerSecurityConfig({} as NodeJS.ProcessEnv).corsAllowedOrigins,
+		["https://keeper.pages.dev"],
 	);
 });
 

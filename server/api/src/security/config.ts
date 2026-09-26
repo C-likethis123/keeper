@@ -16,12 +16,7 @@ export type ServerSecurityConfig = {
 
 export const DEFAULT_SERVER_SECURITY_CONFIG: ServerSecurityConfig = {
 	bodyLimitBytes: 64 * KIB,
-	corsAllowedOrigins: [
-		"https://keeper.pages.dev",
-		"tauri://localhost",
-		"http://tauri.localhost",
-		"http://localhost:8082",
-	],
+	corsAllowedOrigins: ["https://keeper.pages.dev"],
 	rateLimitMax: 120,
 	rateLimitWindowMs: 60_000,
 	syncBodyLimitBytes: 16 * MIB,

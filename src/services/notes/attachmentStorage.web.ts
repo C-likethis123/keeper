@@ -1,7 +1,4 @@
-import { getTauriInvoke } from "@/services/storage/runtime";
 import { storageEngine } from "@/services/storage/storageEngine";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { NOTES_ROOT } from "./Notes";
 
 export type AttachmentType = "pdf" | "epub";
 
@@ -46,12 +43,6 @@ export async function copyPickedAttachmentToNote(
 	noteId: string,
 	originalName?: string,
 ): Promise<string> {
-	const invoke = getTauriInvoke();
-	if (invoke) {
-		const filename = `${noteId}_${uniqueId()}${getExtension(originalName ?? uri)}`;
-		return invoke<string>("copy_attachment", { sourcePath: uri, noteId, filename });
-	}
-
 	const sourceName = originalName ?? uri;
 	const type = inferAttachmentType(sourceName);
 	if (!type) throw new Error("Unsupported attachment type");
@@ -66,26 +57,16 @@ export async function copyPickedAttachmentToNote(
 }
 
 export async function resolveAttachmentUri(relativePath: string): Promise<string> {
-	const invoke = getTauriInvoke();
-	if (!invoke) {
-		const cachedUrl = objectUrls.get(relativePath);
-		if (cachedUrl) return cachedUrl;
-		const bytes = await storageEngine.readFileBytes(relativePath);
-		if (!bytes) throw new Error(`Attachment not found: ${relativePath}`);
-		const type = inferAttachmentType(relativePath);
-		if (!type) throw new Error(`Unsupported attachment type: ${relativePath}`);
-		return cacheObjectUrl(relativePath, bytes, type);
-	}
-	const base = NOTES_ROOT.endsWith("/") ? NOTES_ROOT.slice(0, -1) : NOTES_ROOT;
-	return convertFileSrc(`${base}/${relativePath}`);
+	const cachedUrl = objectUrls.get(relativePath);
+	if (cachedUrl) return cachedUrl;
+	const bytes = await storageEngine.readFileBytes(relativePath);
+	if (!bytes) throw new Error(`Attachment not found: ${relativePath}`);
+	const type = inferAttachmentType(relativePath);
+	if (!type) throw new Error(`Unsupported attachment type: ${relativePath}`);
+	return cacheObjectUrl(relativePath, bytes, type);
 }
 
 export async function deleteAttachment(relativePath: string): Promise<void> {
-	const invoke = getTauriInvoke();
-	if (invoke) {
-		await invoke("delete_attachment", { relativePath });
-		return;
-	}
 	await storageEngine.deleteFile(relativePath);
 	const objectUrl = objectUrls.get(relativePath);
 	if (objectUrl) URL.revokeObjectURL(objectUrl);
@@ -93,7 +74,6 @@ export async function deleteAttachment(relativePath: string): Promise<void> {
 }
 
 export function releaseAttachmentUri(relativePath: string): void {
-	if (getTauriInvoke()) return;
 	const objectUrl = objectUrls.get(relativePath);
 	if (objectUrl) URL.revokeObjectURL(objectUrl);
 	objectUrls.delete(relativePath);

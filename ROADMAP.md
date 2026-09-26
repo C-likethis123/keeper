@@ -25,14 +25,14 @@ No currently confirmed P1 issues.
 **Shared UI Components Refactor**: Extracted repeated UI patterns into shared components and hooks. Added `FilterChip`, `IconButton`, and the `useBlockInputHandlers` hook to unify behavior and reduce duplication across the editor and filters.
 **Key files**: `src/components/shared/FilterChip.tsx`, `src/components/shared/IconButton.tsx`, `src/components/editor/blocks/useBlockInputHandlers.ts`
 
-**Desktop hydration bug**: Fixed. Desktop now hydrates immediately on Tauri while note-loading hooks wait for storage initialization state before reading from disk, so restored editor routes no longer get stuck on the wrong backend.
+**Web hydration bug**: Fixed. Browser UI now waits for storage initialization before note-loading hooks read local data, so restored editor routes no longer get stuck on the wrong backend.
 **Key files**: `src/app/_layout.tsx`, `src/hooks/useLoadNote.ts`, `src/hooks/useNotes.ts`, `src/stores/storageStore.ts`
 
 **Paragraph space insertion regression**: Fixed in this workspace. Paragraph blocks now fall back to native `TextInput` insertion for normal typing after manual cursor moves, while retaining markdown-trigger conversion only for explicit end-of-block trigger cases.
 **Key files**: `src/components/editor/blocks/UnifiedBlock.tsx`, `src/components/editor/HybridEditor.tsx`, `src/components/editor/blocks/BlockRegistry.tsx`, `src/components/editor/BlockRow.tsx`
 
-**Desktop note-list pagination regression**: Fixed in this workspace. Desktop note-list scrolling now loads additional notes again after the Tauri `index_list` command returned to a plain numeric cursor offset, and `NoteGrid` now has focused component coverage for load-more behavior.
-**Key files**: `src/components/NoteGrid.tsx`, `src/components/__tests__/NoteGrid.jest.test.tsx`, `src-tauri/storage_core/src/lib.rs`
+**Note-list pagination regression**: Fixed in this workspace. Note-list scrolling now loads additional notes again with a plain numeric cursor offset, and `NoteGrid` has focused component coverage for load-more behavior.
+**Key files**: `src/components/NoteGrid.tsx`, `src/components/__tests__/NoteGrid.jest.test.tsx`
 
 ---
 
@@ -238,7 +238,7 @@ The wiki link flow now covers exact-title resolution, create-on-miss behavior, d
 - Added component coverage for modal search, create-option rendering, keyboard submission, cancellation, and overlay selection behavior
 - Added `HybridEditor` platform tests covering rendered wikilink activation, including modifier-key behavior on web and create-on-miss navigation on iOS/Android
 - Editor follow-up work touched `NoteEditorView`, `HybridEditor`, and block rendering paths to support the newer activation flow
-- Manually validated clickable wiki links on desktop, including modifier-key behavior on web/Tauri
+- Manually validated clickable wiki links in browser, including modifier-key behavior
 - Confirmed device behavior consistent across desktop and mobile surfaces
 **Follow-up**:
 
@@ -406,14 +406,14 @@ Group notes into derived sections (Pinned → Recently Edited → MOC collection
 **Status**: Implemented
 **Task file**: `tasks/002-investigate-local-note-sections-and-ranking.md`
 **Current**: Home screen now shows sectioned view with Pinned notes, Recently Edited (7-day window), dynamic MOC collections (notes with ≥3 outgoing wikilinks showing their BFS neighborhood), and All Notes. Wikilink graph is persisted in a `wiki_links` edge table and queried via recursive CTEs. Section headers are rendered in `NoteGrid` with focused test coverage for load-more and section boundary behavior.
-**Key files**: `src/services/notes/indexDb/repository.ts`, `src/services/notes/notesIndexDb.ts`, `src/services/notes/wikiLinkParser.ts`, `src/hooks/useNotes.ts`, `src/hooks/useSuspenseNotes.ts`, `src/components/NoteGrid.tsx`, `src/components/__tests__/NoteGrid.jest.test.tsx`, `src-tauri/storage_core/src/lib.rs`
+**Key files**: `src/services/notes/indexDb/repository.ts`, `src/services/notes/notesIndexDb.ts`, `src/services/notes/wikiLinkParser.ts`, `src/hooks/useNotes.ts`, `src/hooks/useSuspenseNotes.ts`, `src/components/NoteGrid.tsx`, `src/components/__tests__/NoteGrid.jest.test.tsx`
 **Implementation details**:
 - `wiki_links` edge table (migration 004) with `source_id → target_id` indexed both directions
 - `modified` column (migration 005) populated from frontmatter with file `mtime` fallback
 - Incremental wikilink sync via `content_hash` dedup during rebuild and git sync
 - 7 graph query functions: backlinks, transitive backlinks, outgoing links, MOC scores, BFS neighborhood, orphaned notes, recently edited
 - `NoteGrid` renders sections with headers; backward-compatible with flat note lists
-- Desktop parity via Tauri/Rust `rusqlite` equivalents for all graph queries
+- Browser graph queries derive relationships from local IndexedDB notes
 
 ---
 
@@ -424,7 +424,7 @@ Attach a PDF or ePub file to a note and read it side-by-side with the editor —
 **Status**: Implemented
 **Task file**: `tasks/003-pdf-epub-split-viewer.md`
 **Features**:
-- PDF rendered via PDF.js in a WebView (or native `<iframe>` on web/Tauri)
+- PDF rendered via PDF.js in a WebView (or native `<iframe>` on web)
 - ePub rendered via epub.js in a WebView
 - Attachments copied into `_attachments/` inside the note directory; relative path persisted in frontmatter (`attachment:` key)
 - `splitMode` state in `NoteEditorView` controls `'none' | 'pdf' | 'epub'` panels
@@ -436,14 +436,13 @@ Attach a PDF or ePub file to a note and read it side-by-side with the editor —
 
 **Key files**:
 - `src/components/editor/document/DocumentPanel.tsx` — Native split panel with WebView
-- `src/components/editor/document/DocumentPanel.web.tsx` — Web/Tauri iframe panel
+- `src/components/editor/document/DocumentPanel.web.tsx` — Browser iframe panel
 - `src/components/editor/document/documentPositionStore.ts` — Position persistence
 - `src/components/editor/document/viewerTemplates.ts` — PDF.js / epub.js HTML templates
 - `src/services/notes/attachmentStorage.ts` — Attachment copy/resolve (native)
 - `src/services/notes/attachmentStorage.web.ts` — Attachment copy/resolve (web)
 - `src/components/NoteEditorView.tsx` — Split-screen orchestration
 - `src/components/editor/EditorToolbar.tsx` — Attachment toolbar button
-- `src-tauri/src/storage/mod.rs` — Tauri attachment path resolution
 
 ---
 
@@ -458,7 +457,6 @@ Replace the BFS/wikilink-based MOC categorisation from Phase 11 with a semantic 
 - `src/services/notes/clusterService.ts` — JSON import + cluster CRUD
 - `src/components/MOCSuggestions.tsx` — cluster review UI
 - `src/migrations/006_add_clusters.ts` — mobile SQLite schema
-- `src-tauri/storage_core/src/migrations/v6_add_clusters.rs` — desktop schema
 
 **Replaces**: MOC collection logic in Phase 11 (`wiki_links` BFS neighbourhood + recursive CTEs). The new engine is suggestion-only; the system never auto-creates MOC notes.
 
@@ -469,7 +467,7 @@ Replace the BFS/wikilink-based MOC categorisation from Phase 11 with a semantic 
 - Agglomerative clustering → `clusters` + `cluster_members` tables
 - Candidate MOC titles from TF-IDF keywords or LLM summarisation of note titles
 - Confidence score per cluster (average intra-cluster similarity + density)
-- Single pipeline outputs synced to both mobile and desktop SQLite DBs
+- Pipeline outputs sync through server-owned cluster APIs
 
 **New SQLite tables**:
 - `embeddings(note_id, embedding BLOB)`
@@ -576,4 +574,4 @@ See `CLAUDE.md` for:
 - Editor model (Document, BlockNode, Transaction, History)
 - State management (editorStore, toastStore)
 - Data persistence (filesystem, SQLite, Git)
-- Platform-specific implementations (web, iOS, Android, Tauri desktop)
+- Platform-specific implementations (web, iOS, Android)

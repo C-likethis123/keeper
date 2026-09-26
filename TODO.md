@@ -27,6 +27,6 @@ Historical quick reference. Not current source of truth. Use `README.md` for cur
 - **Testing status**: `npm test` covers the immutable editor core plus `EditorState`, selected `editorStore` flows, `frontmatter`, `startupSteps`, `startupStrategies`, `noteTypeDerivation`, `src/app/editor.tsx`, `src/app/index.tsx`, `src/app/_layout.tsx`, `NoteEditorView`, `NoteFiltersDropdown`, `EditorToolbar`, `BlockRow`, focused `NoteGrid` pagination behavior, `useNotes`, `useToolbarActions`, `useAutoSave`, `useLoadNote`, `useAppStartup`, wikilink modal/overlay interactions, and `HybridEditor` rendered-wikilink activation on web/iOS/Android
 - **Testing TODO**: Add `SaveIndicator`-adjacent autosave assertions if needed, deepen `HybridEditor` editing flows beyond rendered wikilinks, and add additional `editorStore` flows as regressions justify them
 - **Recently shipped**: note type is now derived automatically from both title cues and lightweight body-content heuristics via `deriveNoteType`; generic notes with checklist-heavy or link-heavy bodies can now save as todos/resources without needing a typed title prefix
-- **Recently fixed**: desktop note-list scrolling now loads additional notes again after the Tauri index cursor returned to a plain numeric offset
+- **Recently fixed**: note-list scrolling now loads additional notes after index pagination correction
 
 For full context on each item, see `ROADMAP.md`.

@@ -1,75 +1,70 @@
-import { getTauriInvoke } from "@/services/storage/runtime";
+import { extractSummary } from "@/services/notes/indexDb/mapper";
 import type {
 	ListNotesResult,
 	NoteIndexItem,
 	NoteIndexRow,
 	NotesIndexRebuildMetrics,
-} from "./indexDb/types";
-import type { NoteListFilters } from "./types";
+} from "@/services/notes/indexDb/types";
+import type { Note, NoteListFilters } from "@/services/notes/types";
+import { parseWikiLinksFromBody } from "@/services/notes/wikiLinkParser";
+import { storageEngine } from "@/services/storage/storageEngine";
 
-export type {
-	ListNotesResult,
-	NoteIndexItem,
-	NotesIndexRebuildMetrics,
-};
+export type { ListNotesResult, NoteIndexItem, NotesIndexRebuildMetrics };
 
-type TauriIndexItem = {
-	noteId: string;
-	title: string;
-	summary: string;
-	isPinned: boolean;
-	updatedAt: number;
-	noteType: string;
-	status: string | null;
-};
+function normalizeTitle(title: string): string {
+	return title.trim().toLocaleLowerCase();
+}
 
-function invoke<T>(
-	command: string,
-	args?: Record<string, unknown>,
-): Promise<T> {
-	const fn = getTauriInvoke();
-	if (!fn) throw new Error("Tauri invoke unavailable");
-	return fn<T>(command, args);
+async function loadAllNotes(): Promise<Note[]> {
+	const notes = await Promise.all(
+		(await storageEngine.listNoteFiles()).map(({ id }) =>
+			storageEngine.loadNote(id),
+		),
+	);
+	return notes.filter((note): note is Note => note !== null);
+}
+
+function buildLinkGraph(notes: Note[]): Map<string, Set<string>> {
+	const idsByTitle = new Map(
+		notes.map((note) => [normalizeTitle(note.title), note.id]),
+	);
+	return new Map(
+		notes.map((note) => [
+			note.id,
+			new Set(
+				parseWikiLinksFromBody(note.content)
+					.map((title) => idsByTitle.get(normalizeTitle(title)))
+					.filter((id): id is string => id !== undefined),
+			),
+		]),
+	);
 }
 
 export async function notesIndexDbHasRows(): Promise<boolean> {
-	const result = await invoke<{ items: unknown[]; cursor?: number }>(
-		"index_list",
-		{ input: { query: "", limit: 1 } },
-	);
-	return result.items.length > 0;
+	return (await storageEngine.indexList("", 1)).items.length > 0;
 }
 
-export async function notesIndexDbUpsert(_item: NoteIndexItem): Promise<void> {
-	// On desktop, upserts go through PlatformStorageEngine.indexUpsert; this path is unreachable.
+export async function notesIndexDbUpsert(item: NoteIndexItem): Promise<void> {
+	await storageEngine.indexUpsert(item);
 }
 
-export async function notesIndexDbDelete(_noteId: string): Promise<void> {
-	// On desktop, deletes go through PlatformStorageEngine.indexDelete; this path is unreachable.
+export async function notesIndexDbDelete(noteId: string): Promise<void> {
+	await storageEngine.indexDelete(noteId);
 }
 
 export async function notesIndexDbGetById(
 	noteId: string,
 ): Promise<NoteIndexItem | null> {
-	type ReadNoteResult = {
-		id: string;
-		title: string;
-		summary: string;
-		isPinned: boolean;
-		lastUpdated: number;
-		noteType: string;
-		status: string | null;
-	};
-	const r = await invoke<ReadNoteResult | null>("read_note", { id: noteId });
-	if (!r) return null;
+	const note = await storageEngine.loadNote(noteId);
+	if (!note) return null;
 	return {
-		noteId: r.id,
-		title: r.title,
-		summary: r.summary,
-		isPinned: r.isPinned,
-		updatedAt: r.lastUpdated,
-		noteType: r.noteType as NoteIndexItem["noteType"],
-		status: r.status as NoteIndexItem["status"],
+		noteId: note.id,
+		title: note.title,
+		summary: note.noteType === "drawing" ? "Drawing" : extractSummary(note.content),
+		isPinned: note.isPinned,
+		updatedAt: note.lastUpdated,
+		noteType: note.noteType,
+		status: note.status,
 	};
 }
 
@@ -77,60 +72,55 @@ export async function notesIndexDbListAll(
 	query: string,
 	limit: number,
 	offset?: number,
-	_filters?: NoteListFilters,
+	filters?: NoteListFilters,
 ): Promise<ListNotesResult> {
-	const result = await invoke<{ items: TauriIndexItem[]; cursor?: number }>(
-		"index_list",
-		{ input: { query, limit, offset } },
-	);
-	return {
-		items: result.items.map((r) => ({
-			noteId: r.noteId,
-			title: r.title,
-			summary: r.summary,
-			isPinned: r.isPinned,
-			updatedAt: r.updatedAt,
-			noteType: r.noteType as NoteIndexItem["noteType"],
-			status: r.status as NoteIndexItem["status"],
-		})),
-		cursor: result.cursor,
-	};
+	return storageEngine.indexList(query, limit, offset, filters);
 }
 
 export async function notesIndexDbGetBacklinks(
 	noteId: string,
 ): Promise<string[]> {
-	return invoke<string[]>("wiki_links_get_backlinks", { noteId });
+	const graph = buildLinkGraph(await loadAllNotes());
+	return [...graph.entries()]
+		.filter(([, targets]) => targets.has(noteId))
+		.map(([sourceId]) => sourceId);
 }
 
 export async function notesIndexDbGetOutgoingLinks(
 	noteId: string,
 ): Promise<string[]> {
-	return invoke<string[]>("wiki_links_get_outgoing", { noteId });
+	const graph = buildLinkGraph(await loadAllNotes());
+	return [...(graph.get(noteId) ?? [])];
 }
 
 export async function notesIndexDbGetOrphanedNotes(): Promise<string[]> {
-	return invoke<string[]>("wiki_links_get_orphaned_notes");
+	const notes = await loadAllNotes();
+	const graph = buildLinkGraph(notes);
+	const linkedIds = new Set<string>();
+	for (const [sourceId, targets] of graph) {
+		if (targets.size > 0) linkedIds.add(sourceId);
+		for (const targetId of targets) linkedIds.add(targetId);
+	}
+	return notes.filter((note) => !linkedIds.has(note.id)).map((note) => note.id);
 }
 
 export async function notesIndexDbGetRecentlyEditedNotes(
 	limit = 10,
 	daysBack = 7,
 ): Promise<NoteIndexRow[]> {
-	const rows = await invoke<TauriIndexItem[]>(
-		"wiki_links_get_recently_edited",
-		{
-			limit,
-			daysBack,
-		},
-	);
-	return rows.map((r) => ({
-		id: r.noteId,
-		title: r.title,
-		summary: r.summary,
-		is_pinned: r.isPinned ? 1 : 0,
-		updated_at: r.updatedAt,
-		note_type: r.noteType as NoteIndexRow["note_type"],
-		status: r.status as NoteIndexRow["status"],
-	}));
+	const cutoff = Date.now() - daysBack * 24 * 60 * 60 * 1000;
+	return (await loadAllNotes())
+		.filter((note) => note.lastUpdated >= cutoff)
+		.sort((left, right) => right.lastUpdated - left.lastUpdated)
+		.slice(0, limit)
+		.map((note) => ({
+			id: note.id,
+			title: note.title,
+			summary:
+				note.noteType === "drawing" ? "Drawing" : extractSummary(note.content),
+			is_pinned: note.isPinned ? 1 : 0,
+			updated_at: note.lastUpdated,
+			note_type: note.noteType,
+			status: note.status ?? null,
+		}));
 }

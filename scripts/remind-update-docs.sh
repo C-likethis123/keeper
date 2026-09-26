@@ -25,7 +25,6 @@ DOC_TRIGGERS=(
     "app.config.js"
     "app.json"
     "scripts/"
-    "src-tauri/src/lib.rs"
     "android/app/build.gradle"
     "ios/native/"
 )

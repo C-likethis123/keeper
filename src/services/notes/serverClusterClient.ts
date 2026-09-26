@@ -24,6 +24,13 @@ type ServerClusterMemberRow = {
 	score: number;
 };
 
+type ServerClusterFeedbackRow = {
+	clusterId: string;
+	eventType: string;
+	eventData: Record<string, unknown> | null;
+	createdAt: string;
+};
+
 function parseTime(value: string | null): number | null {
 	if (!value) return null;
 	const parsed = Date.parse(value);
@@ -188,4 +195,21 @@ export async function logServerClusterFeedback(
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ eventType, eventData }),
 	});
+}
+
+export async function listServerClusterFeedback(): Promise<
+	Array<{
+		clusterId: string;
+		eventType: string;
+		eventData: Record<string, unknown> | null;
+		createdAt: number;
+	}>
+> {
+	const rows = await request<ServerClusterFeedbackRow[]>("/clusters/feedback");
+	return rows.map((row) => ({
+		clusterId: row.clusterId,
+		eventType: row.eventType,
+		eventData: row.eventData,
+		createdAt: parseTime(row.createdAt) ?? 0,
+	}));
 }

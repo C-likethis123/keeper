@@ -53,8 +53,6 @@ yarn-error.*
 /ios
 /android
 
-# Tauri
-src-tauri/target/
 
 # cursor debug
 .cursor/debug*.log

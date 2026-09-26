@@ -1,10 +1,10 @@
 # Expo/RN web migration audit
 
-Scope: `src/`, root Expo/test configuration, and `package.json`, inspected 2026-09-19.
+Scope: `src/`, root Expo/test configuration, and `package.json`, inspected 2026-09-19 and updated 2026-09-26 after desktop removal.
 
 ## Result
 
-The app has **129 direct Expo, React Native, React Navigation, and RNTL import occurrences** in `src/`, plus Expo/Jest configuration.  `src/**/*.web.ts(x)` is not browser-only: it is the shared web/Tauri implementation, with explicit runtime branches for Tauri.
+The original audit found **129 direct Expo, React Native, React Navigation, and RNTL import occurrences** in `src/`, plus Expo/Jest configuration. Desktop support has since been removed; `src/**/*.web.ts(x)` now targets browsers only.
 
 ## Complete import inventory
 
@@ -57,21 +57,9 @@ rg -n --glob '*.{ts,tsx,js,jsx}' \
 | AsyncStorage | IndexedDB, preferably behind small `KeyValueStore` adapter | CRDT/sync state and layout preference. |
 | Jest Expo + RNTL | Vitest + `@testing-library/react` + `@testing-library/user-event`, with jsdom | Replace `jest.config.js`, `jest.setup.ts`, test scripts, RN mocks, `renderRouter`, and RNTL queries/events. |
 
-## Tauri-only: retain
+## Desktop removal
 
-Keep `src-tauri/**` unchanged: Rust storage core, commands, migrations, Tauri configuration, and build pipeline are desktop implementation.
-
-Keep these TypeScript integration paths, but isolate them behind runtime/platform adapters rather than deleting them:
-
-- `src/services/storage/runtime.ts` — detects and invokes Tauri internals.
-- `src/services/storage/engines/StorageEngine.web.ts` — despite `.web`, this is Tauri's command-backed storage engine.
-- `src/services/notes/attachmentStorage.web.ts` — Tauri `convertFileSrc` and `copy_attachment` command branch.
-- `src/services/notes/imageStorage.web.ts` — Tauri asset URL branch.
-- `src/components/noteEditorFilePickers.web.ts` — dynamic Tauri dialog branch; browser `<input>` branch already present.
-- `src/components/editor/video/videoUtils.ts` — Tauri localhost/protocol handling.
-- `package.json` Tauri scripts/dependencies and `src-tauri/tauri*.conf.json`.
-
-Do not route browser code through these modules after split. Browser gets `*.browser.ts`; desktop retains `*.tauri.ts` (or the existing runtime-guarded module) implementing the same storage/picker interfaces.
+Desktop shell, Rust storage core, desktop build scripts/dependencies, runtime detection, command bridge, and desktop-specific attachment branches were removed on 2026-09-26. Browser storage, index, attachment, image, picker, and startup paths now use browser APIs directly.
 
 ## Suggested conversion order
 

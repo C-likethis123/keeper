@@ -1,4 +1,3 @@
-import { getTauriInvoke } from "@/services/storage/runtime";
 import {
 	listServerAcceptedClusters,
 	listServerAcceptedSuperClusters,
@@ -23,173 +22,97 @@ import type {
 
 export type { ClusterRow, ClusterMemberRow, SuperClusterRow };
 
-type TauriClusterMemberRow = {
-	clusterId: string;
-	noteId: string;
-	score: number;
-};
-
-function invoke<T>(
-	command: string,
-	args?: Record<string, unknown>,
-): Promise<T> {
-	const fn = getTauriInvoke();
-	if (!fn) throw new Error("Tauri invoke unavailable");
-	return fn<T>(command, args);
-}
-
 export async function importClustersFromFile(): Promise<number> {
-	return invoke<number>("clusters_import");
+	return 0;
 }
 
 export async function listActiveClusters(): Promise<ClusterRow[]> {
-	if (shouldUseServerClusters()) {
-		return listServerActiveClusters();
-	}
-	return invoke<ClusterRow[]>("clusters_get_active");
+	return shouldUseServerClusters() ? listServerActiveClusters() : [];
 }
 
 export async function listClusterMembers(
 	clusterId: string,
 ): Promise<ClusterMemberRow[]> {
-	if (shouldUseServerClusters()) {
-		return listServerClusterMembers(clusterId);
-	}
-	const rows = await invoke<TauriClusterMemberRow[]>("clusters_get_members", {
-		clusterId,
-	});
-	return rows.map((r) => ({
-		cluster_id: r.clusterId,
-		note_id: r.noteId,
-		score: r.score,
-	}));
+	return shouldUseServerClusters()
+		? listServerClusterMembers(clusterId)
+		: [];
 }
 
 export async function clusterDismiss(clusterId: string): Promise<void> {
-	if (shouldUseServerClusters()) {
-		await serverClusterDismiss(clusterId);
-		return;
-	}
-	await invoke("clusters_dismiss", { clusterId });
+	if (shouldUseServerClusters()) await serverClusterDismiss(clusterId);
 }
 
 export async function clusterAccept(clusterId: string): Promise<void> {
-	if (shouldUseServerClusters()) {
-		await serverClusterAccept(clusterId);
-		return;
-	}
-	await invoke("clusters_accept", { clusterId });
+	if (shouldUseServerClusters()) await serverClusterAccept(clusterId);
 }
 
 export async function listAcceptedClusters(): Promise<ClusterRow[]> {
-	if (shouldUseServerClusters()) {
-		return listServerAcceptedClusters();
-	}
-	return invoke<ClusterRow[]>("clusters_get_accepted");
+	return shouldUseServerClusters() ? listServerAcceptedClusters() : [];
 }
 
 export async function clusterRename(
 	clusterId: string,
 	name: string,
 ): Promise<void> {
-	if (shouldUseServerClusters()) {
-		await serverClusterRename(clusterId, name);
-		return;
-	}
-	await invoke("clusters_rename", { clusterId, name });
+	if (shouldUseServerClusters()) await serverClusterRename(clusterId, name);
 }
 
 export async function clusterAddNote(
 	clusterId: string,
 	noteId: string,
 ): Promise<void> {
-	if (shouldUseServerClusters()) {
-		await serverClusterAddNote(clusterId, noteId);
-		return;
-	}
-	await invoke("clusters_add_note", { clusterId, noteId });
+	if (shouldUseServerClusters()) await serverClusterAddNote(clusterId, noteId);
 }
 
 export async function clusterRemoveNote(
 	clusterId: string,
 	noteId: string,
 ): Promise<void> {
-	if (shouldUseServerClusters()) {
-		await serverClusterRemoveNote(clusterId, noteId);
-		return;
-	}
-	await invoke("clusters_remove_note", { clusterId, noteId });
+	if (shouldUseServerClusters()) await serverClusterRemoveNote(clusterId, noteId);
 }
 
 export async function clusterDelete(clusterId: string): Promise<void> {
-	if (shouldUseServerClusters()) {
-		await serverClusterDelete(clusterId);
-		return;
-	}
-	await invoke("clusters_delete", { clusterId });
+	if (shouldUseServerClusters()) await serverClusterDelete(clusterId);
 }
 
-// ─── Super-Cluster Service (Tauri stubs — pending Rust backend support) ──────
-
 export async function listActiveSuperClusters(): Promise<SuperClusterRow[]> {
-	if (shouldUseServerClusters()) {
-		return listServerActiveSuperClusters();
-	}
-	return invoke<SuperClusterRow[]>("super_clusters_get_active");
+	return shouldUseServerClusters() ? listServerActiveSuperClusters() : [];
 }
 
 export async function listAcceptedSuperClusters(): Promise<SuperClusterRow[]> {
-	if (shouldUseServerClusters()) {
-		return listServerAcceptedSuperClusters();
-	}
-	return invoke<SuperClusterRow[]>("super_clusters_get_accepted");
+	return shouldUseServerClusters() ? listServerAcceptedSuperClusters() : [];
 }
 
 export async function superClusterAccept(
 	superClusterId: string,
 ): Promise<void> {
-	if (shouldUseServerClusters()) {
-		await serverClusterAccept(superClusterId);
-		return;
-	}
-	await invoke("super_clusters_accept", { superClusterId });
+	if (shouldUseServerClusters()) await serverClusterAccept(superClusterId);
 }
 
 export async function superClusterDismiss(
 	superClusterId: string,
 ): Promise<void> {
-	if (shouldUseServerClusters()) {
-		await serverClusterDismiss(superClusterId);
-		return;
-	}
-	await invoke("super_clusters_dismiss", { superClusterId });
+	if (shouldUseServerClusters()) await serverClusterDismiss(superClusterId);
 }
 
 export async function superClusterRename(
 	superClusterId: string,
 	name: string,
 ): Promise<void> {
-	if (shouldUseServerClusters()) {
+	if (shouldUseServerClusters())
 		await serverClusterRename(superClusterId, name);
-		return;
-	}
-	await invoke("super_clusters_rename", { superClusterId, name });
 }
 
 export async function listAcceptedSubClusters(
 	superClusterId: string,
 ): Promise<ClusterRow[]> {
-	if (shouldUseServerClusters()) {
-		return listServerChildClusters(superClusterId);
-	}
-	return invoke<ClusterRow[]>("super_clusters_get_sub_clusters", {
-		superClusterId,
-	});
+	return shouldUseServerClusters()
+		? listServerChildClusters(superClusterId)
+		: [];
 }
 
 export async function listStandaloneAcceptedClusters(): Promise<ClusterRow[]> {
-	if (shouldUseServerClusters()) {
-		return listServerStandaloneAcceptedClusters();
-	}
-	return invoke<ClusterRow[]>("clusters_get_standalone_accepted");
+	return shouldUseServerClusters()
+		? listServerStandaloneAcceptedClusters()
+		: [];
 }

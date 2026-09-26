@@ -36,13 +36,8 @@ export function createServer(dependencies: ServerDependencies) {
 		...dependencies.security,
 	};
 	const allowedOrigins = new Set(security.corsAllowedOrigins);
-	const allowsTauriLocalhost =
-		allowedOrigins.has("tauri://localhost") ||
-		allowedOrigins.has("http://localhost:8082");
 	const isAllowedOrigin = (origin: string | undefined): boolean =>
-		!origin ||
-		allowedOrigins.has(origin) ||
-		(allowsTauriLocalhost && /^http:\/\/localhost:\d+$/.test(origin));
+		!origin || allowedOrigins.has(origin);
 	const hasValidPrivateProxyToken = (value: string | string[] | undefined) => {
 		if (!dependencies.privateProxyToken || !value || Array.isArray(value)) {
 			return false;

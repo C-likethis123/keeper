@@ -36,8 +36,7 @@ export class NoteService {
 	static instance = new NoteService();
 
 	private constructor() {
-		// desktop path setup is done by StorageInitializationService
-		// mobile/web will lazily create notes root through expo-file-system on write.
+		// Platform storage setup is done by StorageInitializationService.
 	}
 
 	static async loadNote(id: string): Promise<Note | null> {

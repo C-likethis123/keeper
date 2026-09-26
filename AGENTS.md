@@ -13,12 +13,7 @@ Respond like a caveman. No articles. No filler. No pleasantries. Short. Direct. 
 npm install              # Install dependencies
 npm start                # Start Expo/Metro
 
-# Web/Desktop
-npm run web:desktop      # Start Expo web on port 8082 for Tauri
-npm run desktop          # Start Tauri desktop
-npm run desktop:dev      # Start Tauri desktop with dev config
-npm run build:desktop    # Build production desktop app
-npm run build:desktop:dev # Build dev desktop app bundle
+# Web
 npm run build:web        # Export Expo web build
 npm run build:web:cloudflare # Export web bundle for Cloudflare Worker
 npm run deploy:web:cloudflare # Build and deploy web Worker with Wrangler
@@ -32,7 +27,7 @@ npm run knip             # Dependency/export check
 npm run build:viewers    # Build PDF/EPUB viewer assets
 ```
 
-Run `npm run lint` for CI-style checks. Run `npm test` when touching covered TypeScript, UI, services, or store logic. Run Cargo checks/tests when touching `src-tauri/*_core`.
+Run `npm run lint` for CI-style checks. Run `npm test` when touching covered TypeScript, UI, services, or store logic.
 
 ## Cloudflare
 
@@ -43,7 +38,7 @@ Run `npm run lint` for CI-style checks. Run `npm test` when touching covered Typ
 
 ## Architecture
 
-Keeper is an Expo Router React Native Web note app for web/PWA and Tauri desktop. It stores Markdown notes locally, indexes metadata/search in browser storage or Tauri SQLite, and syncs note operations through the server when configured.
+Keeper is an Expo Router React Native Web note app for web/PWA. It stores Markdown notes and indexes metadata/search in browser storage, then syncs note operations through the server when configured.
 
 ### Source Root
 
@@ -51,7 +46,7 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
 
 ### Layers
 
-1. **Routes** (`src/app/`) - Expo Router screens. `_layout.web.tsx` handles web/Tauri startup, service-worker registration, and navigation. `index.tsx` is note grid. `editor.tsx` is editor. `suggested-mocs.tsx` shows MOC suggestions.
+1. **Routes** (`src/app/`) - Expo Router screens. `_layout.web.tsx` handles browser startup, service-worker registration, and navigation. `index.tsx` is note grid. `editor.tsx` is editor. `suggested-mocs.tsx` shows MOC suggestions.
 
 2. **Components** (`src/components/`) - UI layer. Core screens use `NoteGrid`, `NoteCard`, `HomeQuickComposer`, `HomeScreenHeader`, `NoteEditorView`, `NoteEditorHeader`, `TabBar`, drawers, modals, and shared UI in `src/components/shared/`.
 
@@ -73,22 +68,18 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
 6. **Services** (`src/services/`) - Persistence and side effects:
    - `notes/` - note CRUD, frontmatter, note type derivation, templates, attachments/images, wiki link parsing, query cache, SQLite/index DB sync, cluster and cluster feedback services.
    - `sync/` - server sync push/pull, operation queue, CRDT transport, and sync orchestration.
-   - `storage/` - platform storage engine abstraction with native/Tauri and browser IndexedDB engines.
+   - `storage/` - platform storage engine abstraction with native and browser IndexedDB engines.
    - `startup/` - startup steps, strategies, telemetry.
    - `toast.ts` - toast facade.
 
-7. **Native/Rust**:
-   - `src-tauri/src/` - Tauri app commands and desktop storage bridge.
-   - `src-tauri/storage_core/` - Rust SQLite/storage core crate and migrations.
-
-8. **MOC classification**:
+7. **MOC classification**:
    - `src/components/moc/` - UI for suggestions, related notes, cluster add/rename/merge.
    - `src/services/notes/clusterService*`, `clusterFeedbackService*`, and `serverClusterClient.ts` - client access to server-owned clusters and feedback.
    - `server/api/src/workers/mocWorker.ts` runs the Python classifier. `scripts/moc_pipeline/` remains server/development tooling, not normal client workflow.
 
 ## Data Persistence
 
-1. **Storage engine** - `src/services/storage/*` chooses native/Tauri or browser IndexedDB storage implementation.
+1. **Storage engine** - `src/services/storage/*` chooses native or browser IndexedDB storage implementation.
 2. **Notes service** - `src/services/notes/noteService.ts` reads/writes Markdown and metadata.
 3. **Index DB/SQLite** - `src/services/notes/indexDb/*`, `notesIndexDb*`, and migrations keep search, metadata, wiki links, clusters, and feedback queryable.
 4. **Server sync** - `src/services/sync/*` queues note operations and pushes/pulls them through the sync server.
@@ -99,10 +90,10 @@ Application TypeScript lives under `src/`. Old root-level `app/`, `components/`,
 - Keep editor work in Lexical extensions/nodes/transforms.
 - Do not mutate editor state directly. Use store actions and immutable updates.
 - Keep platform splits explicit: `.web.ts`, `.native.tsx`, and platform-specific services override shared files.
-- Use storage and sync abstractions. Do not call Tauri or native module APIs directly from UI.
+- Use storage and sync abstractions. Do not call native module APIs directly from UI.
 - Use Biome, not ESLint/Prettier.
 - Tests live beside code in `__tests__/` and use Jest/RNTL where relevant.
-- Build-generated folders (`node_modules`, `android`, `ios`, `dist`, `src-tauri/target`) are not source of truth.
+- Build-generated folders (`node_modules`, `android`, `ios`, `dist`) are not source of truth.
 
 ## Environment Variables
 

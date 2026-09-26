@@ -1,23 +1,14 @@
 import {
+	listServerClusterFeedback,
 	logServerClusterFeedback,
 	shouldUseServerClusters,
 } from "@/services/notes/serverClusterClient";
-import { getTauriInvoke } from "@/services/storage/runtime";
 
 export interface FeedbackEvent {
 	clusterId: string;
 	eventType: string;
 	eventData: Record<string, unknown> | null;
 	createdAt: number;
-}
-
-function invoke<T>(
-	command: string,
-	args?: Record<string, unknown>,
-): Promise<T> {
-	const fn = getTauriInvoke();
-	if (!fn) throw new Error("Tauri invoke unavailable");
-	return fn<T>(command, args);
 }
 
 export async function logFeedback(
@@ -33,19 +24,21 @@ export async function logFeedback(
 ): Promise<void> {
 	if (shouldUseServerClusters()) {
 		await logServerClusterFeedback(clusterId, eventType, eventData);
-		return;
 	}
-	await invoke("clusters_record_feedback", {
-		clusterId,
-		eventType,
-		eventData: JSON.stringify(eventData),
-	});
-}
-
-export async function exportFeedbackToFile(): Promise<void> {
-	await invoke("clusters_export_feedback_file");
 }
 
 export async function getFeedbackHistory(): Promise<FeedbackEvent[]> {
-	return invoke<FeedbackEvent[]>("clusters_get_all_feedback");
+	return shouldUseServerClusters() ? listServerClusterFeedback() : [];
+}
+
+export async function exportFeedbackToFile(): Promise<void> {
+	const feedback = await getFeedbackHistory();
+	const url = URL.createObjectURL(
+		new Blob([JSON.stringify(feedback, null, 2)], { type: "application/json" }),
+	);
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = "keeper-cluster-feedback.json";
+	link.click();
+	queueMicrotask(() => URL.revokeObjectURL(url));
 }

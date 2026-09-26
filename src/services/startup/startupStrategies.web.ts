@@ -11,26 +11,26 @@ interface StartupStrategyContext {
 	telemetry: StartupTelemetry;
 }
 
-async function runDesktopStartup({
+async function runBrowserStartup({
 	setHydrated,
 	telemetry,
 }: StartupStrategyContext): Promise<void> {
 	await initializeStorageStep(telemetry);
-	const hydrationStart = telemetry.stepStarted("desktop.hydrate_ui");
+	const hydrationStart = telemetry.stepStarted("browser.hydrate_ui");
 	setHydrated();
-	telemetry.stepCompleted("desktop.hydrate_ui", hydrationStart);
+	telemetry.stepCompleted("browser.hydrate_ui", hydrationStart);
 }
 
 export async function runStartupStrategy(
 	context: Omit<StartupStrategyContext, "telemetry">,
 ): Promise<void> {
 	const appStartTime = performance.now();
-	const telemetry = createStartupTelemetry("desktop-tauri");
+	const telemetry = createStartupTelemetry("browser-pwa");
 	telemetry.trace("startup_run_started", {
 		platform: "web",
 	});
 	try {
-		await runDesktopStartup({ ...context, telemetry });
+		await runBrowserStartup({ ...context, telemetry });
 		const totalMs = Math.round(performance.now() - appStartTime);
 		telemetry.trace("startup_run_completed", {
 			totalMs,

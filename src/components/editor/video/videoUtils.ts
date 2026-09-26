@@ -48,9 +48,7 @@ export function parseEmbeddedVideoUrl(
 }
 
 // Returns the page origin used as baseUrl / base-href for YouTube embeds.
-// On Tauri desktop (production) the app is served via tauri-plugin-localhost,
-// so window.location.origin is already a valid http://localhost:{port} origin
-// that YouTube accepts. Returns null only in non-browser environments (e.g. SSR).
+// Returns null only in non-browser environments (e.g. SSR).
 // NOTE: Do NOT pass this value as an ?origin= query param to YouTube embed URLs —
 // that causes Error 153. Use it only as the document baseUrl / Referer context.
 export function resolveVideoEmbedOrigin(): string | null {
