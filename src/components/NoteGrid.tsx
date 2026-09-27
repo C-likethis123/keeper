@@ -33,6 +33,7 @@ export default function NoteGrid({
 	emptyTitle = "No notes found",
 	emptySubtitle = "Create a note to get started",
 	onDelete,
+	onOpen,
 	onPinToggle,
 	refreshing = false,
 	onRefresh,
@@ -47,6 +48,7 @@ export default function NoteGrid({
 	emptyTitle?: string;
 	emptySubtitle?: string;
 	onDelete: (note: Note) => void;
+	onOpen: (note: Note) => void;
 	onPinToggle: (updated: Note) => void;
 	refreshing?: boolean;
 	onRefresh: () => void;
@@ -112,12 +114,9 @@ export default function NoteGrid({
 			clusterActions: undefined,
 		}));
 	}, [notes, numColumns, sections]);
-	const handleContentSizeChange = useCallback(
-		() => {
-			onReady?.();
-		},
-		[onReady],
-	);
+	const handleContentSizeChange = useCallback(() => {
+		onReady?.();
+	}, [onReady]);
 
 	const isEmpty = rowData.length === 0;
 	const keyExtractor = useCallback((item: NoteGridRow, index: number) => {
@@ -186,6 +185,7 @@ export default function NoteGrid({
 						<View key={note.id} style={styles.noteCell}>
 							<NoteCard
 								note={note}
+								onOpen={onOpen}
 								onDelete={onDelete}
 								onPinToggle={onPinToggle}
 								onRemoveFromCluster={
@@ -212,6 +212,7 @@ export default function NoteGrid({
 		[
 			numColumns,
 			onDelete,
+			onOpen,
 			onPinToggle,
 			styles.noteCell,
 			styles.noteRow,

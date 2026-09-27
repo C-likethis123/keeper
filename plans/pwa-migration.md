@@ -60,7 +60,12 @@ Ship Keeper as installable, offline-capable web app from shared Expo UI. Keep cu
   paths, including sync-downloaded attachment bytes.
 - Persisted Vite history and sync state through canonical source services and
   the canonical browser storage engine.
+- Ported Vite shell and home route to canonical theme, filters, toast and tab
+  stores, keyboard shortcuts, home header, quick composer, note grid, note
+  cards, and shared loading/error/empty UI. React Router remains the browser
+  navigation boundary; Expo routes remain available.
 
-Migration remains incomplete. Cloudflare still builds Expo. Shell and route
-parity, authenticated sync completion, PWA cutover testing, and Expo/React
-Native/Metro/Jest Expo removal remain unfinished.
+Migration remains incomplete. Cloudflare still builds Expo. Specialized route
+parity for documents, video, drawing, and MOC routes, authenticated sync
+completion, PWA cutover testing, and Expo/React Native/Metro/Jest Expo removal
+remain unfinished.

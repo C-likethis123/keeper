@@ -9,8 +9,12 @@ type InstallPromptEvent = Event & {
 };
 
 function isInstalled(): boolean {
-	return window.matchMedia("(display-mode: standalone)").matches ||
-		(window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+	return (
+		(typeof window.matchMedia === "function" &&
+			window.matchMedia("(display-mode: standalone)").matches) ||
+		(window.navigator as Navigator & { standalone?: boolean }).standalone ===
+			true
+	);
 }
 
 function isAppleMobileBrowser(): boolean {
@@ -19,7 +23,9 @@ function isAppleMobileBrowser(): boolean {
 
 export function PwaInstallButton() {
 	const styles = useStyles(createStyles);
-	const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
+	const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(
+		null,
+	);
 	const [installed, setInstalled] = useState(() =>
 		typeof window === "undefined" ? true : isInstalled(),
 	);
@@ -36,7 +42,10 @@ export function PwaInstallButton() {
 		window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 		window.addEventListener("appinstalled", handleInstalled);
 		return () => {
-			window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+			window.removeEventListener(
+				"beforeinstallprompt",
+				handleBeforeInstallPrompt,
+			);
 			window.removeEventListener("appinstalled", handleInstalled);
 		};
 	}, []);
@@ -72,7 +81,9 @@ export function PwaInstallButton() {
 	);
 }
 
-function createStyles(theme: { colors: { border: string; text: string; textMuted: string } }) {
+function createStyles(theme: {
+	colors: { border: string; text: string; textMuted: string };
+}) {
 	return StyleSheet.create({
 		button: {
 			flexDirection: "row",

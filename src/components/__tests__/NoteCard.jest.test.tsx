@@ -3,14 +3,6 @@ import type { Note } from "@/services/notes/types";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import React from "react";
 
-const mockPush = jest.fn();
-
-jest.mock("expo-router", () => ({
-	useRouter: () => ({
-		push: mockPush,
-	}),
-}));
-
 jest.mock("@expo/vector-icons", () => ({
 	FontAwesome: ({ name }: { name: string }) => name,
 }));
@@ -44,14 +36,14 @@ function makeNote(overrides: Partial<Note> = {}): Note {
 }
 
 describe("NoteCard", () => {
-	beforeEach(() => {
-		mockPush.mockReset();
-	});
+	beforeEach(() => {});
 
 	it("opens the note when the card is pressed", () => {
+		const onOpen = jest.fn();
 		render(
 			<NoteCard
 				note={makeNote()}
+				onOpen={onOpen}
 				onDelete={jest.fn()}
 				onPinToggle={jest.fn()}
 			/>,
@@ -62,7 +54,9 @@ describe("NoteCard", () => {
 		});
 		fireEvent(card, "click");
 
-		expect(mockPush).toHaveBeenCalledWith("/editor?id=note-1");
+		expect(onOpen).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "note-1" }),
+		);
 	});
 
 	it("deletes without opening the note when delete is pressed", () => {
@@ -71,6 +65,7 @@ describe("NoteCard", () => {
 		render(
 			<NoteCard
 				note={makeNote()}
+				onOpen={jest.fn()}
 				onDelete={onDelete}
 				onPinToggle={jest.fn()}
 			/>,
@@ -81,7 +76,6 @@ describe("NoteCard", () => {
 		expect(onDelete).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "note-1" }),
 		);
-		expect(mockPush).not.toHaveBeenCalled();
 	});
 
 	it("toggles pin without opening the note when pin is pressed", () => {
@@ -90,6 +84,7 @@ describe("NoteCard", () => {
 		render(
 			<NoteCard
 				note={makeNote()}
+				onOpen={jest.fn()}
 				onDelete={jest.fn()}
 				onPinToggle={onPinToggle}
 			/>,
@@ -100,6 +95,5 @@ describe("NoteCard", () => {
 		expect(onPinToggle).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "note-1", isPinned: true }),
 		);
-		expect(mockPush).not.toHaveBeenCalled();
 	});
 });

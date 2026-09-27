@@ -17,7 +17,7 @@ interface FilterState {
 export const useFilterStore = create<FilterState>((set) => ({
 	noteTypes: [],
 	status: undefined,
-	hideDone: true,
+	hideDone: false,
 	isPanelOpen: false,
 	setNoteTypes: (noteTypes) => set({ noteTypes }),
 	setStatus: (status) => set({ status }),
@@ -28,7 +28,7 @@ export const useFilterStore = create<FilterState>((set) => ({
 		set({
 			noteTypes: [],
 			status: undefined,
-			hideDone: true,
+			hideDone: false,
 			isPanelOpen: false,
 		}),
 }));

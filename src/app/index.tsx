@@ -25,6 +25,7 @@ import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { showToast } from "@/services/toast";
 import { useStorageStore } from "@/stores/storageStore";
+import { useTabStore } from "@/stores/tabStore";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import type { ParamListBase } from "@react-navigation/native";
 import { router, useNavigation } from "expo-router";
@@ -63,6 +64,10 @@ function NotesContent({
 	const [renameTarget, setRenameTarget] = useState<NoteSection | null>(null);
 	const [addNoteTarget, setAddNoteTarget] = useState<NoteSection | null>(null);
 	const createAndOpenNote = useCreateAndOpenNote();
+	const handleOpenNote = useCallback((note: Note) => {
+		useTabStore.getState().openTab(note.id, note.title);
+		router.push({ pathname: "/editor", params: { id: note.id } });
+	}, []);
 	const markStartupReady = useStartupReady();
 
 	const handleDeleteNote = useCallback(
@@ -219,6 +224,7 @@ function NotesContent({
 			<NoteGrid
 				notes={notes ?? []}
 				sections={enhancedSections}
+				onOpen={handleOpenNote}
 				emptySubtitle={emptySubtitle}
 				onDelete={handleDeleteNote}
 				onPinToggle={handlePinToggle}
@@ -268,7 +274,10 @@ function IndexContent() {
 	const searchInputRef = useRef<TextInput>(null);
 	const createAndOpenNote = useCreateAndOpenNote();
 	const navigation = useNavigation<DrawerNavigationProp<ParamListBase>>();
-	const handleMenuPress = useCallback(() => navigation.openDrawer(), [navigation]);
+	const handleMenuPress = useCallback(
+		() => navigation.openDrawer(),
+		[navigation],
+	);
 
 	useAppKeyboardShortcuts({
 		onFocusSearch: () => searchInputRef.current?.focus(),
@@ -290,7 +299,8 @@ function IndexContent() {
 					query={query}
 					setQuery={updateSearchQuery}
 					onSetQuery={(setter) => {
-						if (setter !== updateSearchQuery) searchQuerySetter.current = setter;
+						if (setter !== updateSearchQuery)
+							searchQuerySetter.current = setter;
 					}}
 				/>
 			</Suspense>

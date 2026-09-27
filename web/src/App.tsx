@@ -1,78 +1,52 @@
-import { LexicalEditor } from "@web/ui/LexicalEditor";
-import { BrowserDrawingEditor } from "@web/adapters/browser/editor/BrowserDrawingEditor";
-import { BrowserTabStrip } from "@web/adapters/browser/tabs/BrowserTabStrip";
-import { BrowserEditorHeader } from "@web/adapters/browser/editor/BrowserEditorHeader";
-import { BrowserNoteHistoryModal } from "@web/adapters/browser/editor/BrowserNoteHistoryModal";
-import { BrowserRelatedNotes } from "@web/adapters/browser/editor/BrowserRelatedNotes";
-import { BrowserNoteMetadata } from "@web/adapters/browser/editor/BrowserNoteMetadata";
-import { BrowserEditorSidePanelHost } from "@web/adapters/browser/editor/BrowserEditorSidePanelHost";
-import { BrowserTemplatePicker } from "@web/adapters/browser/editor/BrowserTemplatePicker";
+import { ToastOverlay } from "@/components/shared/Toast";
+import ErrorScreen from "@/components/shared/ErrorScreen";
+import Loader from "@/components/shared/Loader";
+import { darkTheme } from "@/constants/themes/darkTheme";
+import { lightTheme } from "@/constants/themes/lightTheme";
+import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
+import { useTabStore } from "@/stores/tabStore";
+import { ThemeProvider } from "@react-navigation/native";
 import { BrowserAttachVideoModal } from "@web/adapters/browser/editor/BrowserAttachVideoModal";
-import { useBrowserEditorSession } from "@web/adapters/browser/editor/useBrowserEditorSession";
+import { BrowserDrawingEditor } from "@web/adapters/browser/editor/BrowserDrawingEditor";
+import { BrowserEditorHeader } from "@web/adapters/browser/editor/BrowserEditorHeader";
+import { BrowserEditorSidePanelHost } from "@web/adapters/browser/editor/BrowserEditorSidePanelHost";
+import { BrowserNoteHistoryModal } from "@web/adapters/browser/editor/BrowserNoteHistoryModal";
+import { BrowserNoteMetadata } from "@web/adapters/browser/editor/BrowserNoteMetadata";
+import { BrowserRelatedNotes } from "@web/adapters/browser/editor/BrowserRelatedNotes";
+import { BrowserTemplatePicker } from "@web/adapters/browser/editor/BrowserTemplatePicker";
 import { useBrowserAutoSave } from "@web/adapters/browser/editor/useBrowserAutoSave";
+import { useBrowserEditorSession } from "@web/adapters/browser/editor/useBrowserEditorSession";
+import { resolveOrCreateWikiLinkNoteId } from "@web/adapters/browser/wikiLinkUtils";
+import { HomeRoute } from "@web/routes/HomeRoute";
 import {
-	captureBrowserNoteVersion,
-	deleteBrowserNoteVersions,
-} from "@web/services/noteHistory";
-import {
-	pickBrowserFile,
 	deleteStoredBrowserFile,
+	pickBrowserFile,
 	saveBytes,
 	savePickedFile,
 } from "@web/services/media";
+import { ViteAppShell } from "@web/shell/ViteAppShell";
 import {
-	enqueueBrowserNoteDelete,
-	enqueueBrowserNoteSave,
-	startBrowserSync,
-	syncBrowserNotes,
-} from "@web/services/noteSync";
-import { isSyncAuthRequiredError } from "@keeper/services/sync/syncRequestError";
-import { useTabStore } from "@keeper/stores/tabStore";
-import { deriveNoteType } from "@keeper/services/notes/noteTypeDerivation";
-import { resolveOrCreateWikiLinkNoteId } from "@web/adapters/browser/wikiLinkUtils";
+	BrowserNotesProvider,
+	useBrowserNotes,
+} from "@web/state/BrowserNotesProvider";
+import { LexicalEditor } from "@web/ui/LexicalEditor";
 import {
-	BROWSER_NOTES_CHANGED,
 	getBrowserNoteSurface,
+	loadBrowserNotes,
 	type BrowserNote,
 	type BrowserNoteSurface,
-	loadBrowserNotes,
-	persistBrowserNotes,
 } from "@web/ui/noteRepository";
+import { useEffect, useMemo, useState } from "react";
+import { useColorScheme } from "react-native";
 import {
 	Link,
 	Navigate,
 	Route,
 	Routes,
-	useLocation,
 	useNavigate,
 	useParams,
 } from "react-router-dom";
-import {
-	createContext,
-	type FormEvent,
-	type ReactNode,
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
 
-type NotesContextValue = {
-	notes: BrowserNote[];
-	ready: boolean;
-	createNote(surface?: BrowserNoteSurface, title?: string): BrowserNote;
-	saveNote(note: BrowserNote): Promise<void>;
-	deleteNote(id: string): Promise<void>;
-	notify(message: string): void;
-};
-const NotesContext = createContext<NotesContextValue | null>(null);
-const TYPES: BrowserNoteSurface[] = ["note", "document", "video", "drawing"];
-function useNotes() {
-	const value = useContext(NotesContext);
-	if (!value) throw new Error("Missing Vite notes provider");
-	return value;
-}
 function typeLabel(type: BrowserNoteSurface) {
 	return {
 		note: "Note",
@@ -81,278 +55,34 @@ function typeLabel(type: BrowserNoteSurface) {
 		drawing: "Drawing",
 	}[type];
 }
-function changedNote(previous: BrowserNote, next: BrowserNote) {
-	return (
-		previous.title !== next.title ||
-		previous.content !== next.content ||
-		previous.noteType !== next.noteType ||
-		previous.isPinned !== next.isPinned ||
-		previous.attachment !== next.attachment ||
-		previous.attachedVideo !== next.attachedVideo ||
-		previous.resourceUrl !== next.resourceUrl ||
-		previous.status !== next.status
-	);
-}
-
-function AppShell({ children }: { children: ReactNode }) {
-	const { notes, createNote } = useNotes();
-	const [drawerOpen, setDrawerOpen] = useState(false);
-	const navigate = useNavigate();
-	const location = useLocation();
-	const tabs = useTabStore((state) => state.tabs);
-	const activeTabId = useTabStore((state) => state.activeTabId);
-	const activateTab = useTabStore((state) => state.activateTab);
-	const closeTab = useTabStore((state) => state.closeTab);
-	const pinTab = useTabStore((state) => state.pinTab);
-	function newNote(type: BrowserNoteSurface = "note") {
-		const note = createNote(type);
-		navigate(`/editor/${note.id}`);
-	}
-	function selectTab(tab: (typeof tabs)[number]) {
-		activateTab(tab.id);
-		navigate(`/editor/${tab.noteId}`);
-	}
-	function removeTab(tabId: string) {
-		closeTab(tabId);
-		const next = useTabStore
-			.getState()
-			.tabs.find((tab) => tab.id === useTabStore.getState().activeTabId);
-		if (location.pathname !== "/")
-			navigate(next ? `/editor/${next.noteId}` : "/");
-	}
-	return (
-		<div className="app-shell">
-			<aside
-				className={`drawer ${drawerOpen ? "drawer--open" : ""}`}
-				aria-label="Keeper navigation"
-			>
-				<div className="drawer__brand">
-					<Link to="/" onClick={() => setDrawerOpen(false)}>
-						Keeper
-					</Link>
-				</div>
-				<nav>
-					<Link to="/" onClick={() => setDrawerOpen(false)}>
-						Home
-					</Link>
-					<Link to="/suggested-mocs" onClick={() => setDrawerOpen(false)}>
-						Suggested MOCs
-					</Link>
-				</nav>
-				<div className="drawer__section">
-					<span>Recent notes</span>
-					{notes.slice(0, 6).map((note) => (
-						<Link
-							key={note.id}
-							to={`/editor/${note.id}`}
-							onClick={() => setDrawerOpen(false)}
-						>
-							{note.title || "Untitled"}
-						</Link>
-					))}
-				</div>
-			</aside>
-			{drawerOpen ? (
-				<button
-					type="button"
-					aria-label="Close navigation"
-					className="drawer-backdrop"
-					onClick={() => setDrawerOpen(false)}
-				/>
-			) : null}
-			<div className="app-main">
-				<header className="app-header">
-					<button
-						type="button"
-						className="icon-button"
-						aria-label="Open navigation"
-						onClick={() => setDrawerOpen(true)}
-					>
-						☰
-					</button>
-					<Link className="app-header__title" to="/">
-						Keeper
-					</Link>
-					<div className="new-menu">
-						<button type="button" className="button" onClick={() => newNote()}>
-							New note
-						</button>
-						<button
-							type="button"
-							className="icon-button"
-							aria-label="New drawing"
-							onClick={() => newNote("drawing")}
-						>
-							✎
-						</button>
-					</div>
-				</header>
-				<BrowserTabStrip
-					tabs={tabs}
-					activeTabId={activeTabId}
-					activeView={location.pathname === "/" ? "home" : "note"}
-					onActivateHome={() => navigate("/")}
-					onActivateTab={selectTab}
-					onCloseTab={removeTab}
-					onTogglePin={pinTab}
-				/>
-				{children}
-			</div>
-		</div>
-	);
-}
-
-function HomeRoute() {
-	const { notes, createNote, deleteNote, saveNote } = useNotes();
-	const navigate = useNavigate();
-	const [query, setQuery] = useState("");
-	const [filter, setFilter] = useState<"all" | BrowserNoteSurface>("all");
-	const [draft, setDraft] = useState("");
-	const filtered = notes.filter(
-		(note) =>
-			(filter === "all" || getBrowserNoteSurface(note) === filter) &&
-			`${note.title}\n${note.content}`
-				.toLocaleLowerCase()
-				.includes(query.toLocaleLowerCase()),
-	);
-	function create(type: BrowserNoteSurface = "note") {
-		const note = createNote(type);
-		navigate(`/editor/${note.id}`);
-	}
-	function quickCreate(event: FormEvent) {
-		event.preventDefault();
-		if (!draft.trim()) return;
-		const note = createNote("note", draft.trim());
-		setDraft("");
-		navigate(`/editor/${note.id}`);
-	}
-	return (
-		<main className="page home-page">
-			<section className="home-toolbar">
-				<form onSubmit={quickCreate} className="quick-composer">
-					<input
-						value={draft}
-						onChange={(event) => setDraft(event.target.value)}
-						placeholder="Take a note…"
-						aria-label="Quick note title"
-					/>
-					<button type="submit" className="button">
-						Create
-					</button>
-				</form>
-				<input
-					className="search"
-					value={query}
-					onChange={(event) => setQuery(event.target.value)}
-					placeholder="Search notes"
-					aria-label="Search notes"
-				/>
-			</section>
-			<div className="filter-row" aria-label="Note filters">
-				<button
-					type="button"
-					className={filter === "all" ? "filter filter--selected" : "filter"}
-					onClick={() => setFilter("all")}
-				>
-					All
-				</button>
-				{TYPES.map((type) => (
-					<button
-						type="button"
-						key={type}
-						className={filter === type ? "filter filter--selected" : "filter"}
-						onClick={() => setFilter(type)}
-					>
-						{typeLabel(type)}
-					</button>
-				))}
-			</div>
-			<div className="home-heading">
-				<div>
-					<p className="eyebrow">Browser route</p>
-					<h1>Notes</h1>
-				</div>
-				<div className="note-type-actions">
-					{TYPES.slice(1).map((type) => (
-						<button type="button" key={type} onClick={() => create(type)}>
-							{typeLabel(type)}
-						</button>
-					))}
-				</div>
-			</div>
-			{filtered.length ? (
-				<section className="note-grid" aria-label="Notes">
-					{filtered.map((note) => (
-						<article key={note.id} className="note-card">
-							<Link to={`/editor/${note.id}`}>
-								<span className="note-card__type">
-									{typeLabel(getBrowserNoteSurface(note))}
-								</span>
-								<h2>{note.title || "Untitled"}</h2>
-								<p>
-									{note.content.replace(/[#*`]/g, "").slice(0, 140) ||
-										"Empty note"}
-								</p>
-							</Link>
-							<footer>
-								<time>{new Date(note.lastUpdated).toLocaleDateString()}</time>
-								<button
-									type="button"
-									onClick={() =>
-										saveNote({ ...note, isPinned: !note.isPinned })
-									}
-								>
-									{note.isPinned ? "Unpin" : "Pin"}
-								</button>
-								<button type="button" onClick={() => deleteNote(note.id)}>
-									Delete
-								</button>
-							</footer>
-						</article>
-					))}
-				</section>
-			) : (
-				<section className="empty-state">
-					<h2>No notes found</h2>
-					<p>Create note. Browser storage ready.</p>
-					<button type="button" className="button" onClick={() => create()}>
-						Create note
-					</button>
-				</section>
-			)}
-		</main>
-	);
-}
 
 function EditorRoute() {
 	const { noteId = "" } = useParams();
-	const { notes, saveNote, deleteNote, notify } = useNotes();
-	const navigate = useNavigate();
+	const { notes, ready, loadError, reloadNotes } = useBrowserNotes();
+	if (!ready) return <Loader />;
+	if (loadError)
+		return <ErrorScreen error={loadError} onRetry={() => void reloadNotes()} />;
 	const note = notes.find((item) => item.id === noteId);
-	const fallbackNote = useMemo<BrowserNote>(
-		() => ({
-			id: noteId,
-			title: "",
-			content: "",
-			noteType: "note",
-			isPinned: false,
-			lastUpdated: 0,
-			modified: null,
-			status: null,
-			createdAt: null,
-			completedAt: null,
-			attachment: null,
-			attachedVideo: null,
-			resourceUrl: null,
-			documentPositions: null,
-		}),
-		[noteId],
-	);
+	if (!note)
+		return (
+			<main className="page">
+				<section className="empty-state">
+					<h1>Note not found</h1>
+					<Link to="/">Back home</Link>
+				</section>
+			</main>
+		);
+	return <EditorRouteContent key={note.id} note={note} />;
+}
+
+function EditorRouteContent({ note }: { note: BrowserNote }) {
+	const { notes, saveNote, deleteNote, notify } = useBrowserNotes();
+	const navigate = useNavigate();
 	const persistence = useMemo(
 		() => ({ save: saveNote, remove: deleteNote }),
 		[saveNote, deleteNote],
 	);
-	const session = useBrowserEditorSession(note ?? fallbackNote, persistence);
+	const session = useBrowserEditorSession(note, persistence);
 	const local = session.note;
 	const [historyOpen, setHistoryOpen] = useState(false);
 	const [templateOpen, setTemplateOpen] = useState(false);
@@ -390,15 +120,6 @@ function EditorRoute() {
 		save: session.save,
 		onError: () => notify("Autosave failed."),
 	});
-	if (!note)
-		return (
-			<main className="page">
-				<section className="empty-state">
-					<h1>Note not found</h1>
-					<Link to="/">Back home</Link>
-				</section>
-			</main>
-		);
 	function update(change: Partial<BrowserNote>) {
 		session.patchBrowser(change);
 	}
@@ -740,7 +461,7 @@ function EditorRoute() {
 }
 
 function SuggestedMocsRoute() {
-	const { notes } = useNotes();
+	const { notes } = useBrowserNotes();
 	const suggestions = useMemo(
 		() => notes.filter((note) => note.content.length > 40).slice(0, 5),
 		[notes],
@@ -780,133 +501,9 @@ function SuggestedMocsRoute() {
 }
 
 function RoutedApp() {
-	const [notes, setNotes] = useState<BrowserNote[]>([]);
-	const [ready, setReady] = useState(false);
-	const [toast, setToast] = useState<string | null>(null);
-	useEffect(() => {
-		void loadBrowserNotes()
-			.catch(() => [])
-			.then((loaded) => {
-				const sorted = loaded.sort((a, b) => b.lastUpdated - a.lastUpdated);
-				setNotes(sorted);
-				setReady(true);
-			});
-	}, []);
-	useEffect(() => {
-		const receiveNotes = (event: Event) => {
-			const next = (event as CustomEvent<BrowserNote[]>).detail;
-			if (Array.isArray(next))
-				setNotes([...next].sort((a, b) => b.lastUpdated - a.lastUpdated));
-		};
-		window.addEventListener(BROWSER_NOTES_CHANGED, receiveNotes);
-		return () =>
-			window.removeEventListener(BROWSER_NOTES_CHANGED, receiveNotes);
-	}, []);
-	useEffect(() => {
-		if (!ready) return;
-		return startBrowserSync({
-			onNotes: (synced) =>
-				setNotes(
-					[...synced].sort((a, b) => b.lastUpdated - a.lastUpdated),
-				),
-			onError: (error) => {
-				console.warn("[BrowserSync] Sync failed:", error);
-				setToast(
-					isSyncAuthRequiredError(error)
-						? "Sign in through Cloudflare Access to resume sync."
-						: "Remote sync failed. Local changes remain saved.",
-				);
-			},
-		});
-	}, [ready]);
-	const commit = useCallback(
-		async (next: BrowserNote[], message: string) => {
-			const previous = new Map(notes.map((note) => [note.id, note]));
-			const versions = next.flatMap((note) => {
-				const old = previous.get(note.id);
-				return old && changedNote(old, note) ? [old] : [];
-			});
-			const sorted = next.sort((a, b) => b.lastUpdated - a.lastUpdated);
-			setNotes(sorted);
-			await Promise.all(versions.map(captureBrowserNoteVersion));
-			await persistBrowserNotes(sorted);
-			await Promise.all(
-				sorted.flatMap((note) => {
-					const old = previous.get(note.id);
-					return !old || changedNote(old, note)
-						? [enqueueBrowserNoteSave(note, !old)]
-						: [];
-				}),
-			);
-			await Promise.all(
-				notes
-					.filter((note) => !next.some((item) => item.id === note.id))
-					.map((note) => enqueueBrowserNoteDelete(note.id)),
-			);
-			void syncBrowserNotes()
-				.then((remote) => {
-					const synced = [...remote].sort(
-						(a, b) => b.lastUpdated - a.lastUpdated,
-					);
-					setNotes(synced);
-				})
-				.catch((error) => {
-					console.warn("[BrowserSync] Save sync failed:", error);
-					setToast(
-						isSyncAuthRequiredError(error)
-							? "Sign in through Cloudflare Access to resume sync."
-							: "Remote sync failed. Local changes remain saved.",
-					);
-				});
-			setToast(message);
-		},
-		[notes],
-	);
-	const value = useMemo<NotesContextValue>(
-		() => ({
-			notes,
-			ready,
-			createNote: (surface = "note", title = "") => {
-				const timestamp = Date.now();
-				const note: BrowserNote = {
-					id: crypto.randomUUID(),
-					title,
-					content: "",
-					noteType: surface === "drawing" ? "drawing" : "note",
-					isPinned: false,
-					lastUpdated: timestamp,
-					modified: timestamp,
-					status: null,
-					createdAt: timestamp,
-					completedAt: null,
-					attachment: surface === "document" ? "" : null,
-					attachedVideo: surface === "video" ? "" : null,
-					resourceUrl: null,
-					documentPositions: null,
-				};
-				void commit([note, ...notes], "Note created locally");
-				return note;
-			},
-			saveNote: (note) =>
-				commit(
-					[note, ...notes.filter((item) => item.id !== note.id)],
-					"Saved locally",
-				),
-			deleteNote: async (id) => {
-				await commit(
-					notes.filter((note) => note.id !== id),
-					"Deleted locally",
-				);
-				await deleteBrowserNoteVersions(id);
-			},
-			notify: setToast,
-		}),
-		[notes, ready, commit],
-	);
-	if (!ready) return <main className="startup">Opening browser storage…</main>;
 	return (
-		<NotesContext.Provider value={value}>
-			<AppShell>
+		<BrowserNotesProvider>
+			<ViteAppShell>
 				<Routes>
 					<Route path="/" element={<HomeRoute />} />
 					<Route path="/editor/:noteId" element={<EditorRoute />} />
@@ -916,15 +513,17 @@ function RoutedApp() {
 					<Route path="/drawing/:noteId" element={<EditorRoute />} />
 					<Route path="*" element={<Navigate to="/" replace />} />
 				</Routes>
-			</AppShell>
-			{toast ? (
-				<output className="toast" onAnimationEnd={() => setToast(null)}>
-					{toast}
-				</output>
-			) : null}
-		</NotesContext.Provider>
+			</ViteAppShell>
+			<ToastOverlay />
+		</BrowserNotesProvider>
 	);
 }
+
 export function App() {
-	return <RoutedApp />;
+	const colorScheme = useColorScheme();
+	return (
+		<ThemeProvider value={colorScheme === "light" ? lightTheme : darkTheme}>
+			<RoutedApp />
+		</ThemeProvider>
+	);
 }

@@ -49,6 +49,7 @@ describe("NoteGrid", () => {
 		render(
 			<NoteGrid
 				notes={makeNotes(2)}
+				onOpen={() => {}}
 				onDelete={() => {}}
 				onPinToggle={() => {}}
 				onRefresh={() => {}}
@@ -66,6 +67,7 @@ describe("NoteGrid", () => {
 		render(
 			<NoteGrid
 				notes={makeNotes(20)}
+				onOpen={() => {}}
 				onDelete={() => {}}
 				onPinToggle={() => {}}
 				onRefresh={() => {}}
@@ -84,6 +86,7 @@ describe("NoteGrid", () => {
 		render(
 			<NoteGrid
 				notes={makeNotes(20)}
+				onOpen={() => {}}
 				onDelete={() => {}}
 				onPinToggle={() => {}}
 				onRefresh={() => {}}
@@ -102,6 +105,7 @@ describe("NoteGrid", () => {
 		render(
 			<NoteGrid
 				notes={makeNotes(2)}
+				onOpen={() => {}}
 				onDelete={() => {}}
 				onPinToggle={() => {}}
 				onRefresh={() => {}}
@@ -127,6 +131,7 @@ describe("NoteGrid", () => {
 		render(
 			<NoteGrid
 				notes={makeNotes(20)}
+				onOpen={() => {}}
 				onDelete={() => {}}
 				onPinToggle={() => {}}
 				onRefresh={() => {}}
@@ -153,6 +158,7 @@ describe("NoteGrid", () => {
 		render(
 			<NoteGrid
 				notes={makeNotes(2)}
+				onOpen={() => {}}
 				onDelete={() => {}}
 				onPinToggle={() => {}}
 				onRefresh={() => {}}
@@ -169,6 +175,7 @@ describe("NoteGrid", () => {
 		render(
 			<NoteGrid
 				notes={notes}
+				onOpen={() => {}}
 				sections={[
 					{
 						id: "pinned",

@@ -75,7 +75,23 @@ Completed 2026-09-27:
 
 Security limitation: server sync repositories and database tables are global to one vault. Cloudflare Access authenticates entry but does not scope notes, devices, operations, clusters, or jobs by user. Deployment must remain single-vault/single-trust-domain until explicit server-side ownership and repository scoping is designed, migrated, and tested.
 
-Still unfinished: Cloudflare Vite production cutover, shell/route parity, server multi-user ownership, PWA offline/install verification, and removal of Expo, Expo Router, React Native, Metro, and Jest Expo.
+## Vite shell and home route mapping
+
+Completed 2026-09-27:
+
+| Expo source | Previous Vite surface | Migration result | Required behavior covered |
+| --- | --- | --- | --- |
+| `src/app/_layout.web.tsx` | Monolithic `AppShell` in `web/src/App.tsx` | Actual shell port in `web/src/shell/ViteAppShell.tsx`; React Router stays browser-only | Direct routes, fallback route, drawer, responsive overlay, tabs |
+| `src/app/index.tsx` | Simplified `HomeRoute` in `web/src/App.tsx` | Actual orchestration port in `web/src/routes/HomeRoute.tsx` | Canonical notes, search, filters, ordering, pagination, creation, shortcuts |
+| `HomeScreenHeader`, `HomeQuickComposer`, `NoteGrid`, shared state UI | Custom DOM toolbar, cards, and empty state | Reused directly | Same layout, typed creation, loading/error/empty states |
+| `NoteCard` | Duplicate Vite card markup | Reused directly after navigation callback extraction | Open, pin, delete, note type, accessible controls |
+| `filterStore`, `tabStore`, `toastStore`, theme constants | Vite-local filter and toast state | Reused directly | One filter model, tab lifecycle, theme and toast parity |
+| Expo Router calls in cards/tabs | React Router calls mixed into monolith | Thin browser navigation adapters | No Expo Router import in Vite route components; back/forward preserved |
+| Native SVG drawing preview | None in canonical Vite grid | Thin DOM SVG adapter | Drawing cards render without pulling native SVG into Vite bundle |
+
+Cloudflare still serves Expo. This route group does not change production cutover.
+
+Still unfinished: document route parity, video route parity, drawing route parity, MOC route parity, Cloudflare Vite production cutover, server multi-user ownership, full PWA offline/install/update verification, and removal of Expo, Expo Router, React Native, Metro, and Jest Expo.
 
 ## Suggested conversion order
 

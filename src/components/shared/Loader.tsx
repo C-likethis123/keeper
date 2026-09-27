@@ -7,7 +7,7 @@ export default function Loader() {
 	const styles = useStyles(createStyles);
 
 	return (
-		<View style={styles.container}>
+		<View style={styles.container} accessibilityLabel="Loading notes">
 			<ActivityIndicator size="large" color={styles.indicator.color} />
 		</View>
 	);

@@ -38,6 +38,7 @@ export default function HomeQuickComposer({
 	const contentRef = useRef("");
 	const [isPinned, setIsPinned] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
+	const savingRef = useRef(false);
 	const [editorCommand, setEditorCommand] = useState<LexicalEditorCommand>();
 	const colorScheme = useColorScheme();
 
@@ -47,16 +48,22 @@ export default function HomeQuickComposer({
 	};
 
 	const close = async () => {
-		if (isSaving) return;
+		if (savingRef.current) return;
 		flushAllPendingEditorDispatches();
 		const currentContent = contentRef.current;
 		if (title.trim() || currentContent.trim()) {
 			setIsSaving(true);
+			savingRef.current = true;
 			try {
-				await onSave({ title: title.trim(), content: currentContent, isPinned });
+				await onSave({
+					title: title.trim(),
+					content: currentContent,
+					isPinned,
+				});
 			} catch {
 				return;
 			} finally {
+				savingRef.current = false;
 				setIsSaving(false);
 			}
 		}
