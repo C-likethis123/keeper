@@ -48,7 +48,8 @@ function samePersistedNote(left: BrowserNote, right: BrowserNote): boolean {
 	);
 }
 
-async function saveBrowserNote(note: BrowserNote): Promise<void> {
+export async function upsertBrowserNote(note: BrowserNote): Promise<void> {
+	await ensureCanonicalStorageInitialized();
 	const { lastUpdated: _lastUpdated, ...input } = note;
 	const saved = await storageEngine.saveNote(input);
 	await storageEngine.indexUpsert({
@@ -60,6 +61,12 @@ async function saveBrowserNote(note: BrowserNote): Promise<void> {
 		noteType: saved.noteType,
 		status: saved.status ?? null,
 	});
+}
+
+export async function deleteBrowserNote(noteId: string): Promise<void> {
+	await ensureCanonicalStorageInitialized();
+	await storageEngine.deleteNote(noteId);
+	await storageEngine.indexDelete(noteId);
 }
 
 export function getBrowserNoteSurface(note: BrowserNote): BrowserNoteSurface {
@@ -104,13 +111,12 @@ export async function persistBrowserNotes(notes: BrowserNote[]): Promise<void> {
 	for (const note of desired.values()) {
 		const current = existing.get(note.id);
 		if (!current || !samePersistedNote(current, note)) {
-			await saveBrowserNote(note);
+			await upsertBrowserNote(note);
 		}
 	}
 	for (const id of existing.keys()) {
 		if (desired.has(id)) continue;
-		await storageEngine.deleteNote(id);
-		await storageEngine.indexDelete(id);
+		await deleteBrowserNote(id);
 	}
 }
 

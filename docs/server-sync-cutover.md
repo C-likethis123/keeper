@@ -8,6 +8,10 @@ Set client env:
 EXPO_PUBLIC_SYNC_SERVER_URL=https://keeper-sync.example
 ```
 
+Vite browser builds may instead set `VITE_SYNC_SERVER_URL`. Cloudflare deployment should use same-origin `VITE_SYNC_SERVER_URL=/api`; authentication comes only from Cloudflare Access session cookies. Do not place proxy tokens, Access JWTs, or API secrets in either public client variable.
+
+> Current security boundary: this server is a single global vault. Access identity is verified, but repository rows are not user-owned or tenant-scoped. Do not grant mutually untrusted users access. Multi-user ownership remains unfinished work.
+
 Set server env:
 
 ```bash

@@ -1,6 +1,6 @@
 # Expo/RN web migration audit
 
-Scope: `src/`, root Expo/test configuration, and `package.json`, inspected 2026-09-19 and updated 2026-09-26 after desktop removal.
+Scope: `src/`, root Expo/test configuration, and `package.json`, inspected 2026-09-19 and updated 2026-09-27 after canonical Vite sync integration.
 
 ## Result
 
@@ -60,6 +60,22 @@ rg -n --glob '*.{ts,tsx,js,jsx}' \
 ## Desktop removal
 
 Desktop shell, Rust storage core, desktop build scripts/dependencies, runtime detection, command bridge, and desktop-specific attachment branches were removed on 2026-09-26. Browser storage, index, attachment, image, picker, and startup paths now use browser APIs directly.
+
+## Canonical Vite sync and browser authentication
+
+Completed 2026-09-27:
+
+- Vite injects `VITE_SYNC_SERVER_URL` (with `EXPO_PUBLIC_SYNC_SERVER_URL` compatibility) into canonical sync configuration at browser startup. `/api` is supported for same-origin Cloudflare deployment.
+- Vite push, pull, and note inventory calls use canonical `remoteSyncClient` and `keeperApiFetch`. Obsolete Vite `syncFetch` was removed.
+- Browser API calls use Cloudflare Access session cookies with `credentials: "include"`. Caller-provided bearer, Access assertion, and private-proxy headers are stripped. No Access JWT or bearer token is stored by browser application code.
+- HTTP 401 and 403 become typed auth-required failures. Vite reports sign-in-required state without breaking local saves.
+- Startup, online, polling, and post-save sync share one non-concurrent browser sync boundary. Failed pushes retain durable queued operations. Pull cursors advance only after a full page applies.
+- Remote create, update, rename, delete, and attachment operations write through canonical browser storage. Pending local operations prevent older remote operations from overwriting or deleting unsynced local work.
+- Cloudflare Worker continues copying its Access-injected assertion to the private hop, while stripping caller-controlled trusted headers. Private API still verifies proxy token and Access assertion.
+
+Security limitation: server sync repositories and database tables are global to one vault. Cloudflare Access authenticates entry but does not scope notes, devices, operations, clusters, or jobs by user. Deployment must remain single-vault/single-trust-domain until explicit server-side ownership and repository scoping is designed, migrated, and tested.
+
+Still unfinished: Cloudflare Vite production cutover, shell/route parity, server multi-user ownership, PWA offline/install verification, and removal of Expo, Expo Router, React Native, Metro, and Jest Expo.
 
 ## Suggested conversion order
 

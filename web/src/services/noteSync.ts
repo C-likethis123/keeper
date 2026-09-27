@@ -1,6 +1,10 @@
+import { parseFrontmatter } from "@keeper/services/notes/frontmatter";
+import { isServerSyncConfigured } from "@keeper/services/sync/config";
 import {
-	parseFrontmatter,
-} from "@keeper/services/notes/frontmatter";
+	listSyncNoteIds,
+	pullSyncOperations,
+	pushSyncOperations,
+} from "@keeper/services/sync/remoteSyncClient";
 import {
 	enqueueMissingLocalNotes,
 	enqueueNoteCreate,
@@ -12,66 +16,63 @@ import {
 	readSyncPullCursor,
 	writeSyncPullCursor,
 } from "@keeper/services/sync/syncOpQueue";
-import type {
-	PulledSyncOperation,
-} from "@keeper/services/sync/types";
+import type { PulledSyncOperation } from "@keeper/services/sync/types";
 import { writeAttachmentBytesToNotes } from "@web/adapters/browser/attachmentStorage";
 import {
-	isBrowserSyncConfigured,
-	syncFetch,
-} from "@web/services/sync";
-import type { BrowserNote } from "@web/ui/noteRepository";
+	deleteBrowserNote,
+	loadBrowserNotes,
+	type BrowserNote,
+	upsertBrowserNote,
+} from "@web/ui/noteRepository";
 
+const POLL_INTERVAL_MS = 30_000;
 let syncPromise: Promise<BrowserNote[]> | null = null;
+
 function base64ToBytes(value: string): Uint8Array {
-	const binary = atob(value);
+	const binary = globalThis.atob(value);
 	return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
+
 export async function enqueueBrowserNoteSave(
 	note: BrowserNote,
 	isNew: boolean,
 ): Promise<void> {
-	if (!isBrowserSyncConfigured()) return;
+	if (!isServerSyncConfigured()) return;
 	await (isNew ? enqueueNoteCreate(note) : enqueueNoteUpdate(note));
 }
 
 export async function enqueueBrowserNoteDelete(noteId: string): Promise<void> {
-	if (!isBrowserSyncConfigured()) return;
+	if (!isServerSyncConfigured()) return;
 	await enqueueNoteDelete(noteId);
 }
 
-/** Queues retained browser notes that predate the sync queue, once per browser store. */
-export async function queueMissingBrowserNotes(
-	_notes: BrowserNote[],
-): Promise<void> {
-	if (!isBrowserSyncConfigured()) return;
-	const response = await syncFetch("/sync/note-ids");
-	if (!response.ok)
-		throw new Error(`Sync note inventory failed: ${response.status}`);
-	const remote = new Set(
-		((await response.json()) as { noteIds: string[] }).noteIds,
-	);
-	await enqueueMissingLocalNotes(remote);
+async function queueMissingBrowserNotes(): Promise<void> {
+	const remote = await listSyncNoteIds();
+	await enqueueMissingLocalNotes(remote.noteIds);
 }
 
-async function pushQueuedOperations(): Promise<void> {
-	const queue = await readQueuedSyncOps();
-	if (!queue.length) return;
+async function pushQueuedOperations(): Promise<Set<string>> {
 	const deviceId = await getSyncDeviceId();
-	const batch = queue.slice(0, 100);
-	const response = await syncFetch("/sync/push", {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ deviceId, ops: batch }),
-	});
-	if (!response.ok) throw new Error(`Sync push failed: ${response.status}`);
-	const result = (await response.json()) as {
-		accepted: string[];
-		duplicates?: string[];
-	};
-	const sent = new Set([...result.accepted, ...(result.duplicates ?? [])]);
-	await markSyncOpsPushed([...sent]);
-	if ((await readQueuedSyncOps()).length) await pushQueuedOperations();
+	const pushedNoteIds = new Set<string>();
+	for (;;) {
+		const batch = (await readQueuedSyncOps()).slice(0, 100);
+		if (batch.length === 0) return pushedNoteIds;
+		const result = await pushSyncOperations(deviceId, batch);
+		const completed = [
+			...result.accepted,
+			...(result.duplicates ?? []),
+		];
+		if (completed.length === 0) {
+			throw new Error("Sync push made no progress");
+		}
+		const completedIds = new Set(completed);
+		for (const operation of batch) {
+			if (completedIds.has(operation.opId)) {
+				pushedNoteIds.add(operation.noteId);
+			}
+		}
+		await markSyncOpsPushed(completed);
+	}
 }
 
 function remoteNote(
@@ -107,23 +108,44 @@ function remoteNote(
 	};
 }
 
+async function hasPendingLocalChange(noteId: string): Promise<boolean> {
+	return (await readQueuedSyncOps()).some(
+		(operation) => operation.noteId === noteId,
+	);
+}
+
 async function applyRemoteOperation(
-	notes: BrowserNote[],
 	operation: PulledSyncOperation,
-): Promise<BrowserNote[]> {
-	if (operation.type === "note.delete")
-		return notes.filter((note) => note.id !== operation.noteId);
-	if (operation.type === "note.rename")
-		return notes.map((note) =>
-			note.id === operation.noteId
-				? {
-						...note,
-						title: operation.title,
-						lastUpdated: Date.parse(operation.updatedAt) || Date.now(),
-						modified: Date.parse(operation.updatedAt) || Date.now(),
-					}
-				: note,
+	protectedNoteIds: ReadonlySet<string>,
+): Promise<void> {
+	// Queue remains authoritative until push succeeds. Its later operation will
+	// replace skipped remote state during next successful server round trip.
+	if (
+		protectedNoteIds.has(operation.noteId) ||
+		(await hasPendingLocalChange(operation.noteId))
+	)
+		return;
+	if (operation.type === "note.delete") {
+		await deleteBrowserNote(operation.noteId);
+		return;
+	}
+	if (operation.type === "note.rename") {
+		const existing = (await loadBrowserNotes()).find(
+			(note) => note.id === operation.noteId,
 		);
+		if (!existing) return;
+		const parsedTimestamp = Date.parse(operation.updatedAt);
+		const updatedAt = Number.isFinite(parsedTimestamp)
+			? parsedTimestamp
+			: Date.now();
+		await upsertBrowserNote({
+			...existing,
+			title: operation.title,
+			lastUpdated: updatedAt,
+			modified: updatedAt,
+		});
+		return;
+	}
 	if (operation.attachmentBase64) {
 		const path = parseFrontmatter(operation.markdown).attachment;
 		if (path) {
@@ -133,44 +155,58 @@ async function applyRemoteOperation(
 			);
 		}
 	}
-	const next = remoteNote(operation);
-	return [next, ...notes.filter((note) => note.id !== next.id)];
+	await upsertBrowserNote(remoteNote(operation));
 }
 
-async function pullOperations(notes: BrowserNote[]): Promise<BrowserNote[]> {
+async function pullOperations(protectedNoteIds: ReadonlySet<string>): Promise<void> {
 	const deviceId = await getSyncDeviceId();
 	let cursor = await readSyncPullCursor();
-	let current = notes;
 	for (;;) {
-		const response = await syncFetch(
-			`/sync/pull?${new URLSearchParams({ deviceId, cursor: String(cursor), limit: "100" })}`,
-		);
-		if (!response.ok) throw new Error(`Sync pull failed: ${response.status}`);
-		const result = (await response.json()) as {
-			ops: PulledSyncOperation[];
-			cursor: number;
-		};
-		for (const operation of result.ops)
-			current = await applyRemoteOperation(current, operation);
+		const result = await pullSyncOperations(deviceId, cursor);
+		for (const operation of result.ops) {
+			await applyRemoteOperation(operation, protectedNoteIds);
+		}
+		// Never persist cursor for page only partially applied.
 		await writeSyncPullCursor(result.cursor);
-		if (!result.ops.length || result.cursor === cursor) return current;
+		if (result.ops.length === 0 || result.cursor === cursor) return;
 		cursor = result.cursor;
 	}
 }
 
-/** Push local editor changes, then apply remote operations using source sync protocol. */
-export async function syncBrowserNotes(
-	notes: BrowserNote[],
-): Promise<BrowserNote[]> {
-	if (!isBrowserSyncConfigured()) return notes;
+export async function syncBrowserNotes(options: {
+	backfill?: boolean;
+} = {}): Promise<BrowserNote[]> {
+	if (!isServerSyncConfigured()) return loadBrowserNotes();
 	if (syncPromise) return syncPromise;
 	syncPromise = (async () => {
-		await pushQueuedOperations();
-		return pullOperations(notes);
+		if (options.backfill) await queueMissingBrowserNotes();
+		const pushedNoteIds = await pushQueuedOperations();
+		await pullOperations(pushedNoteIds);
+		return loadBrowserNotes();
 	})();
 	try {
 		return await syncPromise;
 	} finally {
 		syncPromise = null;
 	}
+}
+
+export function startBrowserSync(options: {
+	onError(error: unknown): void;
+	onNotes(notes: BrowserNote[]): void;
+}): () => void {
+	if (!isServerSyncConfigured()) return () => undefined;
+	const sync = (backfill = false) => {
+		void syncBrowserNotes({ backfill })
+			.then(options.onNotes)
+			.catch(options.onError);
+	};
+	const online = () => sync();
+	sync(true);
+	window.addEventListener("online", online);
+	const poll = window.setInterval(online, POLL_INTERVAL_MS);
+	return () => {
+		window.removeEventListener("online", online);
+		window.clearInterval(poll);
+	};
 }

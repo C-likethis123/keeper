@@ -9,6 +9,13 @@ export class SyncRequestError extends Error {
 	}
 }
 
+export class SyncAuthRequiredError extends SyncRequestError {
+	constructor(message: string, status: 401 | 403) {
+		super(message, status);
+		this.name = "SyncAuthRequiredError";
+	}
+}
+
 export function parseRetryAfter(
 	value: string | null,
 	now = Date.now(),
@@ -29,11 +36,21 @@ export async function createSyncRequestError(
 	operation: string,
 ): Promise<SyncRequestError> {
 	const body = await response.text().catch(() => "");
+	const message = `${operation} failed with ${response.status}${body ? `: ${body}` : ""}`;
+	if (response.status === 401 || response.status === 403) {
+		return new SyncAuthRequiredError(message, response.status);
+	}
 	return new SyncRequestError(
-		`${operation} failed with ${response.status}${body ? `: ${body}` : ""}`,
+		message,
 		response.status,
 		parseRetryAfter(response.headers.get("Retry-After")),
 	);
+}
+
+export function isSyncAuthRequiredError(
+	error: unknown,
+): error is SyncAuthRequiredError {
+	return error instanceof SyncAuthRequiredError;
 }
 
 export function isSyncRequestError(error: unknown): error is SyncRequestError {

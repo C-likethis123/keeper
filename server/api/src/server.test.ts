@@ -131,6 +131,15 @@ test("private proxy requires Access identity when Access verification is configu
 	});
 	assert.equal(missingIdentity.statusCode, 403);
 
+	const spoofedTrustedHeader = await server.inject({
+		method: "GET",
+		url: "/sync/note-ids",
+		headers: {
+			"x-keeper-access-jwt-assertion": "valid-access-jwt",
+		},
+	});
+	assert.equal(spoofedTrustedHeader.statusCode, 403);
+
 	const valid = await server.inject({
 		method: "GET",
 		url: "/sync/note-ids",

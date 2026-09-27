@@ -18,6 +18,7 @@ export default {
 		// assertion injected by Access before the first internal hop. Delete any
 		// caller-controlled value of the application-owned header first.
 		headers.delete("x-keeper-access-jwt-assertion");
+		headers.delete("x-keeper-private-proxy-token");
 		const accessAssertion = headers.get("cf-access-jwt-assertion");
 		if (accessAssertion) {
 			headers.set("x-keeper-access-jwt-assertion", accessAssertion);

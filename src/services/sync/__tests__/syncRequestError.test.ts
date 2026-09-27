@@ -1,5 +1,7 @@
 import {
 	SyncRequestError,
+	createSyncRequestError,
+	isSyncAuthRequiredError,
 	isSyncRequestError,
 	parseRetryAfter,
 } from "@/services/sync/syncRequestError";
@@ -24,5 +26,13 @@ describe("syncRequestError", () => {
 		expect(isSyncRequestError(error)).toBe(true);
 		expect(error.status).toBe(429);
 		expect(error.retryAfterMs).toBe(5_000);
+	});
+
+	it.each([401, 403] as const)("types HTTP %s as auth required", async (status) => {
+		const error = await createSyncRequestError(
+			new Response(null, { status }),
+			"Sync pull",
+		);
+		expect(isSyncAuthRequiredError(error)).toBe(true);
 	});
 });

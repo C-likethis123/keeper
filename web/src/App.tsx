@@ -23,9 +23,10 @@ import {
 import {
 	enqueueBrowserNoteDelete,
 	enqueueBrowserNoteSave,
-	queueMissingBrowserNotes,
+	startBrowserSync,
 	syncBrowserNotes,
 } from "@web/services/noteSync";
+import { isSyncAuthRequiredError } from "@keeper/services/sync/syncRequestError";
 import { useTabStore } from "@keeper/stores/tabStore";
 import { deriveNoteType } from "@keeper/services/notes/noteTypeDerivation";
 import { resolveOrCreateWikiLinkNoteId } from "@web/adapters/browser/wikiLinkUtils";
@@ -789,18 +790,6 @@ function RoutedApp() {
 				const sorted = loaded.sort((a, b) => b.lastUpdated - a.lastUpdated);
 				setNotes(sorted);
 				setReady(true);
-				void queueMissingBrowserNotes(sorted)
-					.then(() => syncBrowserNotes(sorted))
-					.then(async (remote) => {
-						const next = [...remote].sort(
-							(a, b) => b.lastUpdated - a.lastUpdated,
-						);
-						setNotes(next);
-						await persistBrowserNotes(next);
-					})
-					.catch((error) =>
-						console.warn("[BrowserSync] Startup sync failed:", error),
-					);
 			});
 	}, []);
 	useEffect(() => {
@@ -815,24 +804,21 @@ function RoutedApp() {
 	}, []);
 	useEffect(() => {
 		if (!ready) return;
-		const sync = () => {
-			void syncBrowserNotes(notes)
-				.then(async (remote) => {
-					const next = [...remote].sort(
-						(a, b) => b.lastUpdated - a.lastUpdated,
-					);
-					setNotes(next);
-					await persistBrowserNotes(next);
-				})
-				.catch((error) => console.warn("[BrowserSync] Poll failed:", error));
-		};
-		window.addEventListener("online", sync);
-		const poll = window.setInterval(sync, 30_000);
-		return () => {
-			window.removeEventListener("online", sync);
-			window.clearInterval(poll);
-		};
-	}, [notes, ready]);
+		return startBrowserSync({
+			onNotes: (synced) =>
+				setNotes(
+					[...synced].sort((a, b) => b.lastUpdated - a.lastUpdated),
+				),
+			onError: (error) => {
+				console.warn("[BrowserSync] Sync failed:", error);
+				setToast(
+					isSyncAuthRequiredError(error)
+						? "Sign in through Cloudflare Access to resume sync."
+						: "Remote sync failed. Local changes remain saved.",
+				);
+			},
+		});
+	}, [ready]);
 	const commit = useCallback(
 		async (next: BrowserNote[], message: string) => {
 			const previous = new Map(notes.map((note) => [note.id, note]));
@@ -857,17 +843,21 @@ function RoutedApp() {
 					.filter((note) => !next.some((item) => item.id === note.id))
 					.map((note) => enqueueBrowserNoteDelete(note.id)),
 			);
-			void syncBrowserNotes(sorted)
-				.then(async (remote) => {
+			void syncBrowserNotes()
+				.then((remote) => {
 					const synced = [...remote].sort(
 						(a, b) => b.lastUpdated - a.lastUpdated,
 					);
 					setNotes(synced);
-					await persistBrowserNotes(synced);
 				})
-				.catch((error) =>
-					console.warn("[BrowserSync] Save sync failed:", error),
-				);
+				.catch((error) => {
+					console.warn("[BrowserSync] Save sync failed:", error);
+					setToast(
+						isSyncAuthRequiredError(error)
+							? "Sign in through Cloudflare Access to resume sync."
+							: "Remote sync failed. Local changes remain saved.",
+					);
+				});
 			setToast(message);
 		},
 		[notes],
