@@ -36,7 +36,7 @@ Ship Keeper as installable, offline-capable web app from shared Expo UI. Keep cu
 5. Delivery
    - Production export, deploy over HTTPS, and configure immutable cache headers for hashed bundles.
    - Run install/offline/update test matrix on Chrome, Safari macOS, Safari iOS, Android Chrome.
-   - Migrate legacy browser notes through a one-time IndexedDB import.
+   - Persist Vite notes directly through the canonical browser storage engine.
 
 ## Acceptance gates
 

@@ -1,72 +1,76 @@
-import { browserStorage } from "@web/services/storage";
+import type { Note } from "@/services/notes/types";
+import { extractSummary } from "@/services/notes/indexDb/mapper";
+import { storageEngine } from "@/services/storage/storageEngine";
 import type { CanonicalNote } from "@keeper/features/notes/note-contract";
 
 export type BrowserNote = CanonicalNote;
 export type BrowserNoteSurface = "note" | "document" | "video" | "drawing";
 
-type LegacyBrowserNote = {
-	id: string;
-	title: string;
-	content: string;
-	noteType: BrowserNoteSurface;
-	isPinned: boolean;
-	updatedAt: number;
-};
-
-const NOTES_V1_KEY = "notes:v1";
-const NOTES_V2_KEY = "notes:v2";
 export const BROWSER_NOTES_CHANGED = "keeper:browser-notes-changed";
 
-function isLegacyBrowserNote(value: unknown): value is LegacyBrowserNote {
-	if (!value || typeof value !== "object") return false;
-	const note = value as Partial<LegacyBrowserNote>;
-	return (
-		typeof note.id === "string" &&
-		typeof note.title === "string" &&
-		typeof note.content === "string" &&
-		(note.noteType === "note" ||
-			note.noteType === "document" ||
-			note.noteType === "video" ||
-			note.noteType === "drawing") &&
-		typeof note.isPinned === "boolean" &&
-		typeof note.updatedAt === "number"
-	);
+let initialization: Promise<void> | null = null;
+
+function initializeRepository(): Promise<void> {
+	if (!initialization) {
+		initialization = storageEngine.initialize().then(() => undefined);
+		void initialization.catch(() => {
+			initialization = null;
+		});
+	}
+	return initialization;
 }
 
-function isBrowserNote(value: unknown): value is BrowserNote {
-	if (!value || typeof value !== "object") return false;
-	const note = value as Partial<BrowserNote>;
-	return (
-		typeof note.id === "string" &&
-		typeof note.title === "string" &&
-		typeof note.content === "string" &&
-		typeof note.lastUpdated === "number" &&
-		typeof note.isPinned === "boolean" &&
-		["journal", "resource", "todo", "note", "template", "drawing"].includes(
-			note.noteType ?? "",
-		)
-	);
-}
-
-export function toCanonicalBrowserNote(note: LegacyBrowserNote): BrowserNote {
-	const isDocument = note.noteType === "document";
-	const isVideo = note.noteType === "video";
+function toBrowserNote(note: Note): BrowserNote {
 	return {
 		id: note.id,
 		title: note.title,
-		content: isDocument || isVideo ? "" : note.content,
-		lastUpdated: note.updatedAt,
-		modified: note.updatedAt,
+		content: note.content,
+		lastUpdated: note.lastUpdated,
 		isPinned: note.isPinned,
-		noteType: note.noteType === "drawing" ? "drawing" : "note",
-		status: null,
-		createdAt: null,
-		completedAt: null,
-		attachment: isDocument ? note.content : null,
-		attachedVideo: isVideo ? note.content : null,
-		resourceUrl: null,
-		documentPositions: null,
+		noteType: note.noteType,
+		status: note.status ?? null,
+		createdAt: note.createdAt ?? null,
+		completedAt: note.completedAt ?? null,
+		attachment: note.attachment ?? null,
+		attachedVideo: note.attachedVideo ?? null,
+		resourceUrl: note.resourceUrl ?? null,
+		documentPositions: note.documentPositions ?? null,
+		modified: note.modified ?? note.lastUpdated,
 	};
+}
+
+function samePersistedNote(left: BrowserNote, right: BrowserNote): boolean {
+	const rightStatus = right.noteType === "todo" ? right.status : null;
+	const rightCreatedAt = right.noteType === "todo" ? right.createdAt : null;
+	const rightCompletedAt = right.noteType === "todo" ? right.completedAt : null;
+	return (
+		left.title === right.title.trim() &&
+		left.content === right.content &&
+		left.isPinned === right.isPinned &&
+		left.noteType === right.noteType &&
+		left.status === rightStatus &&
+		left.createdAt === rightCreatedAt &&
+		left.completedAt === rightCompletedAt &&
+		left.attachment === right.attachment &&
+		left.attachedVideo === right.attachedVideo &&
+		left.resourceUrl === right.resourceUrl &&
+		JSON.stringify(left.documentPositions) ===
+			JSON.stringify(right.documentPositions)
+	);
+}
+
+async function saveBrowserNote(note: BrowserNote): Promise<void> {
+	const { lastUpdated: _lastUpdated, ...input } = note;
+	const saved = await storageEngine.saveNote(input);
+	await storageEngine.indexUpsert({
+		noteId: saved.id,
+		title: saved.title,
+		summary: saved.noteType === "drawing" ? "Drawing" : extractSummary(saved.content),
+		isPinned: saved.isPinned,
+		updatedAt: saved.lastUpdated,
+		noteType: saved.noteType,
+		status: saved.status ?? null,
+	});
 }
 
 export function getBrowserNoteSurface(note: BrowserNote): BrowserNoteSurface {
@@ -77,30 +81,48 @@ export function getBrowserNoteSurface(note: BrowserNote): BrowserNoteSurface {
 }
 
 export async function loadBrowserNotes(): Promise<BrowserNote[]> {
-	const v2 = await browserStorage.getState(NOTES_V2_KEY);
-	if (v2) {
-		try {
-			const parsed: unknown = JSON.parse(v2);
-			if (Array.isArray(parsed) && parsed.every(isBrowserNote)) return parsed;
-		} catch {
-			/* use retained v1 data */
-		}
-	}
-	const v1 = await browserStorage.getState(NOTES_V1_KEY);
-	if (!v1) return [];
-	try {
-		const parsed: unknown = JSON.parse(v1);
-		if (!Array.isArray(parsed) || !parsed.every(isLegacyBrowserNote)) return [];
-		const migrated = parsed.map(toCanonicalBrowserNote);
-		await browserStorage.setState(NOTES_V2_KEY, JSON.stringify(migrated));
-		return migrated;
-	} catch {
-		return [];
-	}
+	await initializeRepository();
+	const entries = await storageEngine.listNoteFiles();
+	const notes = await Promise.all(
+		entries.map(({ id }) => storageEngine.loadNote(id)),
+	);
+	return notes
+		.filter((note): note is Note => note !== null)
+		.map(toBrowserNote)
+		.sort((left, right) => right.lastUpdated - left.lastUpdated);
 }
 
 export async function persistBrowserNotes(notes: BrowserNote[]): Promise<void> {
-	await browserStorage.setState(NOTES_V2_KEY, JSON.stringify(notes));
+	await initializeRepository();
+	const desired = new Map<string, BrowserNote>();
+	for (const note of notes) {
+		const current = desired.get(note.id);
+		if (!current || note.lastUpdated >= current.lastUpdated) {
+			desired.set(note.id, note);
+		}
+	}
+
+	const entries = await storageEngine.listNoteFiles();
+	const existingNotes = await Promise.all(
+		entries.map(({ id }) => storageEngine.loadNote(id)),
+	);
+	const existing = new Map(
+		existingNotes
+			.filter((note): note is Note => note !== null)
+			.map((note) => [note.id, toBrowserNote(note)]),
+	);
+
+	for (const note of desired.values()) {
+		const current = existing.get(note.id);
+		if (!current || !samePersistedNote(current, note)) {
+			await saveBrowserNote(note);
+		}
+	}
+	for (const id of existing.keys()) {
+		if (desired.has(id)) continue;
+		await storageEngine.deleteNote(id);
+		await storageEngine.indexDelete(id);
+	}
 }
 
 /** Creates a canonical plain note for source editor features such as wiki links. */

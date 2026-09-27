@@ -1,86 +1,78 @@
 import "fake-indexeddb/auto";
+import { storageEngine } from "@/services/storage/storageEngine";
 import { beforeEach, describe, expect, it } from "vitest";
-import { browserStorage } from "@web/services/storage";
 import {
 	createBrowserLinkedNote,
 	getBrowserNoteSurface,
 	loadBrowserNotes,
+	persistBrowserNotes,
+	type BrowserNote,
 } from "./noteRepository";
+
+function note(
+	id: string,
+	lastUpdated: number,
+	content = "markdown",
+): BrowserNote {
+	return {
+		id,
+		title: `Note ${id}`,
+		content,
+		noteType: "note",
+		isPinned: false,
+		lastUpdated,
+		modified: lastUpdated,
+		status: null,
+		createdAt: lastUpdated,
+		completedAt: null,
+		attachment: null,
+		attachedVideo: null,
+		resourceUrl: null,
+		documentPositions: null,
+	};
+}
 
 describe("browser note repository", () => {
 	beforeEach(async () => {
-		await browserStorage.setState("notes:v1", "[]");
-		await browserStorage.setState("notes:v2", "");
+		await storageEngine.initialize();
+		await storageEngine.resetAllData();
 	});
-	it("migrates every legacy surface to canonical note fields", async () => {
-		await browserStorage.setState(
-			"notes:v1",
-			JSON.stringify([
-				{
-					id: "n",
-					title: "Note",
-					content: "markdown",
-					noteType: "note",
-					isPinned: false,
-					updatedAt: 1,
-				},
-				{
-					id: "d",
-					title: "Doc",
-					content: "attachments/a.pdf",
-					noteType: "document",
-					isPinned: true,
-					updatedAt: 2,
-				},
-				{
-					id: "v",
-					title: "Video",
-					content: "https://video.example",
-					noteType: "video",
-					isPinned: false,
-					updatedAt: 3,
-				},
-				{
-					id: "r",
-					title: "Drawing",
-					content: "data:image/png;base64,a",
-					noteType: "drawing",
-					isPinned: false,
-					updatedAt: 4,
-				},
-			]),
-		);
-		const notes = await loadBrowserNotes();
-		expect(notes.map(getBrowserNoteSurface)).toEqual([
-			"note",
-			"document",
-			"video",
-			"drawing",
+
+	it("reloads notes from canonical storage", async () => {
+		const document = {
+			...note("document", 1, ""),
+			attachment: "_attachments/agenda.pdf",
+		};
+		await persistBrowserNotes([document]);
+
+		const loaded = await loadBrowserNotes();
+		expect(loaded).toHaveLength(1);
+		expect(loaded[0]).toMatchObject({
+			id: "document",
+			attachment: "_attachments/agenda.pdf",
+			content: "",
+		});
+		expect(getBrowserNoteSurface(loaded[0])).toBe("document");
+	});
+
+	it("keeps one newest input for each note ID", async () => {
+		await persistBrowserNotes([
+			note("same", 1, "older"),
+			note("same", 2, "newer"),
 		]);
-		expect(notes[1]).toMatchObject({
-			id: "d",
-			attachment: "attachments/a.pdf",
-			content: "",
-			isPinned: true,
-			lastUpdated: 2,
-			modified: 2,
-		});
-		expect(notes[2]).toMatchObject({
-			id: "v",
-			attachedVideo: "https://video.example",
-			content: "",
-			lastUpdated: 3,
-		});
-		expect(notes[3]).toMatchObject({
-			id: "r",
-			noteType: "drawing",
-			content: "data:image/png;base64,a",
-			lastUpdated: 4,
-		});
-		expect(
-			JSON.parse((await browserStorage.getState("notes:v2")) ?? "[]"),
-		).toHaveLength(4);
+
+		const loaded = await loadBrowserNotes();
+		expect(loaded).toHaveLength(1);
+		expect(loaded[0]).toMatchObject({ id: "same", content: "newer" });
 	});
+
+	it("deletes canonical notes missing from next snapshot", async () => {
+		await persistBrowserNotes([note("keep", 1), note("delete", 2)]);
+		await persistBrowserNotes([note("keep", 1)]);
+
+		expect((await loadBrowserNotes()).map(({ id }) => id)).toEqual(["keep"]);
+	});
+
 	it("creates one canonical target for a new wiki link", async () => {
 		const created = await createBrowserLinkedNote(" Project Alpha ");
 		const duplicate = await createBrowserLinkedNote("project alpha");

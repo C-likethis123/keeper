@@ -1,5 +1,5 @@
 import { browserStorage } from "@web/services/storage";
-import { toCanonicalBrowserNote, type BrowserNote } from "@web/ui/noteRepository";
+import type { BrowserNote } from "@web/ui/noteRepository";
 import type { NoteHistoryVersion } from "@keeper/features/editor/note-history-contract";
 
 const VERSION_LIMIT = 100;
@@ -12,6 +12,28 @@ function isVersion(value: unknown): value is NoteHistoryVersion<BrowserNote> {
 }
 
 type LegacyVersion = { id: string; capturedAt: number; note: { id: string; title: string; content: string; noteType: "note" | "document" | "video" | "drawing"; isPinned: boolean; updatedAt: number } };
+
+function toCanonicalHistoryNote(note: LegacyVersion["note"]): BrowserNote {
+	const isDocument = note.noteType === "document";
+	const isVideo = note.noteType === "video";
+	return {
+		id: note.id,
+		title: note.title,
+		content: isDocument || isVideo ? "" : note.content,
+		lastUpdated: note.updatedAt,
+		modified: note.updatedAt,
+		isPinned: note.isPinned,
+		noteType: note.noteType === "drawing" ? "drawing" : "note",
+		status: null,
+		createdAt: null,
+		completedAt: null,
+		attachment: isDocument ? note.content : null,
+		attachedVideo: isVideo ? note.content : null,
+		resourceUrl: null,
+		documentPositions: null,
+	};
+}
+
 function isLegacyVersion(value: unknown): value is LegacyVersion {
 	if (!value || typeof value !== "object") return false;
 	const version = value as Partial<LegacyVersion>;
@@ -26,7 +48,7 @@ export async function listBrowserNoteVersions(noteId: string): Promise<NoteHisto
 	try {
 		const parsed: unknown = JSON.parse(legacy);
 		if (!Array.isArray(parsed) || !parsed.every(isLegacyVersion)) return [];
-		const migrated = parsed.map((version) => ({ ...version, note: toCanonicalBrowserNote(version.note) }));
+		const migrated = parsed.map((version) => ({ ...version, note: toCanonicalHistoryNote(version.note) }));
 		await browserStorage.setState(keyFor(2, noteId), JSON.stringify(migrated));
 		return migrated.filter((version) => version.note.id === noteId).sort((a, b) => b.capturedAt - a.capturedAt);
 	} catch { return []; }

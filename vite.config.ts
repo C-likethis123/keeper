@@ -8,6 +8,9 @@ export default defineConfig({
 	plugins: [react()],
 	resolve: {
 		alias: {
+			"@/services/storage/storageEngine": fileURLToPath(
+				new URL("./src/services/storage/storageEngine.web.ts", import.meta.url),
+			),
 			"@/services/notes/noteService": fileURLToPath(
 				new URL("./web/src/adapters/browser/noteService.ts", import.meta.url),
 			),
