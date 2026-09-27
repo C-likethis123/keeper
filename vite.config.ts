@@ -6,6 +6,7 @@ export default defineConfig({
 	root: "web",
 	envPrefix: ["VITE_", "EXPO_PUBLIC_"],
 	define: {
+		__DEV__: "false",
 		global: "globalThis",
 	},
 	plugins: [react()],

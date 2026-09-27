@@ -168,6 +168,8 @@ export function useDocumentPanelState({
   preferFileUri = false,
 }: UseDocumentPanelStateOptions) {
   const [fileUri, setFileUri] = useState<string | null>(null);
+  const [attachmentResolutionFailed, setAttachmentResolutionFailed] =
+    useState(false);
   const [savedPosition, setSavedPosition] = useState<string | null>(null);
   const [attachmentBase64, setAttachmentBase64] = useState<string | null>(null);
   const [viewer, setViewer] = useState<DocumentViewerState>(EMPTY_VIEWER);
@@ -182,12 +184,16 @@ export function useDocumentPanelState({
 
 	useEffect(() => {
 		let isCancelled = false;
+		setAttachmentResolutionFailed(false);
 		Promise.resolve(resolveAttachmentUri(attachmentPath))
 			.then((resolved) => {
 				if (!isCancelled) setFileUri(resolved);
 			})
 			.catch(() => {
-				if (!isCancelled) setFileUri(null);
+				if (!isCancelled) {
+					setFileUri(null);
+					setAttachmentResolutionFailed(true);
+				}
 			});
 		setSavedPosition(null);
 		loadDocumentPosition(noteId, attachmentPath).then((position) => {
@@ -328,10 +334,11 @@ export function useDocumentPanelState({
   ]);
 
   const isLoading =
-    !fileUri ||
-    (!viewer.html && failedAttachmentType !== attachmentType);
+    !attachmentResolutionFailed &&
+    (!fileUri || (!viewer.html && failedAttachmentType !== attachmentType));
 
   return {
+		attachmentResolutionFailed,
     failedAttachmentType,
     fileUri,
     filename,

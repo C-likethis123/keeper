@@ -77,7 +77,10 @@ export function BrowserEditorSidePanelHost({
 	}, []);
 	const vertical = activePanel === "video" || isNarrow;
 	function resize(event: ReactPointerEvent<HTMLElement>) {
-		if (!activePanel || !event.currentTarget.hasPointerCapture(event.pointerId))
+		if (
+			!activePanel ||
+			!event.currentTarget.hasPointerCapture?.(event.pointerId)
+		)
 			return;
 		const bounds = event.currentTarget.getBoundingClientRect();
 		const length = vertical ? bounds.height : bounds.width;
@@ -112,8 +115,8 @@ export function BrowserEditorSidePanelHost({
 			className={`browser-editor-split browser-editor-split--${vertical ? "vertical" : "horizontal"}`}
 			onPointerMove={resize}
 			onPointerUp={(event) => {
-				if (event.currentTarget.hasPointerCapture(event.pointerId))
-					event.currentTarget.releasePointerCapture(event.pointerId);
+				if (event.currentTarget.hasPointerCapture?.(event.pointerId))
+					event.currentTarget.releasePointerCapture?.(event.pointerId);
 				void persistRatio();
 			}}
 		>

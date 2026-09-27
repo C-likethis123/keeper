@@ -58,6 +58,8 @@ function changedNote(previous: BrowserNote, next: BrowserNote) {
 		previous.attachment !== next.attachment ||
 		previous.attachedVideo !== next.attachedVideo ||
 		previous.resourceUrl !== next.resourceUrl ||
+		JSON.stringify(previous.documentPositions) !==
+			JSON.stringify(next.documentPositions) ||
 		previous.status !== next.status
 	);
 }

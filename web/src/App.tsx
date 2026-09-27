@@ -43,9 +43,12 @@ import {
 	Navigate,
 	Route,
 	Routes,
+	useLocation,
 	useNavigate,
 	useParams,
 } from "react-router-dom";
+
+type EditorPanel = "document" | "video" | "article";
 
 function typeLabel(type: BrowserNoteSurface) {
 	return {
@@ -58,6 +61,7 @@ function typeLabel(type: BrowserNoteSurface) {
 
 function EditorRoute() {
 	const { noteId = "" } = useParams();
+	const { pathname } = useLocation();
 	const { notes, ready, loadError, reloadNotes } = useBrowserNotes();
 	if (!ready) return <Loader />;
 	if (loadError)
@@ -72,10 +76,39 @@ function EditorRoute() {
 				</section>
 			</main>
 		);
-	return <EditorRouteContent key={note.id} note={note} />;
+	const preferredPanel: EditorPanel | null = pathname.startsWith("/documents/")
+		? "document"
+		: pathname.startsWith("/videos/")
+			? "video"
+			: null;
+	return (
+		<EditorRouteContent
+			key={`${note.id}:${preferredPanel ?? "editor"}`}
+			note={note}
+			preferredPanel={preferredPanel}
+		/>
+	);
 }
 
-function EditorRouteContent({ note }: { note: BrowserNote }) {
+function initialPanel(
+	note: BrowserNote,
+	preferredPanel: EditorPanel | null,
+): EditorPanel | null {
+	if (preferredPanel === "document" && note.attachment) return "document";
+	if (preferredPanel === "video" && note.attachedVideo) return "video";
+	if (note.attachedVideo) return "video";
+	if (note.resourceUrl) return "article";
+	if (note.attachment) return "document";
+	return null;
+}
+
+function EditorRouteContent({
+	note,
+	preferredPanel,
+}: {
+	note: BrowserNote;
+	preferredPanel: EditorPanel | null;
+}) {
 	const { notes, saveNote, deleteNote, notify } = useBrowserNotes();
 	const navigate = useNavigate();
 	const persistence = useMemo(
@@ -88,9 +121,9 @@ function EditorRouteContent({ note }: { note: BrowserNote }) {
 	const [templateOpen, setTemplateOpen] = useState(false);
 	const [videoModalOpen, setVideoModalOpen] = useState(false);
 	const [relatedOpen, setRelatedOpen] = useState(false);
-	const [activePanel, setActivePanel] = useState<
-		"document" | "video" | "article" | null
-	>(null);
+	const [activePanel, setActivePanel] = useState<EditorPanel | null>(() =>
+		initialPanel(note, preferredPanel),
+	);
 	const [editorInstanceKey, setEditorInstanceKey] = useState(0);
 	const [templateCommand, setTemplateCommand] = useState<{
 		markdown: string;
@@ -101,12 +134,6 @@ function EditorRouteContent({ note }: { note: BrowserNote }) {
 	const tabs = useTabStore((state) => state.tabs);
 	const localNoteId = note?.id;
 	const localTitle = local.title || "Untitled";
-	useEffect(() => {
-		if (note?.attachedVideo) setActivePanel("video");
-		else if (note?.resourceUrl) setActivePanel("article");
-		else if (note?.attachment) setActivePanel("document");
-		else setActivePanel(null);
-	}, [note?.attachment, note?.attachedVideo, note?.resourceUrl]);
 	useEffect(() => {
 		if (localNoteId) openTab(localNoteId, localTitle);
 	}, [localNoteId, localTitle, openTab]);
@@ -178,6 +205,7 @@ function EditorRouteContent({ note }: { note: BrowserNote }) {
 		try {
 			if (attachment) await deleteStoredBrowserFile(attachment);
 			await saveNote(next);
+			setActivePanel(null);
 		} catch {
 			notify("Failed to remove attachment.");
 		}
