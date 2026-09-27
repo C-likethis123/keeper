@@ -404,7 +404,9 @@ function EditorRouteContent({
 					onTextSelected={(text) =>
 						setTemplateCommand({ markdown: `> ${text}`, timestamp: Date.now() })
 					}
-					onVideoDismiss={() => setActivePanel(null)}
+					onVideoDismiss={() => {
+						void removeVideo();
+					}}
 				>
 					{local.noteType === "drawing" ? (
 						<BrowserDrawingEditor

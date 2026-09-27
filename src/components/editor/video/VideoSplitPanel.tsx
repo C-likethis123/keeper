@@ -2,7 +2,13 @@ import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
-import { Pressable, StyleSheet, View, type ViewStyle } from "react-native";
+import {
+	Pressable,
+	StyleSheet,
+	Text,
+	View,
+	type ViewStyle,
+} from "react-native";
 import { EmbeddedVideoPanel } from "./EmbeddedVideoPanel";
 import { parseEmbeddedVideoUrl } from "./videoUtils";
 
@@ -19,16 +25,24 @@ export default function VideoSplitPanel({
 }: VideoSplitPanelProps) {
 	const styles = useStyles(createStyles);
 	const source = parseEmbeddedVideoUrl(url);
-	if (!source) {
-		return null;
-	}
 
 	return (
 		<View style={[styles.container, style]}>
-			<Pressable style={styles.dismissButton} onPress={onDismiss}>
+			<Pressable
+				style={styles.dismissButton}
+				onPress={onDismiss}
+				accessibilityRole="button"
+				accessibilityLabel="Remove video"
+			>
 				<FontAwesome name="times" size={16} style={styles.dismissIcon} />
 			</Pressable>
-			<EmbeddedVideoPanel source={source} style={styles.panel} />
+			{source ? (
+				<EmbeddedVideoPanel source={source} style={styles.panel} />
+			) : (
+				<View style={styles.invalidPanel}>
+					<Text style={styles.invalidText}>Not a valid YouTube URL</Text>
+				</View>
+			)}
 		</View>
 	);
 }
@@ -40,6 +54,17 @@ function createStyles(theme: ExtendedTheme) {
 		},
 		panel: {
 			flex: 1,
+		},
+		invalidPanel: {
+			flex: 1,
+			alignItems: "center",
+			justifyContent: "center",
+			padding: 24,
+			backgroundColor: theme.colors.card,
+		},
+		invalidText: {
+			fontSize: 14,
+			color: theme.colors.textMuted,
 		},
 		dismissButton: {
 			position: "absolute",

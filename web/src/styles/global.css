@@ -609,9 +609,8 @@ a {
 	cursor: row-resize;
 }
 .browser-editor-split--vertical .browser-editor-panel {
-	flex-basis: auto !important;
-	flex-grow: 1;
-	flex-shrink: 1;
+	flex-grow: 0;
+	flex-shrink: 0;
 }
 .browser-editor-split--vertical .browser-editor-pane {
 	flex: 1;
@@ -621,9 +620,8 @@ a {
 		flex-direction: column;
 	}
 	.browser-editor-panel {
-		flex-basis: auto !important;
-		flex-grow: 1;
-		flex-shrink: 1;
+		flex-grow: 0;
+		flex-shrink: 0;
 	}
 	.browser-editor-divider {
 		cursor: row-resize;

@@ -211,6 +211,62 @@ it("keeps editor autosave functional while document panel is open", async () => 
 	);
 });
 
+it("opens direct video route, then removes video through canonical panel", async () => {
+	const user = userEvent.setup();
+	await persistBrowserNotes([
+		note({
+			id: "video-route",
+			title: "Video route",
+			attachedVideo: "https://youtu.be/dQw4w9WgXcQ",
+			resourceUrl: "https://example.com/article",
+		}),
+	]);
+	render(
+		<MemoryRouter initialEntries={["/videos/video-route"]}>
+			<App />
+		</MemoryRouter>,
+	);
+
+	expect(await screen.findByTitle("Youtube video")).toBeInTheDocument();
+	expect(screen.queryByTitle("Article")).not.toBeInTheDocument();
+	await user.click(screen.getByRole("button", { name: "Attach video" }));
+	const videoInput = screen.getByPlaceholderText(
+		"https://www.youtube.com/watch?v=...",
+	);
+	await user.clear(videoInput);
+	await user.type(videoInput, "https://youtu.be/abcdefghijk");
+	await user.click(screen.getByText("Save"));
+	await waitFor(async () =>
+		expect((await loadBrowserNotes())[0]?.attachedVideo).toBe(
+			"https://youtu.be/abcdefghijk",
+		),
+	);
+	await user.click(screen.getByRole("button", { name: "Remove video" }));
+
+	await waitFor(async () =>
+		expect((await loadBrowserNotes())[0]?.attachedVideo).toBeNull(),
+	);
+	expect(screen.queryByTitle("Youtube video")).not.toBeInTheDocument();
+});
+
+it("renders persisted article metadata in canonical article panel", async () => {
+	await persistBrowserNotes([
+		note({
+			id: "article-panel",
+			title: "Article panel",
+			resourceUrl: "https://example.com/article",
+		}),
+	]);
+	render(
+		<MemoryRouter initialEntries={["/editor/article-panel"]}>
+			<App />
+		</MemoryRouter>,
+	);
+
+	const article = await screen.findByTitle("Article");
+	expect(article).toHaveAttribute("src", "https://example.com/article");
+});
+
 it("creates one quick note and routes to its browser editor", async () => {
 	const user = userEvent.setup();
 	render(
