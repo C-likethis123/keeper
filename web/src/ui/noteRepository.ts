@@ -2,23 +2,12 @@ import type { Note } from "@/services/notes/types";
 import { extractSummary } from "@/services/notes/indexDb/mapper";
 import { storageEngine } from "@/services/storage/storageEngine";
 import type { CanonicalNote } from "@keeper/features/notes/note-contract";
+import { ensureCanonicalStorageInitialized } from "@web/services/canonicalStorage";
 
 export type BrowserNote = CanonicalNote;
 export type BrowserNoteSurface = "note" | "document" | "video" | "drawing";
 
 export const BROWSER_NOTES_CHANGED = "keeper:browser-notes-changed";
-
-let initialization: Promise<void> | null = null;
-
-function initializeRepository(): Promise<void> {
-	if (!initialization) {
-		initialization = storageEngine.initialize().then(() => undefined);
-		void initialization.catch(() => {
-			initialization = null;
-		});
-	}
-	return initialization;
-}
 
 function toBrowserNote(note: Note): BrowserNote {
 	return {
@@ -81,7 +70,7 @@ export function getBrowserNoteSurface(note: BrowserNote): BrowserNoteSurface {
 }
 
 export async function loadBrowserNotes(): Promise<BrowserNote[]> {
-	await initializeRepository();
+	await ensureCanonicalStorageInitialized();
 	const entries = await storageEngine.listNoteFiles();
 	const notes = await Promise.all(
 		entries.map(({ id }) => storageEngine.loadNote(id)),
@@ -93,7 +82,7 @@ export async function loadBrowserNotes(): Promise<BrowserNote[]> {
 }
 
 export async function persistBrowserNotes(notes: BrowserNote[]): Promise<void> {
-	await initializeRepository();
+	await ensureCanonicalStorageInitialized();
 	const desired = new Map<string, BrowserNote>();
 	for (const note of notes) {
 		const current = desired.get(note.id);

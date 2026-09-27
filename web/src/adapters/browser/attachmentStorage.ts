@@ -1,6 +1,43 @@
-import { releaseLocalFile, resolveLocalFile } from "@web/services/media";
+import {
+	deleteAttachment as deleteCanonicalAttachment,
+	inferAttachmentType,
+	releaseAttachmentUri as releaseCanonicalAttachmentUri,
+	resolveAttachmentUri as resolveCanonicalAttachmentUri,
+	saveAttachmentBytesToNotes as saveCanonicalAttachmentBytesToNotes,
+	writeAttachmentBytesToNotes as writeCanonicalAttachmentBytesToNotes,
+} from "@keeper/services/notes/attachmentStorage.web";
+import { ensureCanonicalStorageInitialized } from "@web/services/canonicalStorage";
 
 export type AttachmentType = "pdf" | "epub";
-export function inferAttachmentType(path: string): AttachmentType | null { return path.toLocaleLowerCase().endsWith(".pdf") ? "pdf" : path.toLocaleLowerCase().endsWith(".epub") ? "epub" : null; }
-export async function resolveAttachmentUri(path: string) { return resolveLocalFile(path, inferAttachmentType(path) === "pdf" ? "application/pdf" : "application/epub+zip"); }
-export function releaseAttachmentUri(path: string) { releaseLocalFile(path); }
+export { inferAttachmentType };
+
+export async function saveAttachmentBytesToNotes(
+	bytes: Uint8Array,
+	originalName: string,
+	noteId?: string,
+): Promise<string> {
+	await ensureCanonicalStorageInitialized();
+	return saveCanonicalAttachmentBytesToNotes(bytes, originalName, noteId);
+}
+
+export async function resolveAttachmentUri(path: string): Promise<string> {
+	await ensureCanonicalStorageInitialized();
+	return resolveCanonicalAttachmentUri(path);
+}
+
+export async function writeAttachmentBytesToNotes(
+	path: string,
+	bytes: Uint8Array,
+): Promise<void> {
+	await ensureCanonicalStorageInitialized();
+	await writeCanonicalAttachmentBytesToNotes(path, bytes);
+}
+
+export async function deleteAttachment(path: string): Promise<void> {
+	await ensureCanonicalStorageInitialized();
+	await deleteCanonicalAttachment(path);
+}
+
+export function releaseAttachmentUri(path: string): void {
+	releaseCanonicalAttachmentUri(path);
+}

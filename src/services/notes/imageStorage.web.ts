@@ -11,6 +11,13 @@ function uniqueId(): string {
 	return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function blobBytes(bytes: Uint8Array): ArrayBuffer {
+	return bytes.buffer.slice(
+		bytes.byteOffset,
+		bytes.byteOffset + bytes.byteLength,
+	) as ArrayBuffer;
+}
+
 function getImageExtension(mimeType: string, name: string): string {
 	const nameExtension = getExtension(name);
 	if (nameExtension !== ".jpg" || /\.jpe?g(?:\?|$)/i.test(name)) {
@@ -34,7 +41,9 @@ function cacheObjectUrl(
 ): string {
 	const oldUrl = objectUrls.get(relativePath);
 	if (oldUrl) URL.revokeObjectURL(oldUrl);
-	const url = URL.createObjectURL(new Blob([data], { type: mimeType }));
+	const url = URL.createObjectURL(
+		new Blob([blobBytes(data)], { type: mimeType }),
+	);
 	objectUrls.set(relativePath, url);
 	return url;
 }

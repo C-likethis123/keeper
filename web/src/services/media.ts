@@ -1,12 +1,15 @@
-import { browserStorage } from "@web/services/storage";
+import {
+	deleteAttachment,
+	releaseAttachmentUri,
+	resolveAttachmentUri,
+	saveAttachmentBytesToNotes,
+} from "@web/adapters/browser/attachmentStorage";
+import {
+	releaseImageUri,
+	resolveImageUri,
+	saveImageBytesToNotes,
+} from "@web/adapters/browser/imageStorage";
 
-const urls = new Map<string, string>();
-function id(): string {
-	return `${Date.now().toString(36)}-${crypto.randomUUID()}`;
-}
-function extension(name: string, fallback: string): string {
-	return /\.[a-z0-9]+$/i.exec(name)?.[0]?.toLowerCase() ?? fallback;
-}
 function blobBytes(bytes: Uint8Array): ArrayBuffer {
 	return bytes.buffer.slice(
 		bytes.byteOffset,
@@ -18,24 +21,22 @@ export async function savePickedFile(
 	file: File,
 	folder: "assets" | "attachments",
 ): Promise<string> {
-	const path = `${folder}/${id()}${extension(file.name, folder === "assets" ? ".jpg" : "")}`;
-	await browserStorage.writeFile(
-		path,
-		new Uint8Array(await file.arrayBuffer()),
-	);
-	return path;
+	const bytes = new Uint8Array(await file.arrayBuffer());
+	return folder === "assets"
+		? saveImageBytesToNotes(bytes, file.type || "image/jpeg", file.name)
+		: saveAttachmentBytesToNotes(bytes, file.name);
 }
 export async function saveBytes(
 	bytes: Uint8Array,
 	name: string,
 	folder: "assets" | "attachments",
 ): Promise<string> {
-	const path = `${folder}/${id()}${extension(name, folder === "assets" ? ".jpg" : "")}`;
-	await browserStorage.writeFile(path, bytes);
-	return path;
+	return folder === "assets"
+		? saveImageBytesToNotes(bytes, "image/*", name)
+		: saveAttachmentBytesToNotes(bytes, name);
 }
 export async function deleteStoredBrowserFile(path: string): Promise<void> {
-	await browserStorage.deleteFile(path);
+	await deleteAttachment(path);
 }
 export function pickBrowserFile(accept: string): Promise<File | null> {
 	return new Promise((resolve) => {
@@ -49,20 +50,15 @@ export function pickBrowserFile(accept: string): Promise<File | null> {
 }
 export async function resolveLocalFile(
 	path: string,
-	type = "application/octet-stream",
+	_type = "application/octet-stream",
 ): Promise<string> {
-	const cached = urls.get(path);
-	if (cached) return cached;
-	const bytes = await browserStorage.readFile(path);
-	if (!bytes) throw new Error(`Local file not found: ${path}`);
-	const url = URL.createObjectURL(new Blob([blobBytes(bytes)], { type }));
-	urls.set(path, url);
-	return url;
+	return path.startsWith("assets/")
+		? resolveImageUri(path)
+		: resolveAttachmentUri(path);
 }
 export function releaseLocalFile(path: string): void {
-	const url = urls.get(path);
-	if (url) URL.revokeObjectURL(url);
-	urls.delete(path);
+	if (path.startsWith("assets/")) releaseImageUri(path);
+	else releaseAttachmentUri(path);
 }
 export function readClipboardImage(event: ClipboardEvent): File | null {
 	return (

@@ -1,5 +1,24 @@
-import { releaseLocalFile, resolveLocalFile } from "@web/services/media";
+import {
+	releaseImageUri as releaseCanonicalImageUri,
+	resolveImageUri as resolveCanonicalImageUri,
+	saveImageBytesToNotes as saveCanonicalImageBytesToNotes,
+} from "@keeper/services/notes/imageStorage.web";
+import { ensureCanonicalStorageInitialized } from "@web/services/canonicalStorage";
 
-/** Browser media storage owns URLs; canonical image node only needs resolution. */
-export async function resolveImageUri(uri: string) { return uri.startsWith("assets/") ? resolveLocalFile(uri, "image/*") : uri; }
-export function releaseImageUri(uri: string) { if (uri.startsWith("assets/")) releaseLocalFile(uri); }
+export async function saveImageBytesToNotes(
+	bytes: Uint8Array,
+	mimeType: string,
+	name: string,
+): Promise<string> {
+	await ensureCanonicalStorageInitialized();
+	return saveCanonicalImageBytesToNotes(bytes, mimeType, name);
+}
+
+export async function resolveImageUri(uri: string): Promise<string> {
+	await ensureCanonicalStorageInitialized();
+	return resolveCanonicalImageUri(uri);
+}
+
+export function releaseImageUri(uri: string): void {
+	releaseCanonicalImageUri(uri);
+}

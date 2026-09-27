@@ -37,6 +37,9 @@ Ship Keeper as installable, offline-capable web app from shared Expo UI. Keep cu
    - Production export, deploy over HTTPS, and configure immutable cache headers for hashed bundles.
    - Run install/offline/update test matrix on Chrome, Safari macOS, Safari iOS, Android Chrome.
    - Persist Vite notes directly through the canonical browser storage engine.
+   - Persist Vite images, clipboard images, PDF/EPUB attachments, and
+     sync-downloaded attachment bytes through the canonical browser storage
+     engine.
 
 ## Acceptance gates
 
@@ -47,6 +50,14 @@ Ship Keeper as installable, offline-capable web app from shared Expo UI. Keep cu
 - Anonymous or cross-user API access cannot read/write notes.
 - `npm run lint`, relevant tests, and `npm run build:web` pass.
 
-## Current implementation slice
+## Completed migration slices
 
-Foundation only: browser storage, browser file import, manifest/service worker, browser startup smoke test. Authenticated public sync and full browser index parity remain release blockers; MOC classification is server-owned.
+- Removed Tauri desktop support.
+- Persisted Vite notes through the canonical browser storage engine.
+- Persisted Vite media through canonical `assets/...` and `_attachments/...`
+  paths, including sync-downloaded attachment bytes. Browser-only sync cursor,
+  device ID, operation queue, and note history remain in their existing store.
+
+Migration remains incomplete. Cloudflare still builds Expo. Shell and route
+parity, authenticated sync completion, history migration, PWA cutover testing,
+and Expo/React Native/Metro/Jest Expo removal remain unfinished.

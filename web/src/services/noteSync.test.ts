@@ -1,4 +1,9 @@
 import "fake-indexeddb/auto";
+import { storageEngine } from "@/services/storage/storageEngine";
+import {
+	releaseAttachmentUri,
+	resolveAttachmentUri,
+} from "@web/adapters/browser/attachmentStorage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { browserStorage } from "@web/services/storage";
 import { enqueueBrowserNoteSave, syncBrowserNotes } from "./noteSync";
@@ -23,6 +28,8 @@ const note = {
 describe("browser note sync", () => {
 	beforeEach(async () => {
 		vi.stubEnv("VITE_SYNC_SERVER_URL", "https://sync.example");
+		await storageEngine.initialize();
+		await storageEngine.resetAllData();
 		await Promise.all(
 			[
 				"sync:device-id",
@@ -105,5 +112,56 @@ describe("browser note sync", () => {
 				}),
 			]),
 		);
+	});
+	it("persists sync-downloaded attachment bytes in canonical storage", async () => {
+		const path = "_attachments/remote-1_agenda.pdf";
+		const revokeObjectURL = vi.fn();
+		let objectUrl = 0;
+		vi.stubGlobal("URL", {
+			createObjectURL: vi.fn(() => `blob:sync-attachment-${++objectUrl}`),
+			revokeObjectURL,
+		});
+		await storageEngine.writeFileBytes(path, new Uint8Array([1]));
+		const replacedUrl = await resolveAttachmentUri(path);
+		const remoteMarkdown = `---\ntitle: "Remote document"\nid: "remote-1"\ntype: "note"\nattachment: "${path}"\n---\nRemote body`;
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify({
+						ops: [
+							{
+								serverId: 1,
+								deviceId: "desktop",
+								opId: "desktop:1",
+								seq: 1,
+								type: "note.create",
+								noteId: "remote-1",
+								path: "remote-1.md",
+								title: "Remote document",
+								markdown: remoteMarkdown,
+								createdAt: "2026-01-01T00:00:00.000Z",
+								attachmentBase64: btoa(String.fromCharCode(9, 8, 7)),
+							},
+						],
+						cursor: 1,
+					}),
+					{ status: 200 },
+				),
+			)
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ ops: [], cursor: 1 }), { status: 200 }),
+			);
+		vi.stubGlobal("fetch", fetchMock);
+
+		const result = await syncBrowserNotes([note]);
+
+		expect(result[0]?.attachment).toBe(path);
+		expect(await storageEngine.readFileBytes(path)).toEqual(
+			new Uint8Array([9, 8, 7]),
+		);
+		expect(revokeObjectURL).toHaveBeenCalledWith(replacedUrl);
+		expect(await resolveAttachmentUri(path)).not.toBe(replacedUrl);
+		releaseAttachmentUri(path);
 	});
 });

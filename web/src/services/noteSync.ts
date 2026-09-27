@@ -6,6 +6,9 @@ import type {
 	PulledSyncOperation,
 	QueuedSyncOperation,
 } from "@keeper/services/sync/types";
+import { storageEngine } from "@/services/storage/storageEngine";
+import { writeAttachmentBytesToNotes } from "@web/adapters/browser/attachmentStorage";
+import { ensureCanonicalStorageInitialized } from "@web/services/canonicalStorage";
 import { browserStorage } from "@web/services/storage";
 import {
 	getSyncDeviceId,
@@ -71,7 +74,8 @@ async function attachmentBase64(
 	note: BrowserNote,
 ): Promise<string | undefined> {
 	if (!note.attachment) return undefined;
-	const bytes = await browserStorage.readFile(note.attachment);
+	await ensureCanonicalStorageInitialized();
+	const bytes = await storageEngine.readFileBytes(note.attachment);
 	return bytes ? bytesToBase64(bytes) : undefined;
 }
 
@@ -225,11 +229,12 @@ async function applyRemoteOperation(
 		);
 	if (operation.attachmentBase64) {
 		const path = parseFrontmatter(operation.markdown).attachment;
-		if (path)
-			await browserStorage.writeFile(
+		if (path) {
+			await writeAttachmentBytesToNotes(
 				path,
 				base64ToBytes(operation.attachmentBase64),
 			);
+		}
 	}
 	const next = remoteNote(operation);
 	return [next, ...notes.filter((note) => note.id !== next.id)];

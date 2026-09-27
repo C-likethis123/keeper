@@ -24,6 +24,13 @@ function attachmentMimeType(type: AttachmentType): string {
 	return type === "pdf" ? "application/pdf" : "application/epub+zip";
 }
 
+function blobBytes(bytes: Uint8Array): ArrayBuffer {
+	return bytes.buffer.slice(
+		bytes.byteOffset,
+		bytes.byteOffset + bytes.byteLength,
+	) as ArrayBuffer;
+}
+
 function cacheObjectUrl(
 	relativePath: string,
 	bytes: Uint8Array,
@@ -32,7 +39,7 @@ function cacheObjectUrl(
 	const oldUrl = objectUrls.get(relativePath);
 	if (oldUrl) URL.revokeObjectURL(oldUrl);
 	const url = URL.createObjectURL(
-		new Blob([bytes], { type: attachmentMimeType(type) }),
+		new Blob([blobBytes(bytes)], { type: attachmentMimeType(type) }),
 	);
 	objectUrls.set(relativePath, url);
 	return url;
@@ -44,16 +51,42 @@ export async function copyPickedAttachmentToNote(
 	originalName?: string,
 ): Promise<string> {
 	const sourceName = originalName ?? uri;
-	const type = inferAttachmentType(sourceName);
-	if (!type) throw new Error("Unsupported attachment type");
 	const response = await fetch(uri);
 	if (!response.ok) throw new Error("Could not read selected attachment");
 	const bytes = new Uint8Array(await response.arrayBuffer());
-	const relativePath = `_attachments/${noteId}_${uniqueId()}${getExtension(sourceName)}`;
-	await storageEngine.writeFileBytes(relativePath, bytes);
-	cacheObjectUrl(relativePath, bytes, type);
+	const relativePath = await saveAttachmentBytesToNotes(
+		bytes,
+		sourceName,
+		noteId,
+	);
 	URL.revokeObjectURL(uri);
 	return relativePath;
+}
+
+export async function saveAttachmentBytesToNotes(
+	bytes: Uint8Array,
+	originalName: string,
+	noteId = "attachment",
+): Promise<string> {
+	const type = inferAttachmentType(originalName);
+	if (!type) throw new Error("Unsupported attachment type");
+	const relativePath = `_attachments/${noteId}_${uniqueId()}${getExtension(originalName)}`;
+	await writeAttachmentBytesToNotes(relativePath, bytes);
+	cacheObjectUrl(relativePath, bytes, type);
+	return relativePath;
+}
+
+export async function writeAttachmentBytesToNotes(
+	relativePath: string,
+	bytes: Uint8Array,
+): Promise<void> {
+	if (!inferAttachmentType(relativePath)) {
+		throw new Error(`Unsupported attachment type: ${relativePath}`);
+	}
+	await storageEngine.writeFileBytes(relativePath, bytes);
+	const objectUrl = objectUrls.get(relativePath);
+	if (objectUrl) URL.revokeObjectURL(objectUrl);
+	objectUrls.delete(relativePath);
 }
 
 export async function resolveAttachmentUri(relativePath: string): Promise<string> {
