@@ -10,6 +10,7 @@ const mockReadFileBytes = jest.fn();
 const mockWriteFileBytes = jest.fn();
 const mockListFilesRecursive = jest.fn();
 const mockDeleteDirectory = jest.fn();
+const mockDeleteFile = jest.fn();
 
 jest.mock("@/services/storage/storageEngine", () => ({
 	storageEngine: {
@@ -17,6 +18,7 @@ jest.mock("@/services/storage/storageEngine", () => ({
 		writeFileBytes: (...args: unknown[]) => mockWriteFileBytes(...args),
 		listFilesRecursive: (...args: unknown[]) => mockListFilesRecursive(...args),
 		deleteDirectory: (...args: unknown[]) => mockDeleteDirectory(...args),
+		deleteFile: (...args: unknown[]) => mockDeleteFile(...args),
 	},
 }));
 
@@ -42,6 +44,8 @@ function storedVersion(
 describe("noteHistoryService", () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockListFilesRecursive.mockResolvedValue([]);
+		mockDeleteFile.mockResolvedValue(true);
 	});
 
 	afterEach(() => {

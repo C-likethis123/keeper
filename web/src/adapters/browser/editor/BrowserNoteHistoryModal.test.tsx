@@ -1,8 +1,8 @@
 import "fake-indexeddb/auto";
+import { storageEngine } from "@/services/storage/storageEngine";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { captureBrowserNoteVersion } from "@web/services/noteHistory";
-import { browserStorage } from "@web/services/storage";
 import { BrowserNoteHistoryModal } from "./BrowserNoteHistoryModal";
 
 const oldNote = {
@@ -30,8 +30,8 @@ const currentNote = {
 
 describe("BrowserNoteHistoryModal", () => {
 	beforeEach(async () => {
-		await browserStorage.setState("note-history:v1:note-1", "[]");
-		await browserStorage.setState("note-history:v2:note-1", "[]");
+		await storageEngine.initialize();
+		await storageEngine.resetAllData();
 	});
 	it("shows and restores saved browser versions", async () => {
 		await captureBrowserNoteVersion(oldNote);

@@ -8,6 +8,12 @@ export default defineConfig({
 	plugins: [react()],
 	resolve: {
 		alias: {
+			"@/services/sync/syncStateStorage": fileURLToPath(
+				new URL(
+					"./src/services/sync/syncStateStorage.web.ts",
+					import.meta.url,
+				),
+			),
 			"@/services/storage/storageEngine": fileURLToPath(
 				new URL("./src/services/storage/storageEngine.web.ts", import.meta.url),
 			),

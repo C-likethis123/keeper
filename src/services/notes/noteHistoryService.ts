@@ -3,6 +3,7 @@ import { storageEngine } from "@/services/storage/storageEngine";
 
 const HISTORY_ROOT = ".keeper/history";
 const HISTORY_FILE_SUFFIX = ".json";
+const HISTORY_VERSION_LIMIT = 100;
 
 export type NoteVersion = {
 	id: string;
@@ -46,6 +47,12 @@ export async function captureNoteVersion(note: Note): Promise<void> {
 	await storageEngine.writeFileBytes(
 		`${historyDirectory(note.id)}/${fileName}`,
 		encoder.encode(JSON.stringify(stored)),
+	);
+	const versions = await listNoteVersions(note.id);
+	await Promise.all(
+		versions
+			.slice(HISTORY_VERSION_LIMIT)
+			.map((version) => storageEngine.deleteFile(version.id)),
 	);
 }
 

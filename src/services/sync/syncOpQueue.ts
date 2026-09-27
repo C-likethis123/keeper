@@ -56,12 +56,48 @@ async function attachmentBase64(note: Note): Promise<string | undefined> {
 	return bytes ? bytesToBase64(bytes) : undefined;
 }
 
+function isQueuedSyncOperation(value: unknown): value is QueuedSyncOperation {
+	if (!value || typeof value !== "object") return false;
+	const operation = value as Record<string, unknown>;
+	if (
+		typeof operation.opId !== "string" ||
+		typeof operation.seq !== "number" ||
+		!Number.isFinite(operation.seq) ||
+		typeof operation.noteId !== "string"
+	)
+		return false;
+	switch (operation.type) {
+		case "note.create":
+			return (
+				typeof operation.path === "string" &&
+				typeof operation.title === "string" &&
+				typeof operation.markdown === "string" &&
+				typeof operation.createdAt === "string"
+			);
+		case "note.update":
+			return (
+				typeof operation.markdown === "string" &&
+				typeof operation.updatedAt === "string"
+			);
+		case "note.rename":
+			return (
+				typeof operation.path === "string" &&
+				typeof operation.title === "string" &&
+				typeof operation.updatedAt === "string"
+			);
+		case "note.delete":
+			return typeof operation.deletedAt === "string";
+		default:
+			return false;
+	}
+}
+
 async function readQueueUnsafe(): Promise<QueuedSyncOperation[]> {
 	const raw = await getSyncStateItem(QUEUE_KEY);
 	if (!raw) return [];
 	try {
-		const parsed = JSON.parse(raw) as QueuedSyncOperation[];
-		return Array.isArray(parsed) ? parsed : [];
+		const parsed: unknown = JSON.parse(raw);
+		return Array.isArray(parsed) ? parsed.filter(isQueuedSyncOperation) : [];
 	} catch {
 		return [];
 	}
@@ -123,7 +159,7 @@ async function appendSyncOp(
 	createOperation: (
 		deviceId: string,
 		seq: number,
-	) => Omit<QueuedSyncOperation, "opId" | "seq">,
+	) => Promise<Omit<QueuedSyncOperation, "opId" | "seq">>,
 ): Promise<QueuedSyncOperation> {
 	return serializeQueue(async () => {
 		const deviceId =
@@ -133,7 +169,7 @@ async function appendSyncOp(
 		const op = {
 			opId: `${deviceId}:${seq}`,
 			seq,
-			...createOperation(deviceId, seq),
+			...(await createOperation(deviceId, seq)),
 		} as QueuedSyncOperation;
 		const queued = await readQueueUnsafe();
 		queued.push(op);
@@ -143,31 +179,29 @@ async function appendSyncOp(
 }
 
 export async function enqueueNoteCreate(note: Note): Promise<QueuedSyncOperation> {
-	const attachment = await attachmentBase64(note);
-	return appendSyncOp(() => ({
+	return appendSyncOp(async () => ({
 		type: "note.create",
 		noteId: note.id,
 		path: `${note.id}.md`,
 		title: note.title,
 		markdown: toMarkdown(note),
 		createdAt: toIsoTime(note.createdAt ?? note.lastUpdated),
-		attachmentBase64: attachment,
+		attachmentBase64: await attachmentBase64(note),
 	}));
 }
 
 export async function enqueueNoteUpdate(note: Note): Promise<QueuedSyncOperation> {
-	const attachment = await attachmentBase64(note);
-	return appendSyncOp(() => ({
+	return appendSyncOp(async () => ({
 		type: "note.update",
 		noteId: note.id,
 		markdown: toMarkdown(note),
 		updatedAt: toIsoTime(note.lastUpdated),
-		attachmentBase64: attachment,
+		attachmentBase64: await attachmentBase64(note),
 	}));
 }
 
 export async function enqueueNoteDelete(noteId: string): Promise<QueuedSyncOperation> {
-	return appendSyncOp(() => ({
+	return appendSyncOp(async () => ({
 		type: "note.delete",
 		noteId,
 		deletedAt: new Date().toISOString(),

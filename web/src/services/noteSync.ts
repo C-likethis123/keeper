@@ -1,162 +1,61 @@
 import {
 	parseFrontmatter,
-	stringifyFrontmatter,
 } from "@keeper/services/notes/frontmatter";
+import {
+	enqueueMissingLocalNotes,
+	enqueueNoteCreate,
+	enqueueNoteDelete,
+	enqueueNoteUpdate,
+	getSyncDeviceId,
+	markSyncOpsPushed,
+	readQueuedSyncOps,
+	readSyncPullCursor,
+	writeSyncPullCursor,
+} from "@keeper/services/sync/syncOpQueue";
 import type {
 	PulledSyncOperation,
-	QueuedSyncOperation,
 } from "@keeper/services/sync/types";
-import { storageEngine } from "@/services/storage/storageEngine";
 import { writeAttachmentBytesToNotes } from "@web/adapters/browser/attachmentStorage";
-import { ensureCanonicalStorageInitialized } from "@web/services/canonicalStorage";
-import { browserStorage } from "@web/services/storage";
 import {
-	getSyncDeviceId,
 	isBrowserSyncConfigured,
 	syncFetch,
 } from "@web/services/sync";
 import type { BrowserNote } from "@web/ui/noteRepository";
 
-const QUEUE_KEY = "keeper:sync:op-queue";
-const SEQUENCE_KEY = "keeper:sync:next-seq";
-const CURSOR_KEY = "keeper:sync:pull-cursor";
-const LEGACY_BACKFILL_KEY = "keeper:sync:legacy-backfill-v1";
 let syncPromise: Promise<BrowserNote[]> | null = null;
-let queueMutex = Promise.resolve();
-
-function serializeQueue<T>(work: () => Promise<T>): Promise<T> {
-	const next = queueMutex.then(work, work);
-	queueMutex = next.then(
-		() => undefined,
-		() => undefined,
-	);
-	return next;
-}
-
-function toIsoTime(value: number | null | undefined): string {
-	return new Date(
-		typeof value === "number" && Number.isFinite(value) ? value : Date.now(),
-	).toISOString();
-}
-function bytesToBase64(bytes: Uint8Array): string {
-	let value = "";
-	for (let index = 0; index < bytes.length; index += 0x8000)
-		value += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
-	return btoa(value);
-}
 function base64ToBytes(value: string): Uint8Array {
 	const binary = atob(value);
 	return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
-function asQueue(value: unknown): QueuedSyncOperation[] {
-	return Array.isArray(value) ? (value as QueuedSyncOperation[]) : [];
-}
-
-async function readQueue(): Promise<QueuedSyncOperation[]> {
-	const raw = await browserStorage.getState(QUEUE_KEY);
-	if (!raw) return [];
-	try {
-		return asQueue(JSON.parse(raw));
-	} catch {
-		return [];
-	}
-}
-async function writeQueue(queue: QueuedSyncOperation[]) {
-	await browserStorage.setState(QUEUE_KEY, JSON.stringify(queue));
-}
-async function nextSequence(): Promise<number> {
-	const current = Number((await browserStorage.getState(SEQUENCE_KEY)) ?? "0");
-	const next = Number.isFinite(current) && current >= 0 ? current + 1 : 1;
-	await browserStorage.setState(SEQUENCE_KEY, String(next));
-	return next;
-}
-async function attachmentBase64(
-	note: BrowserNote,
-): Promise<string | undefined> {
-	if (!note.attachment) return undefined;
-	await ensureCanonicalStorageInitialized();
-	const bytes = await storageEngine.readFileBytes(note.attachment);
-	return bytes ? bytesToBase64(bytes) : undefined;
-}
-
 export async function enqueueBrowserNoteSave(
 	note: BrowserNote,
 	isNew: boolean,
 ): Promise<void> {
 	if (!isBrowserSyncConfigured()) return;
-	await serializeQueue(async () => {
-		const deviceId = await getSyncDeviceId();
-		const seq = await nextSequence();
-		const attachment = await attachmentBase64(note);
-		const markdown = stringifyFrontmatter({
-			...note,
-			modified: note.modified ?? note.lastUpdated,
-		});
-		const operation: QueuedSyncOperation = isNew
-			? {
-					opId: `${deviceId}:${seq}`,
-					seq,
-					type: "note.create",
-					noteId: note.id,
-					path: `${note.id}.md`,
-					title: note.title,
-					markdown,
-					createdAt: toIsoTime(note.createdAt ?? note.lastUpdated),
-					attachmentBase64: attachment,
-				}
-			: {
-					opId: `${deviceId}:${seq}`,
-					seq,
-					type: "note.update",
-					noteId: note.id,
-					markdown,
-					updatedAt: toIsoTime(note.lastUpdated),
-					attachmentBase64: attachment,
-				};
-		await writeQueue([...(await readQueue()), operation]);
-	});
+	await (isNew ? enqueueNoteCreate(note) : enqueueNoteUpdate(note));
 }
 
 export async function enqueueBrowserNoteDelete(noteId: string): Promise<void> {
 	if (!isBrowserSyncConfigured()) return;
-	await serializeQueue(async () => {
-		const deviceId = await getSyncDeviceId();
-		const seq = await nextSequence();
-		await writeQueue([
-			...(await readQueue()),
-			{
-				opId: `${deviceId}:${seq}`,
-				seq,
-				type: "note.delete",
-				noteId,
-				deletedAt: new Date().toISOString(),
-			},
-		]);
-	});
+	await enqueueNoteDelete(noteId);
 }
 
 /** Queues retained browser notes that predate the sync queue, once per browser store. */
 export async function queueMissingBrowserNotes(
-	notes: BrowserNote[],
+	_notes: BrowserNote[],
 ): Promise<void> {
-	if (
-		!isBrowserSyncConfigured() ||
-		(await browserStorage.getState(LEGACY_BACKFILL_KEY))
-	)
-		return;
+	if (!isBrowserSyncConfigured()) return;
 	const response = await syncFetch("/sync/note-ids");
 	if (!response.ok)
 		throw new Error(`Sync note inventory failed: ${response.status}`);
 	const remote = new Set(
 		((await response.json()) as { noteIds: string[] }).noteIds,
 	);
-	for (const note of notes)
-		if (!remote.has(note.id)) await enqueueBrowserNoteSave(note, true);
-	await browserStorage.setState(LEGACY_BACKFILL_KEY, "complete");
+	await enqueueMissingLocalNotes(remote);
 }
 
 async function pushQueuedOperations(): Promise<void> {
-	const queue = await readQueue();
+	const queue = await readQueuedSyncOps();
 	if (!queue.length) return;
 	const deviceId = await getSyncDeviceId();
 	const batch = queue.slice(0, 100);
@@ -171,10 +70,8 @@ async function pushQueuedOperations(): Promise<void> {
 		duplicates?: string[];
 	};
 	const sent = new Set([...result.accepted, ...(result.duplicates ?? [])]);
-	await writeQueue(
-		(await readQueue()).filter((operation) => !sent.has(operation.opId)),
-	);
-	if ((await readQueue()).length) await pushQueuedOperations();
+	await markSyncOpsPushed([...sent]);
+	if ((await readQueuedSyncOps()).length) await pushQueuedOperations();
 }
 
 function remoteNote(
@@ -242,10 +139,7 @@ async function applyRemoteOperation(
 
 async function pullOperations(notes: BrowserNote[]): Promise<BrowserNote[]> {
 	const deviceId = await getSyncDeviceId();
-	let cursor = Math.max(
-		0,
-		Number((await browserStorage.getState(CURSOR_KEY)) ?? "0") || 0,
-	);
+	let cursor = await readSyncPullCursor();
 	let current = notes;
 	for (;;) {
 		const response = await syncFetch(
@@ -258,10 +152,7 @@ async function pullOperations(notes: BrowserNote[]): Promise<BrowserNote[]> {
 		};
 		for (const operation of result.ops)
 			current = await applyRemoteOperation(current, operation);
-		await browserStorage.setState(
-			CURSOR_KEY,
-			String(Math.max(0, result.cursor)),
-		);
+		await writeSyncPullCursor(result.cursor);
 		if (!result.ops.length || result.cursor === cursor) return current;
 		cursor = result.cursor;
 	}

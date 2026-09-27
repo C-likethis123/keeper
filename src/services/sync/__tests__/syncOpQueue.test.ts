@@ -11,6 +11,7 @@ import type { Note } from "@/services/notes/types";
 const mockAsyncStorage = new Map<string, string>();
 const mockListNoteFiles = jest.fn();
 const mockLoadNote = jest.fn();
+const mockReadFileBytes = jest.fn();
 
 jest.mock("@react-native-async-storage/async-storage", () => ({
 	__esModule: true,
@@ -29,7 +30,7 @@ jest.mock("@/services/storage/storageEngine", () => ({
 	storageEngine: {
 		listNoteFiles: (...args: unknown[]) => mockListNoteFiles(...args),
 		loadNote: (...args: unknown[]) => mockLoadNote(...args),
-		readFileBytes: jest.fn(),
+		readFileBytes: (...args: unknown[]) => mockReadFileBytes(...args),
 	},
 }));
 
@@ -58,6 +59,7 @@ describe("syncOpQueue", () => {
 		mockAsyncStorage.clear();
 		mockListNoteFiles.mockResolvedValue([]);
 		mockLoadNote.mockResolvedValue(null);
+		mockReadFileBytes.mockResolvedValue(null);
 	});
 
 	it("queues create, update, and delete operations in device sequence order", async () => {
@@ -96,6 +98,29 @@ describe("syncOpQueue", () => {
 		});
 
 		expect(await readQueuedSyncOps()).toHaveLength(3);
+	});
+
+	it("preserves call order while attachment reads are pending", async () => {
+		let releaseFirstRead: (() => void) | undefined;
+		mockReadFileBytes.mockImplementation((path: string) => {
+			if (path !== "_attachments/first.pdf") return Promise.resolve(null);
+			return new Promise<Uint8Array>((resolve) => {
+				releaseFirstRead = () => resolve(new Uint8Array([1]));
+			});
+		});
+
+		const first = enqueueNoteCreate(
+			makeNote({ id: "first", attachment: "_attachments/first.pdf" }),
+		);
+		const second = enqueueNoteCreate(makeNote({ id: "second" }));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(releaseFirstRead).toBeDefined();
+		releaseFirstRead?.();
+		await Promise.all([first, second]);
+
+		expect((await readQueuedSyncOps()).map((operation) => operation.noteId)).toEqual(
+			["first", "second"],
+		);
 	});
 
 	it("removes accepted or duplicate operations after push", async () => {

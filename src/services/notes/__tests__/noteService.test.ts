@@ -11,6 +11,7 @@ const mockWriteFileBytes = jest.fn();
 const mockListFilesRecursive = jest.fn();
 const mockReadFileBytes = jest.fn();
 const mockDeleteDirectory = jest.fn();
+const mockDeleteFile = jest.fn();
 const mockSaveMarkdownToCrdt = jest.fn((note: NoteSaveInput) =>
 	Promise.resolve(note),
 );
@@ -28,6 +29,7 @@ jest.mock("@/services/storage/storageEngine", () => ({
 		listFilesRecursive: (...args: unknown[]) => mockListFilesRecursive(...args),
 		readFileBytes: (...args: unknown[]) => mockReadFileBytes(...args),
 		deleteDirectory: (...args: unknown[]) => mockDeleteDirectory(...args),
+		deleteFile: (...args: unknown[]) => mockDeleteFile(...args),
 	},
 }));
 
@@ -67,7 +69,9 @@ describe("NoteService", () => {
 		mockEnqueueNoteUpdate.mockResolvedValue(undefined);
 		mockEnqueueNoteDelete.mockResolvedValue(undefined);
 		mockWriteFileBytes.mockResolvedValue(undefined);
+		mockListFilesRecursive.mockResolvedValue([]);
 		mockDeleteDirectory.mockResolvedValue(undefined);
+		mockDeleteFile.mockResolvedValue(true);
 	});
 
 	describe("saveNote", () => {
