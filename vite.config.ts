@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { vitePwaPlugin } from "./web/src/build/vitePwaPlugin";
 
 export default defineConfig({
 	root: "web",
@@ -9,7 +10,7 @@ export default defineConfig({
 		__DEV__: "false",
 		global: "globalThis",
 	},
-	plugins: [react()],
+	plugins: [react(), vitePwaPlugin()],
 	resolve: {
 		alias: {
 			"@/components/drawing/DrawingPreview": fileURLToPath(

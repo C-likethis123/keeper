@@ -25,4 +25,4 @@ createRoot(root).render(
 	</StrictMode>,
 );
 
-registerServiceWorker();
+void registerServiceWorker();

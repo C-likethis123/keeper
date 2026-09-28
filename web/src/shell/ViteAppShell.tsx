@@ -2,6 +2,7 @@ import { FilterDrawerContent } from "@/components/FilterDrawerContent";
 import { PwaInstallButton } from "@/components/PwaInstallButton";
 import { useTabStore } from "@/stores/tabStore";
 import { BrowserTabStrip } from "@web/adapters/browser/tabs/BrowserTabStrip";
+import { PwaUpdateButton } from "@web/components/PwaUpdateButton";
 import {
 	createContext,
 	type ReactNode,
@@ -64,6 +65,7 @@ export function ViteAppShell({ children }: { children: ReactNode }) {
 							Keeper
 						</Link>
 						<PwaInstallButton />
+						<PwaUpdateButton />
 					</div>
 					<nav aria-label="Primary navigation">
 						<Link to="/" onClick={closeDrawer}>

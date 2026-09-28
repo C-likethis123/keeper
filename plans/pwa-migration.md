@@ -64,8 +64,46 @@ Ship Keeper as installable, offline-capable web app from shared Expo UI. Keep cu
   stores, keyboard shortcuts, home header, quick composer, note grid, note
   cards, and shared loading/error/empty UI. React Router remains the browser
   navigation boundary; Expo routes remain available.
+- Added Vite-owned `manifest.webmanifest`, install metadata, reusable emitted
+  192px/512px icons, and production-only service-worker registration.
+- Added build-generated, content-versioned Vite precache from actual Rollup
+  output. Vite worker keeps API, auth, sync, cluster, cross-origin, non-GET,
+  redirect, opaque, and failed responses outside caches. Expo manifest and
+  worker remain separate and unchanged.
+- Added network-first navigation with offline application-shell fallback,
+  immutable asset caching, obsolete Vite-cache cleanup, IndexedDB note/edit
+  restart coverage, queued offline sync coverage, reconnect sync trigger
+  coverage, offline local PDF coverage, and unknown-route shell fallback.
+- Added explicit waiting-worker update state. Dirty editor blocks worker
+  activation and reload; clean editor can explicitly apply update. Worker does
+  not call `skipWaiting()` during install.
 
-Migration remains incomplete. Cloudflare still builds Expo. Specialized route
-parity for documents, video, drawing, and MOC routes, authenticated sync
-completion, PWA cutover testing, and Expo/React Native/Metro/Jest Expo removal
-remain unfinished.
+## Vite PWA status
+
+- Manifest: generated build emits Vite manifest and icons under `web/dist`.
+- Offline: automated Chromium coverage verifies shell, persisted notes, edits,
+  queued operations, reconnect trigger, local PDF, and deep-link fallback.
+- Updates: unit coverage verifies waiting state, explicit clean update, and
+  dirty-editor deferral. Browser update replacement remains manual because
+  test build serves one worker version.
+- Install UI: prompt capture, dismissal, standalone detection, and unsupported
+  browser instructions have unit coverage.
+- Cloudflare: production build/deploy still uses Expo. No cutover performed.
+
+## Manual install/update matrix
+
+Not yet verified:
+
+- Chrome desktop: install prompt/menu, standalone launch, dirty-update guard,
+  explicit update, offline restart.
+- Safari macOS: Add to Dock, standalone launch, offline restart, relaunch update.
+- Safari iOS: Share → Add to Home Screen, icon/status bar, offline notes/editing.
+- Android Chrome: install prompt/menu, standalone launch, offline restart,
+  reconnect sync.
+
+No maskable icon is declared. Existing icon assets have not been validated as
+mask-safe across launchers.
+
+Migration remains incomplete. Cloudflare still builds Expo. Production smoke
+testing, manual install matrix, Cloudflare Vite cutover, and
+Expo/React Native/Metro/Jest Expo removal remain unfinished.

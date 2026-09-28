@@ -25,6 +25,7 @@ import {
 	savePickedFile,
 } from "@web/services/media";
 import { ViteAppShell } from "@web/shell/ViteAppShell";
+import { setPwaEditorDirty } from "@web/services/pwa";
 import {
 	BrowserNotesProvider,
 	useBrowserNotes,
@@ -147,6 +148,10 @@ function EditorRouteContent({
 		save: session.save,
 		onError: () => notify("Autosave failed."),
 	});
+	useEffect(() => {
+		setPwaEditorDirty(session.isDirty);
+		return () => setPwaEditorDirty(false);
+	}, [session.isDirty]);
 	function update(change: Partial<BrowserNote>) {
 		session.patchBrowser(change);
 	}

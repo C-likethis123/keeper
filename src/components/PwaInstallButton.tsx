@@ -8,7 +8,7 @@ type InstallPromptEvent = Event & {
 	userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-function isInstalled(): boolean {
+export function isPwaInstalled(): boolean {
 	return (
 		(typeof window.matchMedia === "function" &&
 			window.matchMedia("(display-mode: standalone)").matches) ||
@@ -17,7 +17,7 @@ function isInstalled(): boolean {
 	);
 }
 
-function isAppleMobileBrowser(): boolean {
+export function isAppleMobileBrowser(): boolean {
 	return /iPad|iPhone|iPod/.test(window.navigator.userAgent);
 }
 
@@ -27,7 +27,7 @@ export function PwaInstallButton() {
 		null,
 	);
 	const [installed, setInstalled] = useState(() =>
-		typeof window === "undefined" ? true : isInstalled(),
+		typeof window === "undefined" ? true : isPwaInstalled(),
 	);
 
 	useEffect(() => {
@@ -57,6 +57,7 @@ export function PwaInstallButton() {
 		if (installPrompt) {
 			await installPrompt.prompt();
 			const choice = await installPrompt.userChoice;
+			setInstallPrompt(null);
 			if (choice.outcome === "accepted") setInstalled(true);
 			return;
 		}
