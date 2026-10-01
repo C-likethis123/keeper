@@ -312,6 +312,7 @@ it("searches title and content, filters todos, hides done, and resets", async ()
 		</MemoryRouter>,
 	);
 
+	expect(await screen.findByText("All Notes")).toBeInTheDocument();
 	const search = await screen.findByLabelText("Search notes");
 	await user.type(search, "needle");
 	expect(
@@ -347,7 +348,8 @@ it("searches title and content, filters todos, hides done, and resets", async ()
 			screen.queryByRole("button", { name: "Open note Done task" }),
 		).not.toBeInTheDocument(),
 	);
-	await user.click(screen.getByRole("button", { name: "Reset filters" }));
+	await user.click(screen.getByRole("button", { name: "Hide done" }));
+	await user.click(screen.getByRole("button", { name: "All notes" }));
 	expect(
 		await screen.findByRole("button", { name: "Open note Alpha title" }),
 	).toBeInTheDocument();

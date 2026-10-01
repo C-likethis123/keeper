@@ -101,8 +101,9 @@ Not yet verified:
 - Android Chrome: install prompt/menu, standalone launch, offline restart,
   reconnect sync.
 
-No maskable icon is declared. Existing icon assets have not been validated as
-mask-safe across launchers.
+Vite and Expo manifests declare a dedicated 512px maskable icon. Core artwork
+stays inside the central mask-safe circle; manual launcher validation remains
+part of the Android Chrome matrix.
 
 Migration remains incomplete. Cloudflare still builds Expo. Production smoke
 testing, manual install matrix, Cloudflare Vite cutover, and

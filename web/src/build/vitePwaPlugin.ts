@@ -4,7 +4,11 @@ import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 
 const VITE_CACHE_PREFIX = "keeper-vite-shell-";
-const ICONS = ["icon-192.png", "icon-512.png"] as const;
+const ICONS = [
+	"icon-192.png",
+	"icon-512.png",
+	"icon-maskable-512.png",
+] as const;
 
 export function renderServiceWorker(
 	precacheUrls: string[],

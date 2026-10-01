@@ -15,6 +15,7 @@ export function IconButton({
 	variant = "circle",
 	label,
 	tooltipAlignment = "center",
+	tooltipPlacement = "top",
 }: {
 	name: FontAwesomeName;
 	size?: number;
@@ -24,6 +25,7 @@ export function IconButton({
 	variant?: "circle" | "flat";
 	label?: string;
 	tooltipAlignment?: "start" | "center" | "end";
+	tooltipPlacement?: "top" | "bottom";
 }) {
 	const styles = useStyles(createStyles);
 	const [isHovered, setIsHovered] = React.useState(false);
@@ -63,6 +65,9 @@ export function IconButton({
 					testID={testID ? `${testID}-tooltip` : undefined}
 					style={[
 						styles.tooltip,
+						tooltipPlacement === "top"
+							? styles.tooltipTop
+							: styles.tooltipBottom,
 						tooltipAlignment === "start" && styles.tooltipStart,
 						tooltipAlignment === "end" && styles.tooltipEnd,
 					]}
@@ -110,8 +115,6 @@ function createStyles(theme: ExtendedTheme) {
 		},
 		tooltip: {
 			position: "absolute",
-			bottom: "100%",
-			marginBottom: 8,
 			paddingHorizontal: 8,
 			paddingVertical: 6,
 			borderRadius: 8,
@@ -122,6 +125,14 @@ function createStyles(theme: ExtendedTheme) {
 			shadowOffset: { width: 0, height: 4 },
 			elevation: 4,
 			zIndex: 10,
+		},
+		tooltipTop: {
+			bottom: "100%",
+			marginBottom: 8,
+		},
+		tooltipBottom: {
+			top: "100%",
+			marginTop: 8,
 		},
 		tooltipStart: {
 			left: 0,

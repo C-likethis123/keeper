@@ -46,6 +46,16 @@ test("PWA emits valid install metadata and activates generated worker", async ({
 }) => {
 	await page.goto("/");
 	await expect(page.getByRole("main", { name: "Notes" })).toBeVisible();
+	await expect
+		.poll(() =>
+			page.evaluate(() => document.fonts.check("20px KeeperFontAwesome")),
+		)
+		.toBe(true);
+	const renderedIcons = await page.locator("[data-icon-name]").allTextContents();
+	expect(renderedIcons.length).toBeGreaterThan(0);
+	expect(renderedIcons.every((glyph) => glyph.length > 0 && glyph !== "•")).toBe(
+		true,
+	);
 	await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
 		"href",
 		"/manifest.webmanifest",
@@ -60,7 +70,17 @@ test("PWA emits valid install metadata and activates generated worker", async ({
 		scope: "/",
 		display: "standalone",
 	});
-	for (const icon of ["/icons/icon-192.png", "/icons/icon-512.png"]) {
+	expect(manifest.icons).toContainEqual({
+		src: "/icons/icon-maskable-512.png",
+		sizes: "512x512",
+		type: "image/png",
+		purpose: "maskable",
+	});
+	for (const icon of [
+		"/icons/icon-192.png",
+		"/icons/icon-512.png",
+		"/icons/icon-maskable-512.png",
+	]) {
 		expect((await request.get(icon)).ok()).toBe(true);
 	}
 
@@ -68,6 +88,84 @@ test("PWA emits valid install metadata and activates generated worker", async ({
 	expect(
 		await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL),
 	).toContain("/service-worker.js");
+});
+
+test("quick composer keeps Expo input focus treatment", async ({ page }) => {
+	await page.goto("/");
+	await page.getByRole("button", { name: "Take a note" }).click();
+	const title = page.getByLabel("Note title");
+	await expect(title).toBeFocused();
+	expect(
+		await title.evaluate((element) => {
+			const style = getComputedStyle(element);
+			return {
+				outlineStyle: style.outlineStyle,
+				boxShadow: style.boxShadow,
+			};
+		}),
+	).toEqual({ outlineStyle: "none", boxShadow: "none" });
+});
+
+test("header tooltips open below the controls without hitting the tab strip", async ({
+	page,
+}) => {
+	await page.goto("/");
+	const trigger = page.getByRole("button", { name: "Open filters" });
+	await trigger.hover();
+	const tooltip = page.getByText("Open filters", { exact: true });
+	await expect(tooltip).toBeVisible();
+
+	const triggerBox = await trigger.boundingBox();
+	const tooltipBox = await tooltip.boundingBox();
+	const tabStripBox = await page.locator(".browser-tab-strip").boundingBox();
+	expect(triggerBox).not.toBeNull();
+	expect(tooltipBox).not.toBeNull();
+	expect(tabStripBox).not.toBeNull();
+	expect(tooltipBox?.y).toBeGreaterThanOrEqual(
+		(triggerBox?.y ?? 0) + (triggerBox?.height ?? 0),
+	);
+	expect(tooltipBox?.y).toBeGreaterThanOrEqual(
+		(tabStripBox?.y ?? 0) + (tabStripBox?.height ?? 0),
+	);
+});
+
+test("desktop shell uses Expo full-width layout with an overlay drawer", async ({
+	page,
+}) => {
+	await page.goto("/");
+
+	const closedLayout = await page.evaluate(() => {
+		const drawer = document.querySelector<HTMLElement>(".drawer");
+		const main = document.querySelector<HTMLElement>(".app-main");
+		if (!drawer || !main) throw new Error("App shell is missing");
+		return {
+			drawerX: Math.round(drawer.getBoundingClientRect().x),
+			drawerPosition: getComputedStyle(drawer).position,
+			mainX: Math.round(main.getBoundingClientRect().x),
+			mainWidth: Math.round(main.getBoundingClientRect().width),
+			viewportWidth: window.innerWidth,
+			bodyBackground: getComputedStyle(document.body).backgroundColor,
+		};
+	});
+
+	expect(closedLayout.drawerX).toBeLessThan(0);
+	expect(closedLayout.drawerPosition).toBe("fixed");
+	expect(closedLayout.mainX).toBe(0);
+	expect(closedLayout.mainWidth).toBe(closedLayout.viewportWidth);
+	expect(closedLayout.bodyBackground).toBe("rgb(0, 0, 0)");
+
+	await page.getByRole("button", { name: "Open filters" }).click();
+	await expect(page.getByRole("button", { name: "Close navigation" })).toBeVisible();
+	await expect
+		.poll(() =>
+			page
+				.locator(".drawer")
+				.evaluate((drawer) => Math.round(drawer.getBoundingClientRect().x)),
+		)
+		.toBe(0);
+
+	await page.getByRole("button", { name: "Close filter" }).click();
+	await expect(page.getByRole("button", { name: "Close navigation" })).toBeHidden();
 });
 
 test("offline note edit survives reload, stays queued, and reconnect triggers sync", async ({

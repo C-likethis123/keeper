@@ -60,4 +60,25 @@ describe("IconButton", () => {
 			expect.arrayContaining([expect.objectContaining({ left: 0 })]),
 		);
 	});
+
+	it("can position a flat tooltip below its trigger", () => {
+		const { getByTestId } = render(
+			<IconButton
+				name="bars"
+				label="Open filters"
+				variant="flat"
+				tooltipPlacement="bottom"
+				onPress={jest.fn()}
+				testID="btn"
+			/>,
+		);
+
+		fireEvent(getByTestId("btn"), "hoverIn");
+
+		expect(getByTestId("btn-tooltip").props.style).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ top: "100%", marginTop: 8 }),
+			]),
+		);
+	});
 });

@@ -505,7 +505,6 @@ function SuggestedMocsRoute() {
 		<main className="page">
 			<div className="page-heading">
 				<div>
-					<p className="eyebrow">MOC screen</p>
 					<h1>Suggested MOCs</h1>
 					<p>Review browser-generated note groups.</p>
 				</div>

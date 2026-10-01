@@ -1,9 +1,30 @@
+@font-face {
+	font-family: "KeeperFontAwesome";
+	src: url("../../../node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome.ttf") format("truetype");
+	font-style: normal;
+	font-weight: normal;
+	font-display: block;
+}
+@font-face {
+	font-family: "KeeperIonicons";
+	src: url("../../../node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf") format("truetype");
+	font-style: normal;
+	font-weight: normal;
+	font-display: block;
+}
+@font-face {
+	font-family: "KeeperMaterialCommunityIcons";
+	src: url("../../../node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf") format("truetype");
+	font-style: normal;
+	font-weight: normal;
+	font-display: block;
+}
 :root {
 	color-scheme: dark;
 	font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-	background: #171719;
+	background: #000;
 	color: #f5f5f4;
-	--canvas: #171719;
+	--canvas: #000;
 	--surface: #242427;
 	--border: #3a3a3e;
 	--muted: #aaa9ae;
@@ -35,6 +56,15 @@ textarea,
 select {
 	font: inherit;
 }
+input,
+textarea,
+input:focus,
+textarea:focus,
+input:focus-visible,
+textarea:focus-visible {
+	outline: none;
+	box-shadow: none;
+}
 button {
 	cursor: pointer;
 }
@@ -44,10 +74,15 @@ a {
 .app-shell {
 	min-height: 100vh;
 	display: flex;
+	background: var(--canvas);
 }
 .app-main {
 	min-width: 0;
 	flex: 1;
+	display: flex;
+	min-height: 100vh;
+	flex-direction: column;
+	background: var(--canvas);
 }
 .app-header {
 	height: 3.75rem;
@@ -74,54 +109,51 @@ a {
 	gap: .4rem;
 }
 .drawer {
-	width: 17rem;
-	flex: none;
-	padding: 1rem;
-	background: #1d1d20;
+	position: fixed;
+	inset: 0 auto 0 0;
+	z-index: 50;
+	display: flex;
+	width: 17.5rem;
+	max-width: calc(100vw - 2rem);
+	flex-direction: column;
+	background: #000;
 	border-right: 1px solid var(--border);
+	transform: translateX(-100%);
 	transition: transform .18s ease;
-	z-index: 4;
 }
-.drawer__brand a {
-	color: #fff;
-	font-weight: 800;
-	font-size: 1.25rem;
-	text-decoration: none;
+.drawer--open {
+	transform: translateX(0);
 }
-.drawer nav,
-.drawer__section {
-	margin-top: 1.5rem;
-	display: grid;
-	gap: .45rem;
+.drawer__filters {
+	min-height: 0;
+	flex: 1;
 }
-.drawer a {
-	padding: .45rem;
-	border-radius: .4rem;
-	text-decoration: none;
-	color: var(--muted);
-}
-.drawer a:hover {
-	background: var(--surface);
-	color: white;
-}
-.drawer__section span {
-	color: var(--muted);
-	font-size: .75rem;
-	text-transform: uppercase;
-	letter-spacing: .05em;
+.drawer__pwa-actions {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	padding: .75rem 1rem 1rem;
+	background: #000;
 }
 .drawer-backdrop {
-	display: none;
+	position: fixed;
+	inset: 0;
+	z-index: 49;
+	display: block;
+	border: 0;
+	background: rgb(0 0 0 / 0.5);
+}
+.home-route {
+	display: flex;
+	min-height: 0;
+	flex: 1;
+	flex-direction: column;
+	background: var(--canvas);
 }
 .page {
 	width: min(100% - 2rem, 72rem);
 	margin: 0 auto;
 	padding: 1.5rem 0;
-}
-.eyebrow {
-	margin: 0 0 .25rem;
-	color: var(--muted);
-	font-size: .8rem;
 }
 .home-toolbar,
 .home-heading,
@@ -357,37 +389,48 @@ a {
 }
 .browser-tab-strip {
 	display: flex;
-	gap: .2rem;
+	align-items: center;
+	height: 2.5rem;
 	min-height: 2.5rem;
 	overflow-x: auto;
-	padding: .35rem .5rem;
+	padding: 0 .25rem;
 	border-bottom: 1px solid var(--border);
-	background: #1d1d20;
+	background: #010101;
 }
 .browser-tab {
 	display: flex;
 	flex: none;
 	align-items: center;
+	height: 1.75rem;
+	margin: 0 .125rem;
 	max-width: 12rem;
 	border: 1px solid transparent;
-	border-radius: .4rem;
+	border-radius: .375rem;
 	color: var(--muted);
+	background: transparent;
 }
 .browser-tab > button {
+	display: flex;
+	align-items: center;
+	gap: .375rem;
 	min-width: 0;
 	border: 0;
 	background: transparent;
 	color: inherit;
 }
+button.browser-tab {
+	gap: .375rem;
+	padding: 0 .6rem;
+}
 .browser-tab > [role="tab"] {
 	overflow: hidden;
-	padding: .35rem .45rem;
+	padding: .3rem .6rem;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 .browser-tab--active {
-	border-color: #45454b;
-	background: #2b2b30;
+	border-color: #27272a;
+	background: #121212;
 	color: #f2f2f4;
 }
 .browser-tab__pin,
@@ -522,22 +565,6 @@ a {
 	color: #f7768e;
 }
 @media (max-width: 48rem) {
-	.drawer {
-		position: fixed;
-		inset: 0 auto 0 0;
-		transform: translateX(-100%);
-	}
-	.drawer--open {
-		transform: translateX(0);
-	}
-	.drawer-backdrop {
-		display: block;
-		border: 0;
-		position: fixed;
-		inset: 0;
-		z-index: 3;
-		background: rgb(0 0 0 / 0.5);
-	}
 	.home-toolbar,
 	.home-heading {
 		align-items: stretch;

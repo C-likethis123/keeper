@@ -11,7 +11,7 @@ import {
 	useMemo,
 	useState,
 } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const DrawerContext = createContext<(() => void) | null>(null);
 
@@ -60,23 +60,12 @@ export function ViteAppShell({ children }: { children: ReactNode }) {
 					className={`drawer ${drawerOpen ? "drawer--open" : ""}`}
 					aria-label="Keeper navigation and filters"
 				>
-					<div className="drawer__brand">
-						<Link to="/" onClick={closeDrawer}>
-							Keeper
-						</Link>
-						<PwaInstallButton />
-						<PwaUpdateButton />
-					</div>
-					<nav aria-label="Primary navigation">
-						<Link to="/" onClick={closeDrawer}>
-							Home
-						</Link>
-						<Link to="/suggested-mocs" onClick={closeDrawer}>
-							Suggested MOCs
-						</Link>
-					</nav>
 					<div className="drawer__filters">
 						<FilterDrawerContent navigation={drawerNavigation} />
+					</div>
+					<div className="drawer__pwa-actions">
+						<PwaInstallButton />
+						<PwaUpdateButton />
 					</div>
 				</aside>
 				{drawerOpen ? (
