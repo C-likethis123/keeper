@@ -33,7 +33,13 @@ export function IconButton({
 	const showTooltip = variant === "flat" && isHovered && label != null;
 
 	return (
-		<View style={variant === "flat" ? styles.wrapperFlat : undefined}>
+		<View
+			style={
+				variant === "flat"
+					? [styles.wrapperFlat, showTooltip && styles.wrapperFlatRaised]
+					: undefined
+			}
+		>
 			<Pressable
 				accessibilityRole="button"
 				accessibilityLabel={label}
@@ -87,6 +93,9 @@ function createStyles(theme: ExtendedTheme) {
 			position: "relative",
 			alignItems: "center",
 			justifyContent: "center",
+		},
+		wrapperFlatRaised: {
+			zIndex: 1,
 		},
 		buttonCircle: {
 			width: 40,

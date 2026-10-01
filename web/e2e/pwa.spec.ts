@@ -109,6 +109,7 @@ test("quick composer keeps Expo input focus treatment", async ({ page }) => {
 test("header tooltips open below the controls without hitting the tab strip", async ({
 	page,
 }) => {
+	await page.setViewportSize({ width: 440, height: 700 });
 	await page.goto("/");
 	const trigger = page.getByRole("button", { name: "Open filters" });
 	await trigger.hover();
@@ -127,6 +128,13 @@ test("header tooltips open below the controls without hitting the tab strip", as
 	expect(tooltipBox?.y).toBeGreaterThanOrEqual(
 		(tabStripBox?.y ?? 0) + (tabStripBox?.height ?? 0),
 	);
+	const tooltipSurface = tooltip.locator("..");
+	expect(
+		await trigger.locator("..").evaluate((wrapper) => getComputedStyle(wrapper).zIndex),
+	).toBe("1");
+	expect(
+		await tooltipSurface.evaluate((surface) => getComputedStyle(surface).zIndex),
+	).toBe("10");
 });
 
 test("desktop shell uses Expo full-width layout with an overlay drawer", async ({
