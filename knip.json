@@ -3,7 +3,6 @@
   "ignoreDependencies": [
     "@welldone-software/why-did-you-render",
     "babel-plugin-dynamic-import-node",
-    "react-native-svg",
     "epubjs",
     "pdfjs-dist",
     "jszip"

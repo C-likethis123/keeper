@@ -5,7 +5,7 @@ import { useStyles } from "@/hooks/useStyles";
 import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "@/components/shared/SafeArea";
 
 export function NativeEditorHeader({ title, status, isPinned, onChangeTitle, onBlurTitle, onSubmitEditing, onBack, onShowHistory, onTogglePin, onDelete }: EditorHeaderProps) {
 	const theme = useExtendedTheme(); const insets = useSafeAreaInsets(); const styles = useStyles(createStyles);

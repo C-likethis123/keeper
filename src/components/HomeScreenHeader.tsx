@@ -4,7 +4,7 @@ import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type React from "react";
 import { StyleSheet, type TextInput, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "@/components/shared/SafeArea";
 
 export default function HomeScreenHeader({
 	searchQuery,

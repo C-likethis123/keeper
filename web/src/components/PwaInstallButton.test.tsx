@@ -1,6 +1,6 @@
 import { PwaInstallButton } from "@keeper/components/PwaInstallButton";
 import { darkTheme } from "@keeper/constants/themes/darkTheme";
-import { ThemeProvider } from "@react-navigation/native";
+import { ThemeProvider } from "@/constants/themes/ThemeProvider";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";

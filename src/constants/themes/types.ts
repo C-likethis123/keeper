@@ -1,5 +1,20 @@
-import type { Theme } from "@react-navigation/native";
 import type { TextStyle } from "react-native";
+
+export interface Theme {
+	dark: boolean;
+	colors: {
+		primary: string;
+		background: string;
+		card: string;
+		text: string;
+		border: string;
+		notification: string;
+	};
+	fonts: Record<
+		"regular" | "medium" | "bold" | "heavy",
+		{ fontFamily: string; fontWeight: NonNullable<TextStyle["fontWeight"]> }
+	>;
+}
 
 export type ExtendedThemeColors = Theme["colors"] & {
 	error: string;

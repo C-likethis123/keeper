@@ -5,7 +5,7 @@ import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
 import { deriveNoteType } from "@/services/notes/noteTypeDerivation";
 import { useTabStore } from "@/stores/tabStore";
-import { ThemeProvider } from "@react-navigation/native";
+import { ThemeProvider } from "@/constants/themes/ThemeProvider";
 import { BrowserAttachVideoModal } from "@web/adapters/browser/editor/BrowserAttachVideoModal";
 import { BrowserDrawingEditor } from "@web/adapters/browser/editor/BrowserDrawingEditor";
 import { BrowserEditorHeader } from "@web/adapters/browser/editor/BrowserEditorHeader";

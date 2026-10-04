@@ -6,7 +6,7 @@ const mockIndexDelete = jest.fn();
 const mockDeleteCrdtNote = jest.fn();
 const mockBumpContentVersion = jest.fn();
 
-jest.mock("@react-native-async-storage/async-storage", () => ({
+jest.mock("@/services/storage/browserKeyValueStorage", () => ({
 	__esModule: true,
 	default: {
 		getItem: jest.fn((key: string) =>

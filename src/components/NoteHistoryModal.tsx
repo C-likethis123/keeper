@@ -15,7 +15,7 @@ import {
 	View,
 	useWindowDimensions,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "@/components/shared/SafeArea";
 
 type CurrentVersion = {
 	id: "current";

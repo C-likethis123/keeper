@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import browserKeyValueStorage from "@/services/storage/browserKeyValueStorage";
 import * as Y from "yjs";
 import { storageEngine } from "@/services/storage/storageEngine";
 import type { NoteSaveInput } from "./types";
@@ -37,13 +37,13 @@ function createClientId(): string {
 }
 
 async function getClientId(): Promise<string> {
-	const existing = await AsyncStorage.getItem(CLIENT_ID_KEY);
+	const existing = await browserKeyValueStorage.getItem(CLIENT_ID_KEY);
 	if (existing) {
 		return existing;
 	}
 
 	const next = createClientId();
-	await AsyncStorage.setItem(CLIENT_ID_KEY, next);
+	await browserKeyValueStorage.setItem(CLIENT_ID_KEY, next);
 	return next;
 }
 

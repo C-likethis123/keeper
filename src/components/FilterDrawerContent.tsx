@@ -6,7 +6,7 @@ import { useFilterStore } from "@/stores/filterStore";
 import { FontAwesome } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "@/components/shared/SafeArea";
 
 const FILTER_OPTIONS: { label: string; value?: NoteType }[] = [
 	{ label: "All notes", value: undefined },

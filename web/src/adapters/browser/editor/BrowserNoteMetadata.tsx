@@ -5,7 +5,7 @@ import type {
 	CanonicalNoteStatus,
 	CanonicalNoteType,
 } from "@keeper/features/notes/note-contract";
-import { ThemeProvider } from "@react-navigation/native";
+import { ThemeProvider } from "@/constants/themes/ThemeProvider";
 import { StyleSheet, Text, View } from "react-native";
 
 /** Browser renderer for the same Todo status controls in NoteEditorView. */
