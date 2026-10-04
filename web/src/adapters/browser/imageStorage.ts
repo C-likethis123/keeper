@@ -2,7 +2,7 @@ import {
 	releaseImageUri as releaseCanonicalImageUri,
 	resolveImageUri as resolveCanonicalImageUri,
 	saveImageBytesToNotes as saveCanonicalImageBytesToNotes,
-} from "@keeper/services/notes/imageStorage.web";
+} from "@keeper/services/notes/imageStorage";
 import { ensureCanonicalStorageInitialized } from "@web/services/canonicalStorage";
 
 export async function saveImageBytesToNotes(

@@ -1,4 +1,4 @@
-import ExpoLexicalMarkdownEditor from "@keeper/components/editor/lexical/LexicalMarkdownEditor";
+import LexicalMarkdownEditor from "@keeper/components/editor/lexical/LexicalMarkdownEditor";
 import type { PastedImage } from "@keeper/components/editor/lexical/extensions/MarkdownPasteExtension";
 import type { LexicalEditorCommand } from "@keeper/components/editor/lexical/extensions/CommandExtension";
 import { useAppKeyboardShortcuts } from "@keeper/hooks/useAppKeyboardShortcuts";
@@ -26,7 +26,7 @@ type Props = {
 	templateCommand?: { markdown: string; timestamp: number } | null;
 };
 
-/** Browser adapter for canonical Expo DOM editor. */
+/** Browser adapter for canonical Lexical editor. */
 export function LexicalEditor({
 	editorKey,
 	noteId,
@@ -72,7 +72,7 @@ export function LexicalEditor({
 			setCommand({ type: "openFindReplace", timestamp: Date.now() }),
 	});
 	return (
-		<ExpoLexicalMarkdownEditor
+		<LexicalMarkdownEditor
 			accessibilityLabel="Note content"
 			key={editorKey}
 			markdown={value}

@@ -2,7 +2,7 @@ import DrawingPreview from "@/components/drawing/DrawingPreview";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import { memo, useCallback, useMemo } from "react";
 import {
 	Alert,

@@ -3,7 +3,7 @@ import type { Note } from "@/services/notes/types";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import React from "react";
 
-jest.mock("@expo/vector-icons", () => ({
+jest.mock("@/components/shared/Icons", () => ({
 	FontAwesome: ({ name }: { name: string }) => name,
 }));
 

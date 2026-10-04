@@ -4,7 +4,7 @@ import type {
 	ClusterMemberRow,
 	ClusterRow,
 	SuperClusterRow,
-} from "@/services/notes/indexDb/repository";
+} from "@/services/notes/clusterTypes";
 
 type ServerClusterRow = {
 	id: string;

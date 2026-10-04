@@ -1,5 +1,5 @@
 import type { Note } from "@/services/notes/types";
-import { extractSummary } from "@/services/notes/indexDb/mapper";
+import { extractSummary } from "@/services/notes/noteSummary";
 import { storageEngine } from "@/services/storage/storageEngine";
 import type { CanonicalNote } from "@keeper/features/notes/note-contract";
 import { ensureCanonicalStorageInitialized } from "@web/services/canonicalStorage";

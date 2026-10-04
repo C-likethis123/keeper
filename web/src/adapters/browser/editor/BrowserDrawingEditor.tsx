@@ -10,8 +10,8 @@ import {
 	type DrawingTool,
 } from "@keeper/components/drawing/drawingDocument";
 import { darkTheme } from "@keeper/constants/themes/darkTheme";
-import { ThemeProvider } from "@react-navigation/native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ThemeProvider } from "@/constants/themes/ThemeProvider";
+import { SafeAreaProvider } from "@/components/shared/SafeArea";
 import {
 	type PointerEvent,
 	useCallback,

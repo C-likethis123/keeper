@@ -5,7 +5,7 @@ import {
 	resolveAttachmentUri as resolveCanonicalAttachmentUri,
 	saveAttachmentBytesToNotes as saveCanonicalAttachmentBytesToNotes,
 	writeAttachmentBytesToNotes as writeCanonicalAttachmentBytesToNotes,
-} from "@keeper/services/notes/attachmentStorage.web";
+} from "@keeper/services/notes/attachmentStorage";
 import { ensureCanonicalStorageInitialized } from "@web/services/canonicalStorage";
 
 export type AttachmentType = "pdf" | "epub";

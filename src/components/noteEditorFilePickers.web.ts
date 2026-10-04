@@ -1,5 +1,5 @@
 import { inferAttachmentType } from "@/services/notes/attachmentStorage";
-import { copyPickedImageToNotes } from "@/services/notes/imageStorage.web";
+import { copyPickedImageToNotes } from "@/services/notes/imageStorage";
 import type { PickedDocumentResult } from "./noteEditorFilePickerTypes";
 
 function pickBrowserFile(accept: string): Promise<File | null> {

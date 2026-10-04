@@ -2,7 +2,7 @@ import { SaveIndicator } from "@/components/SaveIndicator";
 import { render, screen } from "@testing-library/react-native";
 import React from "react";
 
-jest.mock("@expo/vector-icons", () => {
+jest.mock("@/components/shared/Icons", () => {
 	const React = require("react");
 	const { Text } = require("react-native");
 	return {

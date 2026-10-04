@@ -1,7 +1,7 @@
 import { parseEmbeddedVideoUrl } from "@/components/editor/video/videoUtils";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import React, { useEffect, useState } from "react";
 import {
 	Modal,

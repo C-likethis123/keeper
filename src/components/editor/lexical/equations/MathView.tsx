@@ -1,13 +1,7 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import React, { useEffect, useRef, useState } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
-
-const LazyMathJaxSvg = React.lazy(() =>
-	import("react-native-mathjax-html-to-svg").then((module) => ({
-		default: module.MathJaxSvg,
-	})),
-);
+import { StyleSheet, Text, View } from "react-native";
 
 interface MathViewProps {
 	expression: string;
@@ -31,7 +25,6 @@ export function MathView({
 	onErrorRef.current = onError;
 
 	useEffect(() => {
-		if (Platform.OS !== "web") return;
 		if (!expression.trim()) {
 			setHtml(null);
 			setError(null);
@@ -89,64 +82,37 @@ export function MathView({
 		);
 	}
 
-	if (Platform.OS === "web") {
-		if (error) {
-			return (
-				<View
-					style={[
-						styles.container,
-						displayMode
-							? { width: "100%", minHeight: 60 }
-							: { alignSelf: "flex-start", minHeight: 24 },
-						style,
-					]}
-				>
-					<Text style={[styles.fallback, styles.fallbackError]}>
-						{expression}
-					</Text>
-				</View>
-			);
-		}
-		return React.createElement(displayMode ? "div" : "span", {
-			style: {
-				...(displayMode
-					? { width: "100%" }
-					: { display: "inline-block", verticalAlign: "middle" }),
-				alignItems: "center",
-				justifyContent: "center",
-				minHeight: displayMode ? 60 : 24,
-				backgroundColor: "transparent",
-				color: textColor,
-			},
-			// biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output, not user input
-			dangerouslySetInnerHTML: { __html: html ?? "" },
-		});
-	}
-
-	const mathJaxInput = displayMode
-		? `$$${expression}$$`
-		: `\\(${expression}\\)`;
-	const fontSize = displayMode ? 18 : 14;
-
-	return (
-		<View style={[styles.container, style]}>
-			<React.Suspense
-				fallback={
-					<Text style={[styles.fallback, styles.fallbackText]}>
-						{expression}
-					</Text>
-				}
+	if (error) {
+		return (
+			<View
+				style={[
+					styles.container,
+					displayMode
+						? { width: "100%", minHeight: 60 }
+						: { alignSelf: "flex-start", minHeight: 24 },
+					style,
+				]}
 			>
-				<LazyMathJaxSvg
-					fontSize={fontSize}
-					color={textColor}
-					style={styles.mathJaxContainer}
-				>
-					{mathJaxInput}
-				</LazyMathJaxSvg>
-			</React.Suspense>
-		</View>
-	);
+				<Text style={[styles.fallback, styles.fallbackError]}>
+					{expression}
+				</Text>
+			</View>
+		);
+	}
+	return React.createElement(displayMode ? "div" : "span", {
+		style: {
+			...(displayMode
+				? { width: "100%" }
+				: { display: "inline-block", verticalAlign: "middle" }),
+			alignItems: "center",
+			justifyContent: "center",
+			minHeight: displayMode ? 60 : 24,
+			backgroundColor: "transparent",
+			color: textColor,
+		},
+		// biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output, not user input
+		dangerouslySetInnerHTML: { __html: html ?? "" },
+	});
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
@@ -155,12 +121,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			alignItems: "center",
 			justifyContent: "center",
 			backgroundColor: "transparent",
-		},
-		mathJaxContainer: {
-			flexDirection: "row",
-			flexWrap: "wrap",
-			alignItems: "center",
-			flexShrink: 1,
 		},
 		fallback: {
 			fontSize: 16,

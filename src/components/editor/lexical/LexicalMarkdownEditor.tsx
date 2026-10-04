@@ -1,5 +1,3 @@
-"use dom";
-
 import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import { darkTheme } from "@/constants/themes/darkTheme";
 import { lightTheme } from "@/constants/themes/lightTheme";
@@ -11,7 +9,7 @@ import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { LexicalExtensionComposer } from "@lexical/react/LexicalExtensionComposer";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import type { Provider, ProviderAwareness } from "@lexical/yjs";
-import { ThemeProvider } from "@react-navigation/native";
+import { ThemeProvider } from "@/constants/themes/ThemeProvider";
 
 import {
 	$createRangeSelection,
@@ -46,10 +44,7 @@ interface LexicalMarkdownEditorProps {
 	command?: LexicalEditorCommand;
 	crdtInitialMarkdown?: string;
 	crdtInitialUpdate?: number[];
-	dom?: import("expo/dom").DOMProps;
 	hasAttachment?: boolean;
-	isNativeDom?: boolean;
-	keyboardHeight?: number;
 	markdown: string;
 	noteId: string;
 	notesRoot?: string;
@@ -163,19 +158,6 @@ function createLocalProvider(
 	};
 }
 
-function getDomStyleHeight(dom?: LexicalMarkdownEditorProps["dom"]) {
-	const style = dom?.style;
-	if (!Array.isArray(style)) {
-		return undefined;
-	}
-	for (const item of style) {
-		if (item && typeof item === "object" && "height" in item) {
-			return (item as { height?: unknown }).height;
-		}
-	}
-	return undefined;
-}
-
 function safeAreaInsetsEqual(
 	previous?: LexicalMarkdownEditorProps["safeAreaInsets"],
 	next?: LexicalMarkdownEditorProps["safeAreaInsets"],
@@ -185,17 +167,6 @@ function safeAreaInsetsEqual(
 		previous?.right === next?.right &&
 		previous?.bottom === next?.bottom &&
 		previous?.left === next?.left
-	);
-}
-
-function domPropsEqual(
-	previous?: LexicalMarkdownEditorProps["dom"],
-	next?: LexicalMarkdownEditorProps["dom"],
-) {
-	return (
-		previous?.allowingReadAccessToURL === next?.allowingReadAccessToURL &&
-		previous?.scrollEnabled === next?.scrollEnabled &&
-		getDomStyleHeight(previous) === getDomStyleHeight(next)
 	);
 }
 
@@ -210,8 +181,6 @@ function editorPropsEqual(
 		previous.crdtInitialMarkdown === next.crdtInitialMarkdown &&
 		previous.crdtInitialUpdate === next.crdtInitialUpdate &&
 		previous.hasAttachment === next.hasAttachment &&
-		previous.isNativeDom === next.isNativeDom &&
-		previous.keyboardHeight === next.keyboardHeight &&
 		previous.markdown === next.markdown &&
 		previous.noteId === next.noteId &&
 		previous.notesRoot === next.notesRoot &&
@@ -230,8 +199,7 @@ function editorPropsEqual(
 		previous.onToggleRelatedNotes === next.onToggleRelatedNotes &&
 		previous.themeMode === next.themeMode &&
 		previous.variant === next.variant &&
-		safeAreaInsetsEqual(previous.safeAreaInsets, next.safeAreaInsets) &&
-		domPropsEqual(previous.dom, next.dom)
+		safeAreaInsetsEqual(previous.safeAreaInsets, next.safeAreaInsets)
 	);
 }
 
@@ -829,8 +797,6 @@ function LexicalMarkdownEditor({
 	crdtInitialMarkdown,
 	crdtInitialUpdate,
 	hasAttachment = false,
-	isNativeDom = false,
-	keyboardHeight = 0,
 	markdown,
 	noteId,
 	notesRoot,
@@ -956,20 +922,20 @@ function LexicalMarkdownEditor({
 			style={{
 				background: variant === "compact" ? palette.card : palette.background,
 				color: palette.text,
-				height: isNativeDom ? "100vh" : "100%",
+				height: "100%",
 				minHeight: "100%",
 				overflowY: "auto",
 				position: "relative",
 				paddingTop: safeAreaInsets?.top ?? 0,
 				paddingRight: safeAreaInsets?.right ?? 0,
-				paddingBottom: Math.max(safeAreaInsets?.bottom ?? 0, keyboardHeight),
+				paddingBottom: safeAreaInsets?.bottom ?? 0,
 				paddingLeft: safeAreaInsets?.left ?? 0,
 			}}
 		>
 			<style>{`
 					.keeper-editor-shell {
 						min-height: ${variant === "compact" ? "100%" : "100vh"};
-						padding: ${variant === "compact" ? "8px 0" : isNativeDom ? "0 18px 40px" : "18px 18px 40px"};
+						padding: ${variant === "compact" ? "8px 0" : "18px 18px 40px"};
 						box-sizing: border-box;
 						display: flex;
 						flex-direction: column;

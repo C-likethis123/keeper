@@ -1,5 +1,5 @@
 import { useStyles } from "@/hooks/useStyles";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import { useEffect, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text } from "react-native";
 

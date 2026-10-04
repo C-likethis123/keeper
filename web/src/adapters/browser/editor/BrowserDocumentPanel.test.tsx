@@ -1,6 +1,6 @@
 import { darkTheme } from "@keeper/constants/themes/darkTheme";
 import { storageEngine } from "@/services/storage/storageEngine";
-import { ThemeProvider } from "@react-navigation/native";
+import { ThemeProvider } from "@/constants/themes/ThemeProvider";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { saveBytes } from "@web/services/media";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";

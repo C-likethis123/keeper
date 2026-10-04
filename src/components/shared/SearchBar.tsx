@@ -1,5 +1,5 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import { forwardRef, useMemo } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 

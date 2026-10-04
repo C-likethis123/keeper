@@ -1,6 +1,6 @@
 import { darkTheme } from "@keeper/constants/themes/darkTheme";
 import { parseEmbeddedVideoUrl } from "@keeper/components/editor/video/videoUtils";
-import { ThemeProvider } from "@react-navigation/native";
+import { ThemeProvider } from "@/constants/themes/ThemeProvider";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { BrowserVideoPanel } from "./BrowserVideoPanel";

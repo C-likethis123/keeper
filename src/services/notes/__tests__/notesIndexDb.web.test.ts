@@ -16,7 +16,7 @@ import {
 	notesIndexDbGetBacklinks,
 	notesIndexDbGetOrphanedNotes,
 	notesIndexDbGetOutgoingLinks,
-} from "../notesIndexDb.web";
+} from "../notesIndexDb";
 
 const notes = [
 	{

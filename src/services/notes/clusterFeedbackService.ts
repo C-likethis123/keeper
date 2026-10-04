@@ -1,19 +1,10 @@
-import { NOTES_ROOT } from "@/services/notes/Notes";
 import {
+	listServerClusterFeedback,
 	logServerClusterFeedback,
 	shouldUseServerClusters,
 } from "@/services/notes/serverClusterClient";
-import { File } from "expo-file-system";
-import { getNotesIndexDb } from "./indexDb/db";
-import {
-	exportFeedbackToJson,
-	getAllClusterFeedback,
-	recordClusterFeedback,
-} from "./indexDb/repository";
 
-const FEEDBACK_FILENAME = ".moc_feedback.json";
-
-interface FeedbackEvent {
+export interface FeedbackEvent {
 	clusterId: string;
 	eventType: string;
 	eventData: Record<string, unknown> | null;
@@ -26,7 +17,6 @@ export async function logFeedback(
 		| "accept"
 		| "dismiss"
 		| "rename"
-		| "merge"
 		| "add_note"
 		| "remove_note"
 		| "delete",
@@ -34,27 +24,21 @@ export async function logFeedback(
 ): Promise<void> {
 	if (shouldUseServerClusters()) {
 		await logServerClusterFeedback(clusterId, eventType, eventData);
-		return;
 	}
-	const database = await getNotesIndexDb();
-	await recordClusterFeedback(database, clusterId, eventType, eventData);
-}
-
-export async function exportFeedbackToFile(): Promise<void> {
-	const database = await getNotesIndexDb();
-	const json = await exportFeedbackToJson(database);
-	const filePath = `${NOTES_ROOT}/${FEEDBACK_FILENAME}`;
-	const file = new File(filePath);
-	await file.write(json);
 }
 
 export async function getFeedbackHistory(): Promise<FeedbackEvent[]> {
-	const database = await getNotesIndexDb();
-	const feedback = await getAllClusterFeedback(database);
-	return feedback.map((f) => ({
-		clusterId: f.cluster_id,
-		eventType: f.event_type,
-		eventData: f.event_data ? JSON.parse(f.event_data) : null,
-		createdAt: f.created_at,
-	}));
+	return shouldUseServerClusters() ? listServerClusterFeedback() : [];
+}
+
+export async function exportFeedbackToFile(): Promise<void> {
+	const feedback = await getFeedbackHistory();
+	const url = URL.createObjectURL(
+		new Blob([JSON.stringify(feedback, null, 2)], { type: "application/json" }),
+	);
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = "keeper-cluster-feedback.json";
+	link.click();
+	queueMicrotask(() => URL.revokeObjectURL(url));
 }

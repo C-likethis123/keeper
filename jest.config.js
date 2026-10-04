@@ -16,12 +16,10 @@ module.exports = {
 	moduleNameMapper: {
 		"^@/(.*)$": "<rootDir>/src/$1",
 		"^lib0/webcrypto$": "<rootDir>/node_modules/lib0/dist/webcrypto.node.cjs",
-		"^@react-navigation/([^/]+)$":
-			"<rootDir>/node_modules/@react-navigation/$1/src/index.tsx",
 	},
 	testPathIgnorePatterns: ["/node_modules/", "/android/", "/ios/"],
 	transformIgnorePatterns: [
-		"node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@react-navigation/.*))",
+		"node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*))",
 	],
 	clearMocks: true,
 	watchman: false,

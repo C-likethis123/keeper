@@ -1,5 +1,5 @@
 import type { TabStripProps } from "@keeper/features/tabs/tab-contract";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 
 /** DOM renderer. Behavior comes from the shared TabStripProps contract. */
 export function BrowserTabStrip({

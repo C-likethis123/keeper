@@ -13,17 +13,8 @@ export default defineConfig({
 	plugins: [react(), vitePwaPlugin()],
 	resolve: {
 		alias: {
-			"@/components/drawing/DrawingPreview": fileURLToPath(
-				new URL(
-					"./web/src/adapters/browser/BrowserDrawingPreview.tsx",
-					import.meta.url,
-				),
-			),
 			"@/services/sync/syncStateStorage": fileURLToPath(
 				new URL("./src/services/sync/syncStateStorage.web.ts", import.meta.url),
-			),
-			"@/services/storage/storageEngine": fileURLToPath(
-				new URL("./src/services/storage/storageEngine.web.ts", import.meta.url),
 			),
 			"@/services/notes/noteService": fileURLToPath(
 				new URL("./web/src/adapters/browser/noteService.ts", import.meta.url),
@@ -55,24 +46,6 @@ export default defineConfig({
 			"@": fileURLToPath(new URL("./src", import.meta.url)),
 			"@web": fileURLToPath(new URL("./web/src", import.meta.url)),
 			"react-native": "react-native-web",
-			"react-native-safe-area-context": fileURLToPath(
-				new URL("./web/src/adapters/browser/safeArea.tsx", import.meta.url),
-			),
-			"@expo/vector-icons": fileURLToPath(
-				new URL(
-					"./web/src/adapters/browser/expoVectorIcons.tsx",
-					import.meta.url,
-				),
-			),
-			"react-native-mathjax-html-to-svg": fileURLToPath(
-				new URL(
-					"./web/src/adapters/browser/nativeMathJax.tsx",
-					import.meta.url,
-				),
-			),
-			"expo-image": fileURLToPath(
-				new URL("./web/src/adapters/browser/expoImage.tsx", import.meta.url),
-			),
 			"@keeper": fileURLToPath(new URL("./src", import.meta.url)),
 		},
 	},
@@ -85,10 +58,6 @@ export default defineConfig({
 			deps: {
 				inline: [
 					"react-native",
-					"@react-navigation/native",
-					"@expo/vector-icons",
-					"expo-image",
-					"react-native-mathjax-html-to-svg",
 				],
 			},
 		},

@@ -1,7 +1,7 @@
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@/components/shared/Icons";
 import React from "react";
 import {
 	ScrollView,
@@ -68,7 +68,7 @@ function NoteList({
 		<View style={styles.section}>
 			<View style={styles.sectionHeader}>
 				<MaterialCommunityIcons
-					name={icon as typeof MaterialCommunityIcons.defaultProps.name}
+					name={icon}
 					size={18}
 					color={theme.colors.textSecondary}
 				/>

@@ -3,7 +3,7 @@ import { useStyles } from "@/hooks/useStyles";
 import type { NoteVersion } from "@/services/notes/noteHistoryService";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
@@ -15,7 +15,7 @@ import {
 	View,
 	useWindowDimensions,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "@/components/shared/SafeArea";
 
 type CurrentVersion = {
 	id: "current";

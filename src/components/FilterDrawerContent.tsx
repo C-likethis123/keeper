@@ -3,10 +3,10 @@ import { useStyles } from "@/hooks/useStyles";
 import { SyncAccessButton } from "@/components/SyncAccessButton.web";
 import type { NoteStatus, NoteType } from "@/services/notes/types";
 import { useFilterStore } from "@/stores/filterStore";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "@/components/shared/SafeArea";
 
 const FILTER_OPTIONS: { label: string; value?: NoteType }[] = [
 	{ label: "All notes", value: undefined },

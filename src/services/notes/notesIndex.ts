@@ -1,6 +1,6 @@
 import type { NoteListFilters } from "@/services/notes/types";
 import { storageEngine } from "@/services/storage/storageEngine";
-export { extractSummary } from "./indexDb/mapper";
+export { extractSummary } from "./noteSummary";
 import type {
 	ListNotesResult,
 	NoteIndexItem,

@@ -1,6 +1,6 @@
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@/components/shared/Icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 

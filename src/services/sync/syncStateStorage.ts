@@ -1,11 +1,11 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import browserKeyValueStorage from "@/services/storage/browserKeyValueStorage";
 export async function getSyncStateItem(key: string): Promise<string | null> {
-	return AsyncStorage.getItem(key);
+	return browserKeyValueStorage.getItem(key);
 }
 
 export async function setSyncStateItem(
 	key: string,
 	value: string,
 ): Promise<void> {
-	await AsyncStorage.setItem(key, value);
+	await browserKeyValueStorage.setItem(key, value);
 }

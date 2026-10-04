@@ -16,7 +16,7 @@ import {
   safeCast,
   UNDO_COMMAND,
 } from "lexical";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import type React from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 

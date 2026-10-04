@@ -5,10 +5,9 @@ import { IconButton } from "@/components/shared/IconButton";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { NoteType } from "@/services/notes/types";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import React, { useRef, useState } from "react";
 import {
-	Platform,
 	Pressable,
 	StyleSheet,
 	Text,
@@ -111,12 +110,7 @@ export default function HomeQuickComposer({
 								persistDraft={false}
 								themeMode={colorScheme ?? "dark"}
 								variant="compact"
-								isNativeDom={Platform.OS !== "web"}
-								dom={{
-									scrollEnabled: true,
-									style: styles.domEditor,
-									containerStyle: styles.domEditor,
-								}}
+
 							/>
 						</View>
 						<Pressable
@@ -266,10 +260,6 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			minHeight: 104,
 			height: 120,
 			overflow: "hidden",
-		},
-		domEditor: {
-			width: "100%",
-			height: 120,
 		},
 		pinButton: {
 			position: "absolute",

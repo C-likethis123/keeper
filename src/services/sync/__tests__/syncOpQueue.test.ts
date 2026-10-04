@@ -13,7 +13,7 @@ const mockListNoteFiles = jest.fn();
 const mockLoadNote = jest.fn();
 const mockReadFileBytes = jest.fn();
 
-jest.mock("@react-native-async-storage/async-storage", () => ({
+jest.mock("@/services/storage/browserKeyValueStorage", () => ({
 	__esModule: true,
 	default: {
 		getItem: jest.fn((key: string) =>

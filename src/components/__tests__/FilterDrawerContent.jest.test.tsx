@@ -13,7 +13,7 @@ const mockDrawerProps = {
 	navigation: mockNavigation,
 } satisfies React.ComponentProps<typeof FilterDrawerContent>;
 
-jest.mock("react-native-safe-area-context", () => ({
+jest.mock("@/components/shared/SafeArea", () => ({
 	useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
 

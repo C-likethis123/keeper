@@ -2,7 +2,7 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import React from "react";
 
-jest.mock("@expo/vector-icons", () => ({
+jest.mock("@/components/shared/Icons", () => ({
 	FontAwesome: ({ name }: { name: string }) => name,
 }));
 

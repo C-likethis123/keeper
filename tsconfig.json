@@ -1,10 +1,40 @@
 {
-	"extends": "expo/tsconfig.base",
-	"compilerOptions": {
-		"strict": true,
-		"paths": {
-			"@/*": ["./src/*"]
-		}
-	},
-	"include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022"
+    ],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ],
+      "@web/*": [
+        "web/src/*"
+      ],
+      "@keeper/*": [
+        "src/*"
+      ]
+    },
+    "types": [
+      "vitest/globals"
+    ]
+  },
+  "include": [
+    "web/src"
+  ]
 }

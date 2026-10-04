@@ -1,6 +1,6 @@
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 

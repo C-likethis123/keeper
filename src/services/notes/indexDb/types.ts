@@ -1,6 +1,5 @@
 import type { Note } from "@/services/notes/types";
 import type {
-	NoteListFilters,
 	NoteStatus,
 	NoteType,
 } from "@/services/notes/types";
@@ -22,10 +21,6 @@ export interface ListNotesResult {
 
 export interface NotesIndexRebuildMetrics {
 	noteCount: number;
-	listMs?: number;
-	readParseMs?: number;
-	sqlInsertMs?: number;
-	ftsRebuildMs?: number;
 	totalMs?: number;
 }
 
@@ -37,28 +32,6 @@ export interface NoteIndexRow {
 	updated_at: number;
 	note_type: NoteType | null;
 	status: NoteStatus | null;
-}
-
-export interface NoteIndexSqlItem {
-	id: string;
-	title: string;
-	summary: string;
-	isPinned: number;
-	updatedAt: number;
-	noteType: NoteType | null;
-	status: NoteStatus | null;
-	modified?: number | null;
-	contentHash?: string | null;
-}
-
-interface WikiLinkRow {
-	source_id: string;
-	target_id: string;
-}
-
-interface ContentHashRow {
-	note_id: string;
-	content_hash: string;
 }
 
 export interface NoteSection {
@@ -75,5 +48,3 @@ export interface NoteSection {
 		onRemoveNote: (noteId: string) => void;
 	};
 }
-
-type NoteIndexFilters = NoteListFilters;

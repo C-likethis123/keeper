@@ -12,7 +12,7 @@ import {
 const mockFiles = new Map<string, Uint8Array>();
 const mockAsyncStorage = new Map<string, string>();
 
-jest.mock("@react-native-async-storage/async-storage", () => ({
+jest.mock("@/services/storage/browserKeyValueStorage", () => ({
 	__esModule: true,
 	default: {
 		getItem: jest.fn((key: string) =>

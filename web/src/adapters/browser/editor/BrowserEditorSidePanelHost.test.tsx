@@ -1,7 +1,7 @@
 import { browserStorage } from "@web/services/storage";
 import { darkTheme } from "@keeper/constants/themes/darkTheme";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { ThemeProvider } from "@react-navigation/native";
+import { ThemeProvider } from "@/constants/themes/ThemeProvider";
 import { BrowserEditorSidePanelHost } from "./BrowserEditorSidePanelHost";
 
 const SPLIT_RATIO_KEY = "doc-split-ratio";

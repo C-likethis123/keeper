@@ -1,12 +1,12 @@
 import { withOpacity } from "@/utils/color";
-import { DefaultTheme as NavigationLightTheme } from "@react-navigation/native";
+import { baseLightTheme } from "./baseThemes";
 import { lightCodeEditorTheme } from "./codeEditorTheme";
 import { lightSyntaxTheme } from "./syntaxTheme";
 import type { ExtendedTheme } from "./types";
 
-const { colors } = NavigationLightTheme;
+const { colors } = baseLightTheme;
 export const lightTheme: ExtendedTheme = {
-	...NavigationLightTheme,
+	...baseLightTheme,
 	colors: {
 		...colors,
 		error: "#ef4444",
@@ -25,24 +25,24 @@ export const lightTheme: ExtendedTheme = {
 			fontSize: 32,
 			fontWeight: "bold",
 			lineHeight: 40,
-			color: NavigationLightTheme.colors.text,
+			color: baseLightTheme.colors.text,
 		},
 		heading2: {
 			fontSize: 24,
 			fontWeight: "bold",
 			lineHeight: 32,
-			color: NavigationLightTheme.colors.text,
+			color: baseLightTheme.colors.text,
 		},
 		heading3: {
 			fontSize: 20,
 			fontWeight: "600",
 			lineHeight: 28,
-			color: NavigationLightTheme.colors.text,
+			color: baseLightTheme.colors.text,
 		},
 		body: {
 			fontSize: 16,
 			lineHeight: 24,
-			color: NavigationLightTheme.colors.text,
+			color: baseLightTheme.colors.text,
 		},
 	},
 	custom: {

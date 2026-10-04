@@ -3,7 +3,7 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { NoteSection } from "@/services/notes/indexDb/types";
 import type { Note } from "@/services/notes/types";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
 import {

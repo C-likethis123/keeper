@@ -1,5 +1,3 @@
-"use dom";
-
 import { $isCodeNode, type CodeNode } from "@lexical/code";
 import {
   $createTextNode,

@@ -47,7 +47,7 @@ jest.mock("nanoid", () => ({
 	nanoid: () => "generated-note-id",
 }));
 
-jest.mock("@react-native-async-storage/async-storage", () => {
+jest.mock("@/services/storage/browserKeyValueStorage", () => {
 	let store: Record<string, string> = {};
 	return {
 		__esModule: true,

@@ -4,10 +4,10 @@ import type {
 } from "@/components/drawing/drawingDocument";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import { memo, useCallback } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "@/components/shared/SafeArea";
 
 const COLORS = [
 	"#202124",

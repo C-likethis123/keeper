@@ -4,7 +4,7 @@ import useSuspenseTemplates from "@/hooks/useSuspenseTemplates";
 import { NoteService } from "@/services/notes/noteService";
 import type { Note } from "@/services/notes/types";
 import { showToast } from "@/services/toast";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import React, { Suspense, useCallback } from "react";
 import {
 	Modal,

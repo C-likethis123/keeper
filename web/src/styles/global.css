@@ -1,20 +1,20 @@
 @font-face {
 	font-family: "KeeperFontAwesome";
-	src: url("../../../node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome.ttf") format("truetype");
+	src: url("../../../src/assets/icons/FontAwesome.ttf") format("truetype");
 	font-style: normal;
 	font-weight: normal;
 	font-display: block;
 }
 @font-face {
 	font-family: "KeeperIonicons";
-	src: url("../../../node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf") format("truetype");
+	src: url("../../../src/assets/icons/Ionicons.ttf") format("truetype");
 	font-style: normal;
 	font-weight: normal;
 	font-display: block;
 }
 @font-face {
 	font-family: "KeeperMaterialCommunityIcons";
-	src: url("../../../node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf") format("truetype");
+	src: url("../../../src/assets/icons/MaterialCommunityIcons.ttf") format("truetype");
 	font-style: normal;
 	font-weight: normal;
 	font-display: block;

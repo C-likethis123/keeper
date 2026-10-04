@@ -1,6 +1,6 @@
-import { Directory, File } from "expo-file-system";
 import { storageEngine } from "@/services/storage/storageEngine";
-import { NOTES_ROOT } from "./Notes";
+
+const objectUrls = new Map<string, string>();
 
 function getExtension(uri: string): string {
 	const match = uri.match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
@@ -9,6 +9,13 @@ function getExtension(uri: string): string {
 
 function uniqueId(): string {
 	return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function blobBytes(bytes: Uint8Array): ArrayBuffer {
+	return bytes.buffer.slice(
+		bytes.byteOffset,
+		bytes.byteOffset + bytes.byteLength,
+	) as ArrayBuffer;
 }
 
 function getImageExtension(mimeType: string, name: string): string {
@@ -27,6 +34,20 @@ function getImageExtension(mimeType: string, name: string): string {
 	);
 }
 
+function cacheObjectUrl(
+	relativePath: string,
+	data: Uint8Array,
+	mimeType: string,
+): string {
+	const oldUrl = objectUrls.get(relativePath);
+	if (oldUrl) URL.revokeObjectURL(oldUrl);
+	const url = URL.createObjectURL(
+		new Blob([blobBytes(data)], { type: mimeType }),
+	);
+	objectUrls.set(relativePath, url);
+	return url;
+}
+
 export async function saveImageBytesToNotes(
 	data: Uint8Array,
 	mimeType: string,
@@ -34,31 +55,36 @@ export async function saveImageBytesToNotes(
 ): Promise<string> {
 	const relativePath = `assets/${uniqueId()}${getImageExtension(mimeType, name)}`;
 	await storageEngine.writeFileBytes(relativePath, data);
+	cacheObjectUrl(relativePath, data, mimeType);
 	return relativePath;
 }
 
 export async function copyPickedImageToNotes(uri: string): Promise<string> {
-	const ext = getExtension(uri);
-	const filename = `${uniqueId()}${ext}`;
-	const assetsDir = new Directory(NOTES_ROOT, "assets");
-	if (!assetsDir.exists) {
-		assetsDir.create({ intermediates: true });
-	}
-	const source = new File(uri);
-	const dest = new File(assetsDir, filename);
-	source.copy(dest);
-	return `assets/${filename}`;
+	const response = await fetch(uri);
+	if (!response.ok) throw new Error("Could not read selected image");
+	const mimeType = response.headers.get("content-type") || "image/jpeg";
+	const relativePath = await saveImageBytesToNotes(
+		new Uint8Array(await response.arrayBuffer()),
+		mimeType,
+		uri,
+	);
+	URL.revokeObjectURL(uri);
+	return relativePath;
 }
 
-export function resolveImageUri(relativePath: string): string {
+export async function resolveImageUri(relativePath: string): Promise<string> {
 	if (/^[a-z][a-z0-9+.-]*:/i.test(relativePath)) {
 		return relativePath;
 	}
-
-	const base = NOTES_ROOT.endsWith("/") ? NOTES_ROOT : `${NOTES_ROOT}/`;
-	return `${base}${relativePath}`;
+	const cachedUrl = objectUrls.get(relativePath);
+	if (cachedUrl) return cachedUrl;
+	const bytes = await storageEngine.readFileBytes(relativePath);
+	if (!bytes) throw new Error(`Image not found: ${relativePath}`);
+	return cacheObjectUrl(relativePath, bytes, "image/*");
 }
 
-export function releaseImageUri(_relativePath: string): void {
-	// Native file URIs do not need cleanup.
+export function releaseImageUri(relativePath: string): void {
+	const objectUrl = objectUrls.get(relativePath);
+	if (objectUrl) URL.revokeObjectURL(objectUrl);
+	objectUrls.delete(relativePath);
 }

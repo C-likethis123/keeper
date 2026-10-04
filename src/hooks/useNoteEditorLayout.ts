@@ -1,5 +1,5 @@
 import type { Note } from "@/services/notes/types";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import browserKeyValueStorage from "@/services/storage/browserKeyValueStorage";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PanResponder, Platform, useWindowDimensions } from "react-native";
 
@@ -58,7 +58,7 @@ export function useNoteEditorLayout(note: Note) {
 	const [splitRatio, setSplitRatio] = useState(isDesktop ? 0.5 : 0.4);
 
 	useEffect(() => {
-		AsyncStorage.getItem(SPLIT_RATIO_KEY).then((val) => {
+		browserKeyValueStorage.getItem(SPLIT_RATIO_KEY).then((val) => {
 			if (val) setSplitRatio(Number.parseFloat(val));
 		});
 	}, []);
@@ -79,7 +79,7 @@ export function useNoteEditorLayout(note: Note) {
 						: gestureState.dy / (windowWidth * (9 / 16));
 					setSplitRatio((r) => {
 						const next = clampSplitRatio(r + delta);
-						AsyncStorage.setItem(SPLIT_RATIO_KEY, String(next));
+						browserKeyValueStorage.setItem(SPLIT_RATIO_KEY, String(next));
 						return next;
 					});
 				},

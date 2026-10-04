@@ -4,7 +4,7 @@ import {
 	releaseAttachmentUri,
   resolveAttachmentUri,
 } from "@/services/notes/attachmentStorage";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@/components/shared/Icons";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {

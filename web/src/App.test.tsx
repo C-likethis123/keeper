@@ -1,4 +1,4 @@
-import { ThemeProvider } from "@react-navigation/native";
+import { ThemeProvider } from "@/constants/themes/ThemeProvider";
 import {
 	act,
 	cleanup,
