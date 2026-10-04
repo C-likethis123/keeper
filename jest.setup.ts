@@ -1,21 +1,6 @@
-import "react-native-gesture-handler/jestSetup";
 import { jest } from "@jest/globals";
 
 globalThis.jest = jest;
-
-jest.mock("@shopify/react-native-skia", () => {
-	const passthrough = ({ children }: { children?: unknown }) => children ?? null;
-	return {
-		__esModule: true,
-		Canvas: passthrough,
-		Circle: passthrough,
-		Fill: passthrough,
-		Group: passthrough,
-		Line: passthrough,
-		Path: passthrough,
-		vec: (x: number, y: number) => ({ x, y }),
-	};
-});
 
 jest.mock("expo-file-system", () => ({
 	__esModule: true,

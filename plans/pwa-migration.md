@@ -2,14 +2,14 @@
 
 ## Goal
 
-Ship Keeper as installable, offline-capable web app from shared Expo UI. Keep current Expo PWA working until Vite proves parity.
+Ship Keeper as installable, offline-capable Vite web app using shared UI.
 
 ## Decisions
 
 - Browser local-first. Notes, binary assets, sync queue live on device first.
 - Browser data uses IndexedDB. Do not depend on device filesystem APIs.
 - Sync server becomes authenticated and user-scoped before public release.
-- Static Expo export stays deployment target. Host app and API on HTTPS domains.
+- Vite is production web deployment target. Host app and API on HTTPS domains.
 
 ## Work order
 
@@ -77,6 +77,8 @@ Ship Keeper as installable, offline-capable web app from shared Expo UI. Keep cu
 - Added explicit waiting-worker update state. Dirty editor blocks worker
   activation and reload; clean editor can explicitly apply update. Worker does
   not call `skipWaiting()` during install.
+- Cut Cloudflare production build and deploy scripts over to Vite. Legacy Expo
+  web export remains available only through `npm run build:web:expo`.
 
 ## Vite PWA status
 
@@ -88,7 +90,7 @@ Ship Keeper as installable, offline-capable web app from shared Expo UI. Keep cu
   test build serves one worker version.
 - Install UI: prompt capture, dismissal, standalone detection, and unsupported
   browser instructions have unit coverage.
-- Cloudflare: production build/deploy still uses Expo. No cutover performed.
+- Cloudflare: production build/deploy uses Vite output from `dist/`.
 
 ## Manual install/update matrix
 
@@ -105,6 +107,5 @@ Vite and Expo manifests declare a dedicated 512px maskable icon. Core artwork
 stays inside the central mask-safe circle; manual launcher validation remains
 part of the Android Chrome matrix.
 
-Migration remains incomplete. Cloudflare still builds Expo. Production smoke
-testing, manual install matrix, Cloudflare Vite cutover, and
-Expo/React Native/Metro/Jest Expo removal remain unfinished.
+Migration remains incomplete. Production smoke testing, manual install matrix,
+and Expo/React Native/Metro/Jest Expo removal remain unfinished.

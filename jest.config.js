@@ -1,5 +1,16 @@
 module.exports = {
 	preset: "jest-expo",
+	transform: {
+		"\\.[jt]sx?$": [
+			"babel-jest",
+			{
+				babelrc: false,
+				configFile: false,
+				presets: ["babel-preset-expo"],
+				plugins: ["babel-plugin-dynamic-import-node"],
+			},
+		],
+	},
 	setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
 	testMatch: ["**/__tests__/**/*.test.ts?(x)", "**/*.jest.test.ts?(x)"],
 	moduleNameMapper: {
@@ -10,7 +21,7 @@ module.exports = {
 	},
 	testPathIgnorePatterns: ["/node_modules/", "/android/", "/ios/"],
 	transformIgnorePatterns: [
-		"node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|expo-router|@react-navigation/.*))",
+		"node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@react-navigation/.*))",
 	],
 	clearMocks: true,
 	watchman: false,

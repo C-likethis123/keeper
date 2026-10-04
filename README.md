@@ -4,7 +4,7 @@ Local-first Markdown notes for web/PWA.
 
 ## Tech stack
 
-1. [Expo](https://expo.dev), Expo Router, React Native, and React Native Web
+1. Vite, React, React Router, and shared React Native Web components
 2. [Lexical](https://lexical.dev/) rich Markdown editor, rendered through Expo DOM
 3. Browser IndexedDB storage
 4. Optional server sync for note operations, Git mirroring, and MOC classification
@@ -21,19 +21,21 @@ Local-first Markdown notes for web/PWA.
 2. Start development
 
    ```bash
-   npm start
+   npm run vite
    ```
 
 Useful commands:
 
-- `npm run build:web` — export static web/PWA bundle
-- `npm run lint` and `npm test` — lint and unit suite
+- `npm run build:web` — build production Vite web/PWA bundle
+- `npm run build:web:expo` — build legacy Expo web bundle
+- `npm run lint`, `npm run test:vite`, and `npm run test:browser` — checks
 
-App source lives in `src/`. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Shared source lives in `src/`; Vite browser source lives in `web/src/`.
 
 ### Web / PWA
 
-Web is an installable local-first direction, not yet full release parity. Production static exports include a manifest and service worker; browser notes and attachments use IndexedDB.
+Web is an installable local-first Vite PWA. Production builds include a manifest
+and service worker; browser notes and attachments use IndexedDB.
 
 Current release blockers: complete browser index/cluster parity; attachment quota UX; and cross-browser offline/update testing. See [`plans/pwa-migration.md`](plans/pwa-migration.md).
 
@@ -42,14 +44,14 @@ Current release blockers: complete browser index/cluster parity; attachment quot
 Configure the sync server URL:
 
 ```bash
-EXPO_PUBLIC_SYNC_SERVER_URL=https://keeper.example.com
+VITE_SYNC_SERVER_URL=https://keeper.example.com
 ```
 
 For this project's Cloudflare Worker deployment without a custom domain, build
 with `npm run build:web:cloudflare`. It sets this value to `/api` and routes the
 request through the private Workers VPC proxy in
 [`cloudflare/private-api-proxy/README.md`](cloudflare/private-api-proxy/README.md).
-Do not put an API token in an `EXPO_PUBLIC_*` variable.
+Do not put an API token in a `VITE_*` variable.
 
 Cloudflare Worker configuration is checked in under `wrangler.jsonc` and
 `cloudflare/private-api-proxy/wrangler.jsonc`. Use Wrangler-backed commands for

@@ -4,15 +4,12 @@
     "@welldone-software/why-did-you-render",
     "babel-plugin-dynamic-import-node",
     "react-native-svg",
-    "react-native-worklets",
     "epubjs",
     "pdfjs-dist",
     "jszip"
   ],
   "ignoreBinaries": ["adb"],
   "ignoreFiles": [
-    "babel.config.js",
-    "metro.config.js",
     "wdyr.ts",
     "**/*.web.ts",
     "**/*.web.tsx"
