@@ -6,7 +6,7 @@ import { BrowserEditorSidePanelHost } from "./BrowserEditorSidePanelHost";
 
 const SPLIT_RATIO_KEY = "doc-split-ratio";
 
-it("persists keyboard split resizing with the Expo layout key", async () => {
+it("persists keyboard split resizing with the persisted layout key", async () => {
 	await browserStorage.setState(SPLIT_RATIO_KEY, "0.45");
 	render(
 		<ThemeProvider value={darkTheme}>

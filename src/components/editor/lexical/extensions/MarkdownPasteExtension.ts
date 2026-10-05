@@ -66,7 +66,7 @@ function parseHtmlToLexicalNodes(
   return $generateNodesFromDOM(editor, dom);
 }
 
-export function shouldImportPastedMarkdown(text: string): boolean {
+function shouldImportPastedMarkdown(text: string): boolean {
   const trimmed = text.trim();
   if (trimmed.length === 0) return false;
   return (

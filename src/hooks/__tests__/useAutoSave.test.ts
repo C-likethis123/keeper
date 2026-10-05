@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import {
 	registerPendingDispatchFlusher,
 	unregisterPendingDispatchFlusher,
@@ -6,69 +7,30 @@ import {
 	normalizeMarkdownForPersistence,
 	persistEditorEntry,
 } from "@/services/notes/editorEntryPersistence";
-import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { AppState, InteractionManager } from "react-native";
+import { act, renderHook } from "@testing-library/react";
 import { useAutoSave } from "../useAutoSave";
 
-type InteractionTask = Parameters<
-	typeof InteractionManager.runAfterInteractions
->[0];
-type AppStateListener = Parameters<typeof AppState.addEventListener>[1];
 type UseAutoSaveResult = ReturnType<typeof useAutoSave>;
-
-let appStateListener: AppStateListener | null = null;
 let currentContent = "Initial body";
 
-function runInteractionTask(task: InteractionTask) {
-	if (!task) {
-		return Promise.resolve();
-	}
-
-	if (typeof task === "function") {
-		return Promise.resolve(task());
-	}
-
-	return Promise.resolve(task.gen());
-}
-
-jest.mock("@/services/notes/editorEntryPersistence", () => ({
-	normalizeMarkdownForPersistence: jest.fn((value: string) => value.trim()),
-	persistEditorEntry: jest.fn(),
+vi.mock("@/services/notes/editorEntryPersistence", () => ({
+	normalizeMarkdownForPersistence: vi.fn((value: string) => value.trim()),
+	persistEditorEntry: vi.fn(),
 }));
 
 describe("useAutoSave", () => {
 	beforeEach(() => {
-		jest.useFakeTimers();
-		jest.clearAllMocks();
-		appStateListener = null;
+		vi.useFakeTimers();
+		vi.clearAllMocks();
 		currentContent = "Initial body";
-		jest
-			.spyOn(InteractionManager, "runAfterInteractions")
-			.mockImplementation((task?: InteractionTask) => {
-				const handle = Object.assign(
-					Promise.resolve(runInteractionTask(task)),
-					{
-						done: jest.fn(),
-						cancel: jest.fn(),
-					},
-				);
-				return handle as ReturnType<
-					typeof InteractionManager.runAfterInteractions
-				>;
-			});
-		jest
-			.spyOn(AppState, "addEventListener")
-			.mockImplementation((_type, listener) => {
-				appStateListener = listener;
-				return { remove: jest.fn() };
-			});
 	});
 
 	afterEach(() => {
 		act(() => {
-			jest.runOnlyPendingTimers();
+			vi.runOnlyPendingTimers();
 		});
-		jest.useRealTimers();
+		vi.useRealTimers();
+		vi.restoreAllMocks();
 	});
 
 	it("does not persist unchanged note content during idle autosave", async () => {
@@ -85,7 +47,7 @@ describe("useAutoSave", () => {
 		);
 
 		await act(async () => {
-			jest.advanceTimersByTime(60000);
+			vi.advanceTimersByTime(60000);
 			await Promise.resolve();
 		});
 
@@ -117,7 +79,7 @@ describe("useAutoSave", () => {
 	});
 
 	it("allows a later dirty save after a clean forceSave", async () => {
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
 		const { result, rerender } = renderHook(() =>
 			useAutoSave({
 				id: "note-1",
@@ -157,7 +119,7 @@ describe("useAutoSave", () => {
 	});
 
 	it("saves latest ref content when editor revision changes without content prop churn", async () => {
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
 		let revision = 0;
 		const { result, rerender } = renderHook(() =>
 			useAutoSave({
@@ -196,12 +158,12 @@ describe("useAutoSave", () => {
 	});
 
 	it("saves metadata changes with loaded note content before editor content changes", async () => {
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
 		currentContent = "Fresh loaded body";
-			const { result, rerender } = renderHook<
-				UseAutoSaveResult,
-				{ title: string }
-			>(
+		const { result, rerender } = renderHook<
+			UseAutoSaveResult,
+			{ title: string }
+		>(
 			({ title }) =>
 				useAutoSave({
 					id: "note-1",
@@ -260,7 +222,7 @@ describe("useAutoSave", () => {
 	});
 
 	it("does not mark unsaved title changes as saved when editor reports baseline content", async () => {
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
 		const { result, rerender } = renderHook<
 			UseAutoSaveResult,
 			{ title: string }
@@ -304,7 +266,7 @@ describe("useAutoSave", () => {
 	});
 
 	it("force saves content reverted to the loaded baseline after a saved edit", async () => {
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
 		const { result, rerender } = renderHook(() =>
 			useAutoSave({
 				id: "note-1",
@@ -348,8 +310,8 @@ describe("useAutoSave", () => {
 	});
 
 	it("persists dirty note changes after the idle interval and returns to idle after saved status", async () => {
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
-		const onPersisted = jest.fn();
+		vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
+		const onPersisted = vi.fn();
 		const { result, rerender } = renderHook(() =>
 			useAutoSave({
 				id: "note-1",
@@ -369,27 +331,25 @@ describe("useAutoSave", () => {
 		rerender(undefined);
 
 		await act(async () => {
-			jest.advanceTimersByTime(1999);
+			vi.advanceTimersByTime(1999);
 			await Promise.resolve();
 		});
 
 		expect(persistEditorEntry).not.toHaveBeenCalled();
 
 		await act(async () => {
-			jest.advanceTimersByTime(1);
+			vi.advanceTimersByTime(1);
 			await Promise.resolve();
 		});
 
-		await waitFor(() => {
-			expect(persistEditorEntry).toHaveBeenCalledWith({
-				id: "note-1",
-				title: "Draft note",
-				content: "Updated body",
-				isPinned: false,
-				noteType: "note",
-				status: undefined,
-				isNewEntry: false,
-			});
+		expect(persistEditorEntry).toHaveBeenCalledWith({
+			id: "note-1",
+			title: "Draft note",
+			content: "Updated body",
+			isPinned: false,
+			noteType: "note",
+			status: undefined,
+			isNewEntry: false,
 		});
 		expect(result.current.status).toBe("saved");
 		expect(onPersisted).toHaveBeenCalledWith({
@@ -398,15 +358,15 @@ describe("useAutoSave", () => {
 		});
 
 		act(() => {
-			jest.advanceTimersByTime(1000);
+			vi.advanceTimersByTime(1000);
 		});
 
 		expect(result.current.status).toBe("idle");
 	});
 
 	it("persists dirty title changes after the idle interval", async () => {
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
-			const { rerender } = renderHook<UseAutoSaveResult, { title: string }>(
+		vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
+		const { rerender } = renderHook<UseAutoSaveResult, { title: string }>(
 			({ title }) =>
 				useAutoSave({
 					id: "note-1",
@@ -425,25 +385,23 @@ describe("useAutoSave", () => {
 		rerender({ title: "Renamed note" });
 
 		await act(async () => {
-			jest.advanceTimersByTime(2000);
+			vi.advanceTimersByTime(2000);
 			await Promise.resolve();
 		});
 
-		await waitFor(() => {
-			expect(persistEditorEntry).toHaveBeenCalledWith({
-				id: "note-1",
-				title: "Renamed note",
-				content: "Initial body",
-				isPinned: false,
-				noteType: "note",
-				status: undefined,
-				isNewEntry: false,
-			});
+		expect(persistEditorEntry).toHaveBeenCalledWith({
+			id: "note-1",
+			title: "Renamed note",
+			content: "Initial body",
+			isPinned: false,
+			noteType: "note",
+			status: undefined,
+			isNewEntry: false,
 		});
 	});
 
 	it("persists attached video metadata changes with the current markdown", async () => {
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
 		const { rerender } = renderHook<
 			UseAutoSaveResult,
 			{ attachedVideo: string | null }
@@ -472,26 +430,24 @@ describe("useAutoSave", () => {
 		});
 
 		await act(async () => {
-			jest.advanceTimersByTime(2000);
+			vi.advanceTimersByTime(2000);
 			await Promise.resolve();
 		});
 
-		await waitFor(() => {
-			expect(persistEditorEntry).toHaveBeenCalledWith({
-				id: "note-1",
-				title: "Draft note",
-				content: "Body after attach",
-				isPinned: false,
-				noteType: "note",
-				status: undefined,
-				attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-				isNewEntry: false,
-			});
+		expect(persistEditorEntry).toHaveBeenCalledWith({
+			id: "note-1",
+			title: "Draft note",
+			content: "Body after attach",
+			isPinned: false,
+			noteType: "note",
+			status: undefined,
+			attachedVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+			isNewEntry: false,
 		});
 	});
 
 	it("force saves cleared document metadata from the latest render", async () => {
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
 		const { result, rerender } = renderHook<
 			UseAutoSaveResult,
 			{
@@ -539,7 +495,7 @@ describe("useAutoSave", () => {
 	});
 
 	it("flushes pending editor dispatches before reading content in forceSave", async () => {
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
 		const { result, rerender } = renderHook(() =>
 			useAutoSave({
 				id: "note-1",
@@ -574,33 +530,39 @@ describe("useAutoSave", () => {
 		});
 	});
 
-	it("persists dirty pending text when the app leaves active state", async () => {
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
-		const { rerender } = renderHook(() =>
-			useAutoSave({
-				id: "note-1",
-				title: "Draft note",
-				content: "Initial body",
-				currentContent,
-				getCurrentContent: () => currentContent,
-				isPinned: false,
-				noteType: "note",
-			}),
-		);
-		registerPendingDispatchFlusher("test-flusher", () => {
-			currentContent = "Leaving body";
-		});
-
-		try {
-			await act(async () => {
-				appStateListener?.("background");
-				await Promise.resolve();
+	it.each(["visibilitychange", "pagehide"])(
+		"persists dirty pending text on browser %s",
+		async (eventType) => {
+			vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
+			const { rerender } = renderHook(() =>
+				useAutoSave({
+					id: "note-1",
+					title: "Draft note",
+					content: "Initial body",
+					currentContent,
+					getCurrentContent: () => currentContent,
+					isPinned: false,
+					noteType: "note",
+				}),
+			);
+			registerPendingDispatchFlusher("test-flusher", () => {
+				currentContent = "Leaving body";
 			});
-		} finally {
-			unregisterPendingDispatchFlusher("test-flusher");
-		}
 
-		await waitFor(() => {
+			try {
+				await act(async () => {
+					vi.spyOn(document, "visibilityState", "get").mockReturnValue(
+						"hidden",
+					);
+					if (eventType === "visibilitychange")
+						document.dispatchEvent(new Event(eventType));
+					else window.dispatchEvent(new Event(eventType));
+					await Promise.resolve();
+				});
+			} finally {
+				unregisterPendingDispatchFlusher("test-flusher");
+			}
+
 			expect(persistEditorEntry).toHaveBeenCalledWith({
 				id: "note-1",
 				title: "Draft note",
@@ -610,18 +572,18 @@ describe("useAutoSave", () => {
 				status: undefined,
 				isNewEntry: false,
 			});
-		});
-	});
+		},
+	);
 
 	it("runs a follow-up save when content changes during an in-flight save", async () => {
 		let resolveFirstSave: (() => void) | undefined;
-		(persistEditorEntry as jest.Mock).mockImplementationOnce(
+		vi.mocked(persistEditorEntry).mockImplementationOnce(
 			() =>
 				new Promise<void>((resolve) => {
 					resolveFirstSave = resolve;
 				}),
 		);
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
 		const { rerender } = renderHook(() =>
 			useAutoSave({
 				id: "note-1",
@@ -639,7 +601,7 @@ describe("useAutoSave", () => {
 		});
 		rerender(undefined);
 		await act(async () => {
-			jest.advanceTimersByTime(2000);
+			vi.advanceTimersByTime(2000);
 			await Promise.resolve();
 		});
 
@@ -648,7 +610,7 @@ describe("useAutoSave", () => {
 		});
 		rerender(undefined);
 		await act(async () => {
-			jest.advanceTimersByTime(0);
+			vi.advanceTimersByTime(0);
 			await Promise.resolve();
 		});
 
@@ -658,28 +620,26 @@ describe("useAutoSave", () => {
 			await Promise.resolve();
 		});
 
-		await waitFor(() => {
-			expect(persistEditorEntry).toHaveBeenLastCalledWith({
-				id: "note-1",
-				title: "Draft note",
-				content: "Second edit",
-				isPinned: false,
-				noteType: "note",
-				status: undefined,
-				isNewEntry: false,
-			});
+		expect(persistEditorEntry).toHaveBeenLastCalledWith({
+			id: "note-1",
+			title: "Draft note",
+			content: "Second edit",
+			isPinned: false,
+			noteType: "note",
+			status: undefined,
+			isNewEntry: false,
 		});
 	});
 
 	it("waits for the follow-up save when forceSave is called during an in-flight save", async () => {
 		let resolveFirstSave: (() => void) | undefined;
-		(persistEditorEntry as jest.Mock).mockImplementationOnce(
+		vi.mocked(persistEditorEntry).mockImplementationOnce(
 			() =>
 				new Promise<void>((resolve) => {
 					resolveFirstSave = resolve;
 				}),
 		);
-		(persistEditorEntry as jest.Mock).mockResolvedValue(undefined);
+		vi.mocked(persistEditorEntry).mockResolvedValue(undefined);
 		const { result, rerender } = renderHook(() =>
 			useAutoSave({
 				id: "note-1",
@@ -735,10 +695,8 @@ describe("useAutoSave", () => {
 	});
 
 	it("resets to idle when persistence fails and skips onPersisted", async () => {
-		(persistEditorEntry as jest.Mock).mockRejectedValue(
-			new Error("Save failed"),
-		);
-		const onPersisted = jest.fn();
+		vi.mocked(persistEditorEntry).mockRejectedValue(new Error("Save failed"));
+		const onPersisted = vi.fn();
 		const { result, rerender } = renderHook(() =>
 			useAutoSave({
 				id: "note-1",
@@ -758,20 +716,18 @@ describe("useAutoSave", () => {
 		rerender(undefined);
 
 		await act(async () => {
-			jest.advanceTimersByTime(61500);
+			vi.advanceTimersByTime(61500);
 			await Promise.resolve();
 		});
 
-		await waitFor(() => {
-			expect(persistEditorEntry).toHaveBeenCalledTimes(1);
-		});
+		expect(persistEditorEntry).toHaveBeenCalledTimes(1);
 		expect(result.current.status).toBe("idle");
 		expect(onPersisted).not.toHaveBeenCalled();
 	});
 
 	it("rejects forceSave when persistence fails", async () => {
 		const saveError = new Error("Save failed");
-		(persistEditorEntry as jest.Mock).mockRejectedValue(saveError);
+		vi.mocked(persistEditorEntry).mockRejectedValue(saveError);
 		const { result } = renderHook(() =>
 			useAutoSave({
 				id: "note-1",

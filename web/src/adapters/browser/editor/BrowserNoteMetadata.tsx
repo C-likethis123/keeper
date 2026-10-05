@@ -1,3 +1,5 @@
+import type React from "react";
+import "@/components/shared/shared.css";
 import { FilterChip } from "@keeper/components/shared/FilterChip";
 import { TODO_STATUS_OPTIONS } from "@keeper/constants/noteTypes";
 import { darkTheme } from "@keeper/constants/themes/darkTheme";
@@ -6,7 +8,6 @@ import type {
 	CanonicalNoteType,
 } from "@keeper/features/notes/note-contract";
 import { ThemeProvider } from "@/constants/themes/ThemeProvider";
-import { StyleSheet, Text, View } from "react-native";
 
 /** Browser renderer for the same Todo status controls in NoteEditorView. */
 export function BrowserNoteMetadata({
@@ -21,9 +22,15 @@ export function BrowserNoteMetadata({
 	if (noteType !== "todo") return null;
 	return (
 		<ThemeProvider value={darkTheme}>
-			<View style={styles.group} accessibilityLabel="Todo status">
-				<Text style={styles.label}>Status</Text>
-				<View style={styles.row}>
+			<div
+				className="keeper-layout"
+				style={styles.group}
+				aria-label="Todo status"
+			>
+				<span className="keeper-copy" style={styles.label}>
+					Status
+				</span>
+				<div className="keeper-layout" style={styles.row}>
 					{TODO_STATUS_OPTIONS.map((option) => (
 						<FilterChip
 							key={option.value}
@@ -32,13 +39,13 @@ export function BrowserNoteMetadata({
 							onPress={() => onStatus(option.value ?? "open")}
 						/>
 					))}
-				</View>
-			</View>
+				</div>
+			</div>
 		</ThemeProvider>
 	);
 }
 
-const styles = StyleSheet.create({
+const styles = {
 	group: { gap: 6 },
 	label: {
 		fontSize: 12,
@@ -47,4 +54,4 @@ const styles = StyleSheet.create({
 		textTransform: "uppercase",
 	},
 	row: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-});
+} satisfies Record<string, React.CSSProperties>;

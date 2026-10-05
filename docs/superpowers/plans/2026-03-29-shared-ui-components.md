@@ -1,5 +1,8 @@
 # Shared UI Components Refactor Implementation Plan
 
+> Archived design/history. Platform paths and dependency references describe earlier implementation. Current setup: [README](../../../README.md); current migration status: [PWA plan](../../../plans/pwa-migration.md).
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Identify and extract the three most impactful duplicated UI patterns into shared components/hooks, reducing repeated code across the codebase.

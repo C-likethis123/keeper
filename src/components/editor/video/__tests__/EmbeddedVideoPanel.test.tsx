@@ -1,17 +1,17 @@
+import { vi } from "vitest";
 import { EmbeddedVideoPanel } from "@/components/editor/video/EmbeddedVideoPanel";
 import type { EmbeddedVideoSource } from "@/components/editor/video/videoUtils";
-import { render, screen } from "@testing-library/react-native";
+import { render, screen } from "@testing-library/react";
 
-jest.mock("@/components/shared/Icons", () => {
-	const React = require("react");
-	const { Text } = require("react-native");
+vi.mock("@/components/shared/Icons", async () => {
+	const React = await import("react");
 	return {
 		FontAwesome: ({ name }: { name: string }) =>
-			React.createElement(Text, null, name),
+			React.createElement("span", null, name),
 	};
 });
 
-jest.mock("@/hooks/useExtendedTheme", () => ({
+vi.mock("@/hooks/useExtendedTheme", () => ({
 	useExtendedTheme: () => ({
 		colors: {
 			background: "#fff",
@@ -31,27 +31,10 @@ const youtubeSource: EmbeddedVideoSource = {
 };
 
 describe("EmbeddedVideoPanel", () => {
-	const originalLocation = window.location;
-
-	beforeAll(() => {
-		// @ts-ignore
-		window.location = {
-			origin: "https://keeper.app",
-			protocol: "https:",
-		};
-	});
-
-	afterAll(() => {
-		// @ts-expect-error restoring mocked location
-		window.location = originalLocation;
-	});
-
 	it("renders the video panel with a YouTube source", () => {
-		const { UNSAFE_getByType } = render(
-			<EmbeddedVideoPanel source={youtubeSource} />,
-		);
+		const { container } = render(<EmbeddedVideoPanel source={youtubeSource} />);
 		expect(screen.getByTestId("embedded-video-panel")).toBeTruthy();
-		expect(UNSAFE_getByType("iframe")).toBeTruthy();
+		expect(container.querySelector("iframe")).toBeTruthy();
 	});
 
 	it("displays the video raw URL as caption", () => {
@@ -60,11 +43,9 @@ describe("EmbeddedVideoPanel", () => {
 	});
 
 	it("renders the video inside an iframe", () => {
-		const { UNSAFE_getByType } = render(
-			<EmbeddedVideoPanel source={youtubeSource} />,
+		const { container } = render(<EmbeddedVideoPanel source={youtubeSource} />);
+		expect(container.querySelector("iframe")?.srcdoc).toContain(
+			"https://www.youtube.com/embed/dQw4w9WgXcQ",
 		);
-		expect(UNSAFE_getByType("iframe").props.srcDoc).toContain(
-		"https://www.youtube.com/embed/dQw4w9WgXcQ",
-	);
 	});
 });

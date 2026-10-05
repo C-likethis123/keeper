@@ -1,5 +1,8 @@
 # MOC Section Merge Implementation Plan
 
+> Archived design/history. Platform paths and dependency references describe earlier implementation. Current setup: [README](../../../README.md); current migration status: [PWA plan](../../../plans/pwa-migration.md).
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Remove `AcceptedClusters` card list and fold accepted cluster management inline into the note grid's section headers and NoteCard long-press menus.

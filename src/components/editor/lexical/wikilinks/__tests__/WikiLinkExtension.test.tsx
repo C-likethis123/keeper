@@ -1,10 +1,8 @@
-import {
-	ensureWikiLinkTarget,
-	WikiLinkExtension,
-} from "../WikiLinkExtension";
+import { vi } from "vitest";
+import { ensureWikiLinkTarget, WikiLinkExtension } from "../WikiLinkExtension";
 import { createWikiLinkUrl } from "../wikiLinkUrl";
 
-jest.mock("@lexical/react/LexicalTypeaheadMenuPlugin", () => ({
+vi.mock("@lexical/react/LexicalTypeaheadMenuPlugin", () => ({
 	LexicalTypeaheadMenuPlugin: () => null,
 	MenuOption: class {
 		key: string;
@@ -29,20 +27,20 @@ class TestElement {
 
 function createRootMock() {
 	return {
-		addEventListener: jest.fn(),
-		removeEventListener: jest.fn(),
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
 	};
 }
 
 function createEditorMock(root: ReturnType<typeof createRootMock>) {
 	return {
-		getRootElement: jest.fn(() => root),
-		registerRootListener: jest.fn((listener) => {
+		getRootElement: vi.fn(() => root),
+		registerRootListener: vi.fn((listener) => {
 			listener(root, null);
-			return jest.fn();
+			return vi.fn();
 		}),
-		registerCommand: jest.fn(() => jest.fn()),
-		registerUpdateListener: jest.fn(() => jest.fn()),
+		registerCommand: vi.fn(() => vi.fn()),
+		registerUpdateListener: vi.fn(() => vi.fn()),
 	};
 }
 
@@ -71,7 +69,7 @@ describe("WikiLinkExtension interactions", () => {
 	it("opens wiki links from the Lexical editor root on control-mousedown", () => {
 		const root = createRootMock();
 		const editor = createEditorMock(root);
-		const onOpenWikiLink = jest.fn();
+		const onOpenWikiLink = vi.fn();
 
 		registerWikiLinkExtension(editor, onOpenWikiLink);
 
@@ -81,8 +79,8 @@ describe("WikiLinkExtension interactions", () => {
 		const event = {
 			ctrlKey: true,
 			target: new TestElement(createWikiLinkUrl("Project Alpha")),
-			preventDefault: jest.fn(),
-			stopPropagation: jest.fn(),
+			preventDefault: vi.fn(),
+			stopPropagation: vi.fn(),
 		};
 		handleMouseDown(event);
 
@@ -94,7 +92,7 @@ describe("WikiLinkExtension interactions", () => {
 	it("ignores unmodified wiki link clicks", () => {
 		const root = createRootMock();
 		const editor = createEditorMock(root);
-		const onOpenWikiLink = jest.fn();
+		const onOpenWikiLink = vi.fn();
 
 		registerWikiLinkExtension(editor, onOpenWikiLink);
 
@@ -103,8 +101,8 @@ describe("WikiLinkExtension interactions", () => {
 		)?.[1];
 		const event = {
 			target: new TestElement(createWikiLinkUrl("Project Alpha")),
-			preventDefault: jest.fn(),
-			stopPropagation: jest.fn(),
+			preventDefault: vi.fn(),
+			stopPropagation: vi.fn(),
 		};
 		handleMouseDown(event);
 
@@ -115,7 +113,7 @@ describe("WikiLinkExtension interactions", () => {
 	it("ignores ordinary links", () => {
 		const root = createRootMock();
 		const editor = createEditorMock(root);
-		const onOpenWikiLink = jest.fn();
+		const onOpenWikiLink = vi.fn();
 
 		registerWikiLinkExtension(editor, onOpenWikiLink);
 
@@ -125,8 +123,8 @@ describe("WikiLinkExtension interactions", () => {
 		const event = {
 			ctrlKey: true,
 			target: new TestElement("https://example.com"),
-			preventDefault: jest.fn(),
-			stopPropagation: jest.fn(),
+			preventDefault: vi.fn(),
+			stopPropagation: vi.fn(),
 		};
 		handleMouseDown(event);
 
@@ -135,7 +133,7 @@ describe("WikiLinkExtension interactions", () => {
 	});
 
 	it("creates a note for a create-result wikilink", async () => {
-		const resolveOrCreate = jest.fn().mockResolvedValue("new-note-id");
+		const resolveOrCreate = vi.fn().mockResolvedValue("new-note-id");
 
 		await ensureWikiLinkTarget(
 			{ id: "create-Project Alpha", title: "Project Alpha", type: "create" },
@@ -146,7 +144,7 @@ describe("WikiLinkExtension interactions", () => {
 	});
 
 	it("does not create a note for an existing-result wikilink", async () => {
-		const resolveOrCreate = jest.fn();
+		const resolveOrCreate = vi.fn();
 
 		await ensureWikiLinkTarget(
 			{

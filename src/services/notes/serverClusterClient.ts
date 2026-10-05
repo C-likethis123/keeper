@@ -95,36 +95,6 @@ export async function listServerAcceptedClusters(): Promise<ClusterRow[]> {
 	return rows.map(mapCluster);
 }
 
-export async function listServerActiveSuperClusters(): Promise<
-	SuperClusterRow[]
-> {
-	const rows = await request<ServerClusterRow[]>("/clusters/super/active");
-	return rows.map(mapSuperCluster);
-}
-
-export async function listServerAcceptedSuperClusters(): Promise<
-	SuperClusterRow[]
-> {
-	const rows = await request<ServerClusterRow[]>("/clusters/super/accepted");
-	return rows.map(mapSuperCluster);
-}
-
-export async function listServerChildClusters(
-	superClusterId: string,
-): Promise<ClusterRow[]> {
-	const rows = await request<ServerClusterRow[]>(
-		`/clusters/super/${encodeURIComponent(superClusterId)}/children?accepted=true`,
-	);
-	return rows.map(mapCluster);
-}
-
-export async function listServerStandaloneAcceptedClusters(): Promise<
-	ClusterRow[]
-> {
-	const rows = await request<ServerClusterRow[]>("/clusters/standalone/accepted");
-	return rows.map(mapCluster);
-}
-
 export async function listServerClusterMembers(
 	clusterId: string,
 ): Promise<ClusterMemberRow[]> {
@@ -150,22 +120,6 @@ export async function serverClusterAddNote(
 		`/clusters/${encodeURIComponent(clusterId)}/members/${encodeURIComponent(noteId)}`,
 		{ method: "POST" },
 	);
-}
-
-export async function serverClusterRemoveNote(
-	clusterId: string,
-	noteId: string,
-): Promise<void> {
-	await request(
-		`/clusters/${encodeURIComponent(clusterId)}/members/${encodeURIComponent(noteId)}`,
-		{ method: "DELETE" },
-	);
-}
-
-export async function serverClusterDelete(clusterId: string): Promise<void> {
-	await request(`/clusters/${encodeURIComponent(clusterId)}`, {
-		method: "DELETE",
-	});
 }
 
 export async function serverClusterDismiss(clusterId: string): Promise<void> {
@@ -195,21 +149,4 @@ export async function logServerClusterFeedback(
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ eventType, eventData }),
 	});
-}
-
-export async function listServerClusterFeedback(): Promise<
-	Array<{
-		clusterId: string;
-		eventType: string;
-		eventData: Record<string, unknown> | null;
-		createdAt: number;
-	}>
-> {
-	const rows = await request<ServerClusterFeedbackRow[]>("/clusters/feedback");
-	return rows.map((row) => ({
-		clusterId: row.clusterId,
-		eventType: row.eventType,
-		eventData: row.eventData,
-		createdAt: parseTime(row.createdAt) ?? 0,
-	}));
 }

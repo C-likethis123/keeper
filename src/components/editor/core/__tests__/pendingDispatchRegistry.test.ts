@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import {
 	flushAllPendingEditorDispatches,
 	registerPendingDispatchFlusher,
@@ -10,8 +11,8 @@ describe("pendingDispatchRegistry", () => {
 	});
 
 	it("does not let an old flusher cleanup remove a newer flusher for the same key", () => {
-		const oldFlusher = jest.fn();
-		const newFlusher = jest.fn();
+		const oldFlusher = vi.fn();
+		const newFlusher = vi.fn();
 
 		registerPendingDispatchFlusher("test-key", oldFlusher);
 		registerPendingDispatchFlusher("test-key", newFlusher);

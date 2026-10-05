@@ -45,23 +45,7 @@ function cacheObjectUrl(
 	return url;
 }
 
-export async function copyPickedAttachmentToNote(
-	uri: string,
-	noteId: string,
-	originalName?: string,
-): Promise<string> {
-	const sourceName = originalName ?? uri;
-	const response = await fetch(uri);
-	if (!response.ok) throw new Error("Could not read selected attachment");
-	const bytes = new Uint8Array(await response.arrayBuffer());
-	const relativePath = await saveAttachmentBytesToNotes(
-		bytes,
-		sourceName,
-		noteId,
-	);
-	URL.revokeObjectURL(uri);
-	return relativePath;
-}
+
 
 export async function saveAttachmentBytesToNotes(
 	bytes: Uint8Array,

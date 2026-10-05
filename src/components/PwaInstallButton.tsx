@@ -1,14 +1,15 @@
+import type React from "react";
+import "@/components/shared/shared.css";
 import { useStyles } from "@/hooks/useStyles";
 import { FontAwesome } from "@/components/shared/Icons";
 import { useEffect, useState } from "react";
-import { Platform, Pressable, StyleSheet, Text } from "react-native";
 
 type InstallPromptEvent = Event & {
 	prompt: () => Promise<void>;
 	userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-export function isPwaInstalled(): boolean {
+function isPwaInstalled(): boolean {
 	return (
 		(typeof window.matchMedia === "function" &&
 			window.matchMedia("(display-mode: standalone)").matches) ||
@@ -17,7 +18,7 @@ export function isPwaInstalled(): boolean {
 	);
 }
 
-export function isAppleMobileBrowser(): boolean {
+function isAppleMobileBrowser(): boolean {
 	return /iPad|iPhone|iPod/.test(window.navigator.userAgent);
 }
 
@@ -31,8 +32,6 @@ export function PwaInstallButton() {
 	);
 
 	useEffect(() => {
-		if (Platform.OS !== "web") return;
-
 		const handleBeforeInstallPrompt = (event: Event) => {
 			event.preventDefault();
 			setInstallPrompt(event as InstallPromptEvent);
@@ -49,8 +48,6 @@ export function PwaInstallButton() {
 			window.removeEventListener("appinstalled", handleInstalled);
 		};
 	}, []);
-
-	if (Platform.OS !== "web") return null;
 	if (installed) return null;
 
 	const install = async () => {
@@ -70,34 +67,38 @@ export function PwaInstallButton() {
 	};
 
 	return (
-		<Pressable
-			accessibilityRole="button"
-			accessibilityLabel="Install Keeper"
-			style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-			onPress={() => void install()}
+		<button
+			type="button"
+			className="keeper-control"
+			aria-label="Install Keeper"
+			style={{ ...styles.button }}
+			onClick={() => void install()}
 		>
 			<FontAwesome name="download" size={14} style={styles.icon} />
-			<Text style={styles.label}>Install</Text>
-		</Pressable>
+			<span className="keeper-copy" style={styles.label}>
+				Install
+			</span>
+		</button>
 	);
 }
 
 function createStyles(theme: {
 	colors: { border: string; text: string; textMuted: string };
 }) {
-	return StyleSheet.create({
+	return {
 		button: {
 			flexDirection: "row",
 			alignItems: "center",
 			gap: 6,
 			minHeight: 32,
-			paddingHorizontal: 10,
+			paddingLeft: 10,
+			paddingRight: 10,
 			borderWidth: 1,
 			borderColor: theme.colors.border,
 			borderRadius: 16,
 		},
-		buttonPressed: { opacity: 0.7 },
+
 		icon: { color: theme.colors.textMuted },
 		label: { color: theme.colors.text, fontSize: 13, fontWeight: "600" },
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }

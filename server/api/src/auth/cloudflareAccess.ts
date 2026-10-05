@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
-export type CloudflareAccessConfig = {
+type CloudflareAccessConfig = {
 	audience: string;
 	teamDomain: string;
 };

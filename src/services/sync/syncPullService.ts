@@ -1,6 +1,5 @@
 import { deleteCrdtNote } from "@/services/notes/crdtNoteService";
 import { parseFrontmatter } from "@/services/notes/frontmatter";
-import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import type { NoteSaveInput } from "@/services/notes/types";
 import { storageEngine } from "@/services/storage/storageEngine";
@@ -137,7 +136,7 @@ async function applyRemoteOperations(
 	return true;
 }
 
-export function scheduleSyncPull(delayMs = 0): void {
+function scheduleSyncPull(delayMs = 0): void {
 	if (!isServerSyncConfigured()) return;
 	clearRetryTimer();
 	retryTimer = setTimeout(
@@ -190,7 +189,6 @@ export async function pullPendingSyncOps(): Promise<void> {
 			retryMs = Math.min(retryMs * 2, MAX_RETRY_MS);
 		} finally {
 			if (didApplyOperations) {
-				invalidateNoteQueryCache();
 				useStorageStore.getState().bumpContentVersion();
 			}
 			if (shouldPollAgain) {

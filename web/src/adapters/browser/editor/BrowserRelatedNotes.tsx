@@ -5,7 +5,7 @@ import { useMemo } from "react";
 
 function normal(title: string) { return title.trim().toLocaleLowerCase(); }
 
-/** Browser data adapter around canonical Expo related-notes presentation. */
+/** Browser data adapter around shared related-notes presentation. */
 export function BrowserRelatedNotes({ note, notes, onNavigate }: { note: BrowserNote; notes: BrowserNote[]; onNavigate: (id: string) => void }) {
 	const { backlinks, outgoing } = useMemo(() => {
 		const byTitle = new Map(notes.map((item) => [normal(item.title), item]));

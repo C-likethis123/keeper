@@ -4,14 +4,14 @@ Keeper emits structured startup timing logs under the `[StartupTrace]` prefix so
 
 ## Where the logs come from
 
-- `src/services/startup/startupStrategies.web.ts`
+- `src/services/startup/startupStrategies.ts`
 - `src/services/startup/startupSteps.ts`
 - `src/services/startup/startupTelemetry.ts`
 - `src/services/notes/notesIndexDb.ts`
 
 ## How to view them
 
-- PWA: run `npm start -- --web` and inspect browser developer tools.
+- PWA: run `npm start` and inspect browser developer tools.
 
 Search for `[StartupTrace]` to isolate the structured startup events.
 

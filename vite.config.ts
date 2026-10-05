@@ -4,7 +4,7 @@ import { defineConfig } from "vite";
 import { vitePwaPlugin } from "./web/src/build/vitePwaPlugin";
 
 export default defineConfig({
-	root: "web",
+	root: fileURLToPath(new URL("./web", import.meta.url)),
 	envPrefix: ["VITE_", "EXPO_PUBLIC_"],
 	define: {
 		__DEV__: "false",
@@ -14,7 +14,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@/services/sync/syncStateStorage": fileURLToPath(
-				new URL("./src/services/sync/syncStateStorage.web.ts", import.meta.url),
+				new URL("./src/services/sync/browserSyncStateStorage.ts", import.meta.url),
 			),
 			"@/services/notes/noteService": fileURLToPath(
 				new URL("./web/src/adapters/browser/noteService.ts", import.meta.url),
@@ -45,21 +45,15 @@ export default defineConfig({
 			),
 			"@": fileURLToPath(new URL("./src", import.meta.url)),
 			"@web": fileURLToPath(new URL("./web/src", import.meta.url)),
-			"react-native": "react-native-web",
 			"@keeper": fileURLToPath(new URL("./src", import.meta.url)),
 		},
 	},
 	test: {
+		name: "browser",
+		root: fileURLToPath(new URL("./web", import.meta.url)),
 		environment: "jsdom",
 		globals: true,
-		setupFiles: "./src/test/setup.ts",
+		setupFiles: fileURLToPath(new URL("./web/src/test/setup.ts", import.meta.url)),
 		include: ["src/**/*.{test,spec}.{ts,tsx}"],
-		server: {
-			deps: {
-				inline: [
-					"react-native",
-				],
-			},
-		},
 	},
 });

@@ -1,4 +1,4 @@
-import { DocumentPanel } from "@keeper/components/editor/document/DocumentPanel.web";
+import { DocumentPanel } from "@keeper/components/editor/document/DocumentPanel";
 import { inferAttachmentType } from "@web/adapters/browser/attachmentStorage";
 
 export function BrowserDocumentPanel({

@@ -1,8 +1,8 @@
+import "./shared.css";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import { FontAwesome } from "@/components/shared/Icons";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type FontAwesomeName = React.ComponentProps<typeof FontAwesome>["name"];
 
@@ -33,63 +33,78 @@ export function IconButton({
 	const showTooltip = variant === "flat" && isHovered && label != null;
 
 	return (
-		<View
+		<div
 			style={
 				variant === "flat"
-					? [styles.wrapperFlat, showTooltip && styles.wrapperFlatRaised]
+					? {
+							...styles.wrapperFlat,
+							...(showTooltip ? styles.wrapperFlatRaised : {}),
+						}
 					: undefined
 			}
 		>
-			<Pressable
-				accessibilityRole="button"
-				accessibilityLabel={label}
-				style={({ pressed }) => [
-					variant === "circle"
-						? [styles.buttonCircle, pressed && styles.buttonPressed]
-						: [styles.buttonFlat, pressed && styles.buttonPressed],
-				]}
-				onPress={onPress}
+			<button
+				type="button"
+				className={
+					variant === "flat"
+						? "keeper-control keeper-icon-flat"
+						: "keeper-control"
+				}
+				aria-label={label ?? name}
+				style={{
+					...(variant === "circle"
+						? { ...styles.buttonCircle }
+						: { ...styles.buttonFlat }),
+				}}
+				onClick={onPress}
 				disabled={disabled}
-				testID={testID}
-				hitSlop={variant === "flat" ? 8 : undefined}
-				onHoverIn={variant === "flat" ? () => setIsHovered(true) : undefined}
-				onHoverOut={variant === "flat" ? () => setIsHovered(false) : undefined}
+				data-testid={testID}
+				onPointerEnter={
+					variant === "flat" ? () => setIsHovered(true) : undefined
+				}
+				onPointerLeave={
+					variant === "flat" ? () => setIsHovered(false) : undefined
+				}
+				onFocus={variant === "flat" ? () => setIsHovered(true) : undefined}
+				onBlur={variant === "flat" ? () => setIsHovered(false) : undefined}
 			>
 				<FontAwesome
 					name={name}
 					size={size}
 					style={
 						variant === "circle"
-							? [styles.icon, disabled && styles.iconDisabled]
-							: [styles.iconFlat, disabled && styles.iconDisabled]
+							? { ...styles.icon, ...(disabled ? styles.iconDisabled : {}) }
+							: { ...styles.iconFlat, ...(disabled ? styles.iconDisabled : {}) }
 					}
 				/>
-			</Pressable>
+			</button>
 			{showTooltip ? (
-				<View
-					pointerEvents="none"
-					testID={testID ? `${testID}-tooltip` : undefined}
-					style={[
-						styles.tooltip,
-						tooltipPlacement === "top"
+				<div
+					data-testid={testID ? `${testID}-tooltip` : undefined}
+					role="tooltip"
+					style={{
+						pointerEvents: "none",
+						whiteSpace: "nowrap",
+						...styles.tooltip,
+						...(tooltipPlacement === "top"
 							? styles.tooltipTop
-							: styles.tooltipBottom,
-						tooltipAlignment === "start" && styles.tooltipStart,
-						tooltipAlignment === "end" && styles.tooltipEnd,
-					]}
+							: styles.tooltipBottom),
+						...(tooltipAlignment === "start" ? styles.tooltipStart : {}),
+						...(tooltipAlignment === "end" ? styles.tooltipEnd : {}),
+					}}
 				>
-					<Text numberOfLines={1} style={styles.tooltipText}>
-						{label}
-					</Text>
-				</View>
+					<span style={styles.tooltipText}>{label}</span>
+				</div>
 			) : null}
-		</View>
+		</div>
 	);
 }
 
 function createStyles(theme: ExtendedTheme) {
-	return StyleSheet.create({
+	return {
 		wrapperFlat: {
+			display: "flex",
+			flexDirection: "column",
 			position: "relative",
 			alignItems: "center",
 			justifyContent: "center",
@@ -98,6 +113,8 @@ function createStyles(theme: ExtendedTheme) {
 			zIndex: 1,
 		},
 		buttonCircle: {
+			display: "flex",
+			flexDirection: "column",
 			width: 40,
 			height: 40,
 			borderRadius: 20,
@@ -105,13 +122,14 @@ function createStyles(theme: ExtendedTheme) {
 			justifyContent: "center" as const,
 			alignItems: "center" as const,
 			borderWidth: 1,
+			borderStyle: "solid",
 			borderColor: theme.colors.border,
 		},
 		buttonFlat: {
-			paddingVertical: 2,
-		},
-		buttonPressed: {
-			opacity: 0.7,
+			display: "flex",
+			flexDirection: "column",
+			paddingTop: 2,
+			paddingBottom: 2,
 		},
 		icon: {
 			color: theme.colors.text,
@@ -123,16 +141,14 @@ function createStyles(theme: ExtendedTheme) {
 			color: theme.colors.textDisabled,
 		},
 		tooltip: {
+			boxShadow: `0 4px 8px ${theme.colors.shadow}`,
 			position: "absolute",
-			paddingHorizontal: 8,
-			paddingVertical: 6,
+			paddingLeft: 8,
+			paddingRight: 8,
+			paddingTop: 6,
+			paddingBottom: 6,
 			borderRadius: 8,
 			backgroundColor: theme.colors.text,
-			shadowColor: theme.colors.shadow,
-			shadowOpacity: 0.14,
-			shadowRadius: 8,
-			shadowOffset: { width: 0, height: 4 },
-			elevation: 4,
 			zIndex: 10,
 		},
 		tooltipTop: {
@@ -154,5 +170,5 @@ function createStyles(theme: ExtendedTheme) {
 			fontWeight: "500",
 			color: theme.colors.card,
 		},
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }

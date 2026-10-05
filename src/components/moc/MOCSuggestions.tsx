@@ -1,3 +1,5 @@
+import type React from "react";
+import "@/components/shared/shared.css";
 import MergeClusterModal from "@/components/moc/MergeClusterModal";
 import RenameClusterModal from "@/components/moc/RenameClusterModal";
 import EmptyState from "@/components/shared/EmptyState";
@@ -16,7 +18,6 @@ import {
 import { notesIndexDbGetById } from "@/services/notes/notesIndexDb";
 import { useStorageStore } from "@/stores/storageStore";
 import { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 interface ClusterCard {
 	cluster: ClusterRow;
@@ -156,134 +157,180 @@ export default function MOCSuggestions({
 			return null;
 		}
 		return (
-			<View style={styles.screenEmptyState}>
+			<div className="keeper-layout" style={styles.screenEmptyState}>
 				<EmptyState
 					title="No suggested MOCs"
 					subtitle="New note clusters will appear here after the suggestion pipeline has generated them."
 				/>
-			</View>
+			</div>
 		);
 	}
 
 	const content = (
-		<View
-			style={[
-				styles.container,
-				variant === "screen" ? styles.screenContainer : null,
-			]}
+		<div
+			className="keeper-layout"
+			style={{
+				...styles.container,
+				...(variant === "screen" ? styles.screenContainer : null),
+			}}
 		>
-			<View style={styles.sectionHeaderRow}>
-				<Text style={[styles.sectionHeader, { color: colors.text }]}>
-					Suggested MOCs
-				</Text>
-				{variant === "inline" && onPressViewAll ? (
-					<Pressable
-						accessibilityRole="button"
-						accessibilityLabel="View all suggested MOCs"
-						onPress={onPressViewAll}
-					>
-						<Text style={[styles.viewAllText, { color: colors.primary }]}>
-							View all
-						</Text>
-					</Pressable>
-				) : null}
-			</View>
-			{cards.map((card) => (
-				<View
-					key={card.cluster.id}
-					style={[
-						styles.card,
-						{ backgroundColor: colors.card, borderColor: colors.border },
-					]}
+			<div className="keeper-layout" style={styles.sectionHeaderRow}>
+				<span
+					className="keeper-copy"
+					style={{ ...styles.sectionHeader, ...{ color: colors.text } }}
 				>
-					<Text
-						style={[styles.clusterName, { color: colors.text }]}
-						numberOfLines={1}
+					Suggested MOCs
+				</span>
+				{variant === "inline" && onPressViewAll ? (
+					<button
+						type="button"
+						className="keeper-control"
+						aria-label="View all suggested MOCs"
+						onClick={onPressViewAll}
+					>
+						<span
+							className="keeper-copy"
+							style={{ ...styles.viewAllText, ...{ color: colors.primary } }}
+						>
+							View all
+						</span>
+					</button>
+				) : null}
+			</div>
+			{cards.map((card) => (
+				<div
+					className="keeper-layout"
+					key={card.cluster.id}
+					style={{
+						...styles.card,
+						...{ backgroundColor: colors.card, borderColor: colors.border },
+					}}
+				>
+					<span
+						className="keeper-copy"
+						style={{
+							...{ ...styles.clusterName, ...{ color: colors.text } },
+							overflow: "hidden",
+							display: "-webkit-box",
+							WebkitBoxOrient: "vertical",
+							WebkitLineClamp: 1,
+						}}
 					>
 						{card.cluster.name}
-					</Text>
-					<Text
-						style={[styles.members, { color: colors.textSecondary }]}
-						numberOfLines={2}
+					</span>
+					<span
+						className="keeper-copy"
+						style={{
+							...{ ...styles.members, ...{ color: colors.textSecondary } },
+							overflow: "hidden",
+							display: "-webkit-box",
+							WebkitBoxOrient: "vertical",
+							WebkitLineClamp: 2,
+						}}
 					>
 						{card.memberNoteIds
 							.slice(0, 5)
 							.map((id) => card.memberNoteTitles.get(id) || id)
 							.join(" · ")}
-					</Text>
-					<Text style={[styles.confidence, { color: colors.textSecondary }]}>
+					</span>
+					<span
+						className="keeper-copy"
+						style={{ ...styles.confidence, ...{ color: colors.textSecondary } }}
+					>
 						{Math.round(card.cluster.confidence * 100)}% confidence
-					</Text>
-					<View style={styles.actions}>
-						<Pressable
-							onPress={() => handleAccept(card)}
-							style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+					</span>
+					<div className="keeper-layout" style={styles.actions}>
+						<button
+							type="button"
+							className="keeper-control"
+							onClick={() => handleAccept(card)}
+							style={{
+								...styles.actionBtn,
+								...{ backgroundColor: colors.primary },
+							}}
 						>
-							<Text
-								style={[
-									styles.actionBtnText,
-									{ color: colors.primaryContrast },
-								]}
+							<span
+								className="keeper-copy"
+								style={{
+									...styles.actionBtnText,
+									...{ color: colors.primaryContrast },
+								}}
 							>
 								Accept
-							</Text>
-						</Pressable>
-						<Pressable
-							onPress={() => handleRename(card)}
-							style={[
-								styles.actionBtn,
-								{
+							</span>
+						</button>
+						<button
+							type="button"
+							className="keeper-control"
+							onClick={() => handleRename(card)}
+							style={{
+								...styles.actionBtn,
+								...{
 									backgroundColor: colors.card,
 									borderWidth: 1,
 									borderColor: colors.border,
 								},
-							]}
+							}}
 						>
-							<Text style={[styles.actionBtnText, { color: colors.text }]}>
+							<span
+								className="keeper-copy"
+								style={{ ...styles.actionBtnText, ...{ color: colors.text } }}
+							>
 								Rename
-							</Text>
-						</Pressable>
-						<Pressable
-							onPress={() => handleMerge(card)}
-							style={[
-								styles.actionBtn,
-								{
+							</span>
+						</button>
+						<button
+							type="button"
+							className="keeper-control"
+							onClick={() => handleMerge(card)}
+							style={{
+								...styles.actionBtn,
+								...{
 									backgroundColor: colors.card,
 									borderWidth: 1,
 									borderColor: colors.border,
 								},
-							]}
+							}}
 						>
-							<Text style={[styles.actionBtnText, { color: colors.text }]}>
+							<span
+								className="keeper-copy"
+								style={{ ...styles.actionBtnText, ...{ color: colors.text } }}
+							>
 								Merge
-							</Text>
-						</Pressable>
-						<Pressable
-							onPress={() => handleDismiss(card)}
-							style={[
-								styles.actionBtn,
-								{
+							</span>
+						</button>
+						<button
+							type="button"
+							className="keeper-control"
+							onClick={() => handleDismiss(card)}
+							style={{
+								...styles.actionBtn,
+								...{
 									backgroundColor: colors.card,
 									borderWidth: 1,
 									borderColor: colors.border,
 								},
-							]}
+							}}
 						>
-							<Text
-								style={[styles.actionBtnText, { color: colors.textSecondary }]}
+							<span
+								className="keeper-copy"
+								style={{
+									...styles.actionBtnText,
+									...{ color: colors.textSecondary },
+								}}
 							>
 								Dismiss
-							</Text>
-						</Pressable>
-					</View>
-				</View>
+							</span>
+						</button>
+					</div>
+				</div>
 			))}
-		</View>
+		</div>
 	);
 
 	if (variant === "screen") {
 		return (
-			<View style={styles.screenRoot}>
+			<div className="keeper-layout" style={styles.screenRoot}>
 				<RenameClusterModal
 					visible={renameCard !== null}
 					initialName={renameCard?.cluster.name ?? ""}
@@ -298,18 +345,20 @@ export default function MOCSuggestions({
 					onClose={() => setMergeCard(null)}
 					onConfirm={handleMergeConfirm}
 				/>
-				<ScrollView
-					contentContainerStyle={styles.screenScrollContent}
-					showsVerticalScrollIndicator
-				>
-					{content}
-				</ScrollView>
-			</View>
+				<div className="keeper-layout" style={{ overflowY: "auto", ...{} }}>
+					<div
+						className="keeper-layout"
+						style={{ ...styles.screenScrollContent }}
+					>
+						{content}
+					</div>
+				</div>
+			</div>
 		);
 	}
 
 	return (
-		<View>
+		<div className="keeper-layout">
 			<RenameClusterModal
 				visible={renameCard !== null}
 				initialName={renameCard?.cluster.name ?? ""}
@@ -325,18 +374,19 @@ export default function MOCSuggestions({
 				onConfirm={handleMergeConfirm}
 			/>
 			{content}
-		</View>
+		</div>
 	);
 }
 
-const styles = StyleSheet.create({
-	container: { paddingHorizontal: 4, paddingTop: 12, gap: 12 },
+const styles = {
+	container: { paddingLeft: 4, paddingRight: 4, paddingTop: 12, gap: 12 },
 	screenRoot: { flex: 1 },
 	screenContainer: {
 		width: "100%",
 		maxWidth: 760,
 		alignSelf: "center",
-		paddingHorizontal: 16,
+		paddingLeft: 16,
+		paddingRight: 16,
 		paddingTop: 20,
 		paddingBottom: 32,
 	},
@@ -355,15 +405,18 @@ const styles = StyleSheet.create({
 		letterSpacing: 0.5,
 		marginBottom: 4,
 	},
-	viewAllText: {
-		fontSize: 13,
-		fontWeight: "600",
-	},
+	viewAllText: { fontSize: 13, fontWeight: "600" },
 	card: { borderRadius: 10, borderWidth: 1, padding: 14, gap: 6 },
 	clusterName: { fontSize: 16, fontWeight: "600" },
 	members: { fontSize: 13 },
 	confidence: { fontSize: 12 },
 	actions: { flexDirection: "row", gap: 8, marginTop: 6, flexWrap: "wrap" },
-	actionBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
+	actionBtn: {
+		paddingTop: 6,
+		paddingBottom: 6,
+		paddingLeft: 12,
+		paddingRight: 12,
+		borderRadius: 6,
+	},
 	actionBtnText: { fontSize: 13, fontWeight: "500" },
-});
+} satisfies Record<string, React.CSSProperties>;

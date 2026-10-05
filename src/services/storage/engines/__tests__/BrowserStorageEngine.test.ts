@@ -1,4 +1,4 @@
-import { BrowserStorageEngine } from "../BrowserStorageEngine.web";
+import { BrowserStorageEngine } from "../BrowserStorageEngine";
 
 describe("BrowserStorageEngine", () => {
 	it("fails clearly when IndexedDB returns no database", async () => {

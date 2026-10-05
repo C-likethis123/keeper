@@ -1,11 +1,12 @@
+import { vi } from "vitest";
 import type { NoteIndexItem } from "@/services/notes/notesIndex";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import type { Note, NoteListFilters } from "@/services/notes/types";
 import { computeSections, loadNotesPage } from "../useNotes";
 
-jest.mock("@/services/notes/notesIndex", () => ({
+vi.mock("@/services/notes/notesIndex", () => ({
 	NotesIndexService: {
-		listNotes: jest.fn(),
+		listNotes: vi.fn(),
 	},
 }));
 
@@ -33,11 +34,11 @@ function makeNote(id: string): Note {
 }
 
 describe("loadNotesPage", () => {
-	const mockListNotes = jest.mocked(NotesIndexService.listNotes);
+	const mockListNotes = vi.mocked(NotesIndexService.listNotes);
 	const filters: NoteListFilters = { hideDone: false };
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it("loads one page and preserves next-page cursor", async () => {

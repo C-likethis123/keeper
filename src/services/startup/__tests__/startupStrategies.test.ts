@@ -1,38 +1,42 @@
-import { runStartupStrategy } from "../startupStrategies.web";
+import { vi } from "vitest";
+const { mockInitializeStorageStep, mockCreateStartupTelemetry } = vi.hoisted(
+	() => ({
+		mockInitializeStorageStep: vi.fn(),
+		mockCreateStartupTelemetry: vi.fn(),
+	}),
+);
+import { runStartupStrategy } from "../startupStrategies";
 
-const mockInitializeStorageStep = jest.fn();
-const mockCreateStartupTelemetry = jest.fn();
-
-jest.mock("../startupSteps", () => ({
+vi.mock("../startupSteps", () => ({
 	initializeStorageStep: (...args: unknown[]) =>
 		mockInitializeStorageStep(...args),
 }));
 
-jest.mock("../startupTelemetry", () => ({
+vi.mock("../startupTelemetry", () => ({
 	createStartupTelemetry: (...args: unknown[]) =>
 		mockCreateStartupTelemetry(...args),
 }));
 
 function createTelemetry() {
 	return {
-		trace: jest.fn(),
-		stepStarted: jest.fn(() => 100),
-		stepCompleted: jest.fn(),
-		stepFailed: jest.fn(),
+		trace: vi.fn(),
+		stepStarted: vi.fn(() => 100),
+		stepCompleted: vi.fn(),
+		stepFailed: vi.fn(),
 	};
 }
 
 function createContext() {
 	return {
-		setHydrated: jest.fn(),
-		setInitError: jest.fn(),
-		setStatusMessage: jest.fn(),
+		setHydrated: vi.fn(),
+		setInitError: vi.fn(),
+		setStatusMessage: vi.fn(),
 	};
 }
 
 describe("runStartupStrategy", () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockCreateStartupTelemetry.mockReturnValue(createTelemetry());
 		mockInitializeStorageStep.mockResolvedValue(undefined);
 	});

@@ -1,14 +1,17 @@
-const mockListNoteFiles = jest.fn();
-const mockLoadNote = jest.fn();
-const mockIndexList = jest.fn();
+import { vi } from "vitest";
+const { mockListNoteFiles, mockLoadNote, mockIndexList } = vi.hoisted(() => ({
+	mockListNoteFiles: vi.fn(),
+	mockLoadNote: vi.fn(),
+	mockIndexList: vi.fn(),
+}));
 
-jest.mock("@/services/storage/storageEngine", () => ({
+vi.mock("@/services/storage/storageEngine", () => ({
 	storageEngine: {
 		listNoteFiles: (...args: unknown[]) => mockListNoteFiles(...args),
 		loadNote: (...args: unknown[]) => mockLoadNote(...args),
 		indexList: (...args: unknown[]) => mockIndexList(...args),
-		indexUpsert: jest.fn(),
-		indexDelete: jest.fn(),
+		indexUpsert: vi.fn(),
+		indexDelete: vi.fn(),
 	},
 }));
 

@@ -116,8 +116,7 @@ Client cutover flag:
 EXPO_PUBLIC_SYNC_SERVER_URL=/api
 ```
 
-For the private Pages proxy, set this in the Pages build environment. Native
-builds need a separate direct API URL and are not covered by this web-only path.
+For Worker deployment, `npm run build:web:cloudflare` sets equivalent `VITE_SYNC_SERVER_URL=/api`; existing `EXPO_PUBLIC_SYNC_SERVER_URL` remains supported.
 When the sync server URL is set, clients keep local writes and server sync
 enabled but stop direct client Git journal writes.
 
@@ -130,8 +129,7 @@ the Tunnel. Follow
 [`cloudflare/private-api-proxy/README.md`](../cloudflare/private-api-proxy/README.md).
 
 Deploy the frontend with `npm run deploy:web:cloudflare`, which sets
-`EXPO_PUBLIC_SYNC_SERVER_URL=/api`. This setting is web-only; do not use it in a
-native app build.
+`VITE_SYNC_SERVER_URL=/api`. Existing `EXPO_PUBLIC_SYNC_SERVER_URL` remains supported. This value routes browser requests through Worker proxy.
 
 ## Optional Cloudflare Access
 

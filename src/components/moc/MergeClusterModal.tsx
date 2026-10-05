@@ -1,15 +1,10 @@
+import { Dialog } from "@/components/shared/Dialog";
+import type React from "react";
+import "@/components/shared/shared.css";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { ClusterRow } from "@/services/notes/clusterService";
 import { useState } from "react";
-import {
-	Modal,
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	Text,
-	View,
-} from "react-native";
 
 type MergeClusterModalProps = {
 	visible: boolean;
@@ -62,120 +57,166 @@ export default function MergeClusterModal({
 	const canConfirm = targetId !== null && selectedIds.size > 0;
 
 	return (
-		<Modal
-			visible={visible}
-			animationType="fade"
-			transparent
-			onRequestClose={onClose}
-			onShow={handleShow}
+		<Dialog
+			label="Merge Cluster Modal"
+			open={visible}
+			onDismiss={onClose}
+			onOpen={handleShow}
 		>
-			<View style={styles.backdrop}>
-				<View style={styles.card}>
-					<Text style={styles.title}>Merge into existing MOC</Text>
+			<div className="keeper-layout" style={styles.backdrop}>
+				<div className="keeper-layout" style={styles.card}>
+					<span className="keeper-copy" style={styles.title}>
+						Merge into existing MOC
+					</span>
 
-					<Text style={styles.sectionLabel}>Select MOC</Text>
-					<ScrollView
-						style={styles.list}
-						contentContainerStyle={styles.listContent}
+					<span className="keeper-copy" style={styles.sectionLabel}>
+						Select MOC
+					</span>
+					<div
+						className="keeper-layout"
+						style={{ overflowY: "auto", ...styles.list }}
 					>
-						{acceptedClusters.length === 0 ? (
-							<Text style={styles.emptyText}>No accepted MOCs yet.</Text>
-						) : (
-							acceptedClusters.map((cluster) => {
-								const selected = targetId === cluster.id;
-								return (
-									<Pressable
-										key={cluster.id}
-										accessibilityRole="radio"
-										style={[styles.row, selected && styles.rowSelected]}
-										onPress={() => setTargetId(cluster.id)}
-									>
-										<View
-											style={[
-												styles.radio,
-												selected && {
-													backgroundColor: colors.primary,
-													borderColor: colors.primary,
-												},
-											]}
-										/>
-										<Text style={styles.rowText} numberOfLines={1}>
-											{cluster.name}
-										</Text>
-									</Pressable>
-								);
-							})
-						)}
-					</ScrollView>
+						<div className="keeper-layout" style={{ ...styles.listContent }}>
+							{acceptedClusters.length === 0 ? (
+								<span className="keeper-copy" style={styles.emptyText}>
+									No accepted MOCs yet.
+								</span>
+							) : (
+								acceptedClusters.map((cluster) => {
+									const selected = targetId === cluster.id;
+									return (
+										<label
+											className="keeper-control"
+											key={cluster.id}
+											style={{
+												...styles.row,
+												...(selected ? styles.rowSelected : {}),
+											}}
+										>
+											<input
+												type="radio"
+												name="merge-target"
+												checked={selected}
+												onChange={() => setTargetId(cluster.id)}
+												style={{
+													width: 16,
+													height: 16,
+													margin: 0,
+													accentColor: colors.primary,
+												}}
+											/>
+											<span
+												className="keeper-copy"
+												style={{
+													...styles.rowText,
+													overflow: "hidden",
+													display: "-webkit-box",
+													WebkitBoxOrient: "vertical",
+													WebkitLineClamp: 1,
+												}}
+											>
+												{cluster.name}
+											</span>
+										</label>
+									);
+								})
+							)}
+						</div>
+					</div>
 
-					<View style={styles.sectionHeader}>
-						<Text style={styles.sectionLabel}>Notes to merge</Text>
-						<Pressable onPress={toggleSelectAll} accessibilityRole="button">
-							<Text style={styles.selectAllText}>
-								{allSelected ? "Deselect all" : "Select all"}
-							</Text>
-						</Pressable>
-					</View>
-					<ScrollView
-						style={styles.list}
-						contentContainerStyle={styles.listContent}
-					>
-						{memberNoteIds.map((id) => {
-							const checked = selectedIds.has(id);
-							return (
-								<Pressable
-									key={id}
-									accessibilityRole="checkbox"
-									style={[styles.row, checked && styles.rowSelected]}
-									onPress={() => toggleNote(id)}
-								>
-									<View
-										style={[
-											styles.checkbox,
-											checked && {
-												backgroundColor: colors.primary,
-												borderColor: colors.primary,
-											},
-										]}
-									>
-										{checked && <Text style={styles.checkmark}>✓</Text>}
-									</View>
-									<Text style={styles.rowText} numberOfLines={1}>
-										{memberNoteTitles.get(id) ?? id}
-									</Text>
-								</Pressable>
-							);
-						})}
-					</ScrollView>
-
-					<View style={styles.actions}>
-						<Pressable
-							accessibilityRole="button"
-							style={styles.cancelButton}
-							onPress={onClose}
+					<div className="keeper-layout" style={styles.sectionHeader}>
+						<span className="keeper-copy" style={styles.sectionLabel}>
+							Notes to merge
+						</span>
+						<button
+							type="button"
+							className="keeper-control"
+							onClick={toggleSelectAll}
 						>
-							<Text style={styles.cancelText}>Cancel</Text>
-						</Pressable>
-						<Pressable
-							accessibilityRole="button"
-							style={[
-								styles.confirmButton,
-								!canConfirm && styles.confirmButtonDisabled,
-							]}
-							onPress={handleConfirm}
+							<span className="keeper-copy" style={styles.selectAllText}>
+								{allSelected ? "Deselect all" : "Select all"}
+							</span>
+						</button>
+					</div>
+					<div
+						className="keeper-layout"
+						style={{ overflowY: "auto", ...styles.list }}
+					>
+						<div className="keeper-layout" style={{ ...styles.listContent }}>
+							{memberNoteIds.map((id) => {
+								const checked = selectedIds.has(id);
+								return (
+									<label
+										className="keeper-control"
+										key={id}
+										style={{
+											...styles.row,
+											...(checked ? styles.rowSelected : {}),
+										}}
+									>
+										<input
+											type="checkbox"
+											checked={checked}
+											onChange={() => toggleNote(id)}
+											style={{
+												width: 16,
+												height: 16,
+												margin: 0,
+												accentColor: colors.primary,
+											}}
+										/>
+										<span
+											className="keeper-copy"
+											style={{
+												...styles.rowText,
+												overflow: "hidden",
+												display: "-webkit-box",
+												WebkitBoxOrient: "vertical",
+												WebkitLineClamp: 1,
+											}}
+										>
+											{memberNoteTitles.get(id) ?? id}
+										</span>
+									</label>
+								);
+							})}
+						</div>
+					</div>
+
+					<div className="keeper-layout" style={styles.actions}>
+						<button
+							type="button"
+							className="keeper-control"
+							style={styles.cancelButton}
+							onClick={onClose}
+						>
+							<span className="keeper-copy" style={styles.cancelText}>
+								Cancel
+							</span>
+						</button>
+						<button
+							type="button"
+							className="keeper-control"
+							style={{
+								...styles.confirmButton,
+								...(!canConfirm ? styles.confirmButtonDisabled : {}),
+							}}
+							onClick={handleConfirm}
 							disabled={!canConfirm}
 						>
-							<Text style={styles.confirmText}>Merge</Text>
-						</Pressable>
-					</View>
-				</View>
-			</View>
-		</Modal>
+							<span className="keeper-copy" style={styles.confirmText}>
+								Merge
+							</span>
+						</button>
+					</div>
+				</div>
+			</div>
+		</Dialog>
 	);
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	return StyleSheet.create({
+	return {
 		backdrop: {
 			flex: 1,
 			backgroundColor: "rgba(0, 0, 0, 0.35)",
@@ -191,11 +232,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			gap: 10,
 			maxHeight: "80%",
 		},
-		title: {
-			fontSize: 18,
-			fontWeight: "700",
-			color: theme.colors.text,
-		},
+		title: { fontSize: 18, fontWeight: "700", color: theme.colors.text },
 		sectionHeader: {
 			flexDirection: "row",
 			justifyContent: "space-between",
@@ -219,21 +256,18 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			borderColor: theme.colors.border,
 			borderRadius: 10,
 		},
-		listContent: {
-			gap: 2,
-			padding: 6,
-		},
+		listContent: { gap: 2, padding: 6 },
 		row: {
 			flexDirection: "row",
 			alignItems: "center",
 			gap: 10,
-			paddingVertical: 8,
-			paddingHorizontal: 10,
+			paddingTop: 8,
+			paddingBottom: 8,
+			paddingLeft: 10,
+			paddingRight: 10,
 			borderRadius: 8,
 		},
-		rowSelected: {
-			backgroundColor: `${theme.colors.primary}18`,
-		},
+		rowSelected: { backgroundColor: `${theme.colors.primary}18` },
 		radio: {
 			width: 16,
 			height: 16,
@@ -254,18 +288,15 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			fontSize: 10,
 			color: "#fff",
 			fontWeight: "700",
-			lineHeight: 12,
+			lineHeight: "12px",
 		},
-		rowText: {
-			flex: 1,
-			fontSize: 14,
-			color: theme.colors.text,
-		},
+		rowText: { flex: 1, fontSize: 14, color: theme.colors.text },
 		emptyText: {
 			fontSize: 13,
 			color: theme.colors.textSecondary,
 			textAlign: "center",
-			paddingVertical: 12,
+			paddingTop: 12,
+			paddingBottom: 12,
 		},
 		actions: {
 			flexDirection: "row",
@@ -274,31 +305,25 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			marginTop: 4,
 		},
 		cancelButton: {
-			paddingHorizontal: 14,
-			paddingVertical: 10,
+			paddingLeft: 14,
+			paddingRight: 14,
+			paddingTop: 10,
+			paddingBottom: 10,
 			borderRadius: 10,
 			borderWidth: 1,
 			borderColor: theme.colors.border,
 			backgroundColor: theme.colors.card,
 		},
-		cancelText: {
-			fontSize: 14,
-			fontWeight: "600",
-			color: theme.colors.text,
-		},
+		cancelText: { fontSize: 14, fontWeight: "600", color: theme.colors.text },
 		confirmButton: {
-			paddingHorizontal: 14,
-			paddingVertical: 10,
+			paddingLeft: 14,
+			paddingRight: 14,
+			paddingTop: 10,
+			paddingBottom: 10,
 			borderRadius: 10,
 			backgroundColor: theme.colors.primary,
 		},
-		confirmButtonDisabled: {
-			opacity: 0.4,
-		},
-		confirmText: {
-			fontSize: 14,
-			fontWeight: "700",
-			color: theme.colors.card,
-		},
-	});
+		confirmButtonDisabled: { opacity: 0.4 },
+		confirmText: { fontSize: 14, fontWeight: "700", color: theme.colors.card },
+	} satisfies Record<string, React.CSSProperties>;
 }

@@ -1,7 +1,5 @@
-import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import { NotesIndexService, extractSummary } from "@/services/notes/notesIndex";
 import { storageEngine } from "@/services/storage/storageEngine";
-import { isServerSyncEnabled } from "@/services/sync/config";
 import { showSyncDebugToast } from "@/services/sync/debug";
 import {
 	enqueueNoteCreate,
@@ -100,7 +98,6 @@ export class NoteService {
 			console.warn("[NoteService] Failed to queue sync operation:", error);
 			showSyncDebugToast("Sync queue failed", 8000);
 		}
-		invalidateNoteQueryCache();
 		useStorageStore.getState().bumpContentVersion();
 
 		return saved;
@@ -129,7 +126,6 @@ export class NoteService {
 				console.warn("[NoteService] Failed to queue sync operation:", error);
 				showSyncDebugToast("Sync queue failed", 8000);
 			}
-			invalidateNoteQueryCache();
 			useStorageStore.getState().bumpContentVersion();
 			return true;
 		} catch (e) {

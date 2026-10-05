@@ -1,21 +1,15 @@
+import "@/components/shared/shared.css";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import { FontAwesome } from "@/components/shared/Icons";
-import React from "react";
-import {
-	Pressable,
-	StyleSheet,
-	Text,
-	View,
-	type ViewStyle,
-} from "react-native";
+import type React from "react";
 import { EmbeddedVideoPanel } from "./EmbeddedVideoPanel";
 import { parseEmbeddedVideoUrl } from "./videoUtils";
 
 interface VideoSplitPanelProps {
 	url: string;
 	onDismiss: () => void;
-	style?: ViewStyle;
+	style?: React.CSSProperties;
 }
 
 export default function VideoSplitPanel({
@@ -27,34 +21,33 @@ export default function VideoSplitPanel({
 	const source = parseEmbeddedVideoUrl(url);
 
 	return (
-		<View style={[styles.container, style]}>
-			<Pressable
+		<div className="keeper-layout" style={{ ...styles.container, ...style }}>
+			<button
+				type="button"
+				className="keeper-control"
 				style={styles.dismissButton}
-				onPress={onDismiss}
-				accessibilityRole="button"
-				accessibilityLabel="Remove video"
+				onClick={onDismiss}
+				aria-label="Remove video"
 			>
 				<FontAwesome name="times" size={16} style={styles.dismissIcon} />
-			</Pressable>
+			</button>
 			{source ? (
 				<EmbeddedVideoPanel source={source} style={styles.panel} />
 			) : (
-				<View style={styles.invalidPanel}>
-					<Text style={styles.invalidText}>Not a valid YouTube URL</Text>
-				</View>
+				<div className="keeper-layout" style={styles.invalidPanel}>
+					<span className="keeper-copy" style={styles.invalidText}>
+						Not a valid YouTube URL
+					</span>
+				</div>
 			)}
-		</View>
+		</div>
 	);
 }
 
 function createStyles(theme: ExtendedTheme) {
-	return StyleSheet.create({
-		container: {
-			flex: 1,
-		},
-		panel: {
-			flex: 1,
-		},
+	return {
+		container: { flex: 1 },
+		panel: { flex: 1 },
 		invalidPanel: {
 			flex: 1,
 			alignItems: "center",
@@ -62,10 +55,7 @@ function createStyles(theme: ExtendedTheme) {
 			padding: 24,
 			backgroundColor: theme.colors.card,
 		},
-		invalidText: {
-			fontSize: 14,
-			color: theme.colors.textMuted,
-		},
+		invalidText: { fontSize: 14, color: theme.colors.textMuted },
 		dismissButton: {
 			position: "absolute",
 			top: 8,
@@ -80,8 +70,6 @@ function createStyles(theme: ExtendedTheme) {
 			borderWidth: 1,
 			borderColor: theme.colors.border,
 		},
-		dismissIcon: {
-			color: theme.colors.text,
-		},
-	});
+		dismissIcon: { color: theme.colors.text },
+	} satisfies Record<string, React.CSSProperties>;
 }

@@ -1,112 +1,9 @@
-import { act, cleanup, renderHook } from "@testing-library/react-native";
-import { Platform } from "react-native";
+import { useLayoutEffect, type ReactNode } from "react";
+import { vi } from "vitest";
+import { act, renderHook } from "@testing-library/react";
 import { useAppKeyboardShortcuts } from "../useAppKeyboardShortcuts";
 
-class TestKeyboardEvent extends Event {
-	key: string;
-	code: string;
-	metaKey: boolean;
-	ctrlKey: boolean;
-	altKey: boolean;
-	shiftKey: boolean;
-
-	constructor(
-		type: string,
-		init: KeyboardEventInit & { key: string; code: string },
-	) {
-		super(type, init);
-		this.key = init.key;
-		this.code = init.code;
-		this.metaKey = init.metaKey ?? false;
-		this.ctrlKey = init.ctrlKey ?? false;
-		this.altKey = init.altKey ?? false;
-		this.shiftKey = init.shiftKey ?? false;
-	}
-}
-
-class TestDocument {
-	private listeners = new Set<EventListenerOrEventListenerObject>();
-
-	addEventListener(
-		type: string,
-		listener: EventListenerOrEventListenerObject | null,
-	) {
-		if (type === "keydown" && listener) {
-			this.listeners.add(listener);
-		}
-	}
-
-	removeEventListener(
-		type: string,
-		listener: EventListenerOrEventListenerObject | null,
-	) {
-		if (type === "keydown" && listener) {
-			this.listeners.delete(listener);
-		}
-	}
-
-	dispatchEvent(event: Event) {
-		for (const listener of Array.from(this.listeners)) {
-			if (typeof listener === "function") {
-				listener(event);
-			} else {
-				listener.handleEvent(event);
-			}
-		}
-		return !event.defaultPrevented;
-	}
-}
-
 describe("useAppKeyboardShortcuts", () => {
-	let originalOS: typeof Platform.OS;
-	let originalDocument: typeof globalThis.document;
-	let originalKeyboardEvent: typeof globalThis.KeyboardEvent;
-	let testDocument: Document;
-
-	beforeAll(() => {
-		originalOS = Platform.OS;
-		originalDocument = globalThis.document;
-		originalKeyboardEvent = globalThis.KeyboardEvent;
-		Object.defineProperty(globalThis, "document", {
-			configurable: true,
-			value: undefined,
-			writable: true,
-		});
-		Object.defineProperty(globalThis, "KeyboardEvent", {
-			configurable: true,
-			value: TestKeyboardEvent,
-			writable: true,
-		});
-		(Platform as unknown as { OS: string }).OS = "web";
-	});
-
-	beforeEach(() => {
-		testDocument = new TestDocument() as unknown as Document;
-		Object.defineProperty(globalThis, "document", {
-			configurable: true,
-			value: testDocument,
-			writable: true,
-		});
-	});
-
-	afterAll(() => {
-		(Platform as unknown as { OS: string }).OS = originalOS;
-		Object.defineProperty(globalThis, "document", {
-			configurable: true,
-			value: originalDocument,
-			writable: true,
-		});
-		Object.defineProperty(globalThis, "KeyboardEvent", {
-			configurable: true,
-			value: originalKeyboardEvent,
-			writable: true,
-		});
-	});
-
-	afterEach(() => {
-		cleanup();
-	});
-
 	function fireKey(
 		key: string,
 		opts: { metaKey?: boolean; ctrlKey?: boolean } = {},
@@ -125,7 +22,7 @@ describe("useAppKeyboardShortcuts", () => {
 	}
 
 	it("calls onFocusSearch when Cmd+K is pressed", () => {
-		const onFocusSearch = jest.fn();
+		const onFocusSearch = vi.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onFocusSearch }));
 
 		const event = fireKey("k", { metaKey: true });
@@ -135,7 +32,7 @@ describe("useAppKeyboardShortcuts", () => {
 	});
 
 	it("calls onFocusSearch when Ctrl+K is pressed", () => {
-		const onFocusSearch = jest.fn();
+		const onFocusSearch = vi.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onFocusSearch }));
 
 		fireKey("k", { ctrlKey: true });
@@ -144,7 +41,7 @@ describe("useAppKeyboardShortcuts", () => {
 	});
 
 	it("calls onFocusSearch when Cmd+P is pressed", () => {
-		const onFocusSearch = jest.fn();
+		const onFocusSearch = vi.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onFocusSearch }));
 
 		fireKey("p", { metaKey: true });
@@ -153,7 +50,7 @@ describe("useAppKeyboardShortcuts", () => {
 	});
 
 	it("calls onCreateNote when Cmd+N is pressed", () => {
-		const onCreateNote = jest.fn();
+		const onCreateNote = vi.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onCreateNote }));
 
 		const event = fireKey("n", { metaKey: true });
@@ -163,7 +60,7 @@ describe("useAppKeyboardShortcuts", () => {
 	});
 
 	it("calls onCreateNote when Ctrl+N is pressed", () => {
-		const onCreateNote = jest.fn();
+		const onCreateNote = vi.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onCreateNote }));
 
 		fireKey("n", { ctrlKey: true });
@@ -172,7 +69,7 @@ describe("useAppKeyboardShortcuts", () => {
 	});
 
 	it("calls onForceSave when Cmd+S is pressed", () => {
-		const onForceSave = jest.fn();
+		const onForceSave = vi.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onForceSave }));
 
 		const event = fireKey("s", { metaKey: true });
@@ -182,7 +79,7 @@ describe("useAppKeyboardShortcuts", () => {
 	});
 
 	it("calls onForceSave when Ctrl+S is pressed", () => {
-		const onForceSave = jest.fn();
+		const onForceSave = vi.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onForceSave }));
 
 		fireKey("s", { ctrlKey: true });
@@ -191,7 +88,7 @@ describe("useAppKeyboardShortcuts", () => {
 	});
 
 	it("calls onOpenFindReplace when Cmd+F is pressed", () => {
-		const onOpenFindReplace = jest.fn();
+		const onOpenFindReplace = vi.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onOpenFindReplace }));
 
 		const event = fireKey("f", { metaKey: true });
@@ -201,7 +98,7 @@ describe("useAppKeyboardShortcuts", () => {
 	});
 
 	it("calls onOpenFindReplace when Ctrl+F is pressed", () => {
-		const onOpenFindReplace = jest.fn();
+		const onOpenFindReplace = vi.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onOpenFindReplace }));
 
 		fireKey("f", { ctrlKey: true });
@@ -210,9 +107,9 @@ describe("useAppKeyboardShortcuts", () => {
 	});
 
 	it("does not call any callback for unregistered chords", () => {
-		const onFocusSearch = jest.fn();
-		const onCreateNote = jest.fn();
-		const onForceSave = jest.fn();
+		const onFocusSearch = vi.fn();
+		const onCreateNote = vi.fn();
+		const onForceSave = vi.fn();
 		renderHook(() =>
 			useAppKeyboardShortcuts({ onFocusSearch, onCreateNote, onForceSave }),
 		);
@@ -226,7 +123,7 @@ describe("useAppKeyboardShortcuts", () => {
 	});
 
 	it("does not intercept a registered command when the route does not provide that callback", () => {
-		const onCreateNote = jest.fn();
+		const onCreateNote = vi.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onCreateNote }));
 
 		const event = fireKey("s", { metaKey: true });
@@ -236,7 +133,7 @@ describe("useAppKeyboardShortcuts", () => {
 	});
 
 	it("does not intercept find when the route does not provide that callback", () => {
-		const onCreateNote = jest.fn();
+		const onCreateNote = vi.fn();
 		renderHook(() => useAppKeyboardShortcuts({ onCreateNote }));
 
 		const event = fireKey("f", { ctrlKey: true });
@@ -245,18 +142,38 @@ describe("useAppKeyboardShortcuts", () => {
 		expect(event.defaultPrevented).toBe(false);
 	});
 
-	it("ignores partial native document without listener APIs", () => {
-		Object.defineProperty(globalThis, "document", {
-			configurable: true,
-			value: {},
-			writable: true,
-		});
-
-		expect(() => renderHook(() => useAppKeyboardShortcuts({}))).not.toThrow();
+	it("ignores document without listener APIs", () => {
+		const descriptor = Object.getOwnPropertyDescriptor(
+			document,
+			"addEventListener",
+		);
+		function WithoutListener({ children }: { children: ReactNode }) {
+			useLayoutEffect(() => {
+				Object.defineProperty(document, "addEventListener", {
+					configurable: true,
+					value: undefined,
+				});
+			}, []);
+			return children;
+		}
+		try {
+			const onCreateNote = vi.fn();
+			const { unmount } = renderHook(
+				() => useAppKeyboardShortcuts({ onCreateNote }),
+				{ wrapper: WithoutListener },
+			);
+			fireKey("n", { metaKey: true });
+			expect(onCreateNote).not.toHaveBeenCalled();
+			unmount();
+		} finally {
+			if (descriptor)
+				Object.defineProperty(document, "addEventListener", descriptor);
+			else Reflect.deleteProperty(document, "addEventListener");
+		}
 	});
 
 	it("removes the listener when the hook unmounts", () => {
-		const onCreateNote = jest.fn();
+		const onCreateNote = vi.fn();
 		const { unmount } = renderHook(() =>
 			useAppKeyboardShortcuts({ onCreateNote }),
 		);

@@ -1,8 +1,8 @@
+import "./shared.css";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import { FontAwesome } from "@/components/shared/Icons";
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import type React from "react";
 
 type ErrorScreenProps = {
 	error: Error;
@@ -13,34 +13,35 @@ export default function ErrorScreen({ error, onRetry }: ErrorScreenProps) {
 	const styles = useStyles(createStyles);
 
 	return (
-		<View style={styles.container}>
-			<View style={styles.content}>
+		<div style={styles.container}>
+			<div style={styles.content}>
 				<FontAwesome
 					name="exclamation-circle"
 					size={48}
 					style={styles.errorIcon}
 				/>
-				<Text style={styles.errorMessage}>{error.message}</Text>
-				{error.stack && <Text style={styles.stackTrace}>{error.stack}</Text>}
+				<span style={styles.errorMessage}>{error.message}</span>
+				{error.stack && <span style={styles.stackTrace}>{error.stack}</span>}
 				{onRetry && (
-					<Pressable
-						style={({ pressed }) => [
-							styles.retryButton,
-							pressed && styles.retryButtonPressed,
-						]}
-						onPress={onRetry}
+					<button
+						type="button"
+						className="keeper-control"
+						style={{ ...styles.retryButton }}
+						onClick={onRetry}
 					>
-						<Text style={styles.retryButtonText}>Retry</Text>
-					</Pressable>
+						<span style={styles.retryButtonText}>Retry</span>
+					</button>
 				)}
-			</View>
-		</View>
+			</div>
+		</div>
 	);
 }
 
 function createStyles(theme: ExtendedTheme) {
-	return StyleSheet.create({
+	return {
 		container: {
+			display: "flex",
+			flexDirection: "column",
 			flex: 1,
 			justifyContent: "center",
 			alignItems: "center",
@@ -48,6 +49,8 @@ function createStyles(theme: ExtendedTheme) {
 			backgroundColor: theme.colors.background,
 		},
 		content: {
+			display: "flex",
+			flexDirection: "column",
 			alignItems: "center",
 			maxWidth: 420,
 			gap: 16,
@@ -59,7 +62,7 @@ function createStyles(theme: ExtendedTheme) {
 			fontSize: 16,
 			color: theme.colors.text,
 			textAlign: "center",
-			lineHeight: 22,
+			lineHeight: "22px",
 		},
 		stackTrace: {
 			fontSize: 12,
@@ -70,19 +73,20 @@ function createStyles(theme: ExtendedTheme) {
 			opacity: 0.7,
 		},
 		retryButton: {
+			display: "flex",
+			flexDirection: "column",
 			marginTop: 8,
-			paddingHorizontal: 24,
-			paddingVertical: 12,
+			paddingLeft: 24,
+			paddingRight: 24,
+			paddingTop: 12,
+			paddingBottom: 12,
 			borderRadius: 8,
 			backgroundColor: theme.colors.primary,
-		},
-		retryButtonPressed: {
-			opacity: 0.8,
 		},
 		retryButtonText: {
 			color: theme.colors.card,
 			fontWeight: "600",
 			fontSize: 15,
 		},
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }

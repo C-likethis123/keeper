@@ -1,21 +1,23 @@
+import { Spinner } from "./Spinner";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
-import React from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import type React from "react";
 
 export default function Loader() {
 	const styles = useStyles(createStyles);
 
 	return (
-		<View style={styles.container} accessibilityLabel="Loading notes">
-			<ActivityIndicator size="large" color={styles.indicator.color} />
-		</View>
+		<div style={styles.container} aria-label="Loading notes">
+			<Spinner style={styles.indicator} />
+		</div>
 	);
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	return StyleSheet.create({
+	return {
 		container: {
+			display: "flex",
+			flexDirection: "column",
 			flex: 1,
 			justifyContent: "center",
 			alignItems: "center",
@@ -24,5 +26,5 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		indicator: {
 			color: theme.colors.primary,
 		},
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }

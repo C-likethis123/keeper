@@ -15,9 +15,7 @@ async function createNote(
 	await expect(page.getByLabel("Title")).toHaveValue(title);
 }
 
-async function readQueuedOperationCount(
-	page: import("@playwright/test").Page,
-) {
+async function readQueuedOperationCount(page: import("@playwright/test").Page) {
 	return page.evaluate(async () => {
 		const database = await new Promise<IDBDatabase>((resolve, reject) => {
 			const request = indexedDB.open("keeper-pwa-storage", 2);
@@ -51,11 +49,13 @@ test("PWA emits valid install metadata and activates generated worker", async ({
 			page.evaluate(() => document.fonts.check("20px KeeperFontAwesome")),
 		)
 		.toBe(true);
-	const renderedIcons = await page.locator("[data-icon-name]").allTextContents();
+	const renderedIcons = await page
+		.locator("[data-icon-name]")
+		.allTextContents();
 	expect(renderedIcons.length).toBeGreaterThan(0);
-	expect(renderedIcons.every((glyph) => glyph.length > 0 && glyph !== "•")).toBe(
-		true,
-	);
+	expect(
+		renderedIcons.every((glyph) => glyph.length > 0 && glyph !== "•"),
+	).toBe(true);
 	await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
 		"href",
 		"/manifest.webmanifest",
@@ -90,7 +90,9 @@ test("PWA emits valid install metadata and activates generated worker", async ({
 	).toContain("/service-worker.js");
 });
 
-test("quick composer keeps Expo input focus treatment", async ({ page }) => {
+test("quick composer focuses title without browser input chrome", async ({
+	page,
+}) => {
 	await page.goto("/");
 	await page.getByRole("button", { name: "Take a note" }).click();
 	const title = page.getByLabel("Note title");
@@ -130,14 +132,18 @@ test("header tooltips open below the controls without hitting the tab strip", as
 	);
 	const tooltipSurface = tooltip.locator("..");
 	expect(
-		await trigger.locator("..").evaluate((wrapper) => getComputedStyle(wrapper).zIndex),
+		await trigger
+			.locator("..")
+			.evaluate((wrapper) => getComputedStyle(wrapper).zIndex),
 	).toBe("1");
 	expect(
-		await tooltipSurface.evaluate((surface) => getComputedStyle(surface).zIndex),
+		await tooltipSurface.evaluate(
+			(surface) => getComputedStyle(surface).zIndex,
+		),
 	).toBe("10");
 });
 
-test("desktop shell uses Expo full-width layout with an overlay drawer", async ({
+test("desktop shell uses full-width layout with an overlay drawer", async ({
 	page,
 }) => {
 	await page.goto("/");
@@ -163,7 +169,9 @@ test("desktop shell uses Expo full-width layout with an overlay drawer", async (
 	expect(closedLayout.bodyBackground).toBe("rgb(0, 0, 0)");
 
 	await page.getByRole("button", { name: "Open filters" }).click();
-	await expect(page.getByRole("button", { name: "Close navigation" })).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: "Close navigation" }),
+	).toBeVisible();
 	await expect
 		.poll(() =>
 			page
@@ -173,7 +181,9 @@ test("desktop shell uses Expo full-width layout with an overlay drawer", async (
 		.toBe(0);
 
 	await page.getByRole("button", { name: "Close filter" }).click();
-	await expect(page.getByRole("button", { name: "Close navigation" })).toBeHidden();
+	await expect(
+		page.getByRole("button", { name: "Close navigation" }),
+	).toBeHidden();
 });
 
 test("offline note edit survives reload, stays queued, and reconnect triggers sync", async ({
@@ -240,4 +250,27 @@ test("unknown offline navigation receives cached application shell", async ({
 	await page.goto("/not-a-real-route");
 
 	await expect(page.getByRole("main", { name: "Notes" })).toBeVisible();
+});
+
+test("native dialog traps focus and Escape returns focus to trigger", async ({
+	page,
+}) => {
+	await page.goto("/");
+	await createNote(page, "Dialog focus check");
+	const trigger = page.getByRole("button", { name: "Attach video" });
+	await trigger.click();
+	const dialog = page.getByRole("dialog");
+	await expect(dialog).toBeVisible();
+	expect(await dialog.evaluate((element) => element.matches(":modal"))).toBe(
+		true,
+	);
+	await page.keyboard.press("Tab");
+	expect(
+		await dialog.evaluate((element) =>
+			element.contains(document.activeElement),
+		),
+	).toBe(true);
+	await page.keyboard.press("Escape");
+	await expect(dialog).toHaveCount(0);
+	await expect(trigger).toBeFocused();
 });

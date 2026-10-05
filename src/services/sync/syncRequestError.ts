@@ -9,7 +9,7 @@ export class SyncRequestError extends Error {
 	}
 }
 
-export class SyncAuthRequiredError extends SyncRequestError {
+class SyncAuthRequiredError extends SyncRequestError {
 	constructor(message: string, status: 401 | 403) {
 		super(message, status);
 		this.name = "SyncAuthRequiredError";

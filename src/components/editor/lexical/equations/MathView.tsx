@@ -1,7 +1,7 @@
+import "@/components/shared/shared.css";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
 
 interface MathViewProps {
 	expression: string;
@@ -66,37 +66,45 @@ export function MathView({
 
 	if (!expression.trim()) {
 		return (
-			<View
-				style={[
-					styles.container,
-					displayMode
+			<div
+				className="keeper-layout"
+				style={{
+					...styles.container,
+					...(displayMode
 						? { width: "100%", minHeight: 60 }
-						: { alignSelf: "flex-start", minHeight: 24 },
-					style,
-				]}
+						: { alignSelf: "flex-start", minHeight: 24 }),
+					...style,
+				}}
 			>
-				<Text style={[styles.fallback, styles.fallbackText]}>
+				<span
+					className="keeper-copy"
+					style={{ ...styles.fallback, ...styles.fallbackText }}
+				>
 					{expression || " "}
-				</Text>
-			</View>
+				</span>
+			</div>
 		);
 	}
 
 	if (error) {
 		return (
-			<View
-				style={[
-					styles.container,
-					displayMode
+			<div
+				className="keeper-layout"
+				style={{
+					...styles.container,
+					...(displayMode
 						? { width: "100%", minHeight: 60 }
-						: { alignSelf: "flex-start", minHeight: 24 },
-					style,
-				]}
+						: { alignSelf: "flex-start", minHeight: 24 }),
+					...style,
+				}}
 			>
-				<Text style={[styles.fallback, styles.fallbackError]}>
+				<span
+					className="keeper-copy"
+					style={{ ...styles.fallback, ...styles.fallbackError }}
+				>
 					{expression}
-				</Text>
-			</View>
+				</span>
+			</div>
 		);
 	}
 	return React.createElement(displayMode ? "div" : "span", {
@@ -116,21 +124,14 @@ export function MathView({
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	return StyleSheet.create({
+	return {
 		container: {
 			alignItems: "center",
 			justifyContent: "center",
 			backgroundColor: "transparent",
 		},
-		fallback: {
-			fontSize: 16,
-			fontFamily: "monospace",
-		},
-		fallbackText: {
-			color: theme.colors.text,
-		},
-		fallbackError: {
-			color: theme.colors.error,
-		},
-	});
+		fallback: { fontSize: 16, fontFamily: "monospace" },
+		fallbackText: { color: theme.colors.text },
+		fallbackError: { color: theme.colors.error },
+	} satisfies Record<string, React.CSSProperties>;
 }

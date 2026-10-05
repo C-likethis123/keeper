@@ -1,4 +1,4 @@
-import type { TextStyle } from "react-native";
+import type { CSSProperties } from "react";
 
 export interface Theme {
 	dark: boolean;
@@ -12,7 +12,7 @@ export interface Theme {
 	};
 	fonts: Record<
 		"regular" | "medium" | "bold" | "heavy",
-		{ fontFamily: string; fontWeight: NonNullable<TextStyle["fontWeight"]> }
+		{ fontFamily: string; fontWeight: NonNullable<CSSProperties["fontWeight"]> }
 	>;
 }
 
@@ -56,10 +56,10 @@ export interface CodeEditorTheme {
 }
 
 export interface Typography {
-	heading1: TextStyle;
-	heading2: TextStyle;
-	heading3: TextStyle;
-	body: TextStyle;
+	heading1: CSSProperties;
+	heading2: CSSProperties;
+	heading3: CSSProperties;
+	body: CSSProperties;
 }
 
 export interface ExtendedTheme extends Omit<Theme, "colors"> {

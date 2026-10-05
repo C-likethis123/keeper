@@ -20,16 +20,3 @@ export function parseWikiLinksFromBody(content: string): string[] {
 
 	return links;
 }
-
-/**
- * Compute a simple hash over note content for incremental sync.
- * Uses a fast string hash — good enough for detecting content changes.
- */
-export function computeContentHash(content: string): string {
-	let hash = 0;
-	for (let i = 0; i < content.length; i++) {
-		const char = content.charCodeAt(i);
-		hash = ((hash << 5) - hash + char) | 0;
-	}
-	return hash.toString(36);
-}

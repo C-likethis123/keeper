@@ -1,33 +1,34 @@
-jest.mock("@/services/startup/startupStrategies.web", () => ({
-	runStartupStrategy: jest.fn(),
+import { vi } from "vitest";
+vi.mock("@/services/startup/startupStrategies", () => ({
+	runStartupStrategy: vi.fn(),
 }));
 
-jest.mock("@/services/startup/startupTelemetry", () => ({
-	traceStartupBootstrapEvent: jest.fn(),
+vi.mock("@/services/startup/startupTelemetry", () => ({
+	traceStartupBootstrapEvent: vi.fn(),
 }));
 
-jest.mock("@/services/sync/syncPullService", () => ({
-	startSyncPullService: jest.fn(),
-	stopSyncPullService: jest.fn(),
+vi.mock("@/services/sync/syncPullService", () => ({
+	startSyncPullService: vi.fn(),
+	stopSyncPullService: vi.fn(),
 }));
 
-jest.mock("@/services/sync/syncPushService", () => ({
-	startSyncPushService: jest.fn(),
+vi.mock("@/services/sync/syncPushService", () => ({
+	startSyncPushService: vi.fn(),
 }));
 
-import { runStartupStrategy } from "@/services/startup/startupStrategies.web";
+import { runStartupStrategy } from "@/services/startup/startupStrategies";
 import { startSyncPullService } from "@/services/sync/syncPullService";
 import { startSyncPushService } from "@/services/sync/syncPushService";
-import { renderHook, waitFor } from "@testing-library/react-native";
+import { renderHook, waitFor } from "@testing-library/react";
 import { useAppStartup } from "../useAppStartup";
 
 describe("useAppStartup", () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it("reports ready after the startup strategy hydrates successfully", async () => {
-		(runStartupStrategy as jest.Mock).mockImplementation(
+		vi.mocked(runStartupStrategy).mockImplementation(
 			async ({
 				setHydrated,
 			}: {
@@ -48,7 +49,7 @@ describe("useAppStartup", () => {
 
 	it("starts sync only after storage startup finishes", async () => {
 		let finishStartup: (() => void) | undefined;
-		(runStartupStrategy as jest.Mock).mockImplementation(
+		vi.mocked(runStartupStrategy).mockImplementation(
 			() =>
 				new Promise<void>((resolve) => {
 					finishStartup = resolve;
@@ -68,7 +69,7 @@ describe("useAppStartup", () => {
 	});
 
 	it("moves to error state when startup surfaces an init error", async () => {
-		(runStartupStrategy as jest.Mock).mockImplementation(
+		vi.mocked(runStartupStrategy).mockImplementation(
 			async ({
 				setInitError,
 				setHydrated,
@@ -91,7 +92,7 @@ describe("useAppStartup", () => {
 	});
 
 	it("catches thrown startup failures and exposes a fallback error", async () => {
-		(runStartupStrategy as jest.Mock).mockRejectedValue(
+		vi.mocked(runStartupStrategy).mockRejectedValue(
 			new Error("Unexpected startup failure"),
 		);
 

@@ -1,3 +1,17 @@
+import { vi } from "vitest";
+const {
+	mockReadFileBytes,
+	mockWriteFileBytes,
+	mockListFilesRecursive,
+	mockDeleteDirectory,
+	mockDeleteFile,
+} = vi.hoisted(() => ({
+	mockReadFileBytes: vi.fn(),
+	mockWriteFileBytes: vi.fn(),
+	mockListFilesRecursive: vi.fn(),
+	mockDeleteDirectory: vi.fn(),
+	mockDeleteFile: vi.fn(),
+}));
 import {
 	captureNoteVersion,
 	deleteNoteVersions,
@@ -6,13 +20,7 @@ import {
 } from "@/services/notes/noteHistoryService";
 import type { Note } from "@/services/notes/types";
 
-const mockReadFileBytes = jest.fn();
-const mockWriteFileBytes = jest.fn();
-const mockListFilesRecursive = jest.fn();
-const mockDeleteDirectory = jest.fn();
-const mockDeleteFile = jest.fn();
-
-jest.mock("@/services/storage/storageEngine", () => ({
+vi.mock("@/services/storage/storageEngine", () => ({
 	storageEngine: {
 		readFileBytes: (...args: unknown[]) => mockReadFileBytes(...args),
 		writeFileBytes: (...args: unknown[]) => mockWriteFileBytes(...args),
@@ -43,24 +51,24 @@ function storedVersion(
 
 describe("noteHistoryService", () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockListFilesRecursive.mockResolvedValue([]);
 		mockDeleteFile.mockResolvedValue(true);
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it("captures immutable note snapshots under encoded note directory", async () => {
-		jest.spyOn(Date, "now").mockReturnValue(1000);
+		vi.spyOn(Date, "now").mockReturnValue(1000);
 		mockWriteFileBytes.mockResolvedValue(undefined);
 
 		await captureNoteVersion(note);
 
 		expect(mockWriteFileBytes).toHaveBeenCalledWith(
 			expect.stringMatching(/^\.keeper\/history\/note%2Fone\/1000-.+\.json$/),
-			expect.any(Uint8Array),
+			expect.any(new TextEncoder().encode("").constructor),
 		);
 		const bytes = mockWriteFileBytes.mock.calls[0][1] as Uint8Array;
 		expect(JSON.parse(new TextDecoder().decode(bytes))).toEqual({

@@ -1,8 +1,8 @@
+import "@/components/shared/shared.css";
 import Loader from "@/components/shared/Loader";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
-import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import type React from "react";
 
 export interface WikiLinkResult {
 	id: string;
@@ -29,83 +29,71 @@ export function WikiLinkOverlay({
 	onSelect,
 }: WikiLinkOverlayProps) {
 	const styles = useStyles(createStyles);
-	const needsScrolling = results.length * ITEM_HEIGHT > MAX_HEIGHT;
+	const _needsScrolling = results.length * ITEM_HEIGHT > MAX_HEIGHT;
 	return (
-		<View style={styles.container}>
+		<div className="keeper-layout" style={styles.container}>
 			{isLoading ? (
 				<Loader />
 			) : (
-				<ScrollView
-					style={styles.scrollView}
-					contentContainerStyle={styles.scrollContent}
-					keyboardShouldPersistTaps="handled"
-					scrollToOverflowEnabled
-					nestedScrollEnabled
-					showsVerticalScrollIndicator={needsScrolling}
+				<div
+					className="keeper-layout"
+					style={{ overflowY: "auto", ...styles.scrollView }}
 				>
-					{results.map((item, index) => {
-						const isSelected = index === selectedIndex;
-						const label =
-							item.type === "create" ? `Create "${item.title}"` : item.title;
-						return (
-							<Pressable
-								key={item.id}
-								onPress={() => onSelect(item)}
-								style={({ pressed }) => [
-									styles.item,
-									isSelected && styles.itemSelected,
-									pressed && styles.itemPressed,
-								]}
-							>
-								<Text
-									style={[
-										styles.itemText,
-										isSelected && styles.itemTextSelected,
-									]}
+					<div className="keeper-layout" style={{ ...styles.scrollContent }}>
+						{results.map((item, index) => {
+							const isSelected = index === selectedIndex;
+							const label =
+								item.type === "create" ? `Create "${item.title}"` : item.title;
+							return (
+								<button
+									type="button"
+									className="keeper-control"
+									key={item.id}
+									onClick={() => onSelect(item)}
+									style={{
+										...styles.item,
+										...(isSelected ? styles.itemSelected : {}),
+									}}
 								>
-									{label}
-								</Text>
-							</Pressable>
-						);
-					})}
-				</ScrollView>
+									<span
+										className="keeper-copy"
+										style={{
+											...styles.itemText,
+											...(isSelected ? styles.itemTextSelected : {}),
+										}}
+									>
+										{label}
+									</span>
+								</button>
+							);
+						})}
+					</div>
+				</div>
 			)}
-		</View>
+		</div>
 	);
 }
 
 function createStyles(theme: ExtendedTheme) {
-	return StyleSheet.create({
+	return {
 		container: {
+			boxShadow: `0px 2px 8px color-mix(in srgb, ${theme.colors.shadow} ${0.25 * 100}%, transparent)`,
 			maxHeight: MAX_HEIGHT,
 			backgroundColor: theme.colors.card,
 			borderRadius: 8,
-			shadowColor: theme.colors.shadow,
-			shadowOffset: { width: 0, height: 2 },
-			shadowOpacity: 0.25,
-			shadowRadius: 8,
-			elevation: 8,
 			overflow: "hidden",
 		},
-		scrollView: {
-			flexGrow: 0,
-		},
-		scrollContent: {
-			paddingVertical: 4,
-		},
+		scrollView: { flexGrow: 0 },
+		scrollContent: { paddingTop: 4, paddingBottom: 4 },
 		item: {
 			height: ITEM_HEIGHT,
-			paddingHorizontal: 12,
+			paddingLeft: 12,
+			paddingRight: 12,
 			justifyContent: "center",
 			minHeight: ITEM_HEIGHT,
 		},
-		itemSelected: {
-			backgroundColor: theme.colors.primary,
-		},
-		itemPressed: {
-			backgroundColor: theme.colors.primaryPressed,
-			opacity: 0.9,
-		},
+		itemSelected: { backgroundColor: theme.colors.primary },
+
 		itemText: {
 			fontSize: theme.typography.body.fontSize || 16,
 			color: theme.colors.text,
@@ -119,7 +107,8 @@ function createStyles(theme: ExtendedTheme) {
 			flexDirection: "row",
 			alignItems: "center",
 			justifyContent: "center",
-			paddingHorizontal: 12,
+			paddingLeft: 12,
+			paddingRight: 12,
 			gap: 8,
 		},
 		loadingText: {
@@ -127,5 +116,5 @@ function createStyles(theme: ExtendedTheme) {
 			color: theme.colors.text,
 			opacity: 0.6,
 		},
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }

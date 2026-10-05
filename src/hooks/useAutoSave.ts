@@ -6,7 +6,6 @@ import {
 } from "@/services/notes/editorEntryPersistence";
 import type { Note } from "@/services/notes/types";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState } from "react-native";
 
 const AUTO_SAVE_INTERVAL_MS = 60000;
 const AUTO_SAVE_DEBOUNCE_MS = 2000;
@@ -77,7 +76,9 @@ export function useAutoSave({
 	const activeForceSaveRef = useRef<Promise<void> | null>(null);
 	const saveAgainRequestedRef = useRef(false);
 	const isNewEntryRef = useRef(!!isNew);
-	const latestContentRef = useRef(normalizeMarkdownForPersistence(initialContent));
+	const latestContentRef = useRef(
+		normalizeMarkdownForPersistence(initialContent),
+	);
 	const getCurrentContentRef = useRef(getCurrentContent);
 	const latestInitialContentRef = useRef(
 		normalizeMarkdownForPersistence(initialContent),
@@ -360,16 +361,19 @@ export function useAutoSave({
 	}, [currentContent, currentContentRevision]);
 
 	useEffect(() => {
-		const subscription = AppState.addEventListener("change", (nextState) => {
-			if (nextState !== "active") {
-				void forceSave().catch((error) => {
-					console.warn("[AutoSave] Failed to save on app background:", error);
-				});
-			}
-		});
-
+		const saveOnBackground = () => {
+			void forceSave().catch((error) => {
+				console.warn("[AutoSave] Failed to save on browser background:", error);
+			});
+		};
+		const onVisibilityChange = () => {
+			if (document.visibilityState === "hidden") saveOnBackground();
+		};
+		document.addEventListener("visibilitychange", onVisibilityChange);
+		window.addEventListener("pagehide", saveOnBackground);
 		return () => {
-			subscription.remove();
+			document.removeEventListener("visibilitychange", onVisibilityChange);
+			window.removeEventListener("pagehide", saveOnBackground);
 		};
 	}, [forceSave]);
 

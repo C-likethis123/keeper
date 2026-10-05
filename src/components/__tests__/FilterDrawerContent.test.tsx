@@ -1,9 +1,11 @@
+import { vi } from "vitest";
+const { mockCloseDrawer } = vi.hoisted(() => ({
+	mockCloseDrawer: vi.fn(),
+}));
 import { FilterDrawerContent } from "@/components/FilterDrawerContent";
 import { useFilterStore } from "@/stores/filterStore";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type React from "react";
-
-const mockCloseDrawer = jest.fn();
 
 const mockNavigation = {
 	closeDrawer: mockCloseDrawer,
@@ -13,11 +15,11 @@ const mockDrawerProps = {
 	navigation: mockNavigation,
 } satisfies React.ComponentProps<typeof FilterDrawerContent>;
 
-jest.mock("@/components/shared/SafeArea", () => ({
+vi.mock("@/components/shared/SafeArea", () => ({
 	useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
 
-jest.mock("@/hooks/useExtendedTheme", () => ({
+vi.mock("@/hooks/useExtendedTheme", () => ({
 	useExtendedTheme: () => ({
 		colors: {
 			background: "#ffffff",
@@ -32,7 +34,7 @@ jest.mock("@/hooks/useExtendedTheme", () => ({
 	}),
 }));
 
-jest.mock("@/hooks/useStyles", () => ({
+vi.mock("@/hooks/useStyles", () => ({
 	useStyles: (factory: (theme: unknown) => unknown) =>
 		factory({
 			colors: {
@@ -60,17 +62,17 @@ describe("FilterDrawerContent", () => {
 	it("renders all filter options", () => {
 		render(<FilterDrawerContent {...mockDrawerProps} />);
 
-		expect(screen.getByText("Filter")).toBeOnTheScreen();
-		expect(screen.getByText("All notes")).toBeOnTheScreen();
-		expect(screen.getByText("Journals")).toBeOnTheScreen();
-		expect(screen.getByText("Resources")).toBeOnTheScreen();
-		expect(screen.getByText("Todos")).toBeOnTheScreen();
+		expect(screen.getByText("Filter")).toBeInTheDocument();
+		expect(screen.getByText("All notes")).toBeInTheDocument();
+		expect(screen.getByText("Journals")).toBeInTheDocument();
+		expect(screen.getByText("Resources")).toBeInTheDocument();
+		expect(screen.getByText("Todos")).toBeInTheDocument();
 	});
 
 	it("selecting a type updates the filter store", () => {
 		render(<FilterDrawerContent {...mockDrawerProps} />);
 
-		fireEvent.press(screen.getByText("Journals"));
+		fireEvent.click(screen.getByText("Journals"));
 
 		expect(useFilterStore.getState().noteTypes).toEqual(["journal"]);
 	});
@@ -78,14 +80,14 @@ describe("FilterDrawerContent", () => {
 	it("shows status options only when Todos is selected", () => {
 		const { rerender } = render(<FilterDrawerContent {...mockDrawerProps} />);
 
-		expect(screen.queryByText("Open")).not.toBeOnTheScreen();
+		expect(screen.queryByText("Open")).not.toBeInTheDocument();
 
-		fireEvent.press(screen.getByText("Todos"));
+		fireEvent.click(screen.getByText("Todos"));
 
 		rerender(<FilterDrawerContent {...mockDrawerProps} />);
 
-		expect(screen.getByText("Open")).toBeOnTheScreen();
-		expect(screen.getByText("Doing")).toBeOnTheScreen();
+		expect(screen.getByText("Open")).toBeInTheDocument();
+		expect(screen.getByText("Doing")).toBeInTheDocument();
 	});
 
 	it("selecting All notes clears the filter", () => {
@@ -93,7 +95,7 @@ describe("FilterDrawerContent", () => {
 
 		render(<FilterDrawerContent {...mockDrawerProps} />);
 
-		fireEvent.press(screen.getByText("All notes"));
+		fireEvent.click(screen.getByText("All notes"));
 
 		expect(useFilterStore.getState().noteTypes).toEqual([]);
 	});
@@ -103,7 +105,7 @@ describe("FilterDrawerContent", () => {
 
 		const { rerender } = render(<FilterDrawerContent {...mockDrawerProps} />);
 
-		fireEvent.press(screen.getByText("Doing"));
+		fireEvent.click(screen.getByText("Doing"));
 
 		expect(mockCloseDrawer).toHaveBeenCalled();
 	});

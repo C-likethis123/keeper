@@ -10,7 +10,7 @@ const seedRequestSchema = z.object({
 	proceedIfDbHasData: z.boolean().default(false),
 });
 
-export type GitHubRouteDependencies = {
+type GitHubRouteDependencies = {
 	syncRepository: SyncRepository;
 	seedToken: string;
 	seedService?: GitHubSeedService;

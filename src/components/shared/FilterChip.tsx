@@ -1,7 +1,7 @@
+import "./shared.css";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
-import React from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import type React from "react";
 
 export function FilterChip({
 	label,
@@ -17,38 +17,42 @@ export function FilterChip({
 	const styles = useStyles(createStyles);
 
 	return (
-		<Pressable
-			style={({ pressed }) => [
-				styles.chip,
-				selected && styles.chipSelected,
-				pressed && styles.chipPressed,
-			]}
-			onPress={onPress}
-			testID={testID}
+		<button
+			type="button"
+			className="keeper-control"
+			style={{ ...styles.chip, ...(selected ? styles.chipSelected : {}) }}
+			aria-pressed={selected}
+			onClick={onPress}
+			data-testid={testID}
 		>
-			<Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+			<span
+				style={{
+					...styles.chipText,
+					...(selected ? styles.chipTextSelected : {}),
+				}}
+			>
 				{label}
-			</Text>
-		</Pressable>
+			</span>
+		</button>
 	);
 }
 
 function createStyles(theme: ExtendedTheme) {
-	return StyleSheet.create({
+	return {
 		chip: {
-			paddingHorizontal: 12,
-			paddingVertical: 7,
+			paddingLeft: 12,
+			paddingRight: 12,
+			paddingTop: 7,
+			paddingBottom: 7,
 			borderRadius: 999,
 			borderWidth: 1,
+			borderStyle: "solid",
 			borderColor: theme.colors.border,
 			backgroundColor: theme.colors.card,
 		},
 		chipSelected: {
 			borderColor: theme.colors.primary,
 			backgroundColor: theme.colors.primary,
-		},
-		chipPressed: {
-			opacity: 0.8,
 		},
 		chipText: {
 			fontSize: 13,
@@ -58,5 +62,5 @@ function createStyles(theme: ExtendedTheme) {
 		chipTextSelected: {
 			color: theme.colors.primaryContrast,
 		},
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }

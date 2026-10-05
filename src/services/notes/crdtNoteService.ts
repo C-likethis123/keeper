@@ -14,10 +14,6 @@ function encodeNoteId(noteId: string): string {
 	return encodeURIComponent(noteId);
 }
 
-function decodeNoteId(encoded: string): string {
-	return decodeURIComponent(encoded);
-}
-
 function updatesDir(noteId: string, clientId?: string): string {
 	const base = `${CRDT_ROOT}/${encodeNoteId(noteId)}/updates`;
 	return clientId ? `${base}/${clientId}` : base;
@@ -53,7 +49,10 @@ async function listUpdatePaths(noteId: string): Promise<string[]> {
 		.then((paths) => paths.filter((path) => path.endsWith(".bin")).sort());
 }
 
-async function getNextSequence(noteId: string, clientId: string): Promise<number> {
+async function getNextSequence(
+	noteId: string,
+	clientId: string,
+): Promise<number> {
 	const prefix = `${updatesDir(noteId, clientId)}/`;
 	const paths = await listUpdatePaths(noteId);
 	let maxSequence = 0;
@@ -70,7 +69,10 @@ async function getNextSequence(noteId: string, clientId: string): Promise<number
 	return maxSequence + 1;
 }
 
-async function persistUpdate(noteId: string, update: Uint8Array): Promise<void> {
+async function persistUpdate(
+	noteId: string,
+	update: Uint8Array,
+): Promise<void> {
 	if (update.length === 0) {
 		return;
 	}
@@ -185,7 +187,11 @@ function writeFrontmatterMetadata(doc: Y.Doc, note: NoteSaveInput): void {
 	setMapValueIfChanged(frontmatter, "createdAt", note.createdAt ?? null);
 	setMapValueIfChanged(frontmatter, "completedAt", note.completedAt ?? null);
 	setMapValueIfChanged(frontmatter, "attachment", note.attachment ?? null);
-	setMapValueIfChanged(frontmatter, "attachedVideo", note.attachedVideo ?? null);
+	setMapValueIfChanged(
+		frontmatter,
+		"attachedVideo",
+		note.attachedVideo ?? null,
+	);
 	setMapValueIfChanged(frontmatter, "resourceUrl", note.resourceUrl ?? null);
 	setMapValueIfChanged(
 		frontmatter,
@@ -194,7 +200,7 @@ function writeFrontmatterMetadata(doc: Y.Doc, note: NoteSaveInput): void {
 	);
 }
 
-export async function hasCrdtNote(noteId: string): Promise<boolean> {
+async function hasCrdtNote(noteId: string): Promise<boolean> {
 	return (await listUpdatePaths(noteId)).length > 0;
 }
 
@@ -220,7 +226,7 @@ export async function loadCrdtDoc(
 	return doc;
 }
 
-export interface CrdtEditorSnapshot {
+interface CrdtEditorSnapshot {
 	update: number[];
 	markdown: string;
 }
@@ -277,9 +283,7 @@ export async function saveMarkdownToCrdt(
 	};
 }
 
-export async function readCrdtMarkdown(
-	noteId: string,
-): Promise<string | null> {
+export async function readCrdtMarkdown(noteId: string): Promise<string | null> {
 	if (!(await hasCrdtNote(noteId))) {
 		return null;
 	}
@@ -296,8 +300,6 @@ export async function readCrdtFrontmatter(
 	const doc = await loadCrdtDoc(noteId);
 	return Object.fromEntries(doc.getMap(FRONTMATTER_KEY).entries());
 }
-
-
 
 export async function deleteCrdtNote(noteId: string): Promise<void> {
 	await storageEngine.deleteDirectory(`${CRDT_ROOT}/${encodeNoteId(noteId)}`);

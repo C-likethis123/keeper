@@ -38,7 +38,7 @@ import {
 	type BrowserNoteSurface,
 } from "@web/ui/noteRepository";
 import { useEffect, useMemo, useState } from "react";
-import { useColorScheme } from "react-native";
+import { useColorScheme } from "@/hooks/useBrowserAppearance";
 import {
 	Link,
 	Navigate,

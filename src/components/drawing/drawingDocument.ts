@@ -1,11 +1,11 @@
 export const DRAWING_DOCUMENT_VERSION = 1;
-export const DEFAULT_DRAWING_WIDTH = 1024;
-export const DEFAULT_DRAWING_HEIGHT = 768;
+const DEFAULT_DRAWING_WIDTH = 1024;
+const DEFAULT_DRAWING_HEIGHT = 768;
 
 export type DrawingTool = "pen" | "marker" | "highlighter";
 export type DrawingBackgroundPattern = "none" | "grid" | "dots" | "ruled";
 
-export interface DrawingPoint {
+interface DrawingPoint {
 	x: number;
 	y: number;
 	pressure?: number;

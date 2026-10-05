@@ -1,11 +1,11 @@
+import "@/components/shared/shared.css";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { useSafeAreaInsets } from "@/components/shared/SafeArea";
 import type { EditorHeaderProps } from "@/features/editor/editor-header-contract";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { FontAwesome } from "@/components/shared/Icons";
-import React from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import type React from "react";
 
 export default function NoteEditorHeader({
 	title,
@@ -19,84 +19,96 @@ export default function NoteEditorHeader({
 	onTogglePin,
 	onDelete,
 }: EditorHeaderProps) {
-	const theme = useExtendedTheme();
+	const _theme = useExtendedTheme();
 	const insets = useSafeAreaInsets();
 	const styles = useStyles(createStyles);
 	return (
-		<View style={[styles.headerShell, { paddingTop: insets.top + 8 }]}>
-			<View style={styles.headerRow}>
-				<View style={styles.headerBackRail}>
-					<Pressable
-						onPress={onBack}
+		<div
+			className="keeper-layout"
+			style={{ ...styles.headerShell, ...{ paddingTop: insets.top + 8 } }}
+		>
+			<div className="keeper-layout" style={styles.headerRow}>
+				<div className="keeper-layout" style={styles.headerBackRail}>
+					<button
+						type="button"
+						className="keeper-control"
+						onClick={onBack}
 						style={styles.headerBackButton}
-						accessibilityRole="button"
-						accessibilityLabel="Back"
+						aria-label="Back"
 					>
 						<FontAwesome name="arrow-left" size={24} style={styles.backIcon} />
-					</Pressable>
-				</View>
-				<View style={styles.headerTitleWrapper}>
-					<TextInput
+					</button>
+				</div>
+				<div className="keeper-layout" style={styles.headerTitleWrapper}>
+					<input
+						className="keeper-input"
 						style={styles.headerTitleInput}
 						value={title}
-						onChangeText={onChangeTitle}
-						editable
-						autoCapitalize="none"
-						autoCorrect={false}
+						onChange={(event) => onChangeTitle(event.currentTarget.value)}
+						disabled={!true}
 						spellCheck={false}
 						autoComplete="off"
 						placeholder="Title"
-						placeholderTextColor={theme.custom.editor.placeholder}
 						onBlur={onBlurTitle}
-						onSubmitEditing={onSubmitEditing}
-						returnKeyType="next"
-						numberOfLines={1}
-						accessibilityLabel="Title"
+						onKeyDown={(event) => {
+							if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+								event.preventDefault();
+								onSubmitEditing();
+							}
+						}}
+						aria-label="Title"
 					/>
-				</View>
+				</div>
 				<SaveIndicator status={status} />
-				<View style={[styles.headerSideRail, styles.headerActionsRail]}>
-					<Pressable
-						onPress={onShowHistory}
+				<div
+					className="keeper-layout"
+					style={{ ...styles.headerSideRail, ...styles.headerActionsRail }}
+				>
+					<button
+						type="button"
+						className="keeper-control"
+						onClick={onShowHistory}
 						style={styles.headerIconButton}
-						accessibilityRole="button"
-						accessibilityLabel="Version history"
+						aria-label="Version history"
 					>
 						<FontAwesome name="history" size={22} style={styles.historyIcon} />
-					</Pressable>
-					<Pressable
-						onPress={onTogglePin}
+					</button>
+					<button
+						type="button"
+						className="keeper-control"
+						onClick={onTogglePin}
 						style={styles.headerIconButton}
-						accessibilityRole="button"
-						accessibilityLabel="Pin note"
+						aria-label="Pin note"
 					>
 						<FontAwesome
 							name="thumb-tack"
 							size={24}
 							style={[styles.pinIcon, isPinned ? styles.pinIconPinned : null]}
 						/>
-					</Pressable>
-					<Pressable
-						onPress={onDelete}
+					</button>
+					<button
+						type="button"
+						className="keeper-control"
+						onClick={onDelete}
 						style={styles.headerIconButton}
-						accessibilityRole="button"
-						accessibilityLabel="Delete note"
+						aria-label="Delete note"
 					>
 						<FontAwesome name="trash" size={24} style={styles.deleteIcon} />
-					</Pressable>
-				</View>
-			</View>
-		</View>
+					</button>
+				</div>
+			</div>
+		</div>
 	);
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	return StyleSheet.create({
+	return {
 		headerShell: {
-			paddingHorizontal: 16,
+			paddingLeft: 16,
+			paddingRight: 16,
 			paddingBottom: 8,
 			backgroundColor: theme.colors.background,
-			borderBottomWidth: StyleSheet.hairlineWidth,
+			borderBottomWidth: 1,
 			borderBottomColor: theme.colors.border,
 		},
 		headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -108,23 +120,30 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			width: 168,
 			minWidth: 168,
 		},
-		headerBackButton: { paddingVertical: 8, paddingRight: 4 },
+		headerBackButton: { paddingTop: 8, paddingBottom: 8, paddingRight: 4 },
 		headerTitleWrapper: { flex: 1, minWidth: 0 },
 		headerTitleInput: {
 			fontSize: 18,
 			fontWeight: "600",
-			paddingVertical: 4,
-			paddingHorizontal: 0,
+			paddingTop: 4,
+			paddingBottom: 4,
+			paddingLeft: 0,
+			paddingRight: 0,
 			color: theme.colors.text,
 			width: "100%",
 			minWidth: 0,
 		},
 		headerActionsRail: { justifyContent: "flex-end" },
-		headerIconButton: { paddingVertical: 8, paddingHorizontal: 4 },
+		headerIconButton: {
+			paddingTop: 8,
+			paddingBottom: 8,
+			paddingLeft: 4,
+			paddingRight: 4,
+		},
 		backIcon: { color: theme.colors.text },
 		pinIcon: { color: theme.colors.textMuted },
 		historyIcon: { color: theme.colors.textMuted },
 		pinIconPinned: { color: theme.colors.primary },
 		deleteIcon: { color: theme.colors.textMuted },
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }

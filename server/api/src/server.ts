@@ -17,7 +17,7 @@ import {
 } from "./security/config.js";
 import type { SyncRepository } from "./sync/types.js";
 
-export type ServerDependencies = {
+type ServerDependencies = {
 	cloudflareAccess?: CloudflareAccessVerifier;
 	privateProxyToken?: string;
 	syncRepository: SyncRepository;

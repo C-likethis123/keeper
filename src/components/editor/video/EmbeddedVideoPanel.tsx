@@ -1,13 +1,14 @@
+import "@/components/shared/shared.css";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
-import React, { useMemo } from "react";
-import { StyleSheet, Text, View, type ViewStyle } from "react-native";
+import type React from "react";
+import { useMemo } from "react";
 import type { EmbeddedVideoSource } from "./videoUtils";
 import { buildVideoEmbedHtml, resolveVideoEmbedOrigin } from "./videoUtils";
 
 interface EmbeddedVideoPanelProps {
 	source: EmbeddedVideoSource;
-	style?: ViewStyle;
+	style?: React.CSSProperties;
 }
 
 export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
@@ -23,11 +24,17 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
 	);
 
 	return (
-		<View style={[styles.panel, style]} testID={"embedded-video-panel"}>
-			<View style={styles.header}>
-				<Text style={styles.eyebrow}>Video</Text>
-			</View>
-			<View style={styles.playerFrame}>
+		<div
+			className="keeper-layout"
+			style={{ ...styles.panel, ...style }}
+			data-testid={"embedded-video-panel"}
+		>
+			<div className="keeper-layout" style={styles.header}>
+				<span className="keeper-copy" style={styles.eyebrow}>
+					Video
+				</span>
+			</div>
+			<div className="keeper-layout" style={styles.playerFrame}>
 				<iframe
 					srcDoc={embedHtml}
 					title={"Youtube video"}
@@ -39,16 +46,25 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
 						backgroundColor: "#000",
 					}}
 				/>
-			</View>
-			<Text numberOfLines={1} style={styles.caption}>
+			</div>
+			<span
+				className="keeper-copy"
+				style={{
+					...styles.caption,
+					overflow: "hidden",
+					display: "-webkit-box",
+					WebkitBoxOrient: "vertical",
+					WebkitLineClamp: 1,
+				}}
+			>
 				{source.rawUrl}
-			</Text>
-		</View>
+			</span>
+		</div>
 	);
 }
 
 function createStyles(theme: ExtendedTheme) {
-	return StyleSheet.create({
+	return {
 		panel: {
 			borderWidth: 1,
 			borderLeftWidth: 0,
@@ -57,14 +73,16 @@ function createStyles(theme: ExtendedTheme) {
 			backgroundColor: theme.colors.card,
 			borderRadius: 16,
 			padding: 12,
-			paddingVertical: 12,
+			paddingTop: 12,
+			paddingBottom: 12,
 			gap: 10,
 		},
 		header: {
 			flexDirection: "row",
 			alignItems: "center",
 			gap: 12,
-			paddingHorizontal: 16,
+			paddingLeft: 16,
+			paddingRight: 16,
 		},
 		eyebrow: {
 			fontSize: 11,
@@ -81,7 +99,8 @@ function createStyles(theme: ExtendedTheme) {
 		caption: {
 			fontSize: 12,
 			color: theme.colors.textMuted,
-			paddingHorizontal: 0,
+			paddingLeft: 0,
+			paddingRight: 0,
 		},
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }

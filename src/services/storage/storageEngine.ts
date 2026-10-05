@@ -1,5 +1,5 @@
-import { BrowserStorageEngine } from "@/services/storage/engines/BrowserStorageEngine.web";
-import { MemoryStorageEngine } from "@/services/storage/engines/MemoryStorageEngine.web";
+import { BrowserStorageEngine } from "@/services/storage/engines/BrowserStorageEngine";
+import { MemoryStorageEngine } from "@/services/storage/engines/MemoryStorageEngine";
 import type { StorageEngine, StorageInitializeResult } from "@/services/storage/types";
 
 let _engine: StorageEngine | null = null;
@@ -35,7 +35,3 @@ export const storageEngine: StorageEngine = new Proxy({} as StorageEngine, {
 		return Reflect.get(engine, prop);
 	},
 });
-
-export function getStorageEngine(): StorageEngine {
-	return getEngine();
-}

@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import {
 	clearEditorDraft,
 	getEditorDraftKey,
@@ -8,11 +9,11 @@ import {
 describe("editorDraftStore", () => {
 	const storage = new Map<string, string>();
 	const localStorageMock = {
-		getItem: jest.fn((key: string) => storage.get(key) ?? null),
-		setItem: jest.fn((key: string, value: string) => {
+		getItem: vi.fn((key: string) => storage.get(key) ?? null),
+		setItem: vi.fn((key: string, value: string) => {
 			storage.set(key, value);
 		}),
-		removeItem: jest.fn((key: string) => {
+		removeItem: vi.fn((key: string) => {
 			storage.delete(key);
 		}),
 	};
@@ -23,11 +24,11 @@ describe("editorDraftStore", () => {
 			configurable: true,
 			value: localStorageMock,
 		});
-		jest.spyOn(Date, "now").mockReturnValue(100);
+		vi.spyOn(Date, "now").mockReturnValue(100);
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 		storage.clear();
 	});
 

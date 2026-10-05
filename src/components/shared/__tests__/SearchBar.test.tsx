@@ -1,12 +1,13 @@
+import { vi } from "vitest";
 import { SearchBar } from "@/components/shared/SearchBar";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 
-jest.mock("@/components/shared/Icons", () => ({
+vi.mock("@/components/shared/Icons", () => ({
 	FontAwesome: ({ name }: { name: string }) => name,
 }));
 
-jest.mock("@/hooks/useExtendedTheme", () => ({
+vi.mock("@/hooks/useExtendedTheme", () => ({
 	useExtendedTheme: () => ({
 		colors: {
 			background: "#ffffff",
@@ -20,12 +21,25 @@ jest.mock("@/hooks/useExtendedTheme", () => ({
 }));
 
 describe("SearchBar", () => {
+	it("forwards input ref and publishes typed query", () => {
+		const ref = React.createRef<HTMLInputElement>();
+		const setSearchQuery = vi.fn();
+		render(
+			<SearchBar ref={ref} searchQuery="" setSearchQuery={setSearchQuery} />,
+		);
+		const input = screen.getByRole("textbox", { name: "Search notes" });
+		expect(ref.current).toBe(input);
+		ref.current?.focus();
+		expect(input).toHaveFocus();
+		fireEvent.change(input, { target: { value: "ideas" } });
+		expect(setSearchQuery).toHaveBeenCalledWith("ideas");
+	});
 	it("clears the current query when the clear control is pressed", () => {
-		const setSearchQuery = jest.fn();
+		const setSearchQuery = vi.fn();
 
 		render(<SearchBar searchQuery="ideas" setSearchQuery={setSearchQuery} />);
 
-		fireEvent.press(screen.getByRole("button", { name: "Clear search" }));
+		fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
 
 		expect(setSearchQuery).toHaveBeenCalledWith("");
 	});

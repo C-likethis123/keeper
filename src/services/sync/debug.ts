@@ -1,6 +1,6 @@
 import { showToast } from "@/services/toast";
 
-export function isSyncDebugEnabled(): boolean {
+function isSyncDebugEnabled(): boolean {
 	return process.env.EXPO_PUBLIC_SYNC_DEBUG === "true";
 }
 

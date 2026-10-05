@@ -1,3 +1,6 @@
+import { useWindowWidth } from "@/hooks/useBrowserAppearance";
+import { Spinner } from "@/components/shared/Spinner";
+import "@/components/shared/shared.css";
 import NoteCard from "@/components/NoteCard";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
@@ -5,18 +8,7 @@ import type { NoteSection } from "@/services/notes/indexDb/types";
 import type { Note } from "@/services/notes/types";
 import { FontAwesome } from "@/components/shared/Icons";
 import type React from "react";
-import { useCallback, useMemo, useRef } from "react";
-import {
-	ActivityIndicator,
-	FlatList,
-	type ListRenderItemInfo,
-	Pressable,
-	RefreshControl,
-	StyleSheet,
-	Text,
-	View,
-	useWindowDimensions,
-} from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import EmptyState from "./shared/EmptyState";
 
 type NoteGridRow =
@@ -58,7 +50,7 @@ export default function NoteGrid({
 	listHeaderComponent?: React.ReactElement | null;
 	onReady?: () => void;
 }) {
-	const { width } = useWindowDimensions();
+	const width = useWindowWidth();
 	const theme = useExtendedTheme();
 	const styles = useStyles(createStyles);
 
@@ -68,14 +60,8 @@ export default function NoteGrid({
 	else if (width > 600) numColumns = 3;
 
 	const paginationGate = useRef(false);
-	const handleScroll = useCallback(
-		(event: { nativeEvent: { contentOffset: { y: number } } }) => {
-			if (event.nativeEvent.contentOffset.y > 0) {
-				paginationGate.current = true;
-			}
-		},
-		[],
-	);
+	const listRef = useRef<HTMLElement>(null);
+	const [renderLimit, setRenderLimit] = useState(20);
 
 	const handleEndReached = useCallback(() => {
 		if (paginationGate.current && hasMore && !isLoadingMore) {
@@ -114,9 +100,10 @@ export default function NoteGrid({
 			clusterActions: undefined,
 		}));
 	}, [notes, numColumns, sections]);
-	const handleContentSizeChange = useCallback(() => {
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Notify after changed rows commit to DOM.
+	useEffect(() => {
 		onReady?.();
-	}, [onReady]);
+	}, [onReady, rowData]);
 
 	const isEmpty = rowData.length === 0;
 	const keyExtractor = useCallback((item: NoteGridRow, index: number) => {
@@ -126,63 +113,76 @@ export default function NoteGrid({
 
 	const listHeader = useMemo(() => {
 		if (!listHeaderComponent) return null;
-		return <View style={styles.headerWrapper}>{listHeaderComponent}</View>;
+		return (
+			<div className="keeper-layout" style={styles.headerWrapper}>
+				{listHeaderComponent}
+			</div>
+		);
 	}, [listHeaderComponent, styles.headerWrapper]);
 
 	const renderItem = useCallback(
-		({ item }: ListRenderItemInfo<NoteGridRow>) => {
+		({ item }: { item: NoteGridRow }) => {
 			if (item.type === "header") {
 				return (
-					<View style={styles.sectionHeader}>
-						<Text style={styles.sectionHeaderText}>{item.section.title}</Text>
+					<div className="keeper-layout" style={styles.sectionHeader}>
+						<span className="keeper-copy" style={styles.sectionHeaderText}>
+							{item.section.title}
+						</span>
 						{item.section.clusterActions && (
-							<View style={styles.sectionHeaderActions}>
-								<Pressable
-									onPress={item.section.clusterActions.onRename}
-									hitSlop={8}
-									accessibilityRole="button"
-									accessibilityLabel="Rename cluster"
+							<div
+								className="keeper-layout"
+								style={styles.sectionHeaderActions}
+							>
+								<button
+									type="button"
+									className="keeper-control"
+									onClick={item.section.clusterActions.onRename}
+									aria-label="Rename cluster"
 								>
 									<FontAwesome
 										name="pencil"
 										size={14}
 										color={theme.colors.textSecondary}
 									/>
-								</Pressable>
-								<Pressable
-									onPress={item.section.clusterActions.onAddNote}
-									hitSlop={8}
-									accessibilityRole="button"
-									accessibilityLabel="Add note to cluster"
+								</button>
+								<button
+									type="button"
+									className="keeper-control"
+									onClick={item.section.clusterActions.onAddNote}
+									aria-label="Add note to cluster"
 								>
 									<FontAwesome
 										name="plus"
 										size={14}
 										color={theme.colors.textSecondary}
 									/>
-								</Pressable>
-								<Pressable
-									onPress={item.section.clusterActions.onDelete}
-									hitSlop={8}
-									accessibilityRole="button"
-									accessibilityLabel="Delete cluster"
+								</button>
+								<button
+									type="button"
+									className="keeper-control"
+									onClick={item.section.clusterActions.onDelete}
+									aria-label="Delete cluster"
 								>
 									<FontAwesome
 										name="trash"
 										size={14}
 										color={theme.colors.textSecondary}
 									/>
-								</Pressable>
-							</View>
+								</button>
+							</div>
 						)}
-					</View>
+					</div>
 				);
 			}
 
 			return (
-				<View style={styles.noteRow}>
+				<div className="keeper-layout" style={styles.noteRow}>
 					{item.notes.map((note) => (
-						<View key={note.id} style={styles.noteCell}>
+						<div
+							className="keeper-layout"
+							key={note.id}
+							style={styles.noteCell}
+						>
 							<NoteCard
 								note={note}
 								onOpen={onOpen}
@@ -194,19 +194,19 @@ export default function NoteGrid({
 										: undefined
 								}
 							/>
-						</View>
+						</div>
 					))}
 					{Array.from(
 						{ length: Math.max(0, numColumns - item.notes.length) },
 						(_, offset) => item.notes.length + offset + 1,
 					).map((columnNumber) => (
-						<View
+						<div
+							className="keeper-layout"
 							key={`empty-column-${columnNumber}`}
-							style={styles.noteCell}
-							pointerEvents="none"
+							style={{ ...styles.noteCell, pointerEvents: "none" }}
 						/>
 					))}
-				</View>
+				</div>
 			);
 		},
 		[
@@ -223,92 +223,101 @@ export default function NoteGrid({
 		],
 	);
 
+	const reachEnd = useCallback(() => {
+		const list = listRef.current;
+		if (!list || !paginationGate.current) return;
+		if (
+			list.scrollTop + list.clientHeight <
+			list.scrollHeight - list.clientHeight * 0.5
+		)
+			return;
+		if (renderLimit < rowData.length) {
+			paginationGate.current = false;
+			setRenderLimit((limit) => limit + 20);
+		} else handleEndReached();
+	}, [handleEndReached, renderLimit, rowData.length]);
+	useEffect(() => {
+		const list = listRef.current;
+		list?.addEventListener("scrollend", reachEnd);
+		return () => list?.removeEventListener("scrollend", reachEnd);
+	}, [reachEnd]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Column changes restart rendered row window.
+	useEffect(() => {
+		setRenderLimit(20);
+	}, [numColumns]);
 	return (
-		<View style={styles.root}>
-			<FlatList
-				data={rowData}
-				key={`note-grid-${numColumns}`}
-				keyExtractor={keyExtractor}
-				initialNumToRender={20}
-				maxToRenderPerBatch={20}
-				updateCellsBatchingPeriod={0}
-				windowSize={3}
-				contentContainerStyle={styles.contentContainer}
-				ListHeaderComponent={listHeader}
-				ListEmptyComponent={
-					isEmpty ? (
-						<EmptyState title={emptyTitle} subtitle={emptySubtitle} />
-					) : undefined
-				}
-				showsVerticalScrollIndicator
-				refreshControl={
-					<RefreshControl
-						refreshing={refreshing}
-						onRefresh={onRefresh}
-						tintColor={theme.colors.primary}
-						colors={[theme.colors.primary]}
-					/>
-				}
-				onEndReached={handleEndReached}
-				onEndReachedThreshold={0.5}
-				onScroll={handleScroll}
-				onContentSizeChange={handleContentSizeChange}
-				scrollEventThrottle={16}
-				ListFooterComponent={
-					isLoadingMore ? (
-						<View style={styles.footerLoader}>
-							<ActivityIndicator size="small" color={theme.colors.primary} />
-						</View>
-					) : null
-				}
-				renderItem={renderItem}
-			/>
-		</View>
+		<section
+			ref={listRef}
+			aria-label="Notes"
+			className="keeper-layout"
+			style={{ ...styles.root, overflowY: "auto" }}
+			onScroll={(event) => {
+				if (event.currentTarget.scrollTop > 0) paginationGate.current = true;
+				reachEnd();
+			}}
+		>
+			<div className="keeper-layout" style={styles.contentContainer}>
+				{listHeader}
+				<button
+					type="button"
+					className="keeper-control"
+					aria-label="Refresh notes"
+					disabled={refreshing}
+					onClick={onRefresh}
+					style={{
+						alignSelf: "flex-end",
+						color: theme.colors.textMuted,
+						padding: 8,
+					}}
+				>
+					{refreshing ? (
+						<Spinner small style={{ color: theme.colors.primary }} />
+					) : (
+						<FontAwesome name="refresh" size={16} />
+					)}
+				</button>
+				{isEmpty ? (
+					<EmptyState title={emptyTitle} subtitle={emptySubtitle} />
+				) : (
+					rowData.slice(0, renderLimit).map((item, index) => (
+						<div className="keeper-layout" key={keyExtractor(item, index)}>
+							{renderItem({ item })}
+						</div>
+					))
+				)}
+				{isLoadingMore && (
+					<div className="keeper-layout" style={styles.footerLoader}>
+						<Spinner small style={{ color: theme.colors.primary }} />
+					</div>
+				)}
+			</div>
+		</section>
 	);
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	return StyleSheet.create({
-		root: {
-			flex: 1,
-		},
-		headerWrapper: {
-			maxWidth: 960,
-			width: "100%",
-			alignSelf: "center",
-		},
-		noteRow: {
-			flexDirection: "row",
-			gap: 8,
-			marginBottom: 8,
-		},
-		noteCell: {
-			flex: 1,
-		},
-		contentContainer: {
-			padding: 8,
-			paddingBottom: 100,
-		},
-		footerLoader: {
-			padding: 16,
-			alignItems: "center",
-		},
+	return {
+		root: { flex: 1 },
+		headerWrapper: { maxWidth: 960, width: "100%", alignSelf: "center" },
+		noteRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
+		noteCell: { flex: 1 },
+		contentContainer: { padding: 8, paddingBottom: 100 },
+		footerLoader: { padding: 16, alignItems: "center" },
 		sectionHeader: {
-			paddingHorizontal: 8,
-			paddingVertical: 12,
+			paddingLeft: 8,
+			paddingRight: 8,
+			paddingTop: 12,
+			paddingBottom: 12,
 			marginTop: 8,
 			flexDirection: "row",
 			alignItems: "center",
 			justifyContent: "space-between",
 		},
-		sectionHeaderActions: {
-			flexDirection: "row",
-			gap: 12,
-		},
+		sectionHeaderActions: { flexDirection: "row", gap: 12 },
 		sectionHeaderText: {
 			fontSize: 18,
 			fontWeight: "700",
 			color: theme.colors.text,
 		},
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }

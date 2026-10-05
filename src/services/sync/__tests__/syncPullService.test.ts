@@ -1,33 +1,43 @@
-const mockAsyncStorage = new Map<string, string>();
-const mockSaveNote = jest.fn();
-const mockDeleteNote = jest.fn();
-const mockIndexUpsert = jest.fn();
-const mockIndexDelete = jest.fn();
-const mockDeleteCrdtNote = jest.fn();
-const mockBumpContentVersion = jest.fn();
+import { vi } from "vitest";
+const {
+	mockAsyncStorage,
+	mockSaveNote,
+	mockDeleteNote,
+	mockIndexUpsert,
+	mockIndexDelete,
+	mockDeleteCrdtNote,
+	mockBumpContentVersion,
+} = vi.hoisted(() => ({
+	mockAsyncStorage: new Map<string, string>(),
+	mockSaveNote: vi.fn(),
+	mockDeleteNote: vi.fn(),
+	mockIndexUpsert: vi.fn(),
+	mockIndexDelete: vi.fn(),
+	mockDeleteCrdtNote: vi.fn(),
+	mockBumpContentVersion: vi.fn(),
+}));
 
-jest.mock("@/services/storage/browserKeyValueStorage", () => ({
-	__esModule: true,
+vi.mock("@/services/storage/browserKeyValueStorage", () => ({
 	default: {
-		getItem: jest.fn((key: string) =>
+		getItem: vi.fn((key: string) =>
 			Promise.resolve(mockAsyncStorage.get(key) ?? null),
 		),
-		setItem: jest.fn((key: string, value: string) => {
+		setItem: vi.fn((key: string, value: string) => {
 			mockAsyncStorage.set(key, value);
 			return Promise.resolve();
 		}),
 	},
 }));
 
-jest.mock("@/services/storage/storageEngine", () => ({
+vi.mock("@/services/storage/storageEngine", () => ({
 	storageEngine: {
 		saveNote: (...args: unknown[]) => mockSaveNote(...args),
 		deleteNote: (...args: unknown[]) => mockDeleteNote(...args),
-		loadNote: jest.fn(),
+		loadNote: vi.fn(),
 	},
 }));
 
-jest.mock("@/services/notes/notesIndex", () => ({
+vi.mock("@/services/notes/notesIndex", () => ({
 	extractSummary: (content: string) => content,
 	NotesIndexService: {
 		upsertNote: (...args: unknown[]) => mockIndexUpsert(...args),
@@ -35,15 +45,11 @@ jest.mock("@/services/notes/notesIndex", () => ({
 	},
 }));
 
-jest.mock("@/services/notes/crdtNoteService", () => ({
+vi.mock("@/services/notes/crdtNoteService", () => ({
 	deleteCrdtNote: (...args: unknown[]) => mockDeleteCrdtNote(...args),
 }));
 
-jest.mock("@/services/notes/noteQueryCache", () => ({
-	invalidateNoteQueryCache: jest.fn(),
-}));
-
-jest.mock("@/stores/storageStore", () => ({
+vi.mock("@/stores/storageStore", () => ({
 	useStorageStore: {
 		getState: () => ({ bumpContentVersion: mockBumpContentVersion }),
 	},
@@ -51,8 +57,8 @@ jest.mock("@/stores/storageStore", () => ({
 
 describe("syncPullService", () => {
 	beforeEach(() => {
-		jest.resetModules();
-		jest.clearAllMocks();
+		vi.resetModules();
+		vi.clearAllMocks();
 		mockAsyncStorage.clear();
 		process.env.EXPO_PUBLIC_SYNC_SERVER_URL = "https://sync.example";
 		mockSaveNote.mockImplementation((note) =>
@@ -73,14 +79,14 @@ describe("syncPullService", () => {
 	});
 
 	it("applies remote create and delete operations and advances cursor", async () => {
-		const fetchMock = jest
+		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce({
 				ok: true,
 				json: () =>
 					Promise.resolve({
-					cursor: 1,
-					ops: [
+						cursor: 1,
+						ops: [
 							{
 								serverId: 1,
 								deviceId: "phone",
@@ -94,8 +100,8 @@ describe("syncPullService", () => {
 									'---\npinned: false\ntitle: "Inbox"\nid: "note-1"\ntype: "note"\n---\nBody',
 								createdAt: "2026-07-11T10:00:00.000Z",
 							},
-					],
-				}),
+						],
+					}),
 			})
 			.mockResolvedValueOnce({
 				ok: true,
@@ -104,7 +110,7 @@ describe("syncPullService", () => {
 						cursor: 2,
 						ops: [
 							{
-							serverId: 2,
+								serverId: 2,
 								deviceId: "phone",
 								opId: "phone:2",
 								seq: 2,

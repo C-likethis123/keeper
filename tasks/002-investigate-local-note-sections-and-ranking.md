@@ -1,5 +1,8 @@
 # Task 002: Local-First Note Sections and Ranking
 
+> Archived design/history. Platform paths and dependency references describe earlier implementation. Current setup: [README](../README.md); current migration status: [PWA plan](../plans/pwa-migration.md).
+
+
 ## Status
 
 - In Progress

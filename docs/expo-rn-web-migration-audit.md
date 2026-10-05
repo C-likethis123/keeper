@@ -1,5 +1,8 @@
 # Expo/RN web migration audit
 
+> Archived design/history. Platform paths and dependency references describe earlier implementation. Current setup: [README](../README.md); current migration status: [PWA plan](../plans/pwa-migration.md).
+
+
 Scope: `src/`, root Expo/test configuration, and `package.json`, inspected 2026-09-19 and updated 2026-09-27 after canonical Vite sync integration.
 
 ## Result

@@ -1,23 +1,47 @@
+import { vi } from "vitest";
+const {
+	mockSaveNote,
+	mockLoadNote,
+	mockDeleteNote,
+	mockListNoteFiles,
+	mockIndexUpsert,
+	mockIndexDelete,
+	mockWriteFileBytes,
+	mockListFilesRecursive,
+	mockReadFileBytes,
+	mockDeleteDirectory,
+	mockDeleteFile,
+	mockDeleteCrdtNote,
+	mockEnqueueNoteCreate,
+	mockEnqueueNoteUpdate,
+	mockEnqueueNoteDelete,
+	mockScheduleSyncPush,
+} = vi.hoisted(() => ({
+	mockSaveNote: vi.fn(),
+	mockLoadNote: vi.fn(),
+	mockDeleteNote: vi.fn(),
+	mockListNoteFiles: vi.fn(),
+	mockIndexUpsert: vi.fn(),
+	mockIndexDelete: vi.fn(),
+	mockWriteFileBytes: vi.fn(),
+	mockListFilesRecursive: vi.fn(),
+	mockReadFileBytes: vi.fn(),
+	mockDeleteDirectory: vi.fn(),
+	mockDeleteFile: vi.fn(),
+	mockDeleteCrdtNote: vi.fn(),
+	mockEnqueueNoteCreate: vi.fn(),
+	mockEnqueueNoteUpdate: vi.fn(),
+	mockEnqueueNoteDelete: vi.fn(),
+	mockScheduleSyncPush: vi.fn(),
+}));
 import { NoteService } from "../noteService";
 import type { NoteSaveInput } from "../types";
 
-const mockSaveNote = jest.fn();
-const mockLoadNote = jest.fn();
-const mockDeleteNote = jest.fn();
-const mockListNoteFiles = jest.fn();
-const mockIndexUpsert = jest.fn();
-const mockIndexDelete = jest.fn();
-const mockWriteFileBytes = jest.fn();
-const mockListFilesRecursive = jest.fn();
-const mockReadFileBytes = jest.fn();
-const mockDeleteDirectory = jest.fn();
-const mockDeleteFile = jest.fn();
-const mockSaveMarkdownToCrdt = jest.fn((note: NoteSaveInput) =>
+const mockSaveMarkdownToCrdt = vi.fn((note: NoteSaveInput) =>
 	Promise.resolve(note),
 );
-const mockDeleteCrdtNote = jest.fn();
 
-jest.mock("@/services/storage/storageEngine", () => ({
+vi.mock("@/services/storage/storageEngine", () => ({
 	storageEngine: {
 		saveNote: (...args: unknown[]) => mockSaveNote(...args),
 		loadNote: (...args: unknown[]) => mockLoadNote(...args),
@@ -33,37 +57,32 @@ jest.mock("@/services/storage/storageEngine", () => ({
 	},
 }));
 
-const mockEnqueueNoteCreate = jest.fn();
-const mockEnqueueNoteUpdate = jest.fn();
-const mockEnqueueNoteDelete = jest.fn();
-const mockScheduleSyncPush = jest.fn();
-
-jest.mock("@/services/sync/syncOpQueue", () => ({
+vi.mock("@/services/sync/syncOpQueue", () => ({
 	enqueueNoteCreate: (...args: unknown[]) => mockEnqueueNoteCreate(...args),
 	enqueueNoteUpdate: (...args: unknown[]) => mockEnqueueNoteUpdate(...args),
 	enqueueNoteDelete: (...args: unknown[]) => mockEnqueueNoteDelete(...args),
 }));
 
-jest.mock("@/services/sync/syncPushService", () => ({
+vi.mock("@/services/sync/syncPushService", () => ({
 	scheduleSyncPush: () => mockScheduleSyncPush(),
 }));
 
-jest.mock("@/services/notes/crdtNoteService", () => ({
+vi.mock("@/services/notes/crdtNoteService", () => ({
 	saveMarkdownToCrdt: (note: NoteSaveInput) => mockSaveMarkdownToCrdt(note),
 	deleteCrdtNote: (noteId: string) => mockDeleteCrdtNote(noteId),
 }));
 
-jest.mock("@/services/notes/notesIndex", () => ({
+vi.mock("@/services/notes/notesIndex", () => ({
 	NotesIndexService: {
-		upsertNote: jest.fn(),
-		deleteNote: jest.fn(),
+		upsertNote: vi.fn(),
+		deleteNote: vi.fn(),
 	},
 	extractSummary: (content: string) => content.slice(0, 50),
 }));
 
 describe("NoteService", () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		process.env.EXPO_PUBLIC_SYNC_SERVER_URL = undefined;
 		mockEnqueueNoteCreate.mockResolvedValue(undefined);
 		mockEnqueueNoteUpdate.mockResolvedValue(undefined);
@@ -76,9 +95,7 @@ describe("NoteService", () => {
 
 	describe("saveNote", () => {
 		it("indexes templates in SQLite", async () => {
-			const { NotesIndexService } = jest.requireMock(
-				"@/services/notes/notesIndex",
-			);
+			const { NotesIndexService } = await import("@/services/notes/notesIndex");
 			mockSaveNote.mockResolvedValue({
 				id: "tmpl-1",
 				title: "My Template",
@@ -110,9 +127,7 @@ describe("NoteService", () => {
 		});
 
 		it("indexes drawing without exposing serialized strokes", async () => {
-			const { NotesIndexService } = jest.requireMock(
-				"@/services/notes/notesIndex",
-			);
+			const { NotesIndexService } = await import("@/services/notes/notesIndex");
 			const content = '{"version":1,"strokes":[]}';
 			mockSaveNote.mockResolvedValue({
 				id: "drawing-1",
@@ -244,11 +259,10 @@ describe("NoteService", () => {
 			expect(mockEnqueueNoteUpdate).toHaveBeenCalledWith(saved);
 			expect(mockWriteFileBytes).toHaveBeenCalledWith(
 				expect.stringContaining(".keeper/history/note-1/"),
-				expect.any(Uint8Array),
+				expect.any(new TextEncoder().encode("").constructor),
 			);
 			expect(mockScheduleSyncPush).toHaveBeenCalled();
 		});
-
 	});
 
 	describe("deleteNote", () => {
@@ -308,7 +322,7 @@ describe("NoteService", () => {
 			);
 			expect(mockWriteFileBytes).toHaveBeenCalledWith(
 				expect.stringContaining(".keeper/history/note-1/"),
-				expect.any(Uint8Array),
+				expect.any(new TextEncoder().encode("").constructor),
 			);
 			expect(restored.content).toBe("Old body");
 		});

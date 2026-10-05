@@ -27,14 +27,14 @@ export type GitHubSeedService = {
 	seed(input: GitHubSeedRequest): Promise<GitHubSeedResult>;
 };
 
-export type GitHubSeedConfig = {
+type GitHubSeedConfig = {
 	remoteUrl: string;
 	repoDir: string;
 	branch?: string;
 	redisUrl?: string;
 };
 
-export function createGitHubSeedService(
+function createGitHubSeedService(
 	config: GitHubSeedConfig,
 	syncRepository: SyncRepository,
 ): GitHubSeedService {

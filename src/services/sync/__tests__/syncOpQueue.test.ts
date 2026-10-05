@@ -1,3 +1,11 @@
+import { vi } from "vitest";
+const { mockAsyncStorage, mockListNoteFiles, mockLoadNote, mockReadFileBytes } =
+	vi.hoisted(() => ({
+		mockAsyncStorage: new Map<string, string>(),
+		mockListNoteFiles: vi.fn(),
+		mockLoadNote: vi.fn(),
+		mockReadFileBytes: vi.fn(),
+	}));
 import {
 	enqueueNoteCreate,
 	enqueueNoteDelete,
@@ -8,25 +16,19 @@ import {
 } from "@/services/sync/syncOpQueue";
 import type { Note } from "@/services/notes/types";
 
-const mockAsyncStorage = new Map<string, string>();
-const mockListNoteFiles = jest.fn();
-const mockLoadNote = jest.fn();
-const mockReadFileBytes = jest.fn();
-
-jest.mock("@/services/storage/browserKeyValueStorage", () => ({
-	__esModule: true,
+vi.mock("@/services/storage/browserKeyValueStorage", () => ({
 	default: {
-		getItem: jest.fn((key: string) =>
+		getItem: vi.fn((key: string) =>
 			Promise.resolve(mockAsyncStorage.get(key) ?? null),
 		),
-		setItem: jest.fn((key: string, value: string) => {
+		setItem: vi.fn((key: string, value: string) => {
 			mockAsyncStorage.set(key, value);
 			return Promise.resolve();
 		}),
 	},
 }));
 
-jest.mock("@/services/storage/storageEngine", () => ({
+vi.mock("@/services/storage/storageEngine", () => ({
 	storageEngine: {
 		listNoteFiles: (...args: unknown[]) => mockListNoteFiles(...args),
 		loadNote: (...args: unknown[]) => mockLoadNote(...args),
@@ -118,9 +120,9 @@ describe("syncOpQueue", () => {
 		releaseFirstRead?.();
 		await Promise.all([first, second]);
 
-		expect((await readQueuedSyncOps()).map((operation) => operation.noteId)).toEqual(
-			["first", "second"],
-		);
+		expect(
+			(await readQueuedSyncOps()).map((operation) => operation.noteId),
+		).toEqual(["first", "second"]);
 	});
 
 	it("removes accepted or duplicate operations after push", async () => {

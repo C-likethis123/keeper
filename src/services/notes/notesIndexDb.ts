@@ -2,10 +2,9 @@ import { extractSummary } from "@/services/notes/noteSummary";
 import type {
 	ListNotesResult,
 	NoteIndexItem,
-	NoteIndexRow,
 	NotesIndexRebuildMetrics,
 } from "@/services/notes/indexDb/types";
-import type { Note, NoteListFilters } from "@/services/notes/types";
+import type { Note } from "@/services/notes/types";
 import { parseWikiLinksFromBody } from "@/services/notes/wikiLinkParser";
 import { storageEngine } from "@/services/storage/storageEngine";
 
@@ -40,18 +39,6 @@ function buildLinkGraph(notes: Note[]): Map<string, Set<string>> {
 	);
 }
 
-export async function notesIndexDbHasRows(): Promise<boolean> {
-	return (await storageEngine.indexList("", 1)).items.length > 0;
-}
-
-export async function notesIndexDbUpsert(item: NoteIndexItem): Promise<void> {
-	await storageEngine.indexUpsert(item);
-}
-
-export async function notesIndexDbDelete(noteId: string): Promise<void> {
-	await storageEngine.indexDelete(noteId);
-}
-
 export async function notesIndexDbGetById(
 	noteId: string,
 ): Promise<NoteIndexItem | null> {
@@ -60,21 +47,13 @@ export async function notesIndexDbGetById(
 	return {
 		noteId: note.id,
 		title: note.title,
-		summary: note.noteType === "drawing" ? "Drawing" : extractSummary(note.content),
+		summary:
+			note.noteType === "drawing" ? "Drawing" : extractSummary(note.content),
 		isPinned: note.isPinned,
 		updatedAt: note.lastUpdated,
 		noteType: note.noteType,
 		status: note.status,
 	};
-}
-
-export async function notesIndexDbListAll(
-	query: string,
-	limit: number,
-	offset?: number,
-	filters?: NoteListFilters,
-): Promise<ListNotesResult> {
-	return storageEngine.indexList(query, limit, offset, filters);
 }
 
 export async function notesIndexDbGetBacklinks(
@@ -102,25 +81,4 @@ export async function notesIndexDbGetOrphanedNotes(): Promise<string[]> {
 		for (const targetId of targets) linkedIds.add(targetId);
 	}
 	return notes.filter((note) => !linkedIds.has(note.id)).map((note) => note.id);
-}
-
-export async function notesIndexDbGetRecentlyEditedNotes(
-	limit = 10,
-	daysBack = 7,
-): Promise<NoteIndexRow[]> {
-	const cutoff = Date.now() - daysBack * 24 * 60 * 60 * 1000;
-	return (await loadAllNotes())
-		.filter((note) => note.lastUpdated >= cutoff)
-		.sort((left, right) => right.lastUpdated - left.lastUpdated)
-		.slice(0, limit)
-		.map((note) => ({
-			id: note.id,
-			title: note.title,
-			summary:
-				note.noteType === "drawing" ? "Drawing" : extractSummary(note.content),
-			is_pinned: note.isPinned ? 1 : 0,
-			updated_at: note.lastUpdated,
-			note_type: note.noteType,
-			status: note.status ?? null,
-		}));
 }

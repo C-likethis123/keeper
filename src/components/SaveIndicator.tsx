@@ -1,8 +1,8 @@
+import "@/components/shared/shared.css";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import { FontAwesome } from "@/components/shared/Icons";
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import type React from "react";
 
 export type SaveStatus = "idle" | "saving" | "saved";
 
@@ -29,48 +29,42 @@ export function SaveIndicator({ status }: Props) {
 
 	const iconName = iconNameMap[status];
 	return (
-		<View style={styles.container}>
+		<div className="keeper-layout" style={styles.container}>
 			<FontAwesome
 				name={iconName}
 				size={16}
 				style={status === "saving" ? styles.savingIcon : styles.savedIcon}
 			/>
-			<View style={styles.textContainer}>
-				<Text style={styles.title} numberOfLines={1}>
+			<div className="keeper-layout" style={styles.textContainer}>
+				<span
+					className="keeper-copy"
+					style={{
+						...styles.title,
+						overflow: "hidden",
+						display: "-webkit-box",
+						WebkitBoxOrient: "vertical",
+						WebkitLineClamp: 1,
+					}}
+				>
 					{titleMap[status]}
-				</Text>
-			</View>
-		</View>
+				</span>
+			</div>
+		</div>
 	);
 }
 function createStyles(theme: ExtendedTheme) {
-	return StyleSheet.create({
+	return {
 		container: {
 			flexDirection: "row",
 			alignItems: "center",
 			gap: 6,
 			maxWidth: 220,
 		},
-		textContainer: {
-			flexShrink: 1,
-		},
-		title: {
-			fontSize: 14,
-			fontWeight: "600",
-			color: theme.colors.text,
-		},
-		subtitle: {
-			fontSize: 11,
-			color: theme.colors.textMuted,
-		},
-		icon: {
-			color: theme.colors.text,
-		},
-		savingIcon: {
-			color: theme.colors.statusSaving,
-		},
-		savedIcon: {
-			color: theme.colors.statusSaved,
-		},
-	});
+		textContainer: { flexShrink: 1 },
+		title: { fontSize: 14, fontWeight: "600", color: theme.colors.text },
+		subtitle: { fontSize: 11, color: theme.colors.textMuted },
+		icon: { color: theme.colors.text },
+		savingIcon: { color: theme.colors.statusSaving },
+		savedIcon: { color: theme.colors.statusSaved },
+	} satisfies Record<string, React.CSSProperties>;
 }

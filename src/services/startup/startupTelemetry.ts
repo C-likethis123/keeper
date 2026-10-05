@@ -93,86 +93,52 @@ export function traceStartupBootstrapEvent(
 	});
 }
 
-function createTelemetry(
-	runtime: string,
-	traceImpl: (event: string, payload?: StartupTelemetryPayload) => void,
-): StartupTelemetry {
-	return {
-		runId: createRunId(),
-		runtime,
-		trace: traceImpl,
-		stepStarted(step, payload = {}) {
-			const startedAt = performance.now();
-			traceImpl("step_started", {
-				step,
-				...payload,
-			});
-			return startedAt;
-		},
-		stepCompleted(step, startedAt, payload = {}) {
-			traceImpl("step_completed", {
-				step,
-				durationMs: Math.round(performance.now() - startedAt),
-				...payload,
-			});
-		},
-		stepFailed(step, startedAt, error, payload = {}) {
-			traceImpl("step_failed", {
-				step,
-				durationMs: Math.round(performance.now() - startedAt),
-				...serializeError(error),
-				...payload,
-			});
-		},
-	};
-}
-
 export function createStartupTelemetry(runtime: string): StartupTelemetry {
 	const runId = getOrCreateRunId();
 
 	return {
 		runId,
-			runtime,
-			trace(event, payload = {}) {
-				logStartupTrace({
-					runId,
-					runtime,
-					event,
+		runtime,
+		trace(event, payload = {}) {
+			logStartupTrace({
+				runId,
+				runtime,
+				event,
 				timestampMs: currentTimestampMs(),
 				executionContext: getExecutionContext(),
 				...payload,
 			});
-			},
-			stepStarted(step, payload = {}) {
-				const startedAt = performance.now();
-				logStartupTrace({
-					runId,
-					runtime,
-					event: "step_started",
+		},
+		stepStarted(step, payload = {}) {
+			const startedAt = performance.now();
+			logStartupTrace({
+				runId,
+				runtime,
+				event: "step_started",
 				step,
 				timestampMs: currentTimestampMs(),
 				executionContext: getExecutionContext(),
 				...payload,
 			});
 			return startedAt;
-			},
-			stepCompleted(step, startedAt, payload = {}) {
-				logStartupTrace({
-					runId,
-					runtime,
-					event: "step_completed",
+		},
+		stepCompleted(step, startedAt, payload = {}) {
+			logStartupTrace({
+				runId,
+				runtime,
+				event: "step_completed",
 				step,
 				durationMs: Math.round(performance.now() - startedAt),
 				timestampMs: currentTimestampMs(),
 				executionContext: getExecutionContext(),
 				...payload,
 			});
-			},
-			stepFailed(step, startedAt, error, payload = {}) {
-				logStartupTrace({
-					runId,
-					runtime,
-					event: "step_failed",
+		},
+		stepFailed(step, startedAt, error, payload = {}) {
+			logStartupTrace({
+				runId,
+				runtime,
+				event: "step_failed",
 				step,
 				durationMs: Math.round(performance.now() - startedAt),
 				timestampMs: currentTimestampMs(),
@@ -182,10 +148,4 @@ export function createStartupTelemetry(runtime: string): StartupTelemetry {
 			});
 		},
 	};
-}
-
-export function createNoopStartupTelemetry(
-	runtime = "unknown",
-): StartupTelemetry {
-	return createTelemetry(runtime, () => {});
 }

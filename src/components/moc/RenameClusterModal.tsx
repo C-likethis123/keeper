@@ -1,14 +1,9 @@
+import { Dialog } from "@/components/shared/Dialog";
+import type React from "react";
+import "@/components/shared/shared.css";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { useState } from "react";
-import {
-	Modal,
-	Pressable,
-	StyleSheet,
-	Text,
-	TextInput,
-	View,
-} from "react-native";
 
 type RenameClusterModalProps = {
 	visible: boolean;
@@ -37,50 +32,61 @@ export default function RenameClusterModal({
 	};
 
 	return (
-		<Modal
-			visible={visible}
-			animationType="fade"
-			transparent
-			onRequestClose={onClose}
-			onShow={() => setName(initialName)}
+		<Dialog
+			label="Rename Cluster Modal"
+			open={visible}
+			onDismiss={onClose}
+			onOpen={() => setName(initialName)}
 		>
-			<View style={styles.backdrop}>
-				<View style={styles.card}>
-					<Text style={styles.title}>Rename Cluster</Text>
-					<TextInput
+			<div className="keeper-layout" style={styles.backdrop}>
+				<div className="keeper-layout" style={styles.card}>
+					<span className="keeper-copy" style={styles.title}>
+						Rename Cluster
+					</span>
+					<input
+						className="keeper-input"
 						style={styles.input}
 						value={name}
-						onChangeText={setName}
-						autoFocus
-						selectTextOnFocus
-						returnKeyType="done"
-						onSubmitEditing={handleConfirm}
+						onChange={(event) => setName(event.currentTarget.value)}
+						onFocus={(event) => event.currentTarget.select()}
+						onKeyDown={(event) => {
+							if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+								event.preventDefault();
+								handleConfirm();
+							}
+						}}
 					/>
-					<View style={styles.actions}>
-						<Pressable
-							accessibilityRole="button"
+					<div className="keeper-layout" style={styles.actions}>
+						<button
+							type="button"
+							className="keeper-control"
 							style={styles.cancelButton}
-							onPress={onClose}
+							onClick={onClose}
 						>
-							<Text style={styles.cancelText}>Cancel</Text>
-						</Pressable>
-						<Pressable
-							accessibilityRole="button"
+							<span className="keeper-copy" style={styles.cancelText}>
+								Cancel
+							</span>
+						</button>
+						<button
+							type="button"
+							className="keeper-control"
 							style={styles.confirmButton}
-							onPress={handleConfirm}
+							onClick={handleConfirm}
 							disabled={!name.trim()}
 						>
-							<Text style={styles.confirmText}>Rename</Text>
-						</Pressable>
-					</View>
-				</View>
-			</View>
-		</Modal>
+							<span className="keeper-copy" style={styles.confirmText}>
+								Rename
+							</span>
+						</button>
+					</div>
+				</div>
+			</div>
+		</Dialog>
 	);
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	return StyleSheet.create({
+	return {
 		backdrop: {
 			flex: 1,
 			backgroundColor: "rgba(0, 0, 0, 0.35)",
@@ -95,17 +101,15 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			borderColor: theme.colors.border,
 			gap: 12,
 		},
-		title: {
-			fontSize: 18,
-			fontWeight: "700",
-			color: theme.colors.text,
-		},
+		title: { fontSize: 18, fontWeight: "700", color: theme.colors.text },
 		input: {
 			borderWidth: 1,
 			borderColor: theme.colors.border,
 			borderRadius: 8,
-			paddingHorizontal: 12,
-			paddingVertical: 10,
+			paddingLeft: 12,
+			paddingRight: 12,
+			paddingTop: 10,
+			paddingBottom: 10,
 			fontSize: 15,
 			color: theme.colors.text,
 			backgroundColor: theme.colors.card,
@@ -117,28 +121,24 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			marginTop: 4,
 		},
 		cancelButton: {
-			paddingHorizontal: 14,
-			paddingVertical: 10,
+			paddingLeft: 14,
+			paddingRight: 14,
+			paddingTop: 10,
+			paddingBottom: 10,
 			borderRadius: 10,
 			borderWidth: 1,
 			borderColor: theme.colors.border,
 			backgroundColor: theme.colors.card,
 		},
-		cancelText: {
-			fontSize: 14,
-			fontWeight: "600",
-			color: theme.colors.text,
-		},
+		cancelText: { fontSize: 14, fontWeight: "600", color: theme.colors.text },
 		confirmButton: {
-			paddingHorizontal: 14,
-			paddingVertical: 10,
+			paddingLeft: 14,
+			paddingRight: 14,
+			paddingTop: 10,
+			paddingBottom: 10,
 			borderRadius: 10,
 			backgroundColor: theme.colors.primary,
 		},
-		confirmText: {
-			fontSize: 14,
-			fontWeight: "700",
-			color: theme.colors.card,
-		},
-	});
+		confirmText: { fontSize: 14, fontWeight: "700", color: theme.colors.card },
+	} satisfies Record<string, React.CSSProperties>;
 }

@@ -1,8 +1,5 @@
 import type { Note } from "@/services/notes/types";
-import type {
-	NoteStatus,
-	NoteType,
-} from "@/services/notes/types";
+import type { NoteStatus, NoteType } from "@/services/notes/types";
 
 export interface NoteIndexItem {
 	noteId: string;
@@ -22,16 +19,6 @@ export interface ListNotesResult {
 export interface NotesIndexRebuildMetrics {
 	noteCount: number;
 	totalMs?: number;
-}
-
-export interface NoteIndexRow {
-	id: string;
-	title: string;
-	summary: string;
-	is_pinned: number;
-	updated_at: number;
-	note_type: NoteType | null;
-	status: NoteStatus | null;
 }
 
 export interface NoteSection {

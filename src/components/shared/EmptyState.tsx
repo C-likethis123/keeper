@@ -1,8 +1,8 @@
+import "./shared.css";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { Ionicons } from "@/components/shared/Icons";
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import type React from "react";
 
 type EmptyStateProps = {
 	title: string;
@@ -21,34 +21,35 @@ export default function EmptyState({
 	const showAction = actionLabel && onActionPress;
 
 	return (
-		<View style={styles.container}>
-			<View style={styles.content}>
-				<Text style={styles.title}>{title}</Text>
-				<Text style={styles.subtitle}>{subtitle}</Text>
+		<div style={styles.container}>
+			<div style={styles.content}>
+				<span style={styles.title}>{title}</span>
+				<span style={styles.subtitle}>{subtitle}</span>
 				{showAction && (
-					<Pressable
-						style={({ pressed }) => [
-							styles.button,
-							pressed && styles.buttonPressed,
-						]}
-						onPress={onActionPress}
+					<button
+						type="button"
+						className="keeper-control"
+						style={{ ...styles.button }}
+						onClick={onActionPress}
 					>
 						<Ionicons
 							name="create-outline"
 							size={18}
 							style={styles.buttonIcon}
 						/>
-						<Text style={styles.buttonLabel}>{actionLabel}</Text>
-					</Pressable>
+						<span style={styles.buttonLabel}>{actionLabel}</span>
+					</button>
 				)}
-			</View>
-		</View>
+			</div>
+		</div>
 	);
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	return StyleSheet.create({
+	return {
 		container: {
+			display: "flex",
+			flexDirection: "column",
 			flex: 1,
 			justifyContent: "center",
 			alignItems: "center",
@@ -56,6 +57,8 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		},
 
 		content: {
+			display: "flex",
+			flexDirection: "column",
 			alignItems: "center",
 			maxWidth: 420,
 		},
@@ -73,20 +76,20 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			fontSize: 15,
 			color: theme.colors.textMuted,
 			textAlign: "center",
-			lineHeight: 20,
+			lineHeight: "20px",
 		},
 
 		button: {
+			display: "flex",
 			flexDirection: "row",
 			alignItems: "center",
 			marginTop: 24,
-			paddingHorizontal: 20,
-			paddingVertical: 12,
+			paddingLeft: 20,
+			paddingRight: 20,
+			paddingTop: 12,
+			paddingBottom: 12,
 			borderRadius: 24,
 			backgroundColor: theme.colors.primary,
-		},
-		buttonPressed: {
-			opacity: 0.8,
 		},
 
 		buttonIcon: {
@@ -99,5 +102,5 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			fontWeight: "600",
 			fontSize: 15,
 		},
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }

@@ -1,6 +1,6 @@
 import VideoSplitPanel from "@keeper/components/editor/video/VideoSplitPanel";
 
-/** Browser shell for the same parsed, sandboxed video panel as Expo. */
+/** Browser shell for the same parsed, sandboxed video panel as shared UI. */
 export function BrowserVideoPanel({ url, onDismiss }: { url: string; onDismiss: () => void }) {
 	return <VideoSplitPanel url={url} onDismiss={onDismiss} />;
 }

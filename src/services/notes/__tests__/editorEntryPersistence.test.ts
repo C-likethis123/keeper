@@ -1,10 +1,12 @@
+import { vi } from "vitest";
+const { mockLoadNote, mockSaveNote, mockDeleteNote } = vi.hoisted(() => ({
+	mockLoadNote: vi.fn(),
+	mockSaveNote: vi.fn(),
+	mockDeleteNote: vi.fn(),
+}));
 import { persistEditorEntry } from "../editorEntryPersistence";
 
-const mockLoadNote = jest.fn();
-const mockSaveNote = jest.fn();
-const mockDeleteNote = jest.fn();
-
-jest.mock("@/services/notes/noteService", () => ({
+vi.mock("@/services/notes/noteService", () => ({
 	NoteService: {
 		loadNote: (...args: unknown[]) => mockLoadNote(...args),
 		saveNote: (...args: unknown[]) => mockSaveNote(...args),
@@ -14,7 +16,7 @@ jest.mock("@/services/notes/noteService", () => ({
 
 describe("persistEditorEntry", () => {
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 		mockLoadNote.mockReset();
 		mockSaveNote.mockReset();
 		mockDeleteNote.mockReset();
@@ -454,7 +456,7 @@ describe("persistEditorEntry", () => {
 	});
 
 	it("stamps createdAt for newly persisted todo notes", async () => {
-		jest.spyOn(Date, "now").mockReturnValue(1710000000000);
+		vi.spyOn(Date, "now").mockReturnValue(1710000000000);
 		mockLoadNote.mockResolvedValue(null);
 
 		await persistEditorEntry({
@@ -478,7 +480,7 @@ describe("persistEditorEntry", () => {
 	});
 
 	it("stamps completedAt when an existing todo moves to done", async () => {
-		jest.spyOn(Date, "now").mockReturnValue(1710003600000);
+		vi.spyOn(Date, "now").mockReturnValue(1710003600000);
 		mockLoadNote.mockResolvedValue({
 			id: "todo-1",
 			title: "TODO: Ship release",

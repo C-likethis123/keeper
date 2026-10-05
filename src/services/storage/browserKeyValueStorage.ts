@@ -1,5 +1,5 @@
 /** Keep legacy AsyncStorage web keys readable without a data migration. */
-export const browserKeyValueStorage = {
+const browserKeyValueStorage = {
 	async getItem(key: string): Promise<string | null> {
 		return window.localStorage.getItem(key);
 	},

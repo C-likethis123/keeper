@@ -4,8 +4,8 @@ Local-first Markdown notes for web/PWA.
 
 ## Tech stack
 
-1. Vite, React, React Router, and shared React Native Web components
-2. [Lexical](https://lexical.dev/) rich Markdown editor, rendered through Expo DOM
+1. Vite, React, React Router, and shared HTML/CSS components
+2. [Lexical](https://lexical.dev/) rich Markdown editor, rendered in browser DOM
 3. Browser IndexedDB storage
 4. Optional server sync for note operations, Git mirroring, and MOC classification
 
@@ -27,8 +27,10 @@ Local-first Markdown notes for web/PWA.
 Useful commands:
 
 - `npm run build:web` — build production Vite web/PWA bundle
-- `npm run build:web:expo` — build legacy Expo web bundle
-- `npm run lint`, `npm run test:vite`, and `npm run test:browser` — checks
+- `npm run lint`, `npm test`, and `npm run test:browser` — checks
+
+`npm test` runs source and browser suites with Vitest, jsdom, and DOM Testing Library.
+Use `npm run test:watch` for watch mode or `npm test -- --project source` for shared source tests.
 
 Shared source lives in `src/`; Vite browser source lives in `web/src/`.
 
@@ -41,7 +43,7 @@ Current release blockers: complete browser index/cluster parity; attachment quot
 
 ### Sync backend configuration
 
-Configure the sync server URL:
+Configure sync server URL (`VITE_SYNC_SERVER_URL` or existing `EXPO_PUBLIC_SYNC_SERVER_URL`):
 
 ```bash
 VITE_SYNC_SERVER_URL=https://keeper.example.com
@@ -77,18 +79,3 @@ Server setup and operator details: [`server/README.md`](server/README.md) and [`
 - Install the Biome VS Code extension and enable it for linting/formatting.
 - In CI, run `npm run lint` to use Biome.
 - For startup profiling, see `docs/Startup telemetry.md` for the `[StartupTrace]` log format and the main timing fields.
-
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Expo web guide](https://docs.expo.dev/workflow/web/): Learn Expo's web build and deployment workflow.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.

@@ -1,8 +1,9 @@
+import { vi } from "vitest";
 import { FilterChip } from "@/components/shared/FilterChip";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react";
 import React from "react";
 
-jest.mock("@/hooks/useExtendedTheme", () => ({
+vi.mock("@/hooks/useExtendedTheme", () => ({
 	useExtendedTheme: () => ({
 		colors: {
 			background: "#ffffff",
@@ -27,11 +28,11 @@ describe("FilterChip", () => {
 	});
 
 	it("calls onPress when tapped", () => {
-		const onPress = jest.fn();
+		const onPress = vi.fn();
 		const { getByText } = render(
 			<FilterChip label="Todos" selected={false} onPress={onPress} />,
 		);
-		fireEvent.press(getByText("Todos"));
+		fireEvent.click(getByText("Todos"));
 		expect(onPress).toHaveBeenCalledTimes(1);
 	});
 

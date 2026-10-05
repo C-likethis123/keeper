@@ -1,3 +1,5 @@
+import type React from "react";
+import "@/components/shared/shared.css";
 import type {
 	DrawingBackgroundPattern,
 	DrawingTool,
@@ -6,7 +8,6 @@ import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import { FontAwesome } from "@/components/shared/Icons";
 import { memo, useCallback } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "@/components/shared/SafeArea";
 
 const COLORS = [
@@ -65,125 +66,158 @@ function DrawingToolbar({
 	const handleRedo = useCallback(() => onRedo(), [onRedo]);
 
 	return (
-		<View style={[styles.shell, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-			<ScrollView
-				horizontal
-				showsHorizontalScrollIndicator={false}
-				contentContainerStyle={styles.content}
-			>
-				<Pressable
-					onPress={handleUndo}
-					disabled={!canUndo}
-					style={[styles.iconButton, !canUndo && styles.disabled]}
-					accessibilityRole="button"
-					accessibilityLabel="Undo"
+		<div
+			className="keeper-layout"
+			style={{
+				...styles.shell,
+				...{ paddingBottom: Math.max(insets.bottom, 8) },
+			}}
+		>
+			<div className="keeper-layout" style={{ overflowX: "auto", ...{} }}>
+				<div
+					className="keeper-layout"
+					style={{ flexDirection: "row", ...styles.content }}
 				>
-					<FontAwesome name="undo" size={18} color={theme.colors.text} />
-				</Pressable>
-				<Pressable
-					onPress={handleRedo}
-					disabled={!canRedo}
-					style={[styles.iconButton, !canRedo && styles.disabled]}
-					accessibilityRole="button"
-					accessibilityLabel="Redo"
-				>
-					<FontAwesome name="repeat" size={18} color={theme.colors.text} />
-				</Pressable>
-				<View style={styles.divider} />
-				{TOOLS.map((option) => {
-					const selected = option.value === tool;
-					return (
-						<Pressable
-							key={option.value}
-							onPress={() => onToolChange(option.value)}
-							style={[styles.toolButton, selected && styles.selectedButton]}
-							accessibilityRole="button"
-							accessibilityLabel={option.label}
-							accessibilityState={{ selected }}
-						>
-							<FontAwesome
-								name={option.icon}
-								size={17}
-								color={
-									selected ? theme.colors.primaryContrast : theme.colors.text
-								}
-							/>
-							<Text
-								style={[styles.toolLabel, selected && styles.selectedLabel]}
+					<button
+						type="button"
+						className="keeper-control"
+						onClick={handleUndo}
+						disabled={!canUndo}
+						style={{
+							...styles.iconButton,
+							...(!canUndo ? styles.disabled : {}),
+						}}
+						aria-label="Undo"
+					>
+						<FontAwesome name="undo" size={18} color={theme.colors.text} />
+					</button>
+					<button
+						type="button"
+						className="keeper-control"
+						onClick={handleRedo}
+						disabled={!canRedo}
+						style={{
+							...styles.iconButton,
+							...(!canRedo ? styles.disabled : {}),
+						}}
+						aria-label="Redo"
+					>
+						<FontAwesome name="repeat" size={18} color={theme.colors.text} />
+					</button>
+					<div className="keeper-layout" style={styles.divider} />
+					{TOOLS.map((option) => {
+						const selected = option.value === tool;
+						return (
+							<button
+								type="button"
+								className="keeper-control"
+								key={option.value}
+								onClick={() => onToolChange(option.value)}
+								style={{
+									...styles.toolButton,
+									...(selected ? styles.selectedButton : {}),
+								}}
+								aria-label={option.label}
+								aria-pressed={true}
 							>
-								{option.label}
-							</Text>
-						</Pressable>
-					);
-				})}
-				<View style={styles.divider} />
-				{COLORS.map((option) => {
-					const selected = option === color;
-					return (
-						<Pressable
-							key={option}
-							onPress={() => onColorChange(option)}
-							style={[
-								styles.colorButton,
-								{ backgroundColor: option },
-								selected && styles.selectedColor,
-							]}
-							accessibilityRole="button"
-							accessibilityLabel={`Color ${option}`}
-							accessibilityState={{ selected }}
-						/>
-					);
-				})}
-				<View style={styles.divider} />
-				{WIDTHS.map((option) => {
-					const selected = option === strokeWidth;
-					return (
-						<Pressable
-							key={option}
-							onPress={() => onWidthChange(option)}
-							style={[styles.widthButton, selected && styles.selectedWidth]}
-							accessibilityRole="button"
-							accessibilityLabel={`Stroke width ${option}`}
-							accessibilityState={{ selected }}
-						>
-							<View
-								style={[
-									styles.widthDot,
-									{
-										width: Math.max(4, option / 2),
-										height: Math.max(4, option / 2),
-									},
-								]}
+								<FontAwesome
+									name={option.icon}
+									size={17}
+									color={
+										selected ? theme.colors.primaryContrast : theme.colors.text
+									}
+								/>
+								<span
+									className="keeper-copy"
+									style={{
+										...styles.toolLabel,
+										...(selected ? styles.selectedLabel : {}),
+									}}
+								>
+									{option.label}
+								</span>
+							</button>
+						);
+					})}
+					<div className="keeper-layout" style={styles.divider} />
+					{COLORS.map((option) => {
+						const selected = option === color;
+						return (
+							<button
+								type="button"
+								className="keeper-control"
+								key={option}
+								onClick={() => onColorChange(option)}
+								style={{
+									...styles.colorButton,
+									...{ backgroundColor: option },
+									...(selected ? styles.selectedColor : {}),
+								}}
+								aria-label={`Color ${option}`}
+								aria-pressed={true}
 							/>
-						</Pressable>
-					);
-				})}
-				<Pressable
-					onPress={onCycleBackground}
-					style={styles.backgroundButton}
-					accessibilityRole="button"
-					accessibilityLabel={`Background ${backgroundPattern}`}
-				>
-					<FontAwesome name="th" size={17} color={theme.colors.text} />
-					<Text style={styles.toolLabel}>{backgroundPattern}</Text>
-				</Pressable>
-			</ScrollView>
-		</View>
+						);
+					})}
+					<div className="keeper-layout" style={styles.divider} />
+					{WIDTHS.map((option) => {
+						const selected = option === strokeWidth;
+						return (
+							<button
+								type="button"
+								className="keeper-control"
+								key={option}
+								onClick={() => onWidthChange(option)}
+								style={{
+									...styles.widthButton,
+									...(selected ? styles.selectedWidth : {}),
+								}}
+								aria-label={`Stroke width ${option}`}
+								aria-pressed={true}
+							>
+								<div
+									className="keeper-layout"
+									style={{
+										...styles.widthDot,
+										...{
+											width: Math.max(4, option / 2),
+											height: Math.max(4, option / 2),
+										},
+									}}
+								/>
+							</button>
+						);
+					})}
+					<button
+						type="button"
+						className="keeper-control"
+						onClick={onCycleBackground}
+						style={styles.backgroundButton}
+						aria-label={`Background ${backgroundPattern}`}
+					>
+						<FontAwesome name="th" size={17} color={theme.colors.text} />
+						<span className="keeper-copy" style={styles.toolLabel}>
+							{backgroundPattern}
+						</span>
+					</button>
+				</div>
+			</div>
+		</div>
 	);
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	return StyleSheet.create({
+	return {
 		shell: {
 			backgroundColor: theme.colors.card,
-			borderTopWidth: StyleSheet.hairlineWidth,
+			borderTopWidth: 1,
 			borderTopColor: theme.colors.border,
 			paddingTop: 8,
 		},
 		content: {
 			alignItems: "center",
 			gap: 8,
-			paddingHorizontal: 12,
+			paddingLeft: 12,
+			paddingRight: 12,
 		},
 		iconButton: {
 			width: 40,
@@ -196,7 +230,8 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		divider: { width: 1, height: 28, backgroundColor: theme.colors.border },
 		toolButton: {
 			height: 40,
-			paddingHorizontal: 10,
+			paddingLeft: 10,
+			paddingRight: 10,
 			borderRadius: 12,
 			flexDirection: "row",
 			alignItems: "center",
@@ -222,13 +257,14 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 		widthDot: { borderRadius: 999, backgroundColor: theme.colors.text },
 		backgroundButton: {
 			height: 40,
-			paddingHorizontal: 10,
+			paddingLeft: 10,
+			paddingRight: 10,
 			borderRadius: 12,
 			flexDirection: "row",
 			alignItems: "center",
 			gap: 6,
 		},
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }
 
 export default memo(DrawingToolbar);

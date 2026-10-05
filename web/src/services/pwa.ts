@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 
 const VITE_CACHE_PREFIX = "keeper-vite-shell-";
 
-export type PwaState = {
+type PwaState = {
 	supported: boolean;
 	registered: boolean;
 	updateAvailable: boolean;
@@ -38,7 +38,7 @@ export function getPwaState(): PwaState {
 	return state;
 }
 
-export function subscribePwaState(listener: () => void): () => void {
+function subscribePwaState(listener: () => void): () => void {
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }

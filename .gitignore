@@ -3,13 +3,8 @@
 # dependencies
 node_modules/
 
-# Expo
-.expo/
+# Build output
 dist/
-web-build/
-expo-env.d.ts
-*.apk
-*.so
 
 # caddy
 server/caddy-root.crt
@@ -29,9 +24,6 @@ __pycache__
 *.p12
 *.key
 *.mobileprovision
-
-# Metro
-.metro-health-check*
 
 # debug
 npm-debug.*

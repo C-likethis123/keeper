@@ -85,7 +85,7 @@ export function scheduleSyncPush(delayMs = 0): void {
 	);
 }
 
-export async function pushPendingSyncOps(): Promise<void> {
+async function pushPendingSyncOps(): Promise<void> {
 	if (pushPromise) return pushPromise;
 
 	pushPromise = (async () => {

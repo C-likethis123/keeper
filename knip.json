@@ -1,17 +1,33 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignoreDependencies": [
-    "@welldone-software/why-did-you-render",
-    "babel-plugin-dynamic-import-node",
-    "epubjs",
-    "pdfjs-dist",
-    "jszip"
-  ],
-  "ignoreBinaries": ["adb"],
-  "ignoreFiles": [
-    "wdyr.ts",
-    "**/*.web.ts",
-    "**/*.web.tsx"
-  ],
-  "tags": ["-lintignore"]
+  "workspaces": {
+    ".": {
+      "entry": [
+        "src/**/*.test.{ts,tsx}",
+        "web/src/**/*.test.{ts,tsx}",
+        "web/e2e/**/*.spec.ts",
+        "cloudflare/private-api-proxy/src/index.js"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "web/**/*.{ts,tsx}",
+        "scripts/**/*.js",
+        "cloudflare/**/*.js",
+        "*.{ts,js}"
+      ],
+      "ignoreDependencies": [
+        "epubjs",
+        "pdfjs-dist",
+        "jszip"
+      ]
+    },
+    "server/api": {
+      "project": [
+        "src/**/*.ts"
+      ]
+    }
+  },
+  "tags": [
+    "-lintignore"
+  ]
 }

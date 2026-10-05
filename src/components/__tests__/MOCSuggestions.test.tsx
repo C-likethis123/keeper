@@ -1,66 +1,66 @@
+import { vi, type Mock } from "vitest";
+const {
+	mockListActiveClusters,
+	mockListAcceptedClusters,
+	mockListClusterMembers,
+	mockNotesIndexDbGetById,
+} = vi.hoisted(() => ({
+	mockListActiveClusters: vi.fn(),
+	mockListAcceptedClusters: vi.fn(),
+	mockListClusterMembers: vi.fn(),
+	mockNotesIndexDbGetById: vi.fn(),
+}));
 import MOCSuggestions from "@/components/moc/MOCSuggestions";
-import {
-	fireEvent,
-	render,
-	screen,
-	waitFor,
-} from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 
-const mockListActiveClusters = jest.fn();
-const mockListAcceptedClusters = jest.fn();
-const mockListClusterMembers = jest.fn();
-const mockNotesIndexDbGetById = jest.fn();
-
-jest.mock("@/components/moc/MergeClusterModal", () => {
-	const React = require("react");
+vi.mock("@/components/moc/MergeClusterModal", async () => {
+	const React = await import("react");
 	return {
-		__esModule: true,
 		default: () => React.createElement(React.Fragment, null),
 	};
 });
 
-jest.mock("@/components/moc/RenameClusterModal", () => {
-	const React = require("react");
+vi.mock("@/components/moc/RenameClusterModal", async () => {
+	const React = await import("react");
 	return {
-		__esModule: true,
 		default: () => React.createElement(React.Fragment, null),
 	};
 });
 
-jest.mock("@/services/notes/clusterFeedbackService", () => ({
-	logFeedback: jest.fn(),
+vi.mock("@/services/notes/clusterFeedbackService", () => ({
+	logFeedback: vi.fn(),
 }));
 
-jest.mock("@/services/notes/clusterService", () => ({
+vi.mock("@/services/notes/clusterService", () => ({
 	listActiveClusters: (...args: unknown[]) => mockListActiveClusters(...args),
 	listAcceptedClusters: (...args: unknown[]) =>
 		mockListAcceptedClusters(...args),
 	listClusterMembers: (...args: unknown[]) => mockListClusterMembers(...args),
-	clusterAccept: jest.fn(),
-	clusterAddNote: jest.fn(),
-	clusterDismiss: jest.fn(),
-	clusterRename: jest.fn(),
+	clusterAccept: vi.fn(),
+	clusterAddNote: vi.fn(),
+	clusterDismiss: vi.fn(),
+	clusterRename: vi.fn(),
 }));
 
-jest.mock("@/services/notes/notesIndexDb", () => ({
+vi.mock("@/services/notes/notesIndexDb", () => ({
 	notesIndexDbGetById: (...args: unknown[]) => mockNotesIndexDbGetById(...args),
 }));
 
-jest.mock("@/stores/storageStore", () => ({
+vi.mock("@/stores/storageStore", () => ({
 	useStorageStore: (
 		selector: (state: {
 			contentVersion: number;
-			bumpContentVersion: jest.Mock;
+			bumpContentVersion: Mock;
 		}) => unknown,
 	) =>
 		selector({
 			contentVersion: 0,
-			bumpContentVersion: jest.fn(),
+			bumpContentVersion: vi.fn(),
 		}),
 }));
 
-jest.mock("@/hooks/useExtendedTheme", () => ({
+vi.mock("@/hooks/useExtendedTheme", () => ({
 	useExtendedTheme: () => ({
 		colors: {
 			card: "#ffffff",
@@ -105,17 +105,17 @@ describe("MOCSuggestions", () => {
 			{ note_id: "note-1", score: 0.9 },
 		]);
 		mockNotesIndexDbGetById.mockResolvedValue({ id: "note-1", title: "Alpha" });
-		const onPressViewAll = jest.fn();
+		const onPressViewAll = vi.fn();
 
 		render(<MOCSuggestions onPressViewAll={onPressViewAll} />);
 
-		expect(await screen.findByText("Research MOC")).toBeOnTheScreen();
-		fireEvent.press(
+		expect(await screen.findByText("Research MOC")).toBeInTheDocument();
+		fireEvent.click(
 			screen.getByRole("button", { name: "View all suggested MOCs" }),
 		);
 
 		expect(onPressViewAll).toHaveBeenCalledTimes(1);
-		expect(screen.getByText("Alpha")).toBeOnTheScreen();
+		expect(screen.getByText("Alpha")).toBeInTheDocument();
 	});
 
 	it("renders an empty state on the dedicated screen when no suggestions exist", async () => {
@@ -124,12 +124,12 @@ describe("MOCSuggestions", () => {
 		render(<MOCSuggestions variant="screen" />);
 
 		await waitFor(() => {
-			expect(screen.getByText("No suggested MOCs")).toBeOnTheScreen();
+			expect(screen.getByText("No suggested MOCs")).toBeInTheDocument();
 		});
 		expect(
 			screen.getByText(
 				"New note clusters will appear here after the suggestion pipeline has generated them.",
 			),
-		).toBeOnTheScreen();
+		).toBeInTheDocument();
 	});
 });

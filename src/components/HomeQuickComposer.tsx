@@ -1,3 +1,5 @@
+import { useColorScheme } from "@/hooks/useBrowserAppearance";
+import "@/components/shared/shared.css";
 import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import LexicalMarkdownEditor from "@/components/editor/lexical/LexicalMarkdownEditor";
 import type { LexicalEditorCommand } from "@/components/editor/lexical/extensions/CommandExtension";
@@ -6,15 +8,8 @@ import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { NoteType } from "@/services/notes/types";
 import { FontAwesome } from "@/components/shared/Icons";
-import React, { useRef, useState } from "react";
-import {
-	Pressable,
-	StyleSheet,
-	Text,
-	TextInput,
-	View,
-	useColorScheme,
-} from "react-native";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function HomeQuickComposer({
 	onCreateTypedNote,
@@ -40,6 +35,10 @@ export default function HomeQuickComposer({
 	const savingRef = useRef(false);
 	const [editorCommand, setEditorCommand] = useState<LexicalEditorCommand>();
 	const colorScheme = useColorScheme();
+	const titleInputRef = useRef<HTMLInputElement>(null);
+	useEffect(() => {
+		if (isExpanded) titleInputRef.current?.focus();
+	}, [isExpanded]);
 
 	const expand = () => {
 		setEditorCommand(undefined);
@@ -75,28 +74,34 @@ export default function HomeQuickComposer({
 	};
 
 	return (
-		<View style={styles.wrapper}>
-			<View
-				testID="home-quick-composer-card"
-				style={[styles.card, isExpanded && styles.cardExpanded]}
+		<div className="keeper-layout" style={styles.wrapper}>
+			<div
+				className="keeper-layout"
+				data-testid="home-quick-composer-card"
+				style={{ ...styles.card, ...(isExpanded ? styles.cardExpanded : {}) }}
 			>
 				{isExpanded ? (
 					<>
-						<TextInput
-							autoFocus
-							accessibilityLabel="Note title"
+						<input
+							className="keeper-input"
+							ref={titleInputRef}
+							aria-label="Note title"
 							placeholder="Title"
-							placeholderTextColor={styles.placeholder.color}
 							value={title}
-							onChangeText={setTitle}
-							onSubmitEditing={() =>
-								setEditorCommand({ type: "focusEditor", timestamp: Date.now() })
-							}
-							returnKeyType="next"
-							blurOnSubmit={false}
+							onChange={(event) => setTitle(event.currentTarget.value)}
+							onKeyDown={(event) => {
+								if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+									event.preventDefault();
+									(() =>
+										setEditorCommand({
+											type: "focusEditor",
+											timestamp: Date.now(),
+										}))();
+								}
+							}}
 							style={styles.titleInput}
 						/>
-						<View style={styles.contentInput}>
+						<div className="keeper-layout" style={styles.contentInput}>
 							<LexicalMarkdownEditor
 								accessibilityLabel="Note content"
 								autoFocus={false}
@@ -110,14 +115,14 @@ export default function HomeQuickComposer({
 								persistDraft={false}
 								themeMode={colorScheme ?? "dark"}
 								variant="compact"
-
 							/>
-						</View>
-						<Pressable
-							accessibilityRole="button"
-							accessibilityLabel={isPinned ? "Unpin note" : "Pin note"}
-							accessibilityState={{ selected: isPinned }}
-							onPress={() => setIsPinned((current) => !current)}
+						</div>
+						<button
+							type="button"
+							className="keeper-control"
+							aria-label={isPinned ? "Unpin note" : "Pin note"}
+							aria-pressed={isPinned}
+							onClick={() => setIsPinned((current) => !current)}
 							style={styles.pinButton}
 						>
 							<FontAwesome
@@ -127,38 +132,36 @@ export default function HomeQuickComposer({
 									isPinned ? styles.pinIconPinned.color : styles.pinIcon.color
 								}
 							/>
-						</Pressable>
-						<View style={styles.expandedFooter}>
-							<Pressable
-								accessibilityRole="button"
-								accessibilityLabel="Close note"
+						</button>
+						<div className="keeper-layout" style={styles.expandedFooter}>
+							<button
+								type="button"
+								className="keeper-control"
+								aria-label="Close note"
 								disabled={isSaving}
-								onPress={() => void close()}
-								style={({ pressed }) => [
-									styles.closeButton,
-									pressed && styles.primaryActionPressed,
-								]}
+								onClick={() => void close()}
+								style={{ ...styles.closeButton }}
 							>
-								<Text style={styles.closeButtonText}>
+								<span className="keeper-copy" style={styles.closeButtonText}>
 									{isSaving ? "Saving..." : "Close"}
-								</Text>
-							</Pressable>
-						</View>
+								</span>
+							</button>
+						</div>
 					</>
 				) : (
 					<>
-						<Pressable
-							accessibilityRole="button"
-							accessibilityLabel="Take a note"
-							style={({ pressed }) => [
-								styles.primaryAction,
-								pressed && styles.primaryActionPressed,
-							]}
-							onPress={expand}
+						<button
+							type="button"
+							className="keeper-control"
+							aria-label="Take a note"
+							style={{ ...styles.primaryAction }}
+							onClick={expand}
 						>
-							<Text style={styles.placeholder}>Take a note...</Text>
-						</Pressable>
-						<View style={styles.actions}>
+							<span className="keeper-copy" style={styles.placeholder}>
+								Take a note...
+							</span>
+						</button>
+						<div className="keeper-layout" style={styles.actions}>
 							<IconButton
 								label="Create todo"
 								name="check-square-o"
@@ -195,39 +198,38 @@ export default function HomeQuickComposer({
 								variant="flat"
 								onPress={() => onCreateTypedNote({ noteType: "drawing" })}
 							/>
-						</View>
+						</div>
 					</>
 				)}
-			</View>
-		</View>
+			</div>
+		</div>
 	);
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	return StyleSheet.create({
+	return {
 		wrapper: {
 			paddingTop: 12,
 			paddingBottom: 16,
-			paddingHorizontal: 8,
+			paddingLeft: 8,
+			paddingRight: 8,
 		},
 		card: {
+			boxShadow: `0px 4px 10px color-mix(in srgb, ${theme.colors.shadow} ${0.12 * 100}%, transparent)`,
 			maxWidth: 640,
 			width: "100%",
 			alignSelf: "center",
 			minHeight: 60,
-			paddingHorizontal: 18,
-			paddingVertical: 14,
+			paddingLeft: 18,
+			paddingRight: 18,
+			paddingTop: 14,
+			paddingBottom: 14,
 			borderRadius: 16,
 			backgroundColor: theme.colors.card,
 			borderWidth: 1,
 			borderColor: theme.colors.border,
 			flexDirection: "row",
 			alignItems: "center",
-			shadowColor: theme.colors.shadow,
-			shadowOpacity: 0.12,
-			shadowRadius: 10,
-			shadowOffset: { width: 0, height: 4 },
-			elevation: 3,
 		},
 		cardExpanded: {
 			maxWidth: 860,
@@ -238,17 +240,9 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			alignItems: "stretch",
 			borderRadius: 12,
 		},
-		primaryAction: {
-			flex: 1,
-		},
-		primaryActionPressed: {
-			opacity: 0.7,
-		},
-		placeholder: {
-			flex: 1,
-			fontSize: 20,
-			color: theme.colors.textMuted,
-		},
+		primaryAction: { flex: 1 },
+
+		placeholder: { flex: 1, fontSize: 20, color: theme.colors.textMuted },
 		titleInput: {
 			minHeight: 44,
 			paddingRight: 44,
@@ -256,11 +250,7 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			fontWeight: "600",
 			color: theme.colors.text,
 		},
-		contentInput: {
-			minHeight: 104,
-			height: 120,
-			overflow: "hidden",
-		},
+		contentInput: { minHeight: 104, height: 120, overflow: "hidden" },
 		pinButton: {
 			position: "absolute",
 			top: 8,
@@ -271,20 +261,18 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			justifyContent: "center",
 			borderRadius: 20,
 		},
-		pinIcon: {
-			color: theme.colors.textMuted,
-		},
-		pinIconPinned: {
-			color: theme.colors.primary,
-		},
+		pinIcon: { color: theme.colors.textMuted },
+		pinIconPinned: { color: theme.colors.primary },
 		expandedFooter: {
 			minHeight: 40,
 			alignItems: "flex-end",
 			justifyContent: "center",
 		},
 		closeButton: {
-			paddingHorizontal: 16,
-			paddingVertical: 9,
+			paddingLeft: 16,
+			paddingRight: 16,
+			paddingTop: 9,
+			paddingBottom: 9,
 			borderRadius: 8,
 		},
 		closeButtonText: {
@@ -298,5 +286,5 @@ function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
 			gap: 16,
 			marginLeft: 16,
 		},
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }

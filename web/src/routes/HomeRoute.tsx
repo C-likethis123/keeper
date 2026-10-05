@@ -11,7 +11,6 @@ import { useTabStore } from "@/stores/tabStore";
 import { useBrowserNotes } from "@web/state/BrowserNotesProvider";
 import { useOpenBrowserDrawer } from "@web/shell/ViteAppShell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { TextInput } from "react-native";
 import { useNavigate } from "react-router-dom";
 
 function compareNotes(left: Note, right: Note) {
@@ -35,7 +34,7 @@ export function HomeRoute() {
 	const [visibleLimit, setVisibleLimit] = useState(NOTE_GRID_PAGE_SIZE);
 	const [refreshing, setRefreshing] = useState(false);
 	const paginationPending = useRef(false);
-	const searchInputRef = useRef<TextInput>(null);
+	const searchInputRef = useRef<HTMLInputElement>(null);
 	const noteTypes = useFilterStore((state) => state.noteTypes);
 	const status = useFilterStore((state) => state.status);
 	const hideDone = useFilterStore((state) => state.hideDone);

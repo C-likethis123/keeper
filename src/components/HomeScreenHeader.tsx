@@ -1,9 +1,9 @@
+import "@/components/shared/shared.css";
 import { IconButton } from "@/components/shared/IconButton";
 import { SearchBar } from "@/components/shared/SearchBar";
 import type { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type React from "react";
-import { StyleSheet, type TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "@/components/shared/SafeArea";
 
 export default function HomeScreenHeader({
@@ -15,7 +15,7 @@ export default function HomeScreenHeader({
 }: {
 	searchQuery: string;
 	setSearchQuery: (query: string) => void;
-	searchInputRef?: React.Ref<TextInput>;
+	searchInputRef?: React.Ref<HTMLInputElement>;
 	onMenuPress: () => void;
 	onOpenSuggestedMocs: () => void;
 }) {
@@ -23,8 +23,11 @@ export default function HomeScreenHeader({
 	const insets = useSafeAreaInsets();
 
 	return (
-		<View style={[styles.shell, { paddingTop: insets.top + 12 }]}>
-			<View style={styles.row}>
+		<div
+			className="keeper-layout"
+			style={{ ...styles.shell, ...{ paddingTop: insets.top + 12 } }}
+		>
+			<div className="keeper-layout" style={styles.row}>
 				<IconButton
 					name="bars"
 					label="Open filters"
@@ -47,28 +50,24 @@ export default function HomeScreenHeader({
 					tooltipPlacement="bottom"
 					onPress={onOpenSuggestedMocs}
 				/>
-			</View>
-		</View>
+			</div>
+		</div>
 	);
 }
 
 function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	return StyleSheet.create({
+	return {
 		shell: {
 			position: "relative",
 			zIndex: 40,
-			elevation: 8,
-			paddingHorizontal: 16,
+			paddingLeft: 16,
+			paddingRight: 16,
 			paddingTop: 12,
 			paddingBottom: 8,
 			backgroundColor: theme.colors.background,
-			borderBottomWidth: StyleSheet.hairlineWidth,
+			borderBottomWidth: 1,
 			borderBottomColor: theme.colors.border,
 		},
-		row: {
-			flexDirection: "row",
-			alignItems: "center",
-			gap: 12,
-		},
-	});
+		row: { flexDirection: "row", alignItems: "center", gap: 12 },
+	} satisfies Record<string, React.CSSProperties>;
 }

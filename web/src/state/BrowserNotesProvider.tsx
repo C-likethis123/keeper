@@ -1,4 +1,3 @@
-import { invalidateNoteQueryCache } from "@/services/notes/noteQueryCache";
 import type { NoteType } from "@/services/notes/types";
 import { useStorageStore } from "@/stores/storageStore";
 import { useToastStore } from "@/stores/toastStore";
@@ -30,7 +29,7 @@ import {
 	useState,
 } from "react";
 
-export type BrowserNotesContextValue = {
+type BrowserNotesContextValue = {
 	notes: BrowserNote[];
 	ready: boolean;
 	loadError: Error | null;
@@ -163,7 +162,6 @@ export function BrowserNotesProvider({
 					.filter((note) => !next.some((item) => item.id === note.id))
 					.map((note) => enqueueBrowserNoteDelete(note.id)),
 			);
-			invalidateNoteQueryCache();
 			bumpContentVersion();
 			void syncBrowserNotes()
 				.then(replaceNotes)

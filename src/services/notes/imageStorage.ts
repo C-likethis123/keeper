@@ -59,18 +59,7 @@ export async function saveImageBytesToNotes(
 	return relativePath;
 }
 
-export async function copyPickedImageToNotes(uri: string): Promise<string> {
-	const response = await fetch(uri);
-	if (!response.ok) throw new Error("Could not read selected image");
-	const mimeType = response.headers.get("content-type") || "image/jpeg";
-	const relativePath = await saveImageBytesToNotes(
-		new Uint8Array(await response.arrayBuffer()),
-		mimeType,
-		uri,
-	);
-	URL.revokeObjectURL(uri);
-	return relativePath;
-}
+
 
 export async function resolveImageUri(relativePath: string): Promise<string> {
 	if (/^[a-z][a-z0-9+.-]*:/i.test(relativePath)) {

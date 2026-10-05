@@ -1,15 +1,9 @@
+import "@/components/shared/shared.css";
 import { useExtendedTheme } from "@/hooks/useExtendedTheme";
 import { useStyles } from "@/hooks/useStyles";
 import type { Note } from "@/services/notes/types";
 import { MaterialCommunityIcons } from "@/components/shared/Icons";
-import React from "react";
-import {
-	ScrollView,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	View,
-} from "react-native";
+import type React from "react";
 
 interface NoteRelatedNotesProps {
 	backlinks: Note[];
@@ -29,22 +23,30 @@ function NoteLink({
 	const styles = useStyles(createStyles);
 
 	return (
-		<TouchableOpacity
+		<button
+			type="button"
+			className="keeper-control"
 			style={styles.noteLink}
-			onPress={() => onNavigate(note.id)}
+			onClick={() => onNavigate(note.id)}
 		>
 			<MaterialCommunityIcons
 				name="file-document-outline"
 				size={16}
 				color={theme.colors.textSecondary}
 			/>
-			<Text
-				style={[styles.noteLinkText, { color: theme.colors.text }]}
-				numberOfLines={1}
+			<span
+				className="keeper-copy"
+				style={{
+					...{ ...styles.noteLinkText, ...{ color: theme.colors.text } },
+					overflow: "hidden",
+					display: "-webkit-box",
+					WebkitBoxOrient: "vertical",
+					WebkitLineClamp: 1,
+				}}
 			>
 				{note.title || "Untitled"}
-			</Text>
-		</TouchableOpacity>
+			</span>
+		</button>
 	);
 }
 
@@ -65,34 +67,45 @@ function NoteList({
 	const styles = useStyles(createStyles);
 
 	return (
-		<View style={styles.section}>
-			<View style={styles.sectionHeader}>
+		<div className="keeper-layout" style={styles.section}>
+			<div className="keeper-layout" style={styles.sectionHeader}>
 				<MaterialCommunityIcons
 					name={icon}
 					size={18}
 					color={theme.colors.textSecondary}
 				/>
-				<Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+				<span
+					className="keeper-copy"
+					style={{ ...styles.sectionTitle, ...{ color: theme.colors.text } }}
+				>
 					{title}
-				</Text>
-				<Text
-					style={[styles.sectionCount, { color: theme.colors.textSecondary }]}
+				</span>
+				<span
+					className="keeper-copy"
+					style={{
+						...styles.sectionCount,
+						...{ color: theme.colors.textSecondary },
+					}}
 				>
 					{notes.length}
-				</Text>
-			</View>
+				</span>
+			</div>
 			{notes.length === 0 ? (
-				<Text
-					style={[styles.emptyLabel, { color: theme.colors.textSecondary }]}
+				<span
+					className="keeper-copy"
+					style={{
+						...styles.emptyLabel,
+						...{ color: theme.colors.textSecondary },
+					}}
 				>
 					{emptyLabel}
-				</Text>
+				</span>
 			) : (
 				notes.map((note) => (
 					<NoteLink key={note.id} note={note} onNavigate={onNavigate} />
 				))
 			)}
-		</View>
+		</div>
 	);
 }
 
@@ -107,84 +120,63 @@ export default function NoteRelatedNotes({
 
 	if (loading) {
 		return (
-			<View style={styles.container}>
-				<Text
-					style={[styles.loadingText, { color: theme.colors.textSecondary }]}
+			<div className="keeper-layout" style={styles.container}>
+				<span
+					className="keeper-copy"
+					style={{
+						...styles.loadingText,
+						...{ color: theme.colors.textSecondary },
+					}}
 				>
 					Loading related notes...
-				</Text>
-			</View>
+				</span>
+			</div>
 		);
 	}
 
 	return (
-		<ScrollView
-			style={styles.container}
-			contentContainerStyle={styles.content}
-			showsVerticalScrollIndicator={false}
+		<div
+			className="keeper-layout"
+			style={{ overflowY: "auto", ...styles.container }}
 		>
-			<NoteList
-				title="Backlinks"
-				icon="link-variant"
-				notes={backlinks}
-				onNavigate={onNavigate}
-				emptyLabel="No notes link to this note"
-			/>
-			<NoteList
-				title="References"
-				icon="export-variant"
-				notes={outgoing}
-				onNavigate={onNavigate}
-				emptyLabel="This note doesn't reference anything"
-			/>
-		</ScrollView>
+			<div className="keeper-layout" style={{ ...styles.content }}>
+				<NoteList
+					title="Backlinks"
+					icon="link-variant"
+					notes={backlinks}
+					onNavigate={onNavigate}
+					emptyLabel="No notes link to this note"
+				/>
+				<NoteList
+					title="References"
+					icon="export-variant"
+					notes={outgoing}
+					onNavigate={onNavigate}
+					emptyLabel="This note doesn't reference anything"
+				/>
+			</div>
+		</div>
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useExtendedTheme>) {
-	return StyleSheet.create({
-		container: {
-			flex: 1,
-		},
-		content: {
-			padding: 16,
-			gap: 16,
-		},
-		loadingText: {
-			padding: 16,
-			textAlign: "center",
-		},
-		section: {
-			gap: 8,
-		},
-		sectionHeader: {
-			flexDirection: "row",
-			alignItems: "center",
-			gap: 6,
-		},
-		sectionTitle: {
-			fontSize: 15,
-			fontWeight: "600",
-			flex: 1,
-		},
-		sectionCount: {
-			fontSize: 13,
-			fontWeight: "400",
-		},
-		emptyLabel: {
-			fontSize: 13,
-			paddingLeft: 24,
-		},
+function createStyles(_theme: ReturnType<typeof useExtendedTheme>) {
+	return {
+		container: { flex: 1 },
+		content: { padding: 16, gap: 16 },
+		loadingText: { padding: 16, textAlign: "center" },
+		section: { gap: 8 },
+		sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+		sectionTitle: { fontSize: 15, fontWeight: "600", flex: 1 },
+		sectionCount: { fontSize: 13, fontWeight: "400" },
+		emptyLabel: { fontSize: 13, paddingLeft: 24 },
 		noteLink: {
 			flexDirection: "row",
 			alignItems: "center",
 			gap: 8,
-			paddingVertical: 6,
+			paddingTop: 6,
+			paddingBottom: 6,
 			paddingLeft: 24,
 		},
-		noteLinkText: {
-			fontSize: 14,
-			flex: 1,
-		},
-	});
+		noteLinkText: { fontSize: 14, flex: 1 },
+	} satisfies Record<string, React.CSSProperties>;
 }

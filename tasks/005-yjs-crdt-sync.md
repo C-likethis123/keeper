@@ -1,5 +1,8 @@
 # Yjs CRDT Sync
 
+> Archived design/history. Platform paths and dependency references describe earlier implementation. Current setup: [README](../README.md); current migration status: [PWA plan](../plans/pwa-migration.md).
+
+
 ## Summary
 
 Keeper stores note body edits as Yjs CRDT updates and keeps Markdown files as generated readable snapshots. Git remains transport. Existing notes migrate lazily on first save/open path that writes the note.

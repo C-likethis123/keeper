@@ -1,13 +1,14 @@
+import { vi } from "vitest";
 import NoteCard from "@/components/NoteCard";
 import type { Note } from "@/services/notes/types";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 
-jest.mock("@/components/shared/Icons", () => ({
+vi.mock("@/components/shared/Icons", () => ({
 	FontAwesome: ({ name }: { name: string }) => name,
 }));
 
-jest.mock("@/hooks/useExtendedTheme", () => ({
+vi.mock("@/hooks/useExtendedTheme", () => ({
 	useExtendedTheme: () => ({
 		colors: {
 			background: "#ffffff",
@@ -39,20 +40,20 @@ describe("NoteCard", () => {
 	beforeEach(() => {});
 
 	it("opens the note when the card is pressed", () => {
-		const onOpen = jest.fn();
+		const onOpen = vi.fn();
 		render(
 			<NoteCard
 				note={makeNote()}
 				onOpen={onOpen}
-				onDelete={jest.fn()}
-				onPinToggle={jest.fn()}
+				onDelete={vi.fn()}
+				onPinToggle={vi.fn()}
 			/>,
 		);
 
 		const card = screen.getByRole("button", {
 			name: "Open note First note",
 		});
-		fireEvent(card, "click");
+		fireEvent.click(card);
 
 		expect(onOpen).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "note-1" }),
@@ -60,18 +61,18 @@ describe("NoteCard", () => {
 	});
 
 	it("deletes without opening the note when delete is pressed", () => {
-		const onDelete = jest.fn();
+		const onDelete = vi.fn();
 
 		render(
 			<NoteCard
 				note={makeNote()}
-				onOpen={jest.fn()}
+				onOpen={vi.fn()}
 				onDelete={onDelete}
-				onPinToggle={jest.fn()}
+				onPinToggle={vi.fn()}
 			/>,
 		);
 
-		fireEvent.press(screen.getByLabelText("Delete note"));
+		fireEvent.click(screen.getByLabelText("Delete note"));
 
 		expect(onDelete).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "note-1" }),
@@ -79,18 +80,18 @@ describe("NoteCard", () => {
 	});
 
 	it("toggles pin without opening the note when pin is pressed", () => {
-		const onPinToggle = jest.fn();
+		const onPinToggle = vi.fn();
 
 		render(
 			<NoteCard
 				note={makeNote()}
-				onOpen={jest.fn()}
-				onDelete={jest.fn()}
+				onOpen={vi.fn()}
+				onDelete={vi.fn()}
 				onPinToggle={onPinToggle}
 			/>,
 		);
 
-		fireEvent.press(screen.getByLabelText("Pin note"));
+		fireEvent.click(screen.getByLabelText("Pin note"));
 
 		expect(onPinToggle).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "note-1", isPinned: true }),

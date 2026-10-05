@@ -1,156 +1,157 @@
+import { vi } from "vitest";
 import { NoteService } from "@/services/notes/noteService";
 import { NotesIndexService } from "@/services/notes/notesIndex";
 import {
-  buildTrackedTodoTitle,
-  findExactWikiLinkMatch,
-  normalizeWikiLinkTitle,
-  resolveOrCreateTrackedTodoNoteId,
-  resolveOrCreateWikiLinkNoteId,
-  resolveWikiLinkNoteId,
-  shouldOpenWikiLink,
+	buildTrackedTodoTitle,
+	findExactWikiLinkMatch,
+	normalizeWikiLinkTitle,
+	resolveOrCreateTrackedTodoNoteId,
+	resolveOrCreateWikiLinkNoteId,
+	resolveWikiLinkNoteId,
+	shouldOpenWikiLink,
 } from "../wikiLinkUtils";
 
 describe("wikiLinkUtils", () => {
-  beforeEach(() => {
-    jest.restoreAllMocks();
-  });
+	beforeEach(() => {
+		vi.restoreAllMocks();
+	});
 
-  it("normalizes titles for case-insensitive matching", () => {
-    expect(normalizeWikiLinkTitle("  Project Alpha  ")).toBe("project alpha");
-  });
+	it("normalizes titles for case-insensitive matching", () => {
+		expect(normalizeWikiLinkTitle("  Project Alpha  ")).toBe("project alpha");
+	});
 
-  it("finds an exact wiki link match by normalized title", () => {
-    const match = findExactWikiLinkMatch(
-      [
-        {
-          noteId: "note-1",
-          title: "Daily Notes",
-          summary: "",
-          isPinned: false,
-          updatedAt: 0,
-          noteType: "note",
-        },
-        {
-          noteId: "note-2",
-          title: "Project Alpha",
-          summary: "",
-          isPinned: false,
-          updatedAt: 0,
-          noteType: "note",
-        },
-      ],
-      "  project alpha ",
-    );
+	it("finds an exact wiki link match by normalized title", () => {
+		const match = findExactWikiLinkMatch(
+			[
+				{
+					noteId: "note-1",
+					title: "Daily Notes",
+					summary: "",
+					isPinned: false,
+					updatedAt: 0,
+					noteType: "note",
+				},
+				{
+					noteId: "note-2",
+					title: "Project Alpha",
+					summary: "",
+					isPinned: false,
+					updatedAt: 0,
+					noteType: "note",
+				},
+			],
+			"  project alpha ",
+		);
 
-    expect(match?.noteId).toBe("note-2");
-  });
+		expect(match?.noteId).toBe("note-2");
+	});
 
-  it("builds a canonical tracked todo title", () => {
-    expect(buildTrackedTodoTitle(" Ship release ")).toBe("TODO: Ship release");
-  });
+	it("builds a canonical tracked todo title", () => {
+		expect(buildTrackedTodoTitle(" Ship release ")).toBe("TODO: Ship release");
+	});
 
-  it("resolves a wiki link title to an existing note id", async () => {
-    jest.spyOn(NotesIndexService, "listNotes").mockResolvedValueOnce({
-      items: [
-        {
-          noteId: "note-123",
-          title: "Project Alpha",
-          summary: "",
-          isPinned: false,
-          updatedAt: 0,
-          noteType: "note",
-        },
-      ],
-    });
+	it("resolves a wiki link title to an existing note id", async () => {
+		vi.spyOn(NotesIndexService, "listNotes").mockResolvedValueOnce({
+			items: [
+				{
+					noteId: "note-123",
+					title: "Project Alpha",
+					summary: "",
+					isPinned: false,
+					updatedAt: 0,
+					noteType: "note",
+				},
+			],
+		});
 
-    await expect(resolveWikiLinkNoteId("Project Alpha")).resolves.toBe(
-      "note-123",
-    );
+		await expect(resolveWikiLinkNoteId("Project Alpha")).resolves.toBe(
+			"note-123",
+		);
 
-    expect(NotesIndexService.listNotes).toHaveBeenCalledWith(
-      "Project Alpha",
-      expect.any(Number),
-      0,
-    );
-  });
+		expect(NotesIndexService.listNotes).toHaveBeenCalledWith(
+			"Project Alpha",
+			expect.any(Number),
+			0,
+		);
+	});
 
-  it("creates a note when a wiki link target does not exist", async () => {
-    jest
-      .spyOn(NotesIndexService, "listNotes")
-      .mockResolvedValueOnce({ items: [] });
-    jest.spyOn(NoteService, "saveNote").mockResolvedValueOnce({
-      id: "new-note-id",
-      title: "Project Alpha",
-      content: "",
-      lastUpdated: 1,
-      isPinned: false,
-      noteType: "note",
-    });
+	it("creates a note when a wiki link target does not exist", async () => {
+		vi.spyOn(NotesIndexService, "listNotes").mockResolvedValueOnce({
+			items: [],
+		});
+		vi.spyOn(NoteService, "saveNote").mockResolvedValueOnce({
+			id: "new-note-id",
+			title: "Project Alpha",
+			content: "",
+			lastUpdated: 1,
+			isPinned: false,
+			noteType: "note",
+		});
 
-    await expect(resolveOrCreateWikiLinkNoteId("Project Alpha")).resolves.toBe(
-      "new-note-id",
-    );
-    expect(NoteService.saveNote).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "generated-note-id",
-        title: "Project Alpha",
-        content: "",
-        isPinned: false,
-        noteType: "note",
-      }),
-      true,
-    );
-  });
+		await expect(resolveOrCreateWikiLinkNoteId("Project Alpha")).resolves.toBe(
+			"new-note-id",
+		);
+		expect(NoteService.saveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "generated-note-id",
+				title: "Project Alpha",
+				content: "",
+				isPinned: false,
+				noteType: "note",
+			}),
+			true,
+		);
+	});
 
-  it("requires cmd/control-click on web but opens directly on native", () => {
-    expect(shouldOpenWikiLink("ios")).toBe(true);
-    expect(
-      shouldOpenWikiLink("web", {
-        nativeEvent: { metaKey: false },
-      }),
-    ).toBe(false);
-    expect(
-      shouldOpenWikiLink("web", {
-        nativeEvent: { metaKey: true },
-      }),
-    ).toBe(true);
-    expect(
-      shouldOpenWikiLink("web", {
-        ctrlKey: true,
-      }),
-    ).toBe(true);
-  });
+	it("requires cmd/control-click on web but opens directly on native", () => {
+		expect(shouldOpenWikiLink("ios")).toBe(true);
+		expect(
+			shouldOpenWikiLink("web", {
+				nativeEvent: { metaKey: false },
+			}),
+		).toBe(false);
+		expect(
+			shouldOpenWikiLink("web", {
+				nativeEvent: { metaKey: true },
+			}),
+		).toBe(true);
+		expect(
+			shouldOpenWikiLink("web", {
+				ctrlKey: true,
+			}),
+		).toBe(true);
+	});
 
-  it("creates tracked todo notes with lifecycle metadata", async () => {
-    jest
-      .spyOn(NotesIndexService, "listNotes")
-      .mockResolvedValueOnce({ items: [] });
-    jest.spyOn(Date, "now").mockReturnValue(1710000000000);
-    jest.spyOn(NoteService, "saveNote").mockResolvedValueOnce({
-      id: "todo-note-id",
-      title: "TODO: Ship release",
-      content: "",
-      lastUpdated: 1,
-      isPinned: false,
-      noteType: "todo",
-      status: "open",
-      createdAt: 1710000000000,
-      completedAt: null,
-    });
+	it("creates tracked todo notes with lifecycle metadata", async () => {
+		vi.spyOn(NotesIndexService, "listNotes").mockResolvedValueOnce({
+			items: [],
+		});
+		vi.spyOn(Date, "now").mockReturnValue(1710000000000);
+		vi.spyOn(NoteService, "saveNote").mockResolvedValueOnce({
+			id: "todo-note-id",
+			title: "TODO: Ship release",
+			content: "",
+			lastUpdated: 1,
+			isPinned: false,
+			noteType: "todo",
+			status: "open",
+			createdAt: 1710000000000,
+			completedAt: null,
+		});
 
-    await expect(
-      resolveOrCreateTrackedTodoNoteId("Ship release"),
-    ).resolves.toBe("todo-note-id");
-    expect(NoteService.saveNote).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "generated-note-id",
-        title: "TODO: Ship release",
-        noteType: "todo",
-        status: "open",
-        createdAt: 1710000000000,
-        completedAt: null,
-      }),
-      true,
-    );
-  });
+		await expect(
+			resolveOrCreateTrackedTodoNoteId("Ship release"),
+		).resolves.toBe("todo-note-id");
+		expect(NoteService.saveNote).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "generated-note-id",
+				title: "TODO: Ship release",
+				noteType: "todo",
+				status: "open",
+				createdAt: 1710000000000,
+				completedAt: null,
+			}),
+			true,
+		);
+	});
 });

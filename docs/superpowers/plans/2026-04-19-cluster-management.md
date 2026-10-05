@@ -1,5 +1,8 @@
 # Cluster Management Implementation Plan
 
+> Archived design/history. Platform paths and dependency references describe earlier implementation. Current setup: [README](../../../README.md); current migration status: [PWA plan](../../../plans/pwa-migration.md).
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Allow users to manage accepted clusters: add a note to a cluster, remove a note from a cluster, and delete an entire cluster.

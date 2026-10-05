@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 import {
 	$createNodeSelection,
 	$createParagraphNode,
@@ -34,7 +35,7 @@ function createTestEditor() {
 describe("EquationExtension", () => {
 	it("opens an editable block equation when Enter follows $$", () => {
 		const { editor, unregister } = createTestEditor();
-		const preventDefault = jest.fn();
+		const preventDefault = vi.fn();
 
 		editor.update(
 			() => {
@@ -140,7 +141,10 @@ describe("EquationExtension", () => {
 		editor.update(
 			() => {
 				const equation = $createEquationNode("x = 1", false);
-				$getRoot().append(equation, $createParagraphNode().append($createTextNode("after")));
+				$getRoot().append(
+					equation,
+					$createParagraphNode().append($createTextNode("after")),
+				);
 				const selection = $createNodeSelection();
 				selection.add(equation.getKey());
 				$setSelection(selection);

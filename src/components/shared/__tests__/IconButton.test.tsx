@@ -1,12 +1,13 @@
+import { vi } from "vitest";
 import { IconButton } from "@/components/shared/IconButton";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react";
 import React from "react";
 
-jest.mock("@/components/shared/Icons", () => ({
+vi.mock("@/components/shared/Icons", () => ({
 	FontAwesome: ({ name }: { name: string }) => name,
 }));
 
-jest.mock("@/hooks/useExtendedTheme", () => ({
+vi.mock("@/hooks/useExtendedTheme", () => ({
 	useExtendedTheme: () => ({
 		colors: {
 			background: "#ffffff",
@@ -25,20 +26,20 @@ jest.mock("@/hooks/useExtendedTheme", () => ({
 
 describe("IconButton", () => {
 	it("calls onPress when tapped", () => {
-		const onPress = jest.fn();
+		const onPress = vi.fn();
 		const { getByTestId } = render(
 			<IconButton name="undo" onPress={onPress} testID="btn" />,
 		);
-		fireEvent.press(getByTestId("btn"));
+		fireEvent.click(getByTestId("btn"));
 		expect(onPress).toHaveBeenCalledTimes(1);
 	});
 
 	it("does not call onPress when disabled", () => {
-		const onPress = jest.fn();
+		const onPress = vi.fn();
 		const { getByTestId } = render(
 			<IconButton name="undo" onPress={onPress} disabled testID="btn" />,
 		);
-		fireEvent.press(getByTestId("btn"));
+		fireEvent.click(getByTestId("btn"));
 		expect(onPress).not.toHaveBeenCalled();
 	});
 
@@ -49,16 +50,14 @@ describe("IconButton", () => {
 				label="Open filters"
 				variant="flat"
 				tooltipAlignment="start"
-				onPress={jest.fn()}
+				onPress={vi.fn()}
 				testID="btn"
 			/>,
 		);
 
-		fireEvent(getByTestId("btn"), "hoverIn");
+		fireEvent.pointerEnter(getByTestId("btn"), { pointerType: "mouse" });
 
-		expect(getByTestId("btn-tooltip").props.style).toEqual(
-			expect.arrayContaining([expect.objectContaining({ left: 0 })]),
-		);
+		expect(getByTestId("btn-tooltip")).toHaveStyle({ left: "0px" });
 	});
 
 	it("can position a flat tooltip below its trigger", () => {
@@ -68,17 +67,16 @@ describe("IconButton", () => {
 				label="Open filters"
 				variant="flat"
 				tooltipPlacement="bottom"
-				onPress={jest.fn()}
+				onPress={vi.fn()}
 				testID="btn"
 			/>,
 		);
 
-		fireEvent(getByTestId("btn"), "hoverIn");
+		fireEvent.pointerEnter(getByTestId("btn"), { pointerType: "mouse" });
 
-		expect(getByTestId("btn-tooltip").props.style).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ top: "100%", marginTop: 8 }),
-			]),
-		);
+		expect(getByTestId("btn-tooltip")).toHaveStyle({
+			top: "100%",
+			marginTop: "8px",
+		});
 	});
 });

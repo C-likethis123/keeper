@@ -63,13 +63,12 @@ Ship Keeper as installable, offline-capable Vite web app using shared UI.
 - Ported Vite shell and home route to canonical theme, filters, toast and tab
   stores, keyboard shortcuts, home header, quick composer, note grid, note
   cards, and shared loading/error/empty UI. React Router remains the browser
-  navigation boundary; Expo routes remain available.
+  navigation boundary.
 - Added Vite-owned `manifest.webmanifest`, install metadata, reusable emitted
   192px/512px icons, and production-only service-worker registration.
 - Added build-generated, content-versioned Vite precache from actual Rollup
   output. Vite worker keeps API, auth, sync, cluster, cross-origin, non-GET,
-  redirect, opaque, and failed responses outside caches. Expo manifest and
-  worker remain separate and unchanged.
+  redirect, opaque, and failed responses outside caches.
 - Added network-first navigation with offline application-shell fallback,
   immutable asset caching, obsolete Vite-cache cleanup, IndexedDB note/edit
   restart coverage, queued offline sync coverage, reconnect sync trigger
@@ -77,12 +76,13 @@ Ship Keeper as installable, offline-capable Vite web app using shared UI.
 - Added explicit waiting-worker update state. Dirty editor blocks worker
   activation and reload; clean editor can explicitly apply update. Worker does
   not call `skipWaiting()` during install.
-- Cut Cloudflare production build and deploy scripts over to Vite. Legacy Expo
-  web export remains available only through `npm run build:web:expo`.
+- Cut Cloudflare production build and deploy scripts over to Vite.
+
+- Completed dependency removal, React DOM UI migration, Knip cleanup, and platform filename and documentation cleanup.
 
 ## Vite PWA status
 
-- Manifest: generated build emits Vite manifest and icons under `web/dist`.
+- Manifest: generated build emits Vite manifest and icons under `dist`.
 - Offline: automated Chromium coverage verifies shell, persisted notes, edits,
   queued operations, reconnect trigger, local PDF, and deep-link fallback.
 - Updates: unit coverage verifies waiting state, explicit clean update, and
@@ -103,9 +103,8 @@ Not yet verified:
 - Android Chrome: install prompt/menu, standalone launch, offline restart,
   reconnect sync.
 
-Vite and Expo manifests declare a dedicated 512px maskable icon. Core artwork
+Vite manifest declares a dedicated 512px maskable icon. Core artwork
 stays inside the central mask-safe circle; manual launcher validation remains
 part of the Android Chrome matrix.
 
-Migration remains incomplete. Production smoke testing, manual install matrix,
-and Expo/React Native/Metro/Jest Expo removal remain unfinished.
+Production smoke testing and manual install matrix remain unfinished.

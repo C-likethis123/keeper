@@ -1,5 +1,8 @@
 # TODO
 
+> Archived design/history. Platform paths and dependency references describe earlier implementation. Current setup: [README](README.md); current migration status: [PWA plan](plans/pwa-migration.md).
+
+
 Historical quick reference. Not current source of truth. Use `README.md` for current direction and focused, dated plans for active work.
 
 ## Quick Reference

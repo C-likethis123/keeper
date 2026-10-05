@@ -1,6 +1,6 @@
+import "@/components/shared/shared.css";
 import { useStyles } from "@/hooks/useStyles";
-import React, { useCallback, useEffect, useRef } from "react";
-import { View } from "react-native";
+import { useCallback, useEffect, useRef } from "react";
 import {
 	DocumentPanelFallback,
 	DocumentPanelHeader,
@@ -42,7 +42,11 @@ export function DocumentPanel(props: DocumentPanelProps) {
 function ArticleDocumentPanel(props: ArticleDocumentPanelProps) {
 	const styles = useStyles(createStyles);
 	return (
-		<View style={[styles.panel, props.style]} testID="article-split-panel">
+		<div
+			className="keeper-layout"
+			style={{ ...styles.panel, ...props.style }}
+			data-testid="article-split-panel"
+		>
 			<DocumentPanelHeader
 				dismissLabel="Hide article"
 				iconName="newspaper-o"
@@ -52,7 +56,7 @@ function ArticleDocumentPanel(props: ArticleDocumentPanelProps) {
 				styles={styles}
 				title="Article"
 			/>
-			<View style={styles.viewerContainer}>
+			<div className="keeper-layout" style={styles.viewerContainer}>
 				<iframe
 					src={props.url}
 					title="Article"
@@ -63,8 +67,8 @@ function ArticleDocumentPanel(props: ArticleDocumentPanelProps) {
 						backgroundColor: "#ffffff",
 					}}
 				/>
-			</View>
-		</View>
+			</div>
+		</div>
 	);
 }
 
@@ -82,11 +86,11 @@ function AttachmentDocumentPanel(props: AttachmentDocumentPanelProps) {
 		attachmentPath: props.attachmentPath,
 		attachmentType: props.attachmentType,
 		onTextSelected: props.onTextSelected,
-			onDocumentPositionChange: props.onDocumentPositionChange,
-			theme: props.theme,
-			readAttachmentBase64,
-			preferFileUri: true,
-		});
+		onDocumentPositionChange: props.onDocumentPositionChange,
+		theme: props.theme,
+		readAttachmentBase64,
+		preferFileUri: true,
+	});
 
 	useEffect(() => {
 		if (
@@ -152,14 +156,16 @@ function AttachmentDocumentPanel(props: AttachmentDocumentPanelProps) {
 	]);
 
 	return (
-		<View style={[styles.panel, props.style]}>
+		<div className="keeper-layout" style={{ ...styles.panel, ...props.style }}>
 			<DocumentPanelHeader
 				iconName={getAttachmentPanelIcon(props.attachmentType)}
 				onDismiss={props.onDismiss}
 				styles={styles}
 				title={filename}
 			/>
-			<View style={styles.viewerContainer}>{renderViewer()}</View>
-		</View>
+			<div className="keeper-layout" style={styles.viewerContainer}>
+				{renderViewer()}
+			</div>
+		</div>
 	);
 }

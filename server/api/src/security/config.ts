@@ -1,7 +1,7 @@
 const KIB = 1024;
 const MIB = 1024 * KIB;
 
-export type CloudflareAccessConfig = {
+type CloudflareAccessConfig = {
 	audience: string;
 	teamDomain: string;
 };

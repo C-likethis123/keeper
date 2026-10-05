@@ -1,3 +1,8 @@
+import { vi } from "vitest";
+const { mockFiles, mockAsyncStorage } = vi.hoisted(() => ({
+	mockFiles: new Map<string, Uint8Array>(),
+	mockAsyncStorage: new Map<string, string>(),
+}));
 import * as Y from "yjs";
 import {
 	compactCrdtUpdates,
@@ -9,39 +14,35 @@ import {
 	saveMarkdownToCrdt,
 } from "../crdtNoteService";
 
-const mockFiles = new Map<string, Uint8Array>();
-const mockAsyncStorage = new Map<string, string>();
-
-jest.mock("@/services/storage/browserKeyValueStorage", () => ({
-	__esModule: true,
+vi.mock("@/services/storage/browserKeyValueStorage", () => ({
 	default: {
-		getItem: jest.fn((key: string) =>
+		getItem: vi.fn((key: string) =>
 			Promise.resolve(mockAsyncStorage.get(key) ?? null),
 		),
-		setItem: jest.fn((key: string, value: string) => {
+		setItem: vi.fn((key: string, value: string) => {
 			mockAsyncStorage.set(key, value);
 			return Promise.resolve();
 		}),
 	},
 }));
 
-jest.mock("@/services/storage/storageEngine", () => ({
+vi.mock("@/services/storage/storageEngine", () => ({
 	storageEngine: {
-		readFileBytes: jest.fn((path: string) =>
+		readFileBytes: vi.fn((path: string) =>
 			Promise.resolve(mockFiles.get(path) ?? null),
 		),
-		writeFileBytes: jest.fn((path: string, data: Uint8Array) => {
+		writeFileBytes: vi.fn((path: string, data: Uint8Array) => {
 			mockFiles.set(path, data);
 			return Promise.resolve();
 		}),
-		listFilesRecursive: jest.fn((dir: string) =>
+		listFilesRecursive: vi.fn((dir: string) =>
 			Promise.resolve(
 				[...mockFiles.keys()].filter(
 					(path) => path === dir || path.startsWith(`${dir}/`),
 				),
 			),
 		),
-		deleteDirectory: jest.fn((dir: string) => {
+		deleteDirectory: vi.fn((dir: string) => {
 			for (const path of [...mockFiles.keys()]) {
 				if (path === dir || path.startsWith(`${dir}/`)) {
 					mockFiles.delete(path);

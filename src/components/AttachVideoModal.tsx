@@ -1,16 +1,11 @@
+import { Dialog } from "@/components/shared/Dialog";
+import "@/components/shared/shared.css";
 import { parseEmbeddedVideoUrl } from "@/components/editor/video/videoUtils";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import { FontAwesome } from "@/components/shared/Icons";
-import React, { useEffect, useState } from "react";
-import {
-	Modal,
-	Pressable,
-	StyleSheet,
-	Text,
-	TextInput,
-	View,
-} from "react-native";
+import type React from "react";
+import { useEffect, useState } from "react";
 
 export default function AttachVideoModal({
 	visible,
@@ -60,55 +55,82 @@ export default function AttachVideoModal({
 	};
 
 	return (
-		<Modal
-			visible={visible}
-			animationType="slide"
-			transparent
-			onRequestClose={onDismiss}
-		>
-			<View style={styles.modalBackdrop}>
-				<View style={styles.modalCard}>
-					<View style={styles.modalHeader}>
-						<Text style={styles.modalTitle}>Attach Video</Text>
-						<Pressable onPress={onDismiss}>
+		<Dialog label="Attach Video Modal" open={visible} onDismiss={onDismiss}>
+			<div className="keeper-layout" style={styles.modalBackdrop}>
+				<div className="keeper-layout" style={styles.modalCard}>
+					<div className="keeper-layout" style={styles.modalHeader}>
+						<span className="keeper-copy" style={styles.modalTitle}>
+							Attach Video
+						</span>
+						<button
+							type="button"
+							className="keeper-control"
+							onClick={onDismiss}
+						>
 							<FontAwesome name="close" size={22} style={styles.closeIcon} />
-						</Pressable>
-					</View>
-					<TextInput
+						</button>
+					</div>
+					<input
+						className="keeper-input"
 						style={styles.input}
 						placeholder="https://www.youtube.com/watch?v=..."
-						placeholderTextColor={styles.placeholder.color}
 						value={value}
-						onChangeText={(t) => {
-							setValue(t);
-							setError(null);
-						}}
-						autoCapitalize="none"
-						autoCorrect={false}
-						keyboardType="url"
+						onChange={(event) =>
+							((t) => {
+								setValue(t);
+								setError(null);
+							})(event.currentTarget.value)
+						}
+						spellCheck={false}
+						inputMode="url"
 					/>
-					{error ? <Text style={styles.errorText}>{error}</Text> : null}
-					<View style={styles.buttonRow}>
-						<Pressable style={styles.cancelButton} onPress={onDismiss}>
-							<Text style={styles.cancelButtonText}>Cancel</Text>
-						</Pressable>
-						<Pressable style={styles.saveButton} onPress={handleSave}>
-							<Text style={styles.saveButtonText}>Save</Text>
-						</Pressable>
-					</View>
-					{currentVideo ? (
-						<Pressable style={styles.removeButton} onPress={handleRemove}>
-							<Text style={styles.removeButtonText}>Remove video</Text>
-						</Pressable>
+					{error ? (
+						<span className="keeper-copy" style={styles.errorText}>
+							{error}
+						</span>
 					) : null}
-				</View>
-			</View>
-		</Modal>
+					<div className="keeper-layout" style={styles.buttonRow}>
+						<button
+							type="button"
+							className="keeper-control"
+							style={styles.cancelButton}
+							onClick={onDismiss}
+						>
+							<span className="keeper-copy" style={styles.cancelButtonText}>
+								Cancel
+							</span>
+						</button>
+						<button
+							type="button"
+							className="keeper-control"
+							style={styles.saveButton}
+							onClick={handleSave}
+						>
+							<span className="keeper-copy" style={styles.saveButtonText}>
+								Save
+							</span>
+						</button>
+					</div>
+					{currentVideo ? (
+						<button
+							type="button"
+							className="keeper-control"
+							style={styles.removeButton}
+							onClick={handleRemove}
+						>
+							<span className="keeper-copy" style={styles.removeButtonText}>
+								Remove video
+							</span>
+						</button>
+					) : null}
+				</div>
+			</div>
+		</Dialog>
 	);
 }
 
 function createStyles(theme: ExtendedTheme) {
-	return StyleSheet.create({
+	return {
 		modalBackdrop: {
 			flex: 1,
 			backgroundColor: "rgba(0, 0, 0, 0.35)",
@@ -128,38 +150,27 @@ function createStyles(theme: ExtendedTheme) {
 			alignItems: "center",
 			justifyContent: "space-between",
 		},
-		closeIcon: {
-			color: theme.colors.text,
-		},
-		modalTitle: {
-			fontSize: 18,
-			fontWeight: "700",
-			color: theme.colors.text,
-		},
+		closeIcon: { color: theme.colors.text },
+		modalTitle: { fontSize: 18, fontWeight: "700", color: theme.colors.text },
 		input: {
 			borderWidth: 1,
 			borderColor: theme.colors.border,
 			borderRadius: 8,
-			paddingHorizontal: 12,
-			paddingVertical: 10,
+			paddingLeft: 12,
+			paddingRight: 12,
+			paddingTop: 10,
+			paddingBottom: 10,
 			fontSize: 14,
 			color: theme.colors.text,
 			backgroundColor: theme.colors.card,
 		},
-		placeholder: {
-			color: theme.colors.textMuted,
-		},
-		errorText: {
-			fontSize: 13,
-			color: "#e03e3e",
-		},
-		buttonRow: {
-			flexDirection: "row",
-			gap: 8,
-		},
+		placeholder: { color: theme.colors.textMuted },
+		errorText: { fontSize: 13, color: "#e03e3e" },
+		buttonRow: { flexDirection: "row", gap: 8 },
 		cancelButton: {
 			flex: 1,
-			paddingVertical: 10,
+			paddingTop: 10,
+			paddingBottom: 10,
 			borderRadius: 8,
 			borderWidth: 1,
 			borderColor: theme.colors.border,
@@ -172,27 +183,21 @@ function createStyles(theme: ExtendedTheme) {
 		},
 		saveButton: {
 			flex: 1,
-			paddingVertical: 10,
+			paddingTop: 10,
+			paddingBottom: 10,
 			borderRadius: 8,
 			backgroundColor: "#007AFF",
 			alignItems: "center",
 		},
-		saveButtonText: {
-			fontSize: 14,
-			fontWeight: "600",
-			color: "#fff",
-		},
+		saveButtonText: { fontSize: 14, fontWeight: "600", color: "#fff" },
 		removeButton: {
-			paddingVertical: 10,
+			paddingTop: 10,
+			paddingBottom: 10,
 			borderRadius: 8,
 			borderWidth: 1,
 			borderColor: "#e03e3e",
 			alignItems: "center",
 		},
-		removeButtonText: {
-			fontSize: 14,
-			fontWeight: "600",
-			color: "#e03e3e",
-		},
-	});
+		removeButtonText: { fontSize: 14, fontWeight: "600", color: "#e03e3e" },
+	} satisfies Record<string, React.CSSProperties>;
 }

@@ -1,44 +1,28 @@
+import "./shared.css";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
 import { useToastStore } from "@/stores/toastStore";
-import React, { useEffect, useRef } from "react";
-import { Animated, Platform, StyleSheet, Text } from "react-native";
+import type React from "react";
 
 export const ToastOverlay = () => {
 	const message = useToastStore((s) => s.message);
-	const opacity = useRef(new Animated.Value(0)).current;
 	const styles = useStyles(createStyles);
-
-	useEffect(() => {
-		if (message) {
-			Animated.timing(opacity, {
-				toValue: 1,
-				duration: 200,
-				useNativeDriver: true,
-			}).start();
-		} else {
-			Animated.timing(opacity, {
-				toValue: 0,
-				duration: 200,
-				useNativeDriver: true,
-			}).start();
-		}
-	}, [message, opacity]);
-
 	if (!message) return null;
-
 	return (
-		<Animated.View style={[styles.toast, { opacity }]}>
-			<Text style={styles.text}>{message}</Text>
-		</Animated.View>
+		<output className="keeper-toast" style={styles.toast}>
+			<span style={styles.text}>{message}</span>
+		</output>
 	);
 };
 
 function createStyles(theme: ExtendedTheme) {
-	return StyleSheet.create({
+	return {
 		toast: {
+			boxShadow: `0 4px 8px ${theme.colors.shadow}`,
+			display: "flex",
+			flexDirection: "column",
 			position: "absolute",
-			bottom: Platform.OS === "web" ? 20 : 50,
+			bottom: 20,
 			left: 20,
 			right: 20,
 			padding: 12,
@@ -46,12 +30,7 @@ function createStyles(theme: ExtendedTheme) {
 			borderRadius: 8,
 			alignItems: "center",
 			zIndex: 9999,
-			shadowColor: theme.colors.shadow,
-			shadowOffset: { width: 0, height: 2 },
-			shadowOpacity: 0.2,
-			shadowRadius: 4,
-			elevation: 4,
 		},
 		text: { color: theme.custom.toast.text, fontWeight: "500" },
-	});
+	} satisfies Record<string, React.CSSProperties>;
 }

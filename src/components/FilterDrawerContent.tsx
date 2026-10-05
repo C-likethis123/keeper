@@ -1,11 +1,11 @@
+import "@/components/shared/shared.css";
 import type { ExtendedTheme } from "@/constants/themes/types";
 import { useStyles } from "@/hooks/useStyles";
-import { SyncAccessButton } from "@/components/SyncAccessButton.web";
+import { SyncAccessButton } from "@/components/SyncAccessButton";
 import type { NoteStatus, NoteType } from "@/services/notes/types";
 import { useFilterStore } from "@/stores/filterStore";
 import { FontAwesome } from "@/components/shared/Icons";
-import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import type React from "react";
 import { useSafeAreaInsets } from "@/components/shared/SafeArea";
 
 const FILTER_OPTIONS: { label: string; value?: NoteType }[] = [
@@ -38,15 +38,22 @@ function FilterRow({
 	styles: ReturnType<typeof createStyles>;
 }) {
 	return (
-		<Pressable
-			style={[styles.option, selected && styles.optionSelected]}
-			onPress={onPress}
-			accessibilityRole="button"
-			accessibilityState={{ selected }}
+		<button
+			type="button"
+			className="keeper-control"
+			style={{ ...styles.option, ...(selected ? styles.optionSelected : {}) }}
+			onClick={onPress}
+			aria-pressed={true}
 		>
-			<Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+			<span
+				className="keeper-copy"
+				style={{
+					...styles.optionText,
+					...(selected ? styles.optionTextSelected : {}),
+				}}
+			>
 				{label}
-			</Text>
+			</span>
 			{selected ? (
 				<FontAwesome
 					name="check"
@@ -54,7 +61,7 @@ function FilterRow({
 					color={theme.colors.primaryContrast}
 				/>
 			) : null}
-		</Pressable>
+		</button>
 	);
 }
 
@@ -94,56 +101,81 @@ export function FilterDrawerContent({
 	};
 
 	return (
-		<View style={[styles.container, { paddingTop: insets.top }]}>
-			<View style={styles.header}>
-				<Text style={styles.headerTitle}>Filter</Text>
-				<Pressable
-					onPress={() => navigation.closeDrawer()}
-					accessibilityRole="button"
-					accessibilityLabel="Close filter"
-					hitSlop={8}
+		<div
+			className="keeper-layout"
+			style={{ ...styles.container, ...{ paddingTop: insets.top } }}
+		>
+			<div className="keeper-layout" style={styles.header}>
+				<span className="keeper-copy" style={styles.headerTitle}>
+					Filter
+				</span>
+				<button
+					type="button"
+					className="keeper-control"
+					onClick={() => navigation.closeDrawer()}
+					aria-label="Close filter"
 				>
 					<FontAwesome name="times" size={20} color={theme.colors.textMuted} />
-				</Pressable>
-			</View>
-			<ScrollView style={styles.content}>
-				<SyncAccessButton style={styles.option} textStyle={styles.optionText} />
-				<Text style={styles.sectionTitle}>Type</Text>
-				{FILTER_OPTIONS.map((option) => (
+				</button>
+			</div>
+			<div
+				className="keeper-layout"
+				style={{ overflowY: "auto", ...styles.content }}
+			>
+				<div className="keeper-layout" style={{ ...{} }}>
+					<SyncAccessButton
+						style={styles.option}
+						textStyle={styles.optionText}
+					/>
+					<span className="keeper-copy" style={styles.sectionTitle}>
+						Type
+					</span>
+					{FILTER_OPTIONS.map((option) => (
+						<FilterRow
+							key={option.label}
+							label={option.label}
+							selected={selectedType === option.value}
+							onPress={() => handleSelectType(option.value)}
+							theme={theme}
+							styles={styles}
+						/>
+					))}
+					<span
+						className="keeper-copy"
+						style={{ ...styles.sectionTitle, ...styles.sectionTop }}
+					>
+						Options
+					</span>
 					<FilterRow
-						key={option.label}
-						label={option.label}
-						selected={selectedType === option.value}
-						onPress={() => handleSelectType(option.value)}
+						label="Hide done"
+						selected={hideDone}
+						onPress={() => setHideDone(!hideDone)}
 						theme={theme}
 						styles={styles}
 					/>
-				))}
-				<Text style={[styles.sectionTitle, styles.sectionTop]}>Options</Text>
-				<FilterRow
-					label="Hide done"
-					selected={hideDone}
-					onPress={() => setHideDone(!hideDone)}
-					theme={theme}
-					styles={styles}
-				/>
-				{selectedType === "todo" ? (
-					<>
-						<Text style={[styles.sectionTitle, styles.sectionTop]}>Status</Text>
-						{STATUS_OPTIONS.map((option) => (
-							<FilterRow
-								key={option.label}
-								label={option.label}
-								selected={status === option.value}
-								onPress={() => handleSelectStatus(option.value)}
-								theme={theme}
-								styles={styles}
-							/>
-						))}
-					</>
-				) : null}
-			</ScrollView>
-		</View>
+					{selectedType === "todo" ? (
+						<>
+							<span
+								className="keeper-copy"
+								style={{ ...styles.sectionTitle, ...styles.sectionTop }}
+							>
+								Status
+							</span>
+							{STATUS_OPTIONS.map((option) => (
+								<FilterRow
+									key={option.label}
+									label={option.label}
+									selected={status === option.value}
+									onPress={() => handleSelectStatus(option.value)}
+									theme={theme}
+									styles={styles}
+								/>
+							))}
+						</>
+					) : null}
+				</div>
+			</div>
+		</div>
 	);
 }
 
@@ -152,29 +184,26 @@ function getTheme(theme: ExtendedTheme): ExtendedTheme {
 }
 
 function createStyles(theme: ExtendedTheme) {
-	return StyleSheet.create({
-		container: {
-			flex: 1,
-			backgroundColor: theme.colors.background,
-		},
+	return {
+		container: { flex: 1, backgroundColor: theme.colors.background },
 		header: {
 			flexDirection: "row",
 			alignItems: "center",
 			justifyContent: "space-between",
-			paddingHorizontal: 20,
-			paddingVertical: 16,
-			borderBottomWidth: StyleSheet.hairlineWidth,
+			paddingLeft: 20,
+			paddingRight: 20,
+			paddingTop: 16,
+			paddingBottom: 16,
+			borderBottomWidth: 1,
 			borderBottomColor: theme.colors.border,
 		},
-		headerTitle: {
-			fontSize: 20,
-			fontWeight: "700",
-			color: theme.colors.text,
-		},
+		headerTitle: { fontSize: 20, fontWeight: "700", color: theme.colors.text },
 		content: {
 			flex: 1,
-			paddingHorizontal: 16,
-			paddingVertical: 12,
+			paddingLeft: 16,
+			paddingRight: 16,
+			paddingTop: 12,
+			paddingBottom: 12,
 		},
 		sectionTitle: {
 			fontSize: 12,
@@ -185,29 +214,21 @@ function createStyles(theme: ExtendedTheme) {
 			marginTop: 8,
 			marginBottom: 6,
 		},
-		sectionTop: {
-			marginTop: 16,
-		},
+		sectionTop: { marginTop: 16 },
 		option: {
 			flexDirection: "row",
 			alignItems: "center",
 			justifyContent: "space-between",
-			paddingHorizontal: 12,
-			paddingVertical: 12,
+			paddingLeft: 12,
+			paddingRight: 12,
+			paddingTop: 12,
+			paddingBottom: 12,
 			borderRadius: 10,
 			backgroundColor: theme.colors.card,
 			marginBottom: 4,
 		},
-		optionSelected: {
-			backgroundColor: theme.colors.primary,
-		},
-		optionText: {
-			fontSize: 15,
-			fontWeight: "600",
-			color: theme.colors.text,
-		},
-		optionTextSelected: {
-			color: theme.colors.primaryContrast,
-		},
-	});
+		optionSelected: { backgroundColor: theme.colors.primary },
+		optionText: { fontSize: 15, fontWeight: "600", color: theme.colors.text },
+		optionTextSelected: { color: theme.colors.primaryContrast },
+	} satisfies Record<string, React.CSSProperties>;
 }
