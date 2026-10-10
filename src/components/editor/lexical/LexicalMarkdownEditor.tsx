@@ -954,7 +954,7 @@ function LexicalMarkdownEditor({
 						box-sizing: border-box;
 						min-height: ${variant === "compact" ? "96px" : "calc(100vh - 76px)"};
 						outline: none;
-						padding-left: ${variant === "compact" ? "0" : "28px"};
+						padding-left: 28px;
 						font-size: 17px;
 						line-height: 1.55;
 						white-space: pre-wrap;
@@ -1053,7 +1053,7 @@ function LexicalMarkdownEditor({
 						pointer-events: none;
 						position: absolute;
 						top: 0;
-						left: ${variant === "compact" ? "0" : "28px"};
+						left: 28px;
 						font-size: 17px;
 						line-height: 1.55;
 					}
