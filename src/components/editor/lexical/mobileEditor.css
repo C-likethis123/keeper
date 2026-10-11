@@ -1,0 +1,100 @@
+.keeper-editor-scroller {
+	box-sizing: border-box;
+}
+
+@media (max-width: 48rem), (pointer: coarse) {
+	[data-testid="home-quick-composer-card"][data-keyboard-limited="true"] {
+		position: fixed;
+		top: var(--editor-viewport-top, 0px);
+		left: 0;
+		width: 100% !important;
+		max-width: none !important;
+		height: var(--editor-viewport-height, 100dvh);
+		min-height: 0 !important;
+		box-sizing: border-box;
+		z-index: 3;
+	}
+	[data-testid="home-quick-composer-card"][data-keyboard-limited="true"]
+		> .keeper-layout:has(.keeper-editor-scroller) {
+		min-height: 0 !important;
+		height: auto !important;
+		flex: 1;
+	}
+	.editor-page[data-mobile-viewport="true"] {
+		width: 100%;
+		height: calc(
+			var(--editor-viewport-height, 100dvh) -
+			var(--editor-page-top, 0px)
+		);
+		padding: 0;
+	}
+	.editor-page[data-mobile-viewport="true"][data-keyboard-limited="true"] {
+		position: fixed;
+		top: var(--editor-viewport-top, 0px);
+		left: 0;
+		height: var(--editor-viewport-height, 100dvh);
+		z-index: 2;
+	}
+	.editor-page[data-mobile-viewport="true"] > .editor-shell {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		margin: 0;
+		border-radius: 0;
+	}
+	.editor-page[data-mobile-viewport="true"] .browser-editor-main,
+	.editor-page[data-mobile-viewport="true"] .browser-editor-pane,
+	.editor-page[data-mobile-viewport="true"] .browser-editor-split {
+		min-height: 0;
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		overflow: hidden;
+	}
+	.editor-page[data-mobile-viewport="true"]
+		.browser-editor-split
+		> .browser-editor-panel {
+		flex-shrink: 0;
+	}
+	.editor-page[data-keyboard-limited="true"] .browser-note-metadata {
+		display: none;
+	}
+	.keeper-editor-scroller .keeper-toolbar-sticky {
+		order: 0 !important;
+		position: sticky !important;
+	}
+	.keeper-toolbar-sticky > .keeper-layout {
+		padding: 2px 4px !important;
+	}
+	.keeper-toolbar-sticky button {
+		min-width: 44px;
+		min-height: 44px;
+		flex-shrink: 0;
+	}
+	.keeper-editor-scroller .keeper-editor-shell {
+		min-height: 100% !important;
+		padding: 0 4px 16px !important;
+	}
+	.keeper-editor-scroller {
+		overscroll-behavior-y: contain;
+		scroll-padding-block: 12px;
+		overflow-anchor: none;
+	}
+	.keeper-editor-scroller[data-editor-variant="full"] .keeper-editor {
+		min-height: 0 !important;
+	}
+}
+
+.browser-video-toggle {
+	min-height: 44px;
+	width: 100%;
+	flex-shrink: 0;
+}
+.browser-editor-panel[data-minimized="true"] {
+	flex-basis: 0 !important;
+	height: 0;
+	visibility: hidden;
+}
+.browser-editor-panel[data-minimized="true"] + .browser-editor-divider {
+	display: none;
+}

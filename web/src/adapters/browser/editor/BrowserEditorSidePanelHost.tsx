@@ -14,6 +14,7 @@ import { BrowserVideoPanel } from "./BrowserVideoPanel";
 type EditorSidePanel = "document" | "video" | "article";
 const SPLIT_RATIO_KEY = "doc-split-ratio";
 
+import { useMobileViewport } from "@keeper/components/editor/lexical/useMobileEditorViewport";
 type Props = {
 	activePanel: EditorSidePanel | null;
 	articleUrl: string | null;
@@ -45,6 +46,26 @@ export function BrowserEditorSidePanelHost({
 	const [ratio, setRatio] = useState(45);
 	const ratioRef = useRef(ratio);
 	const [isNarrow, setIsNarrow] = useState(false);
+	const viewport = useMobileViewport();
+	const [videoOverride, setVideoOverride] = useState<{
+		limited: boolean;
+		url: string | null;
+		expanded: boolean;
+	} | null>(null);
+	const expanded =
+		videoOverride?.limited === viewport.limited &&
+		videoOverride.url === videoUrl
+			? videoOverride.expanded
+			: !(viewport.mobile && viewport.limited);
+	const minimized = activePanel === "video" && !expanded;
+	useEffect(() => {
+		if (
+			videoOverride &&
+			(videoOverride.limited !== viewport.limited ||
+				videoOverride.url !== videoUrl)
+		)
+			setVideoOverride(null);
+	}, [videoOverride, viewport.limited, videoUrl]);
 	const updateRatio = useCallback(
 		(next: number | ((current: number) => number)) => {
 			setRatio((current) => {
@@ -120,8 +141,27 @@ export function BrowserEditorSidePanelHost({
 				void persistRatio();
 			}}
 		>
+			{activePanel === "video" ? (
+				<button
+					type="button"
+					className="browser-video-toggle"
+					aria-expanded={!minimized}
+					onPointerDown={(event) => event.preventDefault()}
+					onClick={() =>
+						setVideoOverride({
+							limited: viewport.limited,
+							url: videoUrl,
+							expanded: minimized,
+						})
+					}
+				>
+					{minimized ? "Expand video" : "Minimize video"}
+				</button>
+			) : null}
 			<aside
 				className="browser-editor-panel"
+				data-minimized={minimized}
+				inert={minimized}
 				style={{ flexBasis: `${ratio}%` }}
 			>
 				{renderPanel()}

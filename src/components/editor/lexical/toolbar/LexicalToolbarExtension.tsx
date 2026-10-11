@@ -72,6 +72,7 @@ function ToolbarIconButton({
 			className="keeper-control"
 			aria-label={label}
 			disabled={disabled}
+			onPointerDown={(event) => event.preventDefault()}
 			onClick={onPress}
 			style={{ ...styles.toolbarButton }}
 		>
@@ -114,10 +115,18 @@ function Toolbar() {
 		<div className="keeper-layout" style={styles.toolbar}>
 			<div className="keeper-layout" style={{ overflowX: "auto", ...{} }}>
 				<div className="keeper-layout" style={styles.toolbarContent}>
-					<ToolbarIconButton name="undo" onPress={handleUndo} />
-					<ToolbarIconButton name="repeat" onPress={handleRedo} />
-					<ToolbarIconButton name="indent" onPress={handleIndent} />
-					<ToolbarIconButton name="dedent" onPress={handleOutdent} />
+					<ToolbarIconButton name="undo" label="Undo" onPress={handleUndo} />
+					<ToolbarIconButton name="repeat" label="Redo" onPress={handleRedo} />
+					<ToolbarIconButton
+						name="indent"
+						label="Indent"
+						onPress={handleIndent}
+					/>
+					<ToolbarIconButton
+						name="dedent"
+						label="Outdent"
+						onPress={handleOutdent}
+					/>
 					<ToolbarIconButton
 						name="table"
 						onPress={handleInsertTable}

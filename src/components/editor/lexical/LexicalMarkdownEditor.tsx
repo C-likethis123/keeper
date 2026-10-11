@@ -12,11 +12,16 @@ import type { Provider, ProviderAwareness } from "@lexical/yjs";
 import { ThemeProvider } from "@/constants/themes/ThemeProvider";
 
 import {
+	$addUpdateTag,
 	$createRangeSelection,
 	$getNodeByKey,
 	$getRoot,
 	$isTextNode,
 	$setSelection,
+	COMMAND_PRIORITY_LOW,
+	RootNode,
+	SELECTION_CHANGE_COMMAND,
+	SKIP_SCROLL_INTO_VIEW_TAG,
 	type LexicalEditor,
 	type TextNode,
 } from "lexical";
@@ -37,6 +42,9 @@ import {
 	importMarkdownToLexical,
 } from "./markdown";
 import type { PastedImage } from "./extensions/MarkdownPasteExtension";
+
+import { useMobileEditorViewport } from "./useMobileEditorViewport";
+import "./mobileEditor.css";
 
 interface LexicalMarkdownEditorProps {
 	accessibilityLabel?: string;
@@ -449,17 +457,38 @@ function findMatchesEqual(left: FindMatch[], right: FindMatch[]) {
 function scrollSelectionIntoView() {
 	requestAnimationFrame(() => {
 		const selection = window.getSelection();
-		if (!selection || selection.rangeCount === 0) {
-			return;
-		}
-		const range = selection.getRangeAt(0);
-		const rect = range.getBoundingClientRect();
-		if (rect.height > 0 || rect.width > 0) {
-			window.scrollBy({
-				top: rect.top - window.innerHeight / 3,
-				behavior: "smooth",
-			});
-		}
+		if (!selection || selection.rangeCount === 0) return;
+		const rect = selection.getRangeAt(0).getBoundingClientRect();
+		const element =
+			selection.focusNode instanceof Element
+				? selection.focusNode
+				: selection.focusNode?.parentElement;
+		const scroller = element?.closest<HTMLElement>(".keeper-editor-scroller");
+		const bounds = scroller?.getBoundingClientRect();
+		const viewport = window.visualViewport;
+		const toolbar = scroller
+			?.querySelector(".keeper-toolbar-sticky")
+			?.getBoundingClientRect();
+		const top =
+			Math.max(
+				bounds?.top ?? 0,
+				viewport?.offsetTop ?? 0,
+				toolbar?.bottom ?? 0,
+			) + 12;
+		const bottom =
+			Math.min(
+				bounds?.bottom ?? window.innerHeight,
+				(viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight),
+			) - 12;
+		const delta =
+			rect.bottom > bottom
+				? rect.bottom - bottom
+				: rect.top < top
+					? rect.top - top
+					: 0;
+		if (!rect.height || !delta) return;
+		if (scroller) scroller.scrollTop += delta;
+		else window.scrollBy({ top: delta });
 	});
 }
 
@@ -790,6 +819,36 @@ function useLatestGetter<T>(value: T) {
 	return useCallback(() => ref.current, []);
 }
 
+function MobileCaretScrollPlugin({ enabled }: { enabled: boolean }) {
+	const [editor] = useLexicalComposerContext();
+	useEffect(() => {
+		if (!enabled) return;
+		// Shared viewport handler owns mobile caret scrolling, including reading suppression.
+		const unregisterTransform = editor.registerNodeTransform(RootNode, () => {
+			$addUpdateTag(SKIP_SCROLL_INTO_VIEW_TAG);
+		});
+		const unregisterUpdate = editor.registerUpdateListener(() => {
+			editor
+				.getRootElement()
+				?.dispatchEvent(new Event("keeper-editor-update", { bubbles: true }));
+		});
+		const unregisterSelection = editor.registerCommand(
+			SELECTION_CHANGE_COMMAND,
+			() => {
+				$addUpdateTag(SKIP_SCROLL_INTO_VIEW_TAG);
+				return false;
+			},
+			COMMAND_PRIORITY_LOW,
+		);
+		return () => {
+			unregisterTransform();
+			unregisterUpdate();
+			unregisterSelection();
+		};
+	}, [editor, enabled]);
+	return null;
+}
+
 function LexicalMarkdownEditor({
 	accessibilityLabel,
 	autoFocus = true,
@@ -823,6 +882,8 @@ function LexicalMarkdownEditor({
 
 	const palette = themeMode === "light" ? lightTheme.colors : darkTheme.colors;
 	const editorContentElementRef = useRef<HTMLDivElement | null>(null);
+	const scrollElementRef = useRef<HTMLDivElement | null>(null);
+	const viewport = useMobileEditorViewport(scrollElementRef);
 	const hasCrdtState = (crdtInitialUpdate?.length ?? 0) > 0;
 	const initialMarkdownRef = useRef(crdtInitialMarkdown ?? markdown);
 	const commandRef = useRef<LexicalEditorCommand | undefined>(command);
@@ -919,11 +980,14 @@ function LexicalMarkdownEditor({
 
 	const editor = (
 		<div
+			ref={scrollElementRef}
+			className="keeper-editor-scroller"
+			data-editor-variant={variant}
 			style={{
 				background: variant === "compact" ? palette.card : palette.background,
 				color: palette.text,
 				height: "100%",
-				minHeight: "100%",
+				minHeight: 0,
 				overflowY: "auto",
 				position: "relative",
 				paddingTop: safeAreaInsets?.top ?? 0,
@@ -934,7 +998,7 @@ function LexicalMarkdownEditor({
 		>
 			<style>{`
 					.keeper-editor-shell {
-						min-height: ${variant === "compact" ? "100%" : "100vh"};
+						min-height: ${variant === "compact" ? "100%" : "100dvh"};
 						padding: ${variant === "compact" ? "8px 0" : "18px 18px 40px"};
 						box-sizing: border-box;
 						display: flex;
@@ -952,7 +1016,7 @@ function LexicalMarkdownEditor({
 					}
 					.keeper-editor {
 						box-sizing: border-box;
-						min-height: ${variant === "compact" ? "96px" : "calc(100vh - 76px)"};
+						min-height: ${variant === "compact" ? "96px" : "calc(100dvh - 76px)"};
 						outline: none;
 						padding-left: 28px;
 						font-size: 17px;
@@ -961,6 +1025,7 @@ function LexicalMarkdownEditor({
 					}
 					.keeper-editor-content {
 						position: relative;
+						flex: 1;
 					}
 					.keeper-draggable-block-anchor {
 						display: ${variant === "compact" ? "none" : "block"};
@@ -1329,6 +1394,7 @@ function LexicalMarkdownEditor({
 				extension={editorExtension}
 				contentEditable={null}
 			>
+				<MobileCaretScrollPlugin enabled={viewport.mobile} />
 				<FindReplaceBar command={command} />
 				<div className="keeper-editor-content" ref={setEditorContentElement}>
 					<ContentEditable

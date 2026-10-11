@@ -23,7 +23,7 @@ export function BrowserNoteMetadata({
 	return (
 		<ThemeProvider value={darkTheme}>
 			<div
-				className="keeper-layout"
+				className="keeper-layout browser-note-metadata"
 				style={styles.group}
 				aria-label="Todo status"
 			>
