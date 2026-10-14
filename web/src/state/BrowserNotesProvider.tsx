@@ -36,7 +36,7 @@ type BrowserNotesContextValue = {
 	createNote(
 		noteType?: NoteType,
 		title?: string,
-		initial?: { content?: string; isPinned?: boolean },
+		initial?: { content?: string; isPinned?: boolean; attachedVideo?: string },
 	): BrowserNote;
 	saveNote(note: BrowserNote): Promise<void>;
 	deleteNote(id: string): Promise<void>;
@@ -197,7 +197,7 @@ export function BrowserNotesProvider({
 					createdAt: timestamp,
 					completedAt: null,
 					attachment: null,
-					attachedVideo: null,
+					attachedVideo: initial.attachedVideo ?? null,
 					resourceUrl: null,
 					documentPositions: null,
 				};

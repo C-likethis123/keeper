@@ -1,4 +1,5 @@
 import { useColorScheme } from "@/hooks/useBrowserAppearance";
+import AttachVideoModal from "@/components/AttachVideoModal";
 import "@/components/shared/shared.css";
 import { flushAllPendingEditorDispatches } from "@/components/editor/core/pendingDispatchRegistry";
 import LexicalMarkdownEditor from "@/components/editor/lexical/LexicalMarkdownEditor";
@@ -14,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 export default function HomeQuickComposer({
 	onCreateTypedNote,
 	onSave,
+	renderTemplatePicker,
 }: {
 	onCreateTypedNote: (props?: {
 		noteType?: NoteType;
@@ -23,7 +25,13 @@ export default function HomeQuickComposer({
 		title: string;
 		content: string;
 		isPinned: boolean;
+		attachedVideo: string | null;
 	}) => Promise<void>;
+	renderTemplatePicker: (props: {
+		open: boolean;
+		onDismiss: () => void;
+		onApply: (markdown: string) => void;
+	}) => React.ReactNode;
 }) {
 	const styles = useStyles(createStyles);
 	const [isExpanded, setIsExpanded] = useState(false);
@@ -34,6 +42,10 @@ export default function HomeQuickComposer({
 	const [isSaving, setIsSaving] = useState(false);
 	const savingRef = useRef(false);
 	const [editorCommand, setEditorCommand] = useState<LexicalEditorCommand>();
+	const [templateOpen, setTemplateOpen] = useState(false);
+	const [editorKey, setEditorKey] = useState(0);
+	const [videoOpen, setVideoOpen] = useState(false);
+	const [attachedVideo, setAttachedVideo] = useState<string | null>(null);
 	const colorScheme = useColorScheme();
 	const titleInputRef = useRef<HTMLInputElement>(null);
 	useEffect(() => {
@@ -49,7 +61,7 @@ export default function HomeQuickComposer({
 		if (savingRef.current) return;
 		flushAllPendingEditorDispatches();
 		const currentContent = contentRef.current;
-		if (title.trim() || currentContent.trim()) {
+		if (title.trim() || currentContent.trim() || attachedVideo) {
 			setIsSaving(true);
 			savingRef.current = true;
 			try {
@@ -57,6 +69,7 @@ export default function HomeQuickComposer({
 					title: title.trim(),
 					content: currentContent,
 					isPinned,
+					attachedVideo,
 				});
 			} catch {
 				return;
@@ -69,12 +82,36 @@ export default function HomeQuickComposer({
 		setContent("");
 		contentRef.current = "";
 		setIsPinned(false);
+		setAttachedVideo(null);
 		setEditorCommand(undefined);
 		setIsExpanded(false);
 	};
 
 	return (
 		<div className="keeper-layout" style={styles.wrapper}>
+			<AttachVideoModal
+				visible={videoOpen}
+				currentVideo={attachedVideo}
+				onDismiss={() => setVideoOpen(false)}
+				onSave={(url) => {
+					setAttachedVideo(url);
+					setVideoOpen(false);
+				}}
+				onRemove={() => {
+					setAttachedVideo(null);
+					setVideoOpen(false);
+				}}
+			/>
+			{renderTemplatePicker({
+				open: templateOpen,
+				onDismiss: () => setTemplateOpen(false),
+				onApply: (markdown) => {
+					contentRef.current = markdown;
+					setContent(markdown);
+					setEditorKey((key) => key + 1);
+					setTemplateOpen(false);
+				},
+			})}
 			<div
 				className="keeper-layout"
 				data-testid="home-quick-composer-card"
@@ -103,6 +140,7 @@ export default function HomeQuickComposer({
 						/>
 						<div className="keeper-layout" style={styles.contentInput}>
 							<LexicalMarkdownEditor
+								key={editorKey}
 								accessibilityLabel="Note content"
 								autoFocus={false}
 								command={editorCommand}
@@ -113,6 +151,8 @@ export default function HomeQuickComposer({
 									setContent(nextContent);
 								}}
 								persistDraft={false}
+								onInsertTemplateCommand={() => setTemplateOpen(true)}
+								onShowVideoModal={() => setVideoOpen(true)}
 								themeMode={colorScheme ?? "dark"}
 								variant="compact"
 							/>

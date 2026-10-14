@@ -47,18 +47,6 @@ export function EmbeddedVideoPanel({ source, style }: EmbeddedVideoPanelProps) {
 					}}
 				/>
 			</div>
-			<span
-				className="keeper-copy"
-				style={{
-					...styles.caption,
-					overflow: "hidden",
-					display: "-webkit-box",
-					WebkitBoxOrient: "vertical",
-					WebkitLineClamp: 1,
-				}}
-			>
-				{source.rawUrl}
-			</span>
 		</div>
 	);
 }
@@ -95,12 +83,6 @@ function createStyles(theme: ExtendedTheme) {
 			overflow: "hidden",
 			borderRadius: 12,
 			backgroundColor: "#000000",
-		},
-		caption: {
-			fontSize: 12,
-			color: theme.colors.textMuted,
-			paddingLeft: 0,
-			paddingRight: 0,
 		},
 	} satisfies Record<string, React.CSSProperties>;
 }

@@ -64,6 +64,24 @@ npm run build:web:cloudflare
 npm run deploy:web:cloudflare
 ```
 
+### Automatic web deployment
+
+`.github/workflows/deploy-web.yml` runs on every push to `main`, or manually
+through GitHub Actions **Deploy Web**. It installs locked dependencies using
+the Node version in `.nvmrc`, runs lint, typecheck, and unit tests, then runs
+`npm run deploy:web:cloudflare`. Production deployments run one at a time.
+
+Add these repository secrets under **Settings → Secrets and variables → Actions**:
+
+- `CLOUDFLARE_API_TOKEN`: create a Cloudflare API token using the **Edit Cloudflare
+  Workers** template, scoped to the account hosting Keeper.
+- `CLOUDFLARE_ACCOUNT_ID`: the Cloudflare account ID hosting the `keeper` Worker.
+
+See [Cloudflare's GitHub Actions authentication guide](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/#1-authentication).
+The existing `keeper-private-api-proxy` Worker must already be deployed, as it
+is referenced by the web Worker's service binding. This workflow deploys the
+web Worker and its built assets from the root `wrangler.jsonc` configuration.
+
 Cloudflare Access policies are managed separately through Cloudflare's dashboard,
 API, or Terraform; Wrangler does not manage them.
 

@@ -609,6 +609,60 @@ button.browser-tab {
 .lexical-editor-shell {
 	min-height: 26rem;
 }
+.browser-pane-actions {
+	padding: 0.5rem 1rem;
+}
+.browser-pane-actions button,
+.browser-web-toolbar button {
+	background: var(--surface);
+	color: inherit;
+	border: 1px solid var(--border);
+	border-radius: 0.375rem;
+	padding: 0.375rem 0.625rem;
+}
+.browser-pane-actions button[aria-pressed="true"] {
+	border-color: var(--accent);
+}
+.browser-web-panel {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 24rem;
+	background: var(--canvas);
+}
+.browser-web-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.375rem;
+	padding: 0.5rem;
+	border-bottom: 1px solid var(--border);
+}
+.browser-web-toolbar input {
+	flex: 1 1 10rem;
+	min-width: 0;
+	background: var(--surface);
+	color: inherit;
+	border: 1px solid var(--border);
+	border-radius: 0.375rem;
+	padding: 0.375rem;
+}
+.browser-web-toolbar input:focus-visible {
+	outline: 2px solid var(--accent);
+}
+.browser-web-hint,
+.browser-web-panel [role="alert"] {
+	margin: 0;
+	padding: 0.5rem;
+	font-size: 0.8125rem;
+	color: var(--muted);
+}
+.browser-web-panel iframe {
+	flex: 1;
+	width: 100%;
+	min-height: 20rem;
+	border: 0;
+	background: white;
+}
 .browser-editor-main,
 .browser-editor-pane {
 	min-width: 0;

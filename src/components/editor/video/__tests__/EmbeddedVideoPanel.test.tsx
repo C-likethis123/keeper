@@ -37,9 +37,9 @@ describe("EmbeddedVideoPanel", () => {
 		expect(container.querySelector("iframe")).toBeTruthy();
 	});
 
-	it("displays the video raw URL as caption", () => {
+	it("leaves player space free of the raw URL caption", () => {
 		render(<EmbeddedVideoPanel source={youtubeSource} />);
-		expect(screen.getByText(youtubeSource.rawUrl)).toBeTruthy();
+		expect(screen.queryByText(youtubeSource.rawUrl)).not.toBeInTheDocument();
 	});
 
 	it("renders the video inside an iframe", () => {

@@ -1,4 +1,5 @@
 import { ToastOverlay } from "@/components/shared/Toast";
+import { parseEmbeddedVideoUrl } from "@/components/editor/video/videoUtils";
 import ErrorScreen from "@/components/shared/ErrorScreen";
 import Loader from "@/components/shared/Loader";
 import { darkTheme } from "@/constants/themes/darkTheme";
@@ -37,7 +38,7 @@ import {
 	type BrowserNote,
 	type BrowserNoteSurface,
 } from "@web/ui/noteRepository";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useColorScheme } from "@/hooks/useBrowserAppearance";
 import {
 	Link,
@@ -49,7 +50,41 @@ import {
 	useParams,
 } from "react-router-dom";
 
-type EditorPanel = "document" | "video" | "article";
+type EditorPanel = "document" | "video" | "article" | "browser";
+
+function ShareRoute() {
+	const { search } = useLocation();
+	const navigate = useNavigate();
+	const { ready, loadError, createNote, reloadNotes } = useBrowserNotes();
+	const handled = useRef<string | null>(null);
+	const params = new URLSearchParams(search);
+	const candidates = [
+		params.get("url") ?? "",
+		params.get("text") ?? "",
+	].flatMap((value) => value.match(/https?:\/\/[^\s<>"']+/g) ?? []);
+	const video = candidates.find((candidate) =>
+		parseEmbeddedVideoUrl(candidate),
+	);
+	const title = params.get("title")?.trim() || "YouTube video";
+
+	useEffect(() => {
+		if (!ready || loadError || !video || handled.current === search) return;
+		handled.current = search;
+		const note = createNote("note", title, { attachedVideo: video });
+		useTabStore.getState().openTab(note.id, note.title, true);
+		navigate(`/editor/${note.id}`, { replace: true });
+	}, [createNote, loadError, navigate, ready, search, title, video]);
+
+	if (loadError)
+		return <ErrorScreen error={loadError} onRetry={() => void reloadNotes()} />;
+	if (!ready || video) return <Loader />;
+	return (
+		<main>
+			<p>Shared content contains no supported YouTube video link.</p>
+			<Link to="/">Back to notes</Link>
+		</main>
+	);
+}
 
 function typeLabel(type: BrowserNoteSurface) {
 	return {
@@ -339,7 +374,7 @@ function EditorRouteContent({
 			local.attachment ? "document" : null,
 			local.attachedVideo ? "video" : null,
 			local.resourceUrl ? "article" : null,
-		].filter(Boolean) as Array<"document" | "video" | "article">;
+		].filter(Boolean) as EditorPanel[];
 		const last = available.at(-1);
 		if (!last) return;
 		setActivePanel(
@@ -397,6 +432,19 @@ function EditorRouteContent({
 					status={local.status}
 					onStatus={(status) => update({ status })}
 				/>
+				<div className="browser-pane-actions">
+					<button
+						type="button"
+						aria-pressed={activePanel === "browser"}
+						onClick={() =>
+							setActivePanel((current) =>
+								current === "browser" ? null : "browser",
+							)
+						}
+					>
+						Browser
+					</button>
+				</div>
 				<BrowserEditorSidePanelHost
 					activePanel={activePanel}
 					articleUrl={local.resourceUrl}
@@ -540,6 +588,7 @@ function RoutedApp() {
 			<ViteAppShell>
 				<Routes>
 					<Route path="/" element={<HomeRoute />} />
+					<Route path="/share" element={<ShareRoute />} />
 					<Route path="/editor/:noteId" element={<EditorRoute />} />
 					<Route path="/suggested-mocs" element={<SuggestedMocsRoute />} />
 					<Route path="/documents/:noteId" element={<EditorRoute />} />

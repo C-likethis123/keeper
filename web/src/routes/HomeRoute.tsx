@@ -9,6 +9,7 @@ import type { Note, NoteType } from "@/services/notes/types";
 import { useFilterStore } from "@/stores/filterStore";
 import { useTabStore } from "@/stores/tabStore";
 import { useBrowserNotes } from "@web/state/BrowserNotesProvider";
+import { BrowserTemplatePicker } from "@web/adapters/browser/editor/BrowserTemplatePicker";
 import { useOpenBrowserDrawer } from "@web/shell/ViteAppShell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -87,10 +88,16 @@ export function HomeRoute() {
 	);
 
 	const createQuickNote = useCallback(
-		async (draft: { title: string; content: string; isPinned: boolean }) => {
+		async (draft: {
+			title: string;
+			content: string;
+			isPinned: boolean;
+			attachedVideo: string | null;
+		}) => {
 			const note = createNote("note", draft.title, {
 				content: draft.content,
 				isPinned: draft.isPinned,
+				attachedVideo: draft.attachedVideo ?? undefined,
 			});
 			useTabStore.getState().openTab(note.id, note.title, true);
 			navigate(`/editor/${note.id}`);
@@ -160,6 +167,14 @@ export function HomeRoute() {
 						<HomeQuickComposer
 							onCreateTypedNote={createAndOpenNote}
 							onSave={createQuickNote}
+							renderTemplatePicker={(props) => (
+								<BrowserTemplatePicker
+									{...props}
+									templates={notes.filter(
+										(note) => note.noteType === "template",
+									)}
+								/>
+							)}
 						/>
 					}
 				/>

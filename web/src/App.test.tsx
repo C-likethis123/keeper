@@ -8,6 +8,7 @@ import {
 	waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { lightTheme } from "@/constants/themes/lightTheme";
 import { storageEngine } from "@/services/storage/storageEngine";
 import { useFilterStore } from "@/stores/filterStore";
@@ -30,6 +31,80 @@ import {
 	useLocation,
 	useNavigate,
 } from "react-router-dom";
+
+it.each([
+	["url", "https://youtu.be/abcdefghijk"],
+	[
+		"text",
+		"Watch this video: https://www.youtube.com/watch?v=abcdefghijk&si=shared",
+	],
+	["text", "https://www.youtube.com/shorts/abcdefghijk"],
+])(
+	"receives YouTube shares through %s without duplicate notes",
+	async (field, value) => {
+		const params = new URLSearchParams({
+			[field]: value,
+			title: "Shared video",
+		});
+		render(
+			<StrictMode>
+				<MemoryRouter initialEntries={[`/share?${params}`]}>
+					<App />
+				</MemoryRouter>
+			</StrictMode>,
+		);
+		expect(await screen.findByTitle("Youtube video")).toBeInTheDocument();
+		await waitFor(async () => {
+			const notes = await loadBrowserNotes();
+			expect(notes).toHaveLength(1);
+			expect(notes[0]).toMatchObject({
+				title: "Shared video",
+				attachedVideo: value.match(/https?:\/\/\S+/)?.[0],
+			});
+		});
+	},
+);
+
+it("uses text URL when shared url field is unsupported", async () => {
+	const params = new URLSearchParams({
+		url: "https://example.com",
+		text: "https://youtu.be/abcdefghijk",
+	});
+	render(
+		<MemoryRouter initialEntries={[`/share?${params}`]}>
+			<App />
+		</MemoryRouter>,
+	);
+	expect(await screen.findByTitle("Youtube video")).toBeInTheDocument();
+	await waitFor(async () => {
+		expect((await loadBrowserNotes())[0]).toMatchObject({
+			title: "YouTube video",
+			attachedVideo: "https://youtu.be/abcdefghijk",
+		});
+	});
+});
+
+it.each([
+	"",
+	"?text=https://youtube.com.evil.example/watch?v=abcdefghijk",
+	"?url=javascript:alert(1)",
+	"?text=https://www.youtube.com/",
+])(
+	"rejects unsupported shared content %s without creating notes",
+	async (search) => {
+		render(
+			<MemoryRouter initialEntries={[`/share${search}`]}>
+				<App />
+			</MemoryRouter>,
+		);
+		expect(
+			await screen.findByText(
+				"Shared content contains no supported YouTube video link.",
+			),
+		).toBeInTheDocument();
+		expect(await loadBrowserNotes()).toHaveLength(0);
+	},
+);
 
 function note(overrides: Partial<BrowserNote> = {}): BrowserNote {
 	const timestamp = overrides.lastUpdated ?? Date.now();
@@ -160,7 +235,11 @@ it("removes document bytes and metadata without closing editor", async () => {
 		"attachments",
 	);
 	await persistBrowserNotes([
-		note({ id: "remove-document", attachment, documentPositions: { [attachment]: "4" } }),
+		note({
+			id: "remove-document",
+			attachment,
+			documentPositions: { [attachment]: "4" },
+		}),
 	]);
 	render(
 		<MemoryRouter initialEntries={["/documents/remove-document"]}>
@@ -168,7 +247,9 @@ it("removes document bytes and metadata without closing editor", async () => {
 		</MemoryRouter>,
 	);
 
-	await user.click(await screen.findByRole("button", { name: "Remove attachment" }));
+	await user.click(
+		await screen.findByRole("button", { name: "Remove attachment" }),
+	);
 
 	await waitFor(async () => {
 		const persisted = (await loadBrowserNotes())[0];
@@ -249,7 +330,7 @@ it("opens direct video route, then removes video through canonical panel", async
 	expect(screen.queryByTitle("Youtube video")).not.toBeInTheDocument();
 });
 
-it("renders persisted article metadata in canonical article panel", async () => {
+it("opens article source in browser pane without replacing source when browsing", async () => {
 	await persistBrowserNotes([
 		note({
 			id: "article-panel",
@@ -263,8 +344,45 @@ it("renders persisted article metadata in canonical article panel", async () => 
 		</MemoryRouter>,
 	);
 
-	const article = await screen.findByTitle("Article");
+	const article = await screen.findByTitle("Browser website");
 	expect(article).toHaveAttribute("src", "https://example.com/article");
+	fireEvent.change(screen.getByRole("textbox", { name: "Website address" }), {
+		target: { value: "https://example.org" },
+	});
+	fireEvent.click(screen.getByRole("button", { name: "Go" }));
+	expect(screen.getByTitle("Browser website")).toHaveAttribute(
+		"src",
+		"https://example.org/",
+	);
+	expect((await loadBrowserNotes())[0]?.resourceUrl).toBe(
+		"https://example.com/article",
+	);
+});
+
+it("opens and closes browser split pane from ordinary note", async () => {
+	await persistBrowserNotes([note({ id: "browser-note" })]);
+	render(
+		<MemoryRouter initialEntries={["/editor/browser-note"]}>
+			<App />
+		</MemoryRouter>,
+	);
+	const button = await screen.findByRole("button", {
+		name: "Browser",
+		exact: true,
+	});
+	fireEvent.click(button);
+	expect(
+		screen.getByRole("region", { name: "Browser pane" }),
+	).toBeInTheDocument();
+	expect(
+		screen.getByRole("separator", { name: "Resize editor panel" }),
+	).toBeInTheDocument();
+	expect(screen.queryByTitle("Browser website")).not.toBeInTheDocument();
+	fireEvent.click(screen.getByRole("button", { name: "Close browser pane" }));
+	expect(
+		screen.queryByRole("region", { name: "Browser pane" }),
+	).not.toBeInTheDocument();
+	expect(button).toHaveAttribute("aria-pressed", "false");
 });
 
 it("creates one quick note and routes to its browser editor", async () => {
