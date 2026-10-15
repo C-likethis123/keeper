@@ -13,13 +13,8 @@ it("persists keyboard split resizing with the persisted layout key", async () =>
 			<BrowserEditorSidePanelHost
 				activePanel="article"
 				articleUrl="https://example.com"
-				attachmentPath={null}
-				noteId="note-1"
 				videoUrl={null}
 				onArticleDismiss={() => undefined}
-				onAttachmentDismiss={() => undefined}
-				onDocumentPositionChange={() => undefined}
-				onTextSelected={() => undefined}
 				onVideoDismiss={() => undefined}
 			>
 				<div>Editor</div>
@@ -47,13 +42,8 @@ it("uses responsive vertical split for narrow browser panels", () => {
 			<BrowserEditorSidePanelHost
 				activePanel="article"
 				articleUrl="https://example.com"
-				attachmentPath={null}
-				noteId="note-1"
 				videoUrl={null}
 				onArticleDismiss={() => undefined}
-				onAttachmentDismiss={() => undefined}
-				onDocumentPositionChange={() => undefined}
-				onTextSelected={() => undefined}
 				onVideoDismiss={() => undefined}
 			>
 				<div>Editor</div>

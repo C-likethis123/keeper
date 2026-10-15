@@ -1,6 +1,6 @@
 import { storageEngine } from "@/services/storage/storageEngine";
 
-export type AttachmentType = "pdf" | "epub";
+type AttachmentType = "pdf" | "epub";
 
 const objectUrls = new Map<string, string>();
 

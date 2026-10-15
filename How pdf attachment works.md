@@ -1,3 +1,5 @@
+> Retired: PDF/EPUB import and split readers removed. Existing attachment files and note metadata remain stored. Details below describe former implementation.
+
 # PDF and EPUB attachments
 
 Toolbar file input accepts PDF and EPUB, saves bytes through browser IndexedDB storage,

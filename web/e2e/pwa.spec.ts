@@ -214,32 +214,6 @@ test("offline note edit survives reload, stays queued, and reconnect triggers sy
 	expect(await readQueuedOperationCount(page)).toBeGreaterThan(0);
 });
 
-test("local PDF attachment renders from IndexedDB after offline restart", async ({
-	page,
-	context,
-}) => {
-	await page.route("**/api/**", (route) =>
-		route.fulfill({ status: 503, body: "offline test" }),
-	);
-	await page.goto("/");
-	await createNote(page, "Offline PDF");
-	const chooserPromise = page.waitForEvent("filechooser");
-	await page.getByRole("button", { name: "Attach PDF or ePub" }).click();
-	const chooser = await chooserPromise;
-	await chooser.setFiles({
-		name: "offline.pdf",
-		mimeType: "application/pdf",
-		buffer: Buffer.from("%PDF-1.4\n% offline fixture\n"),
-	});
-	await expect(page.locator(".browser-editor-panel iframe")).toBeVisible();
-	await waitForActiveWorker(page);
-	await context.setOffline(true);
-	await page.reload();
-
-	await expect(page.getByLabel("Title")).toHaveValue("Offline PDF");
-	await expect(page.locator(".browser-editor-panel iframe")).toBeVisible();
-});
-
 test("unknown offline navigation receives cached application shell", async ({
 	page,
 	context,

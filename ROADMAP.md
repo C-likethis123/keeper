@@ -425,6 +425,8 @@ Group notes into derived sections (Pinned → Recently Edited → MOC collection
 Attach a PDF or ePub file to a note and read it side-by-side with the editor — left/right on desktop, top/bottom on mobile.
 
 **Status**: Implemented
+> Retired: PDF/EPUB import, split readers, viewer engines, and generated templates removed. Existing attachment data preserved. Historical implementation below.
+
 **Task file**: `tasks/003-pdf-epub-split-viewer.md`
 **Features**:
 - PDF rendered via PDF.js in a WebView (or native `<iframe>` on web)

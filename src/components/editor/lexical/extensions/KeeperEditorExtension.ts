@@ -48,13 +48,10 @@ interface CreateKeeperEditorExtensionOptions {
 	getOnOpenWikiLink: () =>
 		| ((title: string) => void | Promise<void>)
 		| undefined;
-	getHasAttachment: () => boolean;
-	getOnAttachDocument: () => (() => void) | undefined;
 	getOnInsertImage: () => (() => void) | undefined;
 	getOnPasteImage: () =>
 		| ((image: PastedImage) => void | Promise<void>)
 		| undefined;
-	getOnRemoveAttachment: () => (() => void) | undefined;
 	getOnShowVideoModal: () => (() => void) | undefined;
 	getOnToggleArticle: () => (() => void) | undefined;
 	getOnToggleRelatedNotes: () => (() => void) | undefined;
@@ -71,11 +68,8 @@ export function createKeeperEditorExtension({
 	getOnInsertTemplateCommand,
 	getOnMarkdownChange,
 	getOnOpenWikiLink,
-	getHasAttachment,
-	getOnAttachDocument,
 	getOnInsertImage,
 	getOnPasteImage,
-	getOnRemoveAttachment,
 	getOnShowVideoModal,
 	getOnToggleArticle,
 	getOnToggleRelatedNotes,
@@ -140,10 +134,7 @@ export function createKeeperEditorExtension({
 			configExtension(SlashCommandExtension, { getOnInsertTemplateCommand }),
 			configExtension(WikiLinkExtension, { getOnOpenWikiLink }),
 			configExtension(ToolbarExtension, {
-				getHasAttachment,
-				getOnAttachDocument,
 				getOnInsertImage,
-				getOnRemoveAttachment,
 				getOnShowVideoModal,
 				getOnToggleActivePanel,
 				getOnToggleArticle,

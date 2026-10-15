@@ -16,7 +16,7 @@ describe("LexicalEditor", () => {
 	it("uses shared toolbar actions", () => {
 		render(<LexicalEditor value="" onChange={vi.fn()} />);
 
-		for (const label of ["Insert table", "Insert image", "Attach PDF or ePub", "Attach video", "View article", "Show related notes", "Switch panel"]) {
+		for (const label of ["Insert table", "Insert image", "Attach video", "View article", "Show related notes", "Switch panel"]) {
 			expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
 		}
 	});

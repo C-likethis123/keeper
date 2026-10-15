@@ -25,12 +25,6 @@ export default defineConfig({
 					import.meta.url,
 				),
 			),
-			"@/components/editor/document/documentPositionStore": fileURLToPath(
-				new URL(
-					"./web/src/adapters/browser/documentPositionStore.ts",
-					import.meta.url,
-				),
-			),
 			"@/services/notes/Notes": fileURLToPath(
 				new URL("./web/src/adapters/browser/notesRoot.ts", import.meta.url),
 			),

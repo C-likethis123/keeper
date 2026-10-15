@@ -16,7 +16,7 @@ Historical quick reference. Not current source of truth. Use `README.md` for cur
 - **Phase 7**: Embedded video player complete with stacked/side layouts and playback position persistence; manual validation on device remains next
 - **Phase 8**: Shared UI components and refactors complete; extracted `FilterChip`, `IconButton`, and `useBlockInputHandlers` with full test coverage
 - **Phase 9**: Collapsible blocks complete; live `<details>` conversion, toolbar insertion, summary/body editing flows, and automated coverage are in place; next is device validation and polish
-- **Phase 12**: PDF/ePub split-screen viewer complete; attachments stored in `_attachments/`, rendered via PDF.js/epub.js in WebView, split-screen shell in `NoteEditorView`, toolbar attachment button, and position persistence; next is device validation and annotation UX polish
+- **Phase 12**: PDF/ePub import and split readers retired; existing attachment data preserved.
 - **Phase 13**: MOC suggestion engine complete; Python indexing pipeline, semantic clustering, and UI for review/accepting suggestions implemented
 - **Phase 14**: Block and Gap Selection complete; structured selection primitives (block + gap), gutter/gap hit targets, and keyboard shortcuts (`Ctrl+A`, arrows, `Enter`, `Delete`) implemented
 - **Phase 15**: Automate MOC cluster generation complete; Github Action workflow (`moc-pipeline.yml`) integrated for automatic indexing and clustering on push

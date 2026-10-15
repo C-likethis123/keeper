@@ -52,18 +52,15 @@ interface LexicalMarkdownEditorProps {
 	command?: LexicalEditorCommand;
 	crdtInitialMarkdown?: string;
 	crdtInitialUpdate?: number[];
-	hasAttachment?: boolean;
 	markdown: string;
 	noteId: string;
 	notesRoot?: string;
 	onCrdtUpdate?: (update: number[]) => void | Promise<void>;
 	onMarkdownChange: (markdown: string) => void;
-	onAttachDocument?: () => void;
 	onInsertImage?: () => void;
 	onPasteImage?: (image: PastedImage) => void | Promise<void>;
 	onInsertTemplateCommand?: () => void | Promise<void>;
 	onOpenWikiLink?: (title: string) => void | Promise<void>;
-	onRemoveAttachment?: () => void;
 	persistDraft?: boolean;
 	variant?: "full" | "compact";
 	onShowVideoModal?: () => void;
@@ -188,18 +185,15 @@ function editorPropsEqual(
 		previous.autoFocus === next.autoFocus &&
 		previous.crdtInitialMarkdown === next.crdtInitialMarkdown &&
 		previous.crdtInitialUpdate === next.crdtInitialUpdate &&
-		previous.hasAttachment === next.hasAttachment &&
 		previous.markdown === next.markdown &&
 		previous.noteId === next.noteId &&
 		previous.notesRoot === next.notesRoot &&
-		previous.onAttachDocument === next.onAttachDocument &&
 		previous.onCrdtUpdate === next.onCrdtUpdate &&
 		previous.onInsertImage === next.onInsertImage &&
 		previous.onPasteImage === next.onPasteImage &&
 		previous.onInsertTemplateCommand === next.onInsertTemplateCommand &&
 		previous.onMarkdownChange === next.onMarkdownChange &&
 		previous.onOpenWikiLink === next.onOpenWikiLink &&
-		previous.onRemoveAttachment === next.onRemoveAttachment &&
 		previous.persistDraft === next.persistDraft &&
 		previous.onShowVideoModal === next.onShowVideoModal &&
 		previous.onToggleActivePanel === next.onToggleActivePanel &&
@@ -855,18 +849,15 @@ function LexicalMarkdownEditor({
 	command,
 	crdtInitialMarkdown,
 	crdtInitialUpdate,
-	hasAttachment = false,
 	markdown,
 	noteId,
 	notesRoot,
-	onAttachDocument,
 	onCrdtUpdate,
 	onInsertImage,
 	onPasteImage,
 	onMarkdownChange,
 	onInsertTemplateCommand,
 	onOpenWikiLink,
-	onRemoveAttachment,
 	persistDraft = true,
 	onShowVideoModal,
 	onToggleActivePanel,
@@ -915,11 +906,8 @@ function LexicalMarkdownEditor({
 	const getOnMarkdownChange = useLatestGetter(handleMarkdownChange);
 	const getOnInsertTemplateCommand = useLatestGetter(onInsertTemplateCommand);
 	const getOnOpenWikiLink = useLatestGetter(onOpenWikiLink);
-	const getHasAttachment = useLatestGetter(hasAttachment ?? false);
-	const getOnAttachDocument = useLatestGetter(onAttachDocument);
 	const getOnInsertImage = useLatestGetter(onInsertImage);
 	const getOnPasteImage = useLatestGetter(onPasteImage);
-	const getOnRemoveAttachment = useLatestGetter(onRemoveAttachment);
 	const getOnShowVideoModal = useLatestGetter(onShowVideoModal);
 	const getOnToggleActivePanel = useLatestGetter(onToggleActivePanel);
 	const getOnToggleArticle = useLatestGetter(onToggleArticle);
@@ -945,11 +933,8 @@ function LexicalMarkdownEditor({
 				getOnInsertTemplateCommand,
 				getOnMarkdownChange,
 				getOnOpenWikiLink,
-				getHasAttachment,
-				getOnAttachDocument,
 				getOnInsertImage,
 				getOnPasteImage,
-				getOnRemoveAttachment,
 				getOnShowVideoModal,
 				getOnToggleActivePanel,
 				getOnToggleArticle,
@@ -961,14 +946,11 @@ function LexicalMarkdownEditor({
 				theme: KEEPER_EDITOR_THEME,
 			}),
 		[
-			getHasAttachment,
-			getOnAttachDocument,
 			getOnInsertImage,
 			getOnPasteImage,
 			getOnInsertTemplateCommand,
 			getOnMarkdownChange,
 			getOnOpenWikiLink,
-			getOnRemoveAttachment,
 			getOnShowVideoModal,
 			getOnToggleActivePanel,
 			getOnToggleArticle,

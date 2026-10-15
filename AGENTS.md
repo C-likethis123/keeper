@@ -24,7 +24,6 @@ npm run test:watch       # Vitest watch mode
 npm run lint             # Biome lint
 npm run lint:fix         # Biome check --write
 npm run knip             # Dependency/export check
-npm run build:viewers    # Build PDF/EPUB viewer assets
 ```
 
 Run `npm run lint` for CI-style checks. Run `npm test` when touching covered TypeScript, UI, services, or store logic.
@@ -54,7 +53,7 @@ Shared TypeScript lives under `src/`; browser routes and adapters live under `we
    - `lexical/LexicalMarkdownEditor.tsx` is canonical DOM-backed rich Markdown editor.
    - `lexical/` owns toolbar, code blocks, slash commands, equations, images, tables, checklist transforms, wiki links, and Markdown transforms.
    - `lexical/slashCommand/` and `lexical/wikilinks/` own their overlays and trigger logic.
-   - `document/` and `video/` render split panels and embedded PDF/EPUB/video experiences.
+   - `document/` and `video/` render article and video split panels.
    - `core/` contains shared editor primitives such as pending dispatch registry. Do not reintroduce old block-model or block-renderer paths.
 
 4. **State** (`src/stores/`) - Zustand stores:

@@ -21,10 +21,7 @@ import { FontAwesome } from "@/components/shared/Icons";
 import type React from "react";
 
 interface ToolbarExtensionConfig {
-	getHasAttachment: () => boolean;
-	getOnAttachDocument: () => (() => void) | undefined;
 	getOnInsertImage: () => (() => void) | undefined;
-	getOnRemoveAttachment: () => (() => void) | undefined;
 	getOnShowVideoModal: () => (() => void) | undefined;
 	getOnToggleArticle: () => (() => void) | undefined;
 	getOnToggleRelatedNotes: () => (() => void) | undefined;
@@ -88,10 +85,7 @@ function ToolbarIconButton({
 function Toolbar() {
 	const { output } = useExtensionDependency(ToolbarExtension);
 	const [editor] = useLexicalComposerContext();
-	const hasAttachment = useSignalValue(output.getHasAttachment)();
-	const onAttachDocument = useSignalValue(output.getOnAttachDocument)();
 	const onInsertImage = useSignalValue(output.getOnInsertImage)();
-	const onRemoveAttachment = useSignalValue(output.getOnRemoveAttachment)();
 	const onShowVideoModal = useSignalValue(output.getOnShowVideoModal)();
 	const onToggleArticle = useSignalValue(output.getOnToggleArticle)();
 	const onToggleRelatedNotes = useSignalValue(output.getOnToggleRelatedNotes)();
@@ -138,22 +132,6 @@ function Toolbar() {
 						disabled={!onInsertImage}
 						label="Insert image"
 					/>
-
-					{hasAttachment ? (
-						<ToolbarIconButton
-							name="trash-o"
-							onPress={onRemoveAttachment ?? noop}
-							disabled={!onRemoveAttachment}
-							label="Remove attachment"
-						/>
-					) : (
-						<ToolbarIconButton
-							name="paperclip"
-							onPress={onAttachDocument ?? noop}
-							disabled={!onAttachDocument}
-							label="Attach PDF or ePub"
-						/>
-					)}
 					<ToolbarIconButton
 						name="video-camera"
 						onPress={onShowVideoModal ?? noop}
@@ -203,10 +181,7 @@ function ToolbarEditorChildren({
 
 export const ToolbarExtension = defineExtension({
 	config: safeCast<ToolbarExtensionConfig>({
-		getHasAttachment: () => false,
-		getOnAttachDocument: () => undefined,
 		getOnInsertImage: () => undefined,
-		getOnRemoveAttachment: () => undefined,
 		getOnShowVideoModal: () => undefined,
 		getOnToggleArticle: () => undefined,
 		getOnToggleRelatedNotes: () => undefined,

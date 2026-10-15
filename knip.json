@@ -11,14 +11,8 @@
       "project": [
         "src/**/*.{ts,tsx}",
         "web/**/*.{ts,tsx}",
-        "scripts/**/*.js",
         "cloudflare/**/*.js",
         "*.{ts,js}"
-      ],
-      "ignoreDependencies": [
-        "epubjs",
-        "pdfjs-dist",
-        "jszip"
       ]
     },
     "server/api": {

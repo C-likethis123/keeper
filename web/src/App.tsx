@@ -20,7 +20,6 @@ import { useBrowserEditorSession } from "@web/adapters/browser/editor/useBrowser
 import { resolveOrCreateWikiLinkNoteId } from "@web/adapters/browser/wikiLinkUtils";
 import { HomeRoute } from "@web/routes/HomeRoute";
 import {
-	deleteStoredBrowserFile,
 	pickBrowserFile,
 	saveBytes,
 	savePickedFile,
@@ -50,7 +49,7 @@ import {
 	useParams,
 } from "react-router-dom";
 
-type EditorPanel = "document" | "video" | "article";
+type EditorPanel = "video" | "article";
 
 function ShareRoute() {
 	const { search } = useLocation();
@@ -112,11 +111,9 @@ function EditorRoute() {
 				</section>
 			</main>
 		);
-	const preferredPanel: EditorPanel | null = pathname.startsWith("/documents/")
-		? "document"
-		: pathname.startsWith("/videos/")
-			? "video"
-			: null;
+	const preferredPanel: EditorPanel | null = pathname.startsWith("/videos/")
+		? "video"
+		: null;
 	return (
 		<EditorRouteContent
 			key={`${note.id}:${preferredPanel ?? "editor"}`}
@@ -130,11 +127,9 @@ function initialPanel(
 	note: BrowserNote,
 	preferredPanel: EditorPanel | null,
 ): EditorPanel | null {
-	if (preferredPanel === "document" && note.attachment) return "document";
 	if (preferredPanel === "video" && note.attachedVideo) return "video";
 	if (note.attachedVideo) return "video";
 	if (note.resourceUrl) return "article";
-	if (note.attachment) return "document";
 	return null;
 }
 
@@ -232,41 +227,6 @@ function EditorRouteContent({
 			notify("Failed to update pin.");
 		}
 	}
-	async function removeAttachment() {
-		const attachment = local.attachment;
-		const next = {
-			...local,
-			attachment: null,
-			documentPositions: null,
-			lastUpdated: Date.now(),
-			modified: Date.now(),
-		};
-		session.patchBrowser({ attachment: null, documentPositions: null });
-		try {
-			if (attachment) await deleteStoredBrowserFile(attachment);
-			await saveNote(next);
-			setActivePanel(null);
-		} catch {
-			notify("Failed to remove attachment.");
-		}
-	}
-	async function saveDocumentPosition(path: string, position: string) {
-		const documentPositions = {
-			...(local.documentPositions ?? {}),
-			[path]: position,
-		};
-		session.patchBrowser({ documentPositions });
-		try {
-			await saveNote({
-				...local,
-				documentPositions,
-				lastUpdated: Date.now(),
-				modified: Date.now(),
-			});
-		} catch {
-			notify("Failed to save document position.");
-		}
-	}
 	async function openHistory() {
 		try {
 			await save();
@@ -291,34 +251,6 @@ function EditorRouteContent({
 			src: await saveBytes(image.bytes, image.name, "assets"),
 			altText: image.name,
 		};
-	}
-	async function attachDocument() {
-		try {
-			const file = await pickBrowserFile(
-				"application/pdf,application/epub+zip,.pdf,.epub",
-			);
-			if (!file) return;
-			const attachment = await savePickedFile(file, "attachments");
-			const next = {
-				...local,
-				attachment,
-				documentPositions: null,
-				lastUpdated: Date.now(),
-				modified: Date.now(),
-			};
-			session.patchBrowser({ attachment, documentPositions: null });
-			await saveNote(next);
-			setActivePanel("document");
-		} catch {
-			notify("Failed to attach document.");
-		}
-	}
-	function handleEditorAttachDocument() {
-		if (local.attachment) {
-			setActivePanel("document");
-			return;
-		}
-		void attachDocument();
 	}
 	async function attachVideo(url: string) {
 		const next = {
@@ -371,7 +303,6 @@ function EditorRouteContent({
 	};
 	const toggleActivePanel = () => {
 		const available = [
-			local.attachment ? "document" : null,
 			local.attachedVideo ? "video" : null,
 			local.resourceUrl ? "article" : null,
 		].filter(Boolean) as EditorPanel[];
@@ -435,15 +366,8 @@ function EditorRouteContent({
 				<BrowserEditorSidePanelHost
 					activePanel={activePanel}
 					articleUrl={local.resourceUrl}
-					attachmentPath={local.attachment}
-					noteId={local.id}
 					videoUrl={local.attachedVideo}
 					onArticleDismiss={() => setActivePanel(null)}
-					onAttachmentDismiss={() => setActivePanel(null)}
-					onDocumentPositionChange={saveDocumentPosition}
-					onTextSelected={(text) =>
-						setTemplateCommand({ markdown: `> ${text}`, timestamp: Date.now() })
-					}
 					onVideoDismiss={() => {
 						void removeVideo();
 					}}
@@ -462,11 +386,6 @@ function EditorRouteContent({
 							noteId={local.id}
 							value={session.draft.content}
 							onChange={(content) => session.patch({ content })}
-							hasAttachment={local.attachment !== null}
-							onAttachDocument={handleEditorAttachDocument}
-							onRemoveAttachment={() => {
-								void removeAttachment();
-							}}
 							onRequestImage={requestImage}
 							onPasteImage={pasteImage}
 							onShowVideoModal={showVideoModal}

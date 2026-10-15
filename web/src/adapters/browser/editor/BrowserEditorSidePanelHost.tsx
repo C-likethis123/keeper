@@ -8,24 +8,18 @@ import {
 } from "react";
 import { browserStorage } from "@web/services/storage";
 import { BrowserArticlePanel } from "./BrowserArticlePanel";
-import { BrowserDocumentPanel } from "./BrowserDocumentPanel";
 import { BrowserVideoPanel } from "./BrowserVideoPanel";
 
-type EditorSidePanel = "document" | "video" | "article";
+type EditorSidePanel = "video" | "article";
 const SPLIT_RATIO_KEY = "doc-split-ratio";
 
 import { useMobileViewport } from "@keeper/components/editor/lexical/useMobileEditorViewport";
 type Props = {
 	activePanel: EditorSidePanel | null;
 	articleUrl: string | null;
-	attachmentPath: string | null;
-	noteId: string;
 	videoUrl: string | null;
 	children: ReactNode;
 	onArticleDismiss: () => void;
-	onAttachmentDismiss: () => void;
-	onDocumentPositionChange: (path: string, position: string) => void;
-	onTextSelected: (text: string) => void;
 	onVideoDismiss: () => void;
 };
 
@@ -33,13 +27,8 @@ type Props = {
 export function BrowserEditorSidePanelHost({
 	activePanel,
 	articleUrl,
-	attachmentPath,
 	children,
-	noteId,
 	onArticleDismiss,
-	onAttachmentDismiss,
-	onDocumentPositionChange,
-	onTextSelected,
 	onVideoDismiss,
 	videoUrl,
 }: Props) {
@@ -117,16 +106,6 @@ export function BrowserEditorSidePanelHost({
 			);
 		if (activePanel === "video" && videoUrl)
 			return <BrowserVideoPanel url={videoUrl} onDismiss={onVideoDismiss} />;
-		if (activePanel === "document" && attachmentPath)
-			return (
-				<BrowserDocumentPanel
-					attachmentPath={attachmentPath}
-					noteId={noteId}
-					onDismiss={onAttachmentDismiss}
-					onPositionChange={onDocumentPositionChange}
-					onTextSelected={onTextSelected}
-				/>
-			);
 		return null;
 	}
 	if (!activePanel)

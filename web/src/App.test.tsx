@@ -199,68 +199,7 @@ it("supports direct editor URLs and redirects unknown routes home", async () => 
 	).toBeInTheDocument();
 });
 
-it("opens document route with canonical panel even when video also exists", async () => {
-	await storageEngine.initialize();
-	const attachment = await saveBytes(
-		new Uint8Array([37, 80, 68, 70]),
-		"route.pdf",
-		"attachments",
-	);
-	await persistBrowserNotes([
-		note({
-			id: "document-route",
-			title: "Document route",
-			attachment,
-			attachedVideo: "https://youtu.be/dQw4w9WgXcQ",
-		}),
-	]);
-	const filename = attachment.split("/").at(-1) ?? attachment;
-
-	render(
-		<MemoryRouter initialEntries={["/documents/document-route"]}>
-			<App />
-		</MemoryRouter>,
-	);
-
-	expect(await screen.findByText(filename)).toBeInTheDocument();
-	expect(screen.queryByText("Video")).not.toBeInTheDocument();
-});
-
-it("removes document bytes and metadata without closing editor", async () => {
-	const user = userEvent.setup();
-	await storageEngine.initialize();
-	const attachment = await saveBytes(
-		new Uint8Array([37, 80, 68, 70]),
-		"remove.pdf",
-		"attachments",
-	);
-	await persistBrowserNotes([
-		note({
-			id: "remove-document",
-			attachment,
-			documentPositions: { [attachment]: "4" },
-		}),
-	]);
-	render(
-		<MemoryRouter initialEntries={["/documents/remove-document"]}>
-			<App />
-		</MemoryRouter>,
-	);
-
-	await user.click(
-		await screen.findByRole("button", { name: "Remove attachment" }),
-	);
-
-	await waitFor(async () => {
-		const persisted = (await loadBrowserNotes())[0];
-		expect(persisted?.attachment).toBeNull();
-		expect(persisted?.documentPositions).toBeNull();
-		expect(await storageEngine.readFileBytes(attachment)).toBeNull();
-	});
-	expect(screen.getByLabelText("Title")).toBeInTheDocument();
-});
-
-it("keeps editor autosave functional while document panel is open", async () => {
+it("opens legacy document notes without reader and preserves attachment on autosave", async () => {
 	await storageEngine.initialize();
 	const attachment = await saveBytes(
 		new Uint8Array([37, 80, 68, 70]),
@@ -270,13 +209,19 @@ it("keeps editor autosave functional while document panel is open", async () => 
 	await persistBrowserNotes([
 		note({ id: "document-autosave", title: "Before", attachment }),
 	]);
-	const filename = attachment.split("/").at(-1) ?? attachment;
 	render(
 		<MemoryRouter initialEntries={["/documents/document-autosave"]}>
 			<App />
 		</MemoryRouter>,
 	);
-	await screen.findByText(filename);
+	await screen.findByLabelText("Title");
+	expect(
+		screen.queryByRole("button", { name: "Attach PDF or ePub" }),
+	).not.toBeInTheDocument();
+	expect(
+		screen.queryByRole("button", { name: "Remove attachment" }),
+	).not.toBeInTheDocument();
+	expect(screen.queryByRole("separator")).not.toBeInTheDocument();
 
 	vi.useFakeTimers();
 	fireEvent.change(screen.getByLabelText("Title"), {
@@ -290,6 +235,8 @@ it("keeps editor autosave functional while document panel is open", async () => 
 	await waitFor(async () =>
 		expect((await loadBrowserNotes())[0]?.title).toBe("Saved with document"),
 	);
+	expect((await loadBrowserNotes())[0]?.attachment).toBe(attachment);
+	expect(await storageEngine.readFileBytes(attachment)).not.toBeNull();
 });
 
 it("opens direct video route, then removes video through canonical panel", async () => {

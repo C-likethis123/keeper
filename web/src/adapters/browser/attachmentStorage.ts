@@ -8,7 +8,6 @@ import {
 } from "@keeper/services/notes/attachmentStorage";
 import { ensureCanonicalStorageInitialized } from "@web/services/canonicalStorage";
 
-export type AttachmentType = "pdf" | "epub";
 export { inferAttachmentType };
 
 export async function saveAttachmentBytesToNotes(

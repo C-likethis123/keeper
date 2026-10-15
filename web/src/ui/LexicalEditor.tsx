@@ -13,10 +13,7 @@ type Props = {
 	onPasteImage?: (
 		image: PastedImage,
 	) => Promise<{ src: string; altText?: string } | null>;
-	onAttachDocument?: () => void;
-	onRemoveAttachment?: () => void;
 	onShowVideoModal?: () => void;
-	hasAttachment?: boolean;
 	onInsertTemplateCommand?: () => void;
 	onOpenWikiLink?: (title: string) => void;
 	onToggleArticle?: () => void;
@@ -30,13 +27,10 @@ type Props = {
 export function LexicalEditor({
 	editorKey,
 	noteId,
-	hasAttachment,
-	onAttachDocument,
 	onChange,
 	onInsertTemplateCommand,
 	onOpenWikiLink,
 	onPasteImage,
-	onRemoveAttachment,
 	onRequestImage,
 	onShowVideoModal,
 	onToggleActivePanel,
@@ -78,8 +72,6 @@ export function LexicalEditor({
 			markdown={value}
 			noteId={noteId ?? editorKey ?? "browser-note"}
 			command={command}
-			hasAttachment={hasAttachment}
-			onAttachDocument={onAttachDocument}
 			onInsertImage={() => {
 				void onRequestImage?.().then(insertImage);
 			}}
@@ -90,7 +82,6 @@ export function LexicalEditor({
 			onToggleActivePanel={onToggleActivePanel}
 			onToggleRelatedNotes={onToggleRelatedNotes}
 			onMarkdownChange={onChange}
-			onRemoveAttachment={onRemoveAttachment}
 			onShowVideoModal={onShowVideoModal}
 			persistDraft={false}
 			themeMode="dark"
