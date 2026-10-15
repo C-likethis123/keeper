@@ -139,7 +139,7 @@ export function BrowserNotesProvider({
 	}, [loadError, ready, replaceNotes, showToast]);
 
 	const commit = useCallback(
-		async (next: BrowserNote[], message: string) => {
+		async (next: BrowserNote[], message?: string) => {
 			const previousNotes = notesRef.current;
 			const previous = new Map(previousNotes.map((note) => [note.id, note]));
 			const versions = next.flatMap((note) => {
@@ -173,7 +173,7 @@ export function BrowserNotesProvider({
 							: "Remote sync failed. Local changes remain saved.",
 					);
 				});
-			showToast(message);
+			if (message) showToast(message);
 		},
 		[bumpContentVersion, replaceNotes, showToast],
 	);
@@ -207,7 +207,6 @@ export function BrowserNotesProvider({
 			saveNote: (note) =>
 				commit(
 					[note, ...notesRef.current.filter((item) => item.id !== note.id)],
-					"Saved locally",
 				),
 			deleteNote: async (id) => {
 				await commit(
