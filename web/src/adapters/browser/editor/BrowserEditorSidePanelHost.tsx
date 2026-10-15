@@ -11,7 +11,7 @@ import { BrowserArticlePanel } from "./BrowserArticlePanel";
 import { BrowserDocumentPanel } from "./BrowserDocumentPanel";
 import { BrowserVideoPanel } from "./BrowserVideoPanel";
 
-type EditorSidePanel = "document" | "video" | "article" | "browser";
+type EditorSidePanel = "document" | "video" | "article";
 const SPLIT_RATIO_KEY = "doc-split-ratio";
 
 import { useMobileViewport } from "@keeper/components/editor/lexical/useMobileEditorViewport";
@@ -111,7 +111,7 @@ export function BrowserEditorSidePanelHost({
 		updateRatio((offset / length) * 100);
 	}
 	function renderPanel() {
-		if (activePanel === "browser" || (activePanel === "article" && articleUrl))
+		if (activePanel === "article" && articleUrl)
 			return (
 				<BrowserArticlePanel url={articleUrl} onDismiss={onArticleDismiss} />
 			);

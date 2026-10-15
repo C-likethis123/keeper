@@ -50,7 +50,7 @@ import {
 	useParams,
 } from "react-router-dom";
 
-type EditorPanel = "document" | "video" | "article" | "browser";
+type EditorPanel = "document" | "video" | "article";
 
 function ShareRoute() {
 	const { search } = useLocation();
@@ -432,19 +432,6 @@ function EditorRouteContent({
 					status={local.status}
 					onStatus={(status) => update({ status })}
 				/>
-				<div className="browser-pane-actions">
-					<button
-						type="button"
-						aria-pressed={activePanel === "browser"}
-						onClick={() =>
-							setActivePanel((current) =>
-								current === "browser" ? null : "browser",
-							)
-						}
-					>
-						Browser
-					</button>
-				</div>
 				<BrowserEditorSidePanelHost
 					activePanel={activePanel}
 					articleUrl={local.resourceUrl}

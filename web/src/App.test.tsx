@@ -322,6 +322,11 @@ it("opens direct video route, then removes video through canonical panel", async
 			"https://youtu.be/abcdefghijk",
 		),
 	);
+	await waitFor(() =>
+		expect(
+			screen.queryByRole("dialog", { name: "Attach Video Modal" }),
+		).not.toBeInTheDocument(),
+	);
 	await user.click(screen.getByRole("button", { name: "Remove video" }));
 
 	await waitFor(async () =>
@@ -330,59 +335,22 @@ it("opens direct video route, then removes video through canonical panel", async
 	expect(screen.queryByTitle("Youtube video")).not.toBeInTheDocument();
 });
 
-it("opens article source in browser pane without replacing source when browsing", async () => {
+it("keeps article reader without embedded browser controls", async () => {
 	await persistBrowserNotes([
-		note({
-			id: "article-panel",
-			title: "Article panel",
-			resourceUrl: "https://example.com/article",
-		}),
+		note({ id: "article-panel", resourceUrl: "https://example.com/article" }),
 	]);
 	render(
 		<MemoryRouter initialEntries={["/editor/article-panel"]}>
 			<App />
 		</MemoryRouter>,
 	);
-
-	const article = await screen.findByTitle("Browser website");
-	expect(article).toHaveAttribute("src", "https://example.com/article");
-	fireEvent.change(screen.getByRole("textbox", { name: "Website address" }), {
-		target: { value: "https://example.org" },
-	});
-	fireEvent.click(screen.getByRole("button", { name: "Go" }));
-	expect(screen.getByTitle("Browser website")).toHaveAttribute(
-		"src",
-		"https://example.org/",
-	);
-	expect((await loadBrowserNotes())[0]?.resourceUrl).toBe(
-		"https://example.com/article",
-	);
-});
-
-it("opens and closes browser split pane from ordinary note", async () => {
-	await persistBrowserNotes([note({ id: "browser-note" })]);
-	render(
-		<MemoryRouter initialEntries={["/editor/browser-note"]}>
-			<App />
-		</MemoryRouter>,
-	);
-	const button = await screen.findByRole("button", {
-		name: "Browser",
-		exact: true,
-	});
-	fireEvent.click(button);
+	expect(await screen.findByTitle("Article")).toBeInTheDocument();
 	expect(
-		screen.getByRole("region", { name: "Browser pane" }),
-	).toBeInTheDocument();
-	expect(
-		screen.getByRole("separator", { name: "Resize editor panel" }),
-	).toBeInTheDocument();
-	expect(screen.queryByTitle("Browser website")).not.toBeInTheDocument();
-	fireEvent.click(screen.getByRole("button", { name: "Close browser pane" }));
-	expect(
-		screen.queryByRole("region", { name: "Browser pane" }),
+		screen.queryByRole("button", { name: /^Browser$/ }),
 	).not.toBeInTheDocument();
-	expect(button).toHaveAttribute("aria-pressed", "false");
+	expect(
+		screen.queryByRole("textbox", { name: "Website address" }),
+	).not.toBeInTheDocument();
 });
 
 it("creates one quick note and routes to its browser editor", async () => {

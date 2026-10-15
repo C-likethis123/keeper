@@ -150,7 +150,7 @@ a {
 	flex-direction: column;
 	background: var(--canvas);
 }
-.page {
+.page:not(.editor-page) {
 	width: min(100% - 2rem, 72rem);
 	margin: 0 auto;
 	padding: 1.5rem 0;
@@ -298,6 +298,45 @@ a {
 .editor-shell {
 	overflow: hidden;
 	margin-top: 1rem;
+}
+.editor-page {
+	display: flex;
+	width: 100%;
+	height: calc(100dvh - 2.5rem);
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+}
+.editor-page > .editor-shell {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: var(--canvas);
+}
+.editor-page .browser-editor-main,
+.editor-page .browser-editor-pane,
+.editor-page .browser-editor-split {
+	display: flex;
+	min-height: 0;
+	overflow: hidden;
+}
+.editor-page .browser-editor-main,
+.editor-page .browser-editor-pane {
+	flex-direction: column;
+}
+.editor-page .browser-editor-split {
+	flex: 1;
+}
+.editor-page .keeper-editor-shell {
+	min-height: 100%;
+}
+.editor-page .keeper-editor {
+	min-height: 0;
 }
 .editor-header {
 	padding: .6rem;
@@ -573,7 +612,7 @@ button.browser-tab {
 	.search {
 		max-width: none;
 	}
-	.page {
+	.page:not(.editor-page) {
 		width: min(100% - 1.25rem, 72rem);
 	}
 	.editor-header {
@@ -608,60 +647,6 @@ button.browser-tab {
 }
 .lexical-editor-shell {
 	min-height: 26rem;
-}
-.browser-pane-actions {
-	padding: 0.5rem 1rem;
-}
-.browser-pane-actions button,
-.browser-web-toolbar button {
-	background: var(--surface);
-	color: inherit;
-	border: 1px solid var(--border);
-	border-radius: 0.375rem;
-	padding: 0.375rem 0.625rem;
-}
-.browser-pane-actions button[aria-pressed="true"] {
-	border-color: var(--accent);
-}
-.browser-web-panel {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	min-height: 24rem;
-	background: var(--canvas);
-}
-.browser-web-toolbar {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.375rem;
-	padding: 0.5rem;
-	border-bottom: 1px solid var(--border);
-}
-.browser-web-toolbar input {
-	flex: 1 1 10rem;
-	min-width: 0;
-	background: var(--surface);
-	color: inherit;
-	border: 1px solid var(--border);
-	border-radius: 0.375rem;
-	padding: 0.375rem;
-}
-.browser-web-toolbar input:focus-visible {
-	outline: 2px solid var(--accent);
-}
-.browser-web-hint,
-.browser-web-panel [role="alert"] {
-	margin: 0;
-	padding: 0.5rem;
-	font-size: 0.8125rem;
-	color: var(--muted);
-}
-.browser-web-panel iframe {
-	flex: 1;
-	width: 100%;
-	min-height: 20rem;
-	border: 0;
-	background: white;
 }
 .browser-editor-main,
 .browser-editor-pane {
