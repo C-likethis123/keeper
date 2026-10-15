@@ -1,20 +1,20 @@
 @font-face {
 	font-family: "KeeperFontAwesome";
-	src: url("../../../src/assets/icons/FontAwesome.ttf") format("truetype");
+	src: url("../../../src/assets/icons/FontAwesome.woff2") format("woff2");
 	font-style: normal;
 	font-weight: normal;
 	font-display: block;
 }
 @font-face {
 	font-family: "KeeperIonicons";
-	src: url("../../../src/assets/icons/Ionicons.ttf") format("truetype");
+	src: url("../../../src/assets/icons/Ionicons.woff2") format("woff2");
 	font-style: normal;
 	font-weight: normal;
 	font-display: block;
 }
 @font-face {
 	font-family: "KeeperMaterialCommunityIcons";
-	src: url("../../../src/assets/icons/MaterialCommunityIcons.ttf") format("truetype");
+	src: url("../../../src/assets/icons/MaterialCommunityIcons.woff2") format("woff2");
 	font-style: normal;
 	font-weight: normal;
 	font-display: block;
@@ -481,6 +481,11 @@ button.browser-tab {
 }
 .browser-tab__pin:empty {
 	display: none;
+}
+.browser-tab > .browser-tab__close {
+	flex-shrink: 0;
+	justify-content: center;
+	margin-inline-start: .375rem;
 }
 .browser-tab__close:hover,
 .browser-tab__pin:hover {

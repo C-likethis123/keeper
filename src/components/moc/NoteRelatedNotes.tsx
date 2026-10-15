@@ -58,7 +58,7 @@ function NoteList({
 	emptyLabel,
 }: {
 	title: string;
-	icon: string;
+	icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 	notes: Note[];
 	onNavigate: (noteId: string) => void;
 	emptyLabel: string;

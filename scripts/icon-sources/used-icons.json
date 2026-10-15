@@ -1,0 +1,48 @@
+{
+  "FontAwesome": [
+    "arrow-left",
+    "bars",
+    "bookmark-o",
+    "check",
+    "check-circle",
+    "check-square-o",
+    "close",
+    "dedent",
+    "download",
+    "eraser",
+    "exchange",
+    "exclamation-circle",
+    "external-link",
+    "history",
+    "home",
+    "image",
+    "indent",
+    "link",
+    "newspaper-o",
+    "paint-brush",
+    "pencil",
+    "plus",
+    "refresh",
+    "repeat",
+    "search",
+    "sitemap",
+    "spinner",
+    "square",
+    "table",
+    "th",
+    "thumb-tack",
+    "times",
+    "trash",
+    "trash-o",
+    "undo",
+    "video-camera"
+  ],
+  "Ionicons": [
+    "create-outline"
+  ],
+  "MaterialCommunityIcons": [
+    "export-variant",
+    "file-document-outline",
+    "link-variant"
+  ]
+}

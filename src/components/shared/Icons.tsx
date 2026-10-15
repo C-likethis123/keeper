@@ -56,7 +56,9 @@ function IconGlyph({
 }
 
 /** Browser icons backed by locally bundled font assets and glyph maps. */
-export function FontAwesome(props: IconProps) {
+export function FontAwesome(
+	props: Omit<IconProps, "name"> & { name: keyof typeof fontAwesomeGlyphs },
+) {
 	return (
 		<IconGlyph
 			{...props}
@@ -66,17 +68,19 @@ export function FontAwesome(props: IconProps) {
 	);
 }
 
-export function Ionicons(props: IconProps) {
+export function Ionicons(
+	props: Omit<IconProps, "name"> & { name: keyof typeof ioniconsGlyphs },
+) {
 	return (
-		<IconGlyph
-			{...props}
-			fontFamily="KeeperIonicons"
-			glyphs={ioniconsGlyphs}
-		/>
+		<IconGlyph {...props} fontFamily="KeeperIonicons" glyphs={ioniconsGlyphs} />
 	);
 }
 
-export function MaterialCommunityIcons(props: IconProps) {
+export function MaterialCommunityIcons(
+	props: Omit<IconProps, "name"> & {
+		name: keyof typeof materialCommunityGlyphs;
+	},
+) {
 	return (
 		<IconGlyph
 			{...props}
