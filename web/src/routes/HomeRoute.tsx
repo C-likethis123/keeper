@@ -161,7 +161,6 @@ export function HomeRoute() {
 					refreshing={refreshing}
 					onRefresh={() => void handleRefresh()}
 					onEndReached={loadMore}
-					isLoadingMore={paginationPending.current}
 					hasMore={visibleLimit < filteredNotes.length}
 					listHeaderComponent={
 						<HomeQuickComposer

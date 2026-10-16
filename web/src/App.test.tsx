@@ -510,6 +510,31 @@ function renderHomeWithLoader(loadNotes: () => Promise<BrowserNote[]>) {
 	);
 }
 
+it("keeps loading notes across successive scroll pages", async () => {
+	const notes = Array.from({ length: 65 }, (_, index) =>
+		note({ id: `scroll-${index}`, title: `Scroll ${index}` }),
+	);
+	renderHomeWithLoader(async () => notes);
+	const list = await screen.findByRole("region", { name: "Notes" });
+	Object.defineProperties(list, {
+		clientHeight: { value: 500 },
+		scrollHeight: { value: 1000 },
+	});
+	expect(screen.getAllByRole("button", { name: /^Open note / })).toHaveLength(
+		20,
+	);
+	for (const [scrollTop, count] of [
+		[500, 40],
+		[600, 60],
+		[700, 65],
+	]) {
+		fireEvent.scroll(list, { target: { scrollTop } });
+		expect(screen.getAllByRole("button", { name: /^Open note / })).toHaveLength(
+			count,
+		);
+	}
+});
+
 it("renders loading, error, and empty home states", async () => {
 	const never = new Promise<BrowserNote[]>(() => {});
 	const loadingView = renderHomeWithLoader(() => never);
