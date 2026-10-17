@@ -36,26 +36,34 @@ async function precache() {
 	const cache = await caches.open(CACHE_NAME);
 	await Promise.all(PRECACHE_URLS.map(async (url) => {
 		try {
-			const response = await fetch(url, {
+			// Cloudflare redirects /index.html to /; cache the canonical response under the shell key.
+			const response = await fetch(url === SHELL_URL ? "/" : url, {
 				cache: "reload",
 				credentials: "same-origin",
 				redirect: "error",
 			});
 			if (canCache(response, url)) await cache.put(url, response);
-		} catch {
+			else if (url === SHELL_URL) throw new Error("Application shell unavailable");
+		} catch (error) {
+			if (url === SHELL_URL) throw error;
 			// Keep install recoverable. Missing assets never enter cache.
 		}
 	}));
 }
 
 async function navigationResponse(request) {
+	let response;
 	try {
-		const response = await fetch(request);
-		if (response.ok) return response;
+		response = await fetch(request);
+		// Navigation redirects must reach the browser, including Access login redirects.
+		if (response.type === "opaqueredirect" || response.status < 500) return response;
 	} catch {
 		// Fall through to cached shell.
 	}
-	return (await caches.match(SHELL_URL)) || Response.error();
+	return (await caches.match(SHELL_URL)) || response || new Response("Keeper is offline. Reconnect and reload.", {
+		status: 503,
+		headers: { "Content-Type": "text/plain; charset=utf-8" },
+	});
 }
 
 async function staticResponse(request) {
