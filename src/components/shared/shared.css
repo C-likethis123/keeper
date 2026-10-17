@@ -82,13 +82,13 @@
 	cursor: default;
 }
 
-.keeper-control:focus-visible,
-.keeper-search-input:focus-visible {
+.keeper-control:focus-visible {
 	outline: 2px solid currentColor;
 	outline-offset: 3px;
 }
 
 .keeper-search-input {
+	outline: none;
 	min-width: 0;
 	border: 0 solid;
 	background: transparent;
