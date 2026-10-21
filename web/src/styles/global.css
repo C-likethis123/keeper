@@ -145,8 +145,9 @@ a {
 }
 .home-route {
 	display: flex;
+	height: calc(100dvh - 2.5rem);
 	min-height: 0;
-	flex: 1;
+	flex: none;
 	flex-direction: column;
 	background: var(--canvas);
 }

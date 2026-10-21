@@ -49,7 +49,7 @@ import {
 	useParams,
 } from "react-router-dom";
 
-type EditorPanel = "video" | "article";
+type EditorPanel = "video";
 
 function ShareRoute() {
 	const { search } = useLocation();
@@ -129,7 +129,6 @@ function initialPanel(
 ): EditorPanel | null {
 	if (preferredPanel === "video" && note.attachedVideo) return "video";
 	if (note.attachedVideo) return "video";
-	if (note.resourceUrl) return "article";
 	return null;
 }
 
@@ -302,19 +301,7 @@ function EditorRouteContent({
 		}
 	};
 	const toggleActivePanel = () => {
-		const available = [
-			local.attachedVideo ? "video" : null,
-			local.resourceUrl ? "article" : null,
-		].filter(Boolean) as EditorPanel[];
-		const last = available.at(-1);
-		if (!last) return;
-		setActivePanel(
-			(current) =>
-				available[
-					(Math.max(available.indexOf(current ?? last), -1) + 1) %
-						available.length
-				],
-		);
+		if (local.attachedVideo) setActivePanel("video");
 	};
 	const navigateToRelatedNote = async (id: string) => {
 		try {
@@ -365,9 +352,7 @@ function EditorRouteContent({
 				/>
 				<BrowserEditorSidePanelHost
 					activePanel={activePanel}
-					articleUrl={local.resourceUrl}
 					videoUrl={local.attachedVideo}
-					onArticleDismiss={() => setActivePanel(null)}
 					onVideoDismiss={() => {
 						void removeVideo();
 					}}
@@ -391,11 +376,6 @@ function EditorRouteContent({
 							onShowVideoModal={showVideoModal}
 							onInsertTemplateCommand={() => setTemplateOpen(true)}
 							onOpenWikiLink={openWikiLink}
-							onToggleArticle={() =>
-								setActivePanel((current) =>
-									current === "article" ? null : "article",
-								)
-							}
 							onToggleActivePanel={toggleActivePanel}
 							onToggleRelatedNotes={() => setRelatedOpen((current) => !current)}
 							onForceSave={() => {

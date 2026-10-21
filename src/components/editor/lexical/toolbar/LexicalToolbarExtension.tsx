@@ -23,7 +23,6 @@ import type React from "react";
 interface ToolbarExtensionConfig {
 	getOnInsertImage: () => (() => void) | undefined;
 	getOnShowVideoModal: () => (() => void) | undefined;
-	getOnToggleArticle: () => (() => void) | undefined;
 	getOnToggleRelatedNotes: () => (() => void) | undefined;
 	getOnToggleActivePanel: () => (() => void) | undefined;
 }
@@ -87,7 +86,6 @@ function Toolbar() {
 	const [editor] = useLexicalComposerContext();
 	const onInsertImage = useSignalValue(output.getOnInsertImage)();
 	const onShowVideoModal = useSignalValue(output.getOnShowVideoModal)();
-	const onToggleArticle = useSignalValue(output.getOnToggleArticle)();
 	const onToggleRelatedNotes = useSignalValue(output.getOnToggleRelatedNotes)();
 	const onToggleActivePanel = useSignalValue(output.getOnToggleActivePanel)();
 
@@ -139,12 +137,6 @@ function Toolbar() {
 						label="Attach video"
 					/>
 					<ToolbarIconButton
-						name="newspaper-o"
-						onPress={onToggleArticle ?? noop}
-						disabled={!onToggleArticle}
-						label="View article"
-					/>
-					<ToolbarIconButton
 						name="link"
 						onPress={onToggleRelatedNotes ?? noop}
 						disabled={!onToggleRelatedNotes}
@@ -183,7 +175,6 @@ export const ToolbarExtension = defineExtension({
 	config: safeCast<ToolbarExtensionConfig>({
 		getOnInsertImage: () => undefined,
 		getOnShowVideoModal: () => undefined,
-		getOnToggleArticle: () => undefined,
 		getOnToggleRelatedNotes: () => undefined,
 		getOnToggleActivePanel: () => undefined,
 	}),

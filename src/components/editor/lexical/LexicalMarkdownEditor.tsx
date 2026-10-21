@@ -65,7 +65,6 @@ interface LexicalMarkdownEditorProps {
 	variant?: "full" | "compact";
 	onShowVideoModal?: () => void;
 	onToggleActivePanel?: () => void;
-	onToggleArticle?: () => void;
 	onToggleRelatedNotes?: () => void;
 	safeAreaInsets?: {
 		top: number;
@@ -197,7 +196,6 @@ function editorPropsEqual(
 		previous.persistDraft === next.persistDraft &&
 		previous.onShowVideoModal === next.onShowVideoModal &&
 		previous.onToggleActivePanel === next.onToggleActivePanel &&
-		previous.onToggleArticle === next.onToggleArticle &&
 		previous.onToggleRelatedNotes === next.onToggleRelatedNotes &&
 		previous.themeMode === next.themeMode &&
 		previous.variant === next.variant &&
@@ -861,7 +859,6 @@ function LexicalMarkdownEditor({
 	persistDraft = true,
 	onShowVideoModal,
 	onToggleActivePanel,
-	onToggleArticle,
 	onToggleRelatedNotes,
 	safeAreaInsets,
 	themeMode,
@@ -910,7 +907,6 @@ function LexicalMarkdownEditor({
 	const getOnPasteImage = useLatestGetter(onPasteImage);
 	const getOnShowVideoModal = useLatestGetter(onShowVideoModal);
 	const getOnToggleActivePanel = useLatestGetter(onToggleActivePanel);
-	const getOnToggleArticle = useLatestGetter(onToggleArticle);
 	const getOnToggleRelatedNotes = useLatestGetter(onToggleRelatedNotes);
 	const setEditorContentElement = useCallback(
 		(element: HTMLDivElement | null) => {
@@ -937,7 +933,6 @@ function LexicalMarkdownEditor({
 				getOnPasteImage,
 				getOnShowVideoModal,
 				getOnToggleActivePanel,
-				getOnToggleArticle,
 				getOnToggleRelatedNotes,
 				nodes: KEEPER_EDITOR_NODES,
 				editorState: hasCrdtState
@@ -953,7 +948,6 @@ function LexicalMarkdownEditor({
 			getOnOpenWikiLink,
 			getOnShowVideoModal,
 			getOnToggleActivePanel,
-			getOnToggleArticle,
 			getOnToggleRelatedNotes,
 			hasCrdtState,
 			autoFocus,

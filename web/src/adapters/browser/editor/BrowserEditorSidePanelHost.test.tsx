@@ -11,10 +11,8 @@ it("persists keyboard split resizing with the persisted layout key", async () =>
 	render(
 		<ThemeProvider value={darkTheme}>
 			<BrowserEditorSidePanelHost
-				activePanel="article"
-				articleUrl="https://example.com"
-				videoUrl={null}
-				onArticleDismiss={() => undefined}
+				activePanel="video"
+				videoUrl="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 				onVideoDismiss={() => undefined}
 			>
 				<div>Editor</div>
@@ -22,37 +20,9 @@ it("persists keyboard split resizing with the persisted layout key", async () =>
 		</ThemeProvider>,
 	);
 
-	fireEvent.keyDown(screen.getByRole("separator"), { key: "ArrowRight" });
+	fireEvent.keyDown(screen.getByRole("separator"), { key: "ArrowDown" });
 
 	await waitFor(async () =>
 		expect(await browserStorage.getState(SPLIT_RATIO_KEY)).toBe("0.5"),
 	);
-});
-
-it("uses responsive vertical split for narrow browser panels", () => {
-	const addEventListener = vi.fn();
-	const removeEventListener = vi.fn();
-	vi.stubGlobal("matchMedia", () => ({
-		matches: true,
-		addEventListener,
-		removeEventListener,
-	}));
-	const { container, unmount } = render(
-		<ThemeProvider value={darkTheme}>
-			<BrowserEditorSidePanelHost
-				activePanel="article"
-				articleUrl="https://example.com"
-				videoUrl={null}
-				onArticleDismiss={() => undefined}
-				onVideoDismiss={() => undefined}
-			>
-				<div>Editor</div>
-			</BrowserEditorSidePanelHost>
-		</ThemeProvider>,
-	);
-
-	expect(container.querySelector(".browser-editor-split--vertical")).not.toBeNull();
-	expect(addEventListener).toHaveBeenCalledWith("change", expect.any(Function));
-	unmount();
-	expect(removeEventListener).toHaveBeenCalledWith("change", expect.any(Function));
 });

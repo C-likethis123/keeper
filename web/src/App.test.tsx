@@ -282,7 +282,7 @@ it("opens direct video route, then removes video through canonical panel", async
 	expect(screen.queryByTitle("Youtube video")).not.toBeInTheDocument();
 });
 
-it("keeps article reader without embedded browser controls", async () => {
+it("opens resource-linked notes without document panel", async () => {
 	await persistBrowserNotes([
 		note({ id: "article-panel", resourceUrl: "https://example.com/article" }),
 	]);
@@ -291,7 +291,9 @@ it("keeps article reader without embedded browser controls", async () => {
 			<App />
 		</MemoryRouter>,
 	);
-	expect(await screen.findByTitle("Article")).toBeInTheDocument();
+	expect(await screen.findByLabelText("Title")).toBeInTheDocument();
+	expect(screen.queryByTitle("Article")).not.toBeInTheDocument();
+	expect(screen.queryByTestId("article-split-panel")).not.toBeInTheDocument();
 	expect(
 		screen.queryByRole("button", { name: /^Browser$/ }),
 	).not.toBeInTheDocument();

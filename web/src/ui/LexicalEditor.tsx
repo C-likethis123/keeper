@@ -16,7 +16,6 @@ type Props = {
 	onShowVideoModal?: () => void;
 	onInsertTemplateCommand?: () => void;
 	onOpenWikiLink?: (title: string) => void;
-	onToggleArticle?: () => void;
 	onToggleActivePanel?: () => void;
 	onToggleRelatedNotes?: () => void;
 	onForceSave?: () => void;
@@ -34,7 +33,6 @@ export function LexicalEditor({
 	onRequestImage,
 	onShowVideoModal,
 	onToggleActivePanel,
-	onToggleArticle,
 	onToggleRelatedNotes,
 	onForceSave,
 	templateCommand,
@@ -78,7 +76,6 @@ export function LexicalEditor({
 			onPasteImage={(image) => onPasteImage?.(image).then(insertImage)}
 			onInsertTemplateCommand={onInsertTemplateCommand}
 			onOpenWikiLink={onOpenWikiLink}
-			onToggleArticle={onToggleArticle}
 			onToggleActivePanel={onToggleActivePanel}
 			onToggleRelatedNotes={onToggleRelatedNotes}
 			onMarkdownChange={onChange}

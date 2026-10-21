@@ -53,7 +53,6 @@ interface CreateKeeperEditorExtensionOptions {
 		| ((image: PastedImage) => void | Promise<void>)
 		| undefined;
 	getOnShowVideoModal: () => (() => void) | undefined;
-	getOnToggleArticle: () => (() => void) | undefined;
 	getOnToggleRelatedNotes: () => (() => void) | undefined;
 	getOnToggleActivePanel: () => (() => void) | undefined;
 	nodes: CreateEditorArgs["nodes"];
@@ -71,7 +70,6 @@ export function createKeeperEditorExtension({
 	getOnInsertImage,
 	getOnPasteImage,
 	getOnShowVideoModal,
-	getOnToggleArticle,
 	getOnToggleRelatedNotes,
 	getOnToggleActivePanel,
 	nodes,
@@ -137,7 +135,6 @@ export function createKeeperEditorExtension({
 				getOnInsertImage,
 				getOnShowVideoModal,
 				getOnToggleActivePanel,
-				getOnToggleArticle,
 				getOnToggleRelatedNotes,
 			}),
 			KeeperTableControlsExtension,
